@@ -47,3 +47,4 @@ nul
 
 # Docker environment
 .env.docker
+/.rocket-uploads

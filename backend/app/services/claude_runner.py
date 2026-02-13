@@ -65,6 +65,31 @@ class ClaudeRunner:
     def __init__(self, settings: Settings):
         self._settings = settings
 
+    @staticmethod
+    def _copy_images_to_workdir(
+        images: list[str], work_dir: str
+    ) -> list[str]:
+        """이미지 파일을 작업 디렉토리의 .rocket-uploads/에 복사하고 경로 목록 반환."""
+        import shutil
+
+        if not work_dir:
+            return []
+
+        upload_dir = Path(work_dir) / ".rocket-uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        copied = []
+        for img_path in images:
+            src = Path(img_path)
+            if src.exists() and src.is_file():
+                dest = upload_dir / src.name
+                try:
+                    shutil.copy2(str(src), str(dest))
+                    copied.append(str(dest))
+                except OSError:
+                    pass
+        return copied
+
     def _build_command(
         self,
         session: dict,
@@ -72,6 +97,7 @@ class ClaudeRunner:
         allowed_tools: str,
         session_id: str,
         mode: str,
+        images: list[str] | None = None,
     ) -> tuple[list[str], str | None, Path | None]:
         """CLI 커맨드를 구성하고, (cmd, system_prompt, mcp_config_path)를 반환."""
         cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose"]
@@ -120,6 +146,18 @@ class ClaudeRunner:
         claude_session_id = session.get("claude_session_id")
         if claude_session_id:
             cmd.extend(["--resume", claude_session_id])
+
+        # 이미지 파일: 작업 디렉토리에 복사 후 프롬프트에 참조 삽입
+        if images:
+            work_dir = session.get("work_dir", "")
+            copied_paths = self._copy_images_to_workdir(images, work_dir)
+            if copied_paths:
+                image_refs = "\n".join(f"- {p}" for p in copied_paths)
+                image_instruction = (
+                    f"\n\n[첨부된 이미지 파일입니다. Read 도구로 확인하세요:\n{image_refs}\n]"
+                )
+                # prompt는 cmd[2] (cmd = ["claude", "-p", prompt, ...])
+                cmd[2] = cmd[2] + image_instruction
 
         return cmd, system_prompt, mcp_config_path
 
@@ -283,6 +321,8 @@ class ClaudeRunner:
                     )
                 else:
                     output_text = str(raw_content)
+                full_length = len(output_text)
+                truncated = full_length > 5000
                 await ws_manager.broadcast_event(
                     session_id,
                     {
@@ -290,6 +330,8 @@ class ClaudeRunner:
                         "tool_use_id": tool_use_id,
                         "output": output_text[:5000],
                         "is_error": block.get("is_error", False),
+                        "is_truncated": truncated,
+                        "full_length": full_length if truncated else None,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
@@ -388,6 +430,7 @@ class ClaudeRunner:
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
         mode: str = "normal",
+        images: list[str] | None = None,
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
         await session_manager.update_status(session_id, SessionStatus.RUNNING)
@@ -396,7 +439,7 @@ class ClaudeRunner:
         )
 
         cmd, _, mcp_config_path = self._build_command(
-            session, prompt, allowed_tools, session_id, mode
+            session, prompt, allowed_tools, session_id, mode, images=images
         )
         timeout_seconds = session.get("timeout_seconds")
 

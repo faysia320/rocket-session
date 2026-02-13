@@ -12,6 +12,7 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "aiofiles==24.1.0",
     "aiosqlite>=0.22.1",
+    "python-multipart>=0.0.22",
 ]
 
 [project.optional-dependencies]
