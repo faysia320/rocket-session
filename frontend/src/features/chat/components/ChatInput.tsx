@@ -1,4 +1,4 @@
-import { memo, useState, useRef, useCallback } from 'react';
+import { memo, useState, useRef, useCallback, useEffect } from 'react';
 import { Send, Square, Image, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ interface ChatInputProps {
 }
 
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export const ChatInput = memo(function ChatInput({
   connected,
@@ -45,10 +46,23 @@ export const ChatInput = memo(function ChatInput({
   const [isDragOver, setIsDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingImagesRef = useRef<PendingImage[]>([]);
+
+  // pendingImages 변경 시 ref 동기화
+  useEffect(() => { pendingImagesRef.current = pendingImages; }, [pendingImages]);
+  // 언마운트 시 URL.createObjectURL 메모리 해제
+  useEffect(() => {
+    return () => {
+      pendingImagesRef.current.forEach(img => URL.revokeObjectURL(img.preview));
+    };
+  }, []);
 
   const resetTextarea = useCallback(() => {
     setInput('');
-    setPendingImages([]);
+    setPendingImages(prev => {
+      prev.forEach(img => URL.revokeObjectURL(img.preview));
+      return [];
+    });
     if (textareaRef.current) {
       textareaRef.current.style.height = '44px';
     }
@@ -58,7 +72,15 @@ export const ChatInput = memo(function ChatInput({
     const validFiles = files.filter(f => ACCEPTED_IMAGE_TYPES.includes(f.type));
     if (validFiles.length === 0) return;
 
-    const newImages: PendingImage[] = validFiles.map(file => ({
+    const oversized = validFiles.filter(f => f.size > MAX_IMAGE_SIZE);
+    if (oversized.length > 0) {
+      toast.error(`이미지 크기가 10MB를 초과합니다: ${oversized.map(f => f.name).join(', ')}`);
+    }
+
+    const acceptable = validFiles.filter(f => f.size <= MAX_IMAGE_SIZE);
+    if (acceptable.length === 0) return;
+
+    const newImages: PendingImage[] = acceptable.map(file => ({
       file,
       preview: URL.createObjectURL(file),
     }));
@@ -91,6 +113,10 @@ export const ChatInput = memo(function ChatInput({
         }
       }
 
+      if (imagePaths.length === 0 && pendingImages.length > 0) {
+        toast.error('모든 이미지 업로드에 실패했습니다. 메시지를 전송하지 않습니다.');
+        return;
+      }
       onSubmit(prompt || '이 이미지를 분석해주세요.', imagePaths.length > 0 ? imagePaths : undefined);
     } else {
       onSubmit(prompt);

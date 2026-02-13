@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { toast } from 'sonner';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { AVAILABLE_TOOLS } from '../constants/tools';
 
@@ -41,7 +42,7 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
       setPermissionMode(s.permission_mode ?? false);
       setPermissionTools(s.permission_required_tools ?? []);
     } catch {
-      // ignore
+      toast.error('세션 설정을 불러오지 못했습니다.');
     }
   }, [sessionId]);
 
@@ -74,9 +75,10 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
         permission_mode: permissionMode,
         permission_required_tools: permissionMode && permissionTools.length > 0 ? permissionTools : null,
       });
+      toast.success('설정이 저장되었습니다.');
       setOpen(false);
     } catch {
-      // ignore
+      toast.error('설정 저장에 실패했습니다.');
     } finally {
       setSaving(false);
     }

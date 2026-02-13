@@ -48,10 +48,14 @@ export function FileViewer({ sessionId, filePath, tool, timestamp, open, onOpenC
       .catch(() => null);
 
     Promise.all([fetchContent, fetchDiff]).then(([contentResult, diffResult]) => {
-      setContent(contentResult);
-      setDiff(diffResult);
-      // diff가 있으면 diff 탭, 없으면 content 탭
-      setActiveTab(diffResult ? 'diff' : 'content');
+      if (contentResult === null && diffResult === null) {
+        setError('파일 내용과 diff를 모두 가져올 수 없습니다.');
+      } else {
+        setContent(contentResult);
+        setDiff(diffResult);
+        // diff가 있으면 diff 탭, 없으면 content 탭
+        setActiveTab(diffResult ? 'diff' : 'content');
+      }
       setLoading(false);
     });
   }, [sessionId, filePath, open]);

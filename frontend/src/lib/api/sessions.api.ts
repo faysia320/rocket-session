@@ -43,9 +43,12 @@ export const sessionsApi = {
     a.href = url;
     a.download = `session-${sessionId}.md`;
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      a.click();
+    } finally {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   },
 
   uploadImage: async (sessionId: string, file: File): Promise<{ path: string; name: string; size: number }> => {
