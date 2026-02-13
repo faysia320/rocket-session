@@ -51,7 +51,7 @@ export default defineConfig({
             if (id.includes('/@radix-ui/')) {
               return 'vendor-ui';
             }
-            if (id.includes('/react-markdown/') || id.includes('/remark-gfm/')) {
+            if (id.includes('/react-markdown/') || id.includes('/remark-gfm/') || id.includes('/rehype-highlight/') || id.includes('/highlight.js/')) {
               return 'vendor-markdown';
             }
           }

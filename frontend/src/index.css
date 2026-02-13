@@ -343,3 +343,130 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ============================================================
+   Chat Markdown Styles (prose-chat)
+   ============================================================ */
+.prose-chat {
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  color: hsl(var(--foreground));
+  word-break: break-word;
+}
+.prose-chat > *:first-child { margin-top: 0; }
+.prose-chat > *:last-child { margin-bottom: 0; }
+.prose-chat h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.prose-chat h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.85rem 0 0.4rem;
+  color: hsl(var(--primary));
+}
+.prose-chat h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.35rem;
+}
+.prose-chat p {
+  margin: 0.4rem 0;
+}
+.prose-chat ul,
+.prose-chat ol {
+  margin: 0.4rem 0;
+  padding-left: 1.5rem;
+}
+.prose-chat li {
+  margin: 0.2rem 0;
+}
+.prose-chat li::marker {
+  color: hsl(var(--primary));
+}
+.prose-chat strong {
+  font-weight: 600;
+}
+.prose-chat em {
+  font-style: italic;
+}
+.prose-chat img {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 0.5rem 0;
+}
+.prose-chat input[type="checkbox"] {
+  margin-right: 0.4rem;
+  accent-color: hsl(var(--primary));
+}
+
+/* ============================================================
+   highlight.js Custom Theme (auto light/dark via CSS variables)
+   ============================================================ */
+:root {
+  --hljs-keyword: #8839ef;
+  --hljs-string: #40a02b;
+  --hljs-number: #fe640b;
+  --hljs-comment: #9ca0b0;
+  --hljs-function: #1e66f5;
+  --hljs-type: #df8e1d;
+  --hljs-variable: #4c4f69;
+  --hljs-literal: #d20f39;
+  --hljs-attr: #179299;
+  --hljs-builtin: #7c3aed;
+  --hljs-title: #1e66f5;
+  --hljs-meta: #ea76cb;
+  --hljs-operator: #04a5e5;
+}
+.dark {
+  --hljs-keyword: #f59e0b;
+  --hljs-string: #4ade80;
+  --hljs-number: #fb923c;
+  --hljs-comment: #64748b;
+  --hljs-function: #60a5fa;
+  --hljs-type: #fbbf24;
+  --hljs-variable: #e2e8f0;
+  --hljs-literal: #f87171;
+  --hljs-attr: #2dd4bf;
+  --hljs-builtin: #c084fc;
+  --hljs-title: #60a5fa;
+  --hljs-meta: #f472b6;
+  --hljs-operator: #22d3ee;
+}
+
+.hljs { color: hsl(var(--foreground)); background: transparent; }
+.hljs-keyword,
+.hljs-selector-tag { color: var(--hljs-keyword); font-weight: 500; }
+.hljs-string,
+.hljs-doctag,
+.hljs-template-tag { color: var(--hljs-string); }
+.hljs-number { color: var(--hljs-number); }
+.hljs-comment { color: var(--hljs-comment); font-style: italic; }
+.hljs-title.function_,
+.hljs-title.class_ { color: var(--hljs-title); }
+.hljs-type,
+.hljs-built_in { color: var(--hljs-builtin); }
+.hljs-variable,
+.hljs-template-variable { color: var(--hljs-variable); }
+.hljs-literal { color: var(--hljs-literal); }
+.hljs-attr,
+.hljs-attribute { color: var(--hljs-attr); }
+.hljs-meta,
+.hljs-meta .hljs-keyword { color: var(--hljs-meta); }
+.hljs-name { color: var(--hljs-keyword); }
+.hljs-params { color: var(--hljs-variable); }
+.hljs-regexp,
+.hljs-symbol { color: var(--hljs-literal); }
+.hljs-section { color: var(--hljs-keyword); font-weight: 600; }
+.hljs-addition { color: var(--hljs-string); background: transparent; }
+.hljs-deletion { color: var(--hljs-literal); background: transparent; }
+.hljs-operator { color: var(--hljs-operator); }
+.hljs-punctuation { color: hsl(var(--muted-foreground)); }
+.hljs-property { color: var(--hljs-attr); }
+.hljs-selector-class,
+.hljs-selector-id { color: var(--hljs-attr); }
+.hljs-tag { color: var(--hljs-keyword); }
