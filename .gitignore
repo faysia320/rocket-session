@@ -48,3 +48,4 @@ nul
 # Docker environment
 .env.docker
 /.rocket-uploads
+/e2e-screenshots
