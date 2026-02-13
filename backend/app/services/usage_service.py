@@ -32,7 +32,7 @@ class UsageService:
 
             block_5h = BlockUsage()
             if isinstance(block_data, dict):
-                data_list = block_data.get("data", [])
+                data_list = block_data.get("blocks", [])
                 if data_list:
                     # 활성 블록 우선, 없으면 gap이 아닌 마지막 블록
                     latest = next(

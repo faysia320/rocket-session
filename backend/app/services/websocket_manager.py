@@ -164,6 +164,17 @@ class WebSocketManager:
         """세션의 인메모리 버퍼 정리."""
         self._event_buffers.pop(session_id, None)
 
+    async def restore_seq_counters(self, db: "Database"):
+        """서버 재시작 시 DB에서 세션별 최대 seq를 복원."""
+        try:
+            seq_map = await db.get_max_seq_per_session()
+            for session_id, max_seq in seq_map.items():
+                self._seq_counters[session_id] = max_seq
+            if seq_map:
+                logger.info("seq 카운터 복원 완료: %d개 세션", len(seq_map))
+        except Exception as e:
+            logger.warning("seq 카운터 복원 실패: %s", e)
+
     def reset_session(self, session_id: str):
         """세션의 버퍼 + 시퀀스 카운터 초기화."""
         self._event_buffers.pop(session_id, None)

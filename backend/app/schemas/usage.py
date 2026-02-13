@@ -10,7 +10,7 @@ class BlockUsage(BaseModel):
     cost_usd: float = 0.0
     is_active: bool = False
     time_remaining: str = ""
-    burn_rate: int = 0
+    burn_rate: float = 0.0
 
 
 class WeeklyUsage(BaseModel):

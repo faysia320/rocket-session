@@ -82,6 +82,12 @@ async def init_dependencies():
     )
     await _database.conn.commit()
 
+    # seq 카운터를 DB에서 복원 (재시작 후에도 seq 이어서 사용)
+    await _ws_manager.restore_seq_counters(_database)
+
+    # 오래된 이벤트 정리 (24시간 이전)
+    await _database.cleanup_old_events(max_age_hours=24)
+
 
 async def shutdown_dependencies():
     """앱 종료 시 DB 연결 정리."""

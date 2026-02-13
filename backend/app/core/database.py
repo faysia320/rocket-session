@@ -349,6 +349,24 @@ class Database:
         )
         await self.conn.commit()
 
+    async def get_max_seq_per_session(self) -> dict[str, int]:
+        """세션별 최대 seq 번호 조회 (서버 재시작 시 seq 카운터 복원용)."""
+        cursor = await self.conn.execute(
+            "SELECT session_id, MAX(seq) as max_seq FROM events GROUP BY session_id"
+        )
+        rows = await cursor.fetchall()
+        return {row["session_id"]: row["max_seq"] for row in rows}
+
+    async def cleanup_old_events(self, max_age_hours: int = 24):
+        """지정 시간 이전의 이벤트 삭제."""
+        cursor = await self.conn.execute(
+            "DELETE FROM events WHERE timestamp < datetime('now', ?)",
+            (f"-{max_age_hours} hours",),
+        )
+        await self.conn.commit()
+        if cursor.rowcount > 0:
+            logger.info("오래된 이벤트 %d건 삭제 (기준: %d시간)", cursor.rowcount, max_age_hours)
+
     async def find_session_by_claude_id(self, claude_session_id: str) -> dict | None:
         """claude_session_id로 세션 조회."""
         cursor = await self.conn.execute(
