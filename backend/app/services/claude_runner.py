@@ -240,7 +240,8 @@ class ClaudeRunner:
 
         elif event_type == "result":
             await self._handle_result_event(
-                event, session_id, mode, ws_manager, session_manager
+                event, session_id, mode, ws_manager, session_manager,
+                current_text_holder,
             )
 
         else:
@@ -345,9 +346,13 @@ class ClaudeRunner:
         mode: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
+        current_text_holder: list[str],
     ) -> None:
         """result 타입 이벤트 처리."""
-        result_text = event.get("result", "")
+        result_text = event.get("result") or ""
+        # result 텍스트가 비어있으면 스트리밍된 텍스트를 폴백으로 사용
+        if not result_text and current_text_holder:
+            result_text = current_text_holder[0]
         cost_info = event.get("cost_usd", event.get("cost", None))
         duration = event.get("duration_ms", None)
         session_id_from_result = event.get("session_id", None)
