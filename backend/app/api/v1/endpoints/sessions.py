@@ -3,10 +3,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 
-from app.api.dependencies import get_session_manager, get_settings
+from app.api.dependencies import get_session_manager, get_settings, get_settings_service
 from app.core.config import Settings
 from app.schemas.session import CreateSessionRequest, SessionInfo, UpdateSessionRequest
 from app.services.session_manager import SessionManager
+from app.services.settings_service import SettingsService
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -16,8 +17,11 @@ async def create_session(
     req: CreateSessionRequest,
     settings: Settings = Depends(get_settings),
     manager: SessionManager = Depends(get_session_manager),
+    settings_service: SettingsService = Depends(get_settings_service),
 ):
-    work_dir = req.work_dir or settings.claude_work_dir
+    global_settings = await settings_service.get()
+    # work_dir 우선순위: 요청 > 글로벌 > env
+    work_dir = req.work_dir or global_settings.get("work_dir") or settings.claude_work_dir
     session = await manager.create(
         work_dir=work_dir,
         allowed_tools=req.allowed_tools,

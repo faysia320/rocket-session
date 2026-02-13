@@ -18,6 +18,7 @@ from app.core.database import Database
 from app.main import app
 from app.services.claude_runner import ClaudeRunner
 from app.services.session_manager import SessionManager
+from app.services.settings_service import SettingsService
 from app.services.websocket_manager import WebSocketManager
 
 
@@ -41,6 +42,7 @@ async def test_client():
     wm = WebSocketManager()
     wm.set_database(db)
     cr = ClaudeRunner(test_settings)
+    ss = SettingsService(db)
 
     # Override dependencies
     app.dependency_overrides[deps.get_database] = lambda: db
@@ -48,6 +50,7 @@ async def test_client():
     app.dependency_overrides[deps.get_ws_manager] = lambda: wm
     app.dependency_overrides[deps.get_claude_runner] = lambda: cr
     app.dependency_overrides[deps.get_settings] = lambda: test_settings
+    app.dependency_overrides[deps.get_settings_service] = lambda: ss
 
     # Create client
     transport = ASGITransport(app=app)

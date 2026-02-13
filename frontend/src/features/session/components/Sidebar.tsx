@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Columns2, Download, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
+import { Sun, Moon, Columns2, Download, PanelLeftClose, PanelLeftOpen, Plus, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,6 +8,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import type { SessionInfo } from '@/types';
 import { ImportLocalDialog } from './ImportLocalDialog';
+import { GlobalSettingsDialog } from '@/features/settings/components/GlobalSettingsDialog';
 import { useSessionStore } from '@/store';
 
 interface SidebarProps {
@@ -34,50 +35,6 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
         collapsed ? 'w-16 min-w-16' : 'w-[260px] min-w-[260px]',
       )}
     >
-      {/* Header */}
-      <div className="px-4 pt-5 pb-3 border-b border-border">
-        {collapsed ? (
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-lg text-primary">{'◆'}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={toggleSidebar}
-              aria-label="사이드바 펼치기"
-            >
-              <PanelLeftOpen className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-lg text-primary">{'◆'}</span>
-            <span className="font-mono text-sm font-semibold text-foreground tracking-tight flex-1">
-              CC Dashboard
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn('h-7 w-7', splitView && 'bg-muted')}
-              onClick={toggleSplitView}
-              title="Split View"
-              aria-label={splitView ? '단일 뷰로 전환' : '분할 뷰로 전환'}
-            >
-              <Columns2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={toggleSidebar}
-              aria-label="사이드바 접기"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-
       {/* New Session */}
       <div className="px-3 pt-3">
         {collapsed ? (
@@ -131,7 +88,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
       )}
 
       {/* Sessions list */}
-      <ScrollArea className={cn('flex-1', collapsed ? 'px-1 pt-3' : 'px-2')}>
+      <ScrollArea className={cn('flex-1 min-h-0', collapsed ? 'px-1 pt-3' : 'px-2')}>
         {sessions.length === 0 ? (
           collapsed ? null : (
             <div className="py-6 px-3 text-center font-mono text-xs text-muted-foreground/70">
@@ -180,10 +137,45 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
         )}
       </ScrollArea>
 
-      {/* Footer */}
+      {/* Footer: 설정, 테마, Split View, 접기 */}
       <div className={cn('py-3 border-t border-border', collapsed ? 'px-2' : 'px-4')}>
-        <div className={cn('flex items-center', collapsed ? 'justify-center' : 'justify-end')}>
+        <div className={cn('flex items-center gap-1', collapsed ? 'flex-col' : 'justify-end')}>
+          <GlobalSettingsDialog>
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="글로벌 설정">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </GlobalSettingsDialog>
           <ThemeToggle />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn('h-8 w-8', splitView && 'bg-muted')}
+                onClick={toggleSplitView}
+                aria-label={splitView ? '단일 뷰로 전환' : '분할 뷰로 전환'}
+              >
+                <Columns2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side={collapsed ? 'right' : 'top'}>Split View</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={toggleSidebar}
+                aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
+              >
+                {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side={collapsed ? 'right' : 'top'}>
+              {collapsed ? '사이드바 펼치기' : '사이드바 접기'}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
       <ImportLocalDialog
@@ -251,7 +243,7 @@ function SessionItem({
   return (
     <div
       className={cn(
-        'px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-all border border-transparent',
+        'px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-all border border-transparent overflow-hidden min-w-0',
         isActive && 'bg-muted border-[hsl(var(--border-bright))]',
       )}
       onClick={() => onSelect(s.id)}

@@ -1,6 +1,7 @@
 """WebSocket 엔드포인트 - 실시간 스트리밍."""
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -10,6 +11,7 @@ from app.api.dependencies import (
     get_claude_runner,
     get_session_manager,
     get_settings,
+    get_settings_service,
     get_ws_manager,
 )
 from app.api.v1.endpoints.permissions import respond_permission
@@ -55,18 +57,26 @@ async def _handle_prompt(
         )
         return
 
-    # 세션 설정에서 allowed_tools 로드 (요청 > 세션 설정 > 전역 설정 우선순위)
+    # 세션 정보 로드
     current_session = await manager.get(session_id)
+
+    # 글로벌 기본 설정 로드
+    settings_service = get_settings_service()
+    global_settings = await settings_service.get()
+
+    # allowed_tools: 요청 > 세션 > 글로벌 > env
     allowed_tools = (
         data.get("allowed_tools")
         or (current_session.get("allowed_tools") if current_session else None)
+        or global_settings.get("allowed_tools")
         or settings.claude_allowed_tools
     )
 
-    # 모드: 요청 > 세션 DB 설정 > 기본값
+    # 모드: 요청 > 세션 > 글로벌 > 기본값
     mode = (
         data.get("mode")
         or (current_session.get("mode") if current_session else None)
+        or global_settings.get("mode")
         or "normal"
     )
 
@@ -96,10 +106,22 @@ async def _handle_prompt(
         session_id, {"type": "user_message", "message": user_msg}
     )
 
+    # 글로벌 기본값으로 세션 설정 병합 (세션에 값이 없는 필드만)
+    merged_session = dict(current_session) if current_session else {}
+    for key in ["system_prompt", "timeout_seconds", "permission_mode", "permission_required_tools"]:
+        if not merged_session.get(key) and global_settings.get(key):
+            if key == "permission_required_tools":
+                val = global_settings[key]
+                merged_session[key] = json.dumps(val) if isinstance(val, list) else val
+            elif key == "permission_mode":
+                merged_session[key] = int(global_settings[key])
+            else:
+                merged_session[key] = global_settings[key]
+
     # ClaudeRunner에 최신 세션 정보 전달
     task = asyncio.create_task(
         runner.run(
-            current_session,
+            merged_session,
             prompt,
             allowed_tools,
             session_id,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { DirectoryPicker } from '@/features/directory/components/DirectoryPicker';
 import { AVAILABLE_TOOLS } from '../constants/tools';
+import { useGlobalSettings } from '@/features/settings/hooks/useGlobalSettings';
 
 interface SessionSetupPanelProps {
   onCreate: (
@@ -23,6 +24,14 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [systemPrompt, setSystemPrompt] = useState('');
   const [timeoutMinutes, setTimeoutMinutes] = useState('');
   const [creating, setCreating] = useState(false);
+  const { data: globalSettings } = useGlobalSettings();
+
+  // 글로벌 work_dir 기본값 적용
+  useEffect(() => {
+    if (!workDir && globalSettings?.work_dir) {
+      setWorkDir(globalSettings.work_dir);
+    }
+  }, [globalSettings?.work_dir]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToolToggle = (tool: string, checked: boolean) => {
     setSelectedTools((prev) =>
@@ -79,7 +88,12 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             ALLOWED TOOLS
           </Label>
           <p className="font-mono text-[10px] text-muted-foreground/70">
-            Claude CLI에 허용할 도구를 선택하세요. 미선택 시 전역 설정이 적용됩니다.
+            Claude CLI에 허용할 도구를 선택하세요. 미선택 시 글로벌 설정이 적용됩니다.
+            {globalSettings?.allowed_tools ? (
+              <span className="block mt-0.5 text-info/70">
+                글로벌: {globalSettings.allowed_tools}
+              </span>
+            ) : null}
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {AVAILABLE_TOOLS.map((tool) => (

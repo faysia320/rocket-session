@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     local_sessions,
     permissions,
     sessions,
+    settings,
     usage,
 )
 
@@ -20,3 +21,4 @@ api_router.include_router(filesystem.router)
 api_router.include_router(local_sessions.router)
 api_router.include_router(permissions.router)
 api_router.include_router(usage.router)
+api_router.include_router(settings.router)

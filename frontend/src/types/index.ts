@@ -23,3 +23,4 @@ export type {
   ImportLocalSessionResponse,
 } from './local-session';
 export type { BlockUsage, WeeklyUsage, UsageInfo } from './usage';
+export type { GlobalSettings, UpdateGlobalSettingsRequest } from './settings';

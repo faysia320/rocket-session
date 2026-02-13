@@ -52,6 +52,17 @@ CREATE TABLE IF NOT EXISTS events (
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS global_settings (
+    id TEXT PRIMARY KEY DEFAULT 'default',
+    work_dir TEXT,
+    allowed_tools TEXT,
+    system_prompt TEXT,
+    timeout_seconds INTEGER,
+    mode TEXT DEFAULT 'normal',
+    permission_mode INTEGER DEFAULT 0,
+    permission_required_tools TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_file_changes_session_id ON file_changes(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
@@ -83,6 +94,14 @@ class Database:
             "ALTER TABLE sessions ADD COLUMN permission_mode INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE sessions ADD COLUMN permission_required_tools TEXT",
             "ALTER TABLE sessions ADD COLUMN name TEXT",
+            # Phase 1: result.is_error 추적
+            "ALTER TABLE messages ADD COLUMN is_error INTEGER NOT NULL DEFAULT 0",
+            # Phase 2: 토큰 사용량 + 모델명 저장
+            "ALTER TABLE messages ADD COLUMN input_tokens INTEGER",
+            "ALTER TABLE messages ADD COLUMN output_tokens INTEGER",
+            "ALTER TABLE messages ADD COLUMN cache_creation_tokens INTEGER",
+            "ALTER TABLE messages ADD COLUMN cache_read_tokens INTEGER",
+            "ALTER TABLE messages ADD COLUMN model TEXT",
         ]
         for migration in migrations:
             try:
@@ -93,6 +112,12 @@ class Database:
                     continue  # 이미 존재하는 컬럼 - 정상
                 logger.error("마이그레이션 실패: %s - %s", migration, e)
                 raise
+
+        # 글로벌 설정 기본 행 보장
+        cursor = await self._db.execute("SELECT COUNT(*) FROM global_settings")
+        row = await cursor.fetchone()
+        if row[0] == 0:
+            await self._db.execute("INSERT INTO global_settings (id) VALUES ('default')")
 
         await self._db.commit()
         logger.info("데이터베이스 초기화 완료: %s", self._db_path)
@@ -258,17 +283,27 @@ class Database:
         timestamp: str,
         cost: float | None = None,
         duration_ms: int | None = None,
+        is_error: bool = False,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        cache_creation_tokens: int | None = None,
+        cache_read_tokens: int | None = None,
+        model: str | None = None,
     ):
         await self.conn.execute(
-            """INSERT INTO messages (session_id, role, content, cost, duration_ms, timestamp)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (session_id, role, content, cost, duration_ms, timestamp),
+            """INSERT INTO messages (session_id, role, content, cost, duration_ms, timestamp,
+                                    is_error, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, model)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (session_id, role, content, cost, duration_ms, timestamp,
+             int(is_error), input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, model),
         )
         await self.conn.commit()
 
     async def get_messages(self, session_id: str) -> list[dict]:
         cursor = await self.conn.execute(
-            "SELECT role, content, cost, duration_ms, timestamp FROM messages WHERE session_id = ? ORDER BY id",
+            """SELECT role, content, cost, duration_ms, timestamp,
+                      is_error, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, model
+               FROM messages WHERE session_id = ? ORDER BY id""",
             (session_id,),
         )
         rows = await cursor.fetchall()
@@ -377,3 +412,56 @@ class Database:
         if not row:
             return None
         return dict(row)
+
+    # ── 글로벌 설정 ───────────────────────────────────────────
+
+    async def get_global_settings(self) -> dict | None:
+        """글로벌 기본 설정 조회."""
+        cursor = await self.conn.execute(
+            "SELECT * FROM global_settings WHERE id = 'default'"
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def update_global_settings(
+        self,
+        work_dir: str | None = None,
+        allowed_tools: str | None = None,
+        system_prompt: str | None = None,
+        timeout_seconds: int | None = None,
+        mode: str | None = None,
+        permission_mode: int | None = None,
+        permission_required_tools: str | None = None,
+    ) -> dict | None:
+        """글로벌 기본 설정 업데이트."""
+        fields = []
+        values = []
+        if work_dir is not None:
+            fields.append("work_dir = ?")
+            values.append(work_dir)
+        if allowed_tools is not None:
+            fields.append("allowed_tools = ?")
+            values.append(allowed_tools)
+        if system_prompt is not None:
+            fields.append("system_prompt = ?")
+            values.append(system_prompt)
+        if timeout_seconds is not None:
+            fields.append("timeout_seconds = ?")
+            values.append(timeout_seconds)
+        if mode is not None:
+            fields.append("mode = ?")
+            values.append(mode)
+        if permission_mode is not None:
+            fields.append("permission_mode = ?")
+            values.append(permission_mode)
+        if permission_required_tools is not None:
+            fields.append("permission_required_tools = ?")
+            values.append(permission_required_tools)
+        if not fields:
+            return await self.get_global_settings()
+        values.append("default")
+        await self.conn.execute(
+            f"UPDATE global_settings SET {', '.join(fields)} WHERE id = ?", values
+        )
+        await self.conn.commit()
+        return await self.get_global_settings()
