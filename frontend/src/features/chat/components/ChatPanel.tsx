@@ -16,6 +16,7 @@ import { useSlashCommands } from '../hooks/useSlashCommands';
 import type { SlashCommand } from '../constants/slashCommands';
 import { filesystemApi } from '@/lib/api/filesystem.api';
 import { useGitInfo } from '@/features/directory/hooks/useGitInfo';
+import { computeEstimateSize, computeMessageGaps, computeSearchMatches } from '../utils/chatComputations';
 
 interface ChatPanelProps {
   sessionId: string;
@@ -63,7 +64,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 60,
+    estimateSize: (index) => computeEstimateSize(messages[index]),
     overscan: 10,
   });
 
@@ -160,25 +161,10 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   );
 
   // 검색: 매칭된 메시지 인덱스 목록
-  const searchMatches = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return messages
-      .map((m, i) => ({ index: i, match: (m.text || m.content || '').toLowerCase().includes(q) }))
-      .filter((r) => r.match)
-      .map((r) => r.index);
-  }, [messages, searchQuery]);
+  const searchMatches = useMemo(() => computeSearchMatches(messages, searchQuery), [messages, searchQuery]);
 
   // 같은 턴 내 연속 메시지 간격 계산 (assistant 턴 그룹핑)
-  const messageGaps = useMemo(() => {
-    return messages.map((msg, i) => {
-      if (i === 0) return 'normal' as const;
-      const prev = messages[i - 1];
-      const turnTypes = ['assistant_text', 'tool_use', 'tool_result'];
-      if (turnTypes.includes(msg.type) && turnTypes.includes(prev.type)) return 'tight' as const;
-      return 'normal' as const;
-    });
-  }, [messages]);
+  const messageGaps = useMemo(() => computeMessageGaps(messages), [messages]);
 
   // 검색 결과 이동 시 스크롤
   useEffect(() => {

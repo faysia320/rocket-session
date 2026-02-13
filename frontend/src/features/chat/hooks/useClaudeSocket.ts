@@ -1,34 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { config } from '@/config/env';
 import type { Message, FileChange, SessionMode, PermissionRequestData } from '@/types';
-
-/**
- * WebSocket URL을 현재 페이지 기반으로 동적 생성.
- * Vite proxy를 통해 /ws 경로가 백엔드로 프록시됩니다.
- */
-function getWsUrl(sessionId: string, lastSeq?: number): string {
-  const wsBase =
-    config.WS_BASE_URL ||
-    `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
-  const base = `${wsBase}/ws/${sessionId}`;
-  return lastSeq ? `${base}?last_seq=${lastSeq}` : base;
-}
+import {
+  getWsUrl,
+  getBackoffDelay,
+  generateMessageId,
+  RECONNECT_MAX_ATTEMPTS,
+} from './useClaudeSocket.utils';
 
 // 재연결 상태
 export interface ReconnectState {
   status: 'connected' | 'reconnecting' | 'failed';
   attempt: number;
   maxAttempts: number;
-}
-
-// 재연결 설정
-const RECONNECT_MAX_ATTEMPTS = 10;
-const RECONNECT_BASE_DELAY = 1000;
-const RECONNECT_MAX_DELAY = 30000;
-
-function getBackoffDelay(attempt: number): number {
-  const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, attempt), RECONNECT_MAX_DELAY);
-  return delay * (0.8 + Math.random() * 0.4);
 }
 
 // 세션 상태 인터페이스
@@ -52,12 +35,6 @@ interface HistoryItem {
   timestamp?: string;
 }
 
-// 메시지 고유 ID 생성기
-let _msgIdCounter = 0;
-function generateMessageId(): string {
-  return `msg-${Date.now()}-${++_msgIdCounter}`;
-}
-
 export function useClaudeSocket(sessionId: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,6 +49,7 @@ export function useClaudeSocket(sessionId: string) {
   const [activeTools, setActiveTools] = useState<Message[]>([]);
   const [pendingPermission, setPendingPermission] = useState<PermissionRequestData | null>(null);
   const [loading, setLoading] = useState(true);
+  const processedSeqs = useRef(new Set<number>());
   const reconnectAttempt = useRef(0);
   const [reconnectState, setReconnectState] = useState<ReconnectState>({
     status: 'reconnecting',
@@ -89,6 +67,7 @@ export function useClaudeSocket(sessionId: string) {
     setLoading(true);
     setPendingPermission(null);
     lastSeqRef.current = 0;
+    processedSeqs.current.clear();
     reconnectAttempt.current = 0;
     setReconnectState({
       status: 'reconnecting',
@@ -98,9 +77,13 @@ export function useClaudeSocket(sessionId: string) {
   }, [sessionId]);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
-    // 모든 이벤트에서 seq 추적
-    if (typeof data.seq === 'number' && data.seq > lastSeqRef.current) {
-      lastSeqRef.current = data.seq;
+    // seq 기반 중복 방지 + 추적
+    if (typeof data.seq === 'number') {
+      if (processedSeqs.current.has(data.seq)) return; // 중복 이벤트 스킵
+      processedSeqs.current.add(data.seq);
+      if (data.seq > lastSeqRef.current) {
+        lastSeqRef.current = data.seq;
+      }
     }
 
     switch (data.type) {
@@ -159,7 +142,15 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'status':
         setStatus(data.status as 'idle' | 'running');
-        if (data.status === 'idle') setActiveTools([]);
+        if (data.status === 'idle') {
+          setActiveTools([]);
+          // running 상태로 남아있는 모든 tool_use를 정리 (강제 중지 등)
+          setMessages((prev) => prev.map((msg) =>
+            msg.type === 'tool_use' && msg.status === 'running'
+              ? { ...msg, status: 'done' as const }
+              : msg
+          ));
+        }
         break;
 
       case 'user_message':
@@ -168,12 +159,13 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'assistant_text':
         setMessages((prev) => {
-          // 같은 턴 내의 마지막 assistant_text를 역순 탐색
-          // (user_message나 result 경계 이전까지만 검색)
+          // 같은 연속 텍스트 블록 내의 마지막 assistant_text를 역순 탐색
+          // tool_use/tool_result 경계 이후의 새 텍스트는 별도 메시지로 추가
           let lastIdx = -1;
           for (let i = prev.length - 1; i >= 0; i--) {
-            if (prev[i].type === 'user_message' || prev[i].type === 'result') break;
-            if (prev[i].type === 'assistant_text') { lastIdx = i; break; }
+            const t = prev[i].type;
+            if (t === 'user_message' || t === 'result' || t === 'tool_use' || t === 'tool_result') break;
+            if (t === 'assistant_text') { lastIdx = i; break; }
           }
           if (lastIdx >= 0) {
             // 기존 assistant_text를 덮어쓰기 (ID 유지로 virtualizer key 안정성)
@@ -216,12 +208,19 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'result': {
         setMessages((prev) => {
-          const lastMsg = prev[prev.length - 1];
-          const isLastAssistant = lastMsg?.type === 'assistant_text';
-          const cleaned = isLastAssistant ? prev.slice(0, -1) : prev;
           const resultData = data as unknown as Message;
+          // 현재 턴에서 마지막 assistant_text 찾기 (역순 탐색, user_message/result 경계까지)
+          let lastAssistantIdx = -1;
+          for (let i = prev.length - 1; i >= 0; i--) {
+            if (prev[i].type === 'user_message' || prev[i].type === 'result') break;
+            if (prev[i].type === 'assistant_text') { lastAssistantIdx = i; break; }
+          }
+          const assistantText = lastAssistantIdx >= 0 ? prev[lastAssistantIdx].text : undefined;
+          const cleaned = lastAssistantIdx >= 0
+            ? [...prev.slice(0, lastAssistantIdx), ...prev.slice(lastAssistantIdx + 1)]
+            : prev;
           // result 텍스트가 없으면 이전 assistant_text 텍스트를 보존
-          const text = resultData.text || (isLastAssistant ? lastMsg.text : undefined);
+          const text = resultData.text || assistantText;
           return [...cleaned, {
             ...resultData,
             text,
@@ -248,10 +247,16 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'stopped':
         setStatus('idle');
-        setMessages((prev) => [
-          ...prev,
-          { id: generateMessageId(), type: 'system', text: 'Session stopped by user.' },
-        ]);
+        setActiveTools([]);
+        setMessages((prev) => {
+          // running 상태 tool_use를 모두 done으로 전환
+          const cleaned = prev.map((msg) =>
+            msg.type === 'tool_use' && msg.status === 'running'
+              ? { ...msg, status: 'done' as const }
+              : msg
+          );
+          return [...cleaned, { id: generateMessageId(), type: 'system', text: 'Session stopped by user.' }];
+        });
         break;
 
       case 'event':
@@ -284,6 +289,13 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'permission_response':
         setPendingPermission(null);
+        break;
+
+      case 'raw':
+        setMessages((prev) => [
+          ...prev,
+          { id: generateMessageId(), type: 'stderr', text: data.text as string },
+        ]);
         break;
 
       default:
@@ -397,6 +409,7 @@ export function useClaudeSocket(sessionId: string) {
     setMessages([]);
     setFileChanges([]);
     lastSeqRef.current = 0;
+    processedSeqs.current.clear();
   }, []);
 
   const addSystemMessage = useCallback((text: string) => {
