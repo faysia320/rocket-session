@@ -209,6 +209,21 @@ class ClaudeRunner:
             env=env,
         )
 
+    @staticmethod
+    def _normalize_file_path(file_path: str, work_dir: str) -> str:
+        """파일 경로를 work_dir 기준 상대 경로로 정규화한다.
+
+        CLI가 절대 경로를 반환하는 경우, work_dir 하위이면 상대 경로로 변환한다.
+        """
+        p = Path(file_path)
+        if p.is_absolute():
+            try:
+                return str(p.resolve().relative_to(Path(work_dir).resolve()))
+            except ValueError:
+                # work_dir 외부 경로는 그대로 반환
+                return file_path
+        return file_path
+
     async def _handle_stream_event(
         self,
         event: dict,
@@ -296,8 +311,14 @@ class ClaudeRunner:
                 await ws_manager.broadcast_event(session_id, tool_event)
 
                 if tool_name in ("Write", "Edit", "MultiEdit"):
-                    file_path = tool_input.get(
+                    raw_path = tool_input.get(
                         "file_path", tool_input.get("path", "unknown")
+                    )
+                    work_dir = turn_state.get("work_dir", "")
+                    file_path = (
+                        self._normalize_file_path(raw_path, work_dir)
+                        if work_dir
+                        else raw_path
                     )
                     ts = datetime.now(timezone.utc).isoformat()
                     await session_manager.add_file_change(
@@ -433,9 +454,10 @@ class ClaudeRunner:
         mode: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
+        work_dir: str = "",
     ) -> None:
         """subprocess stdout에서 JSON 스트림을 읽고 이벤트별로 처리."""
-        turn_state = {"text": "", "model": None}
+        turn_state = {"text": "", "model": None, "work_dir": work_dir}
 
         while True:
             line = await process.stdout.readline()
@@ -498,12 +520,14 @@ class ClaudeRunner:
             process = await self._start_process(cmd, session["work_dir"])
             session_manager.set_process(session_id, process)
 
+            work_dir = session.get("work_dir", "")
             # 타임아웃 적용
             if timeout_seconds and timeout_seconds > 0:
                 try:
                     await asyncio.wait_for(
                         self._parse_stream(
-                            process, session_id, mode, ws_manager, session_manager
+                            process, session_id, mode, ws_manager, session_manager,
+                            work_dir=work_dir,
                         ),
                         timeout=timeout_seconds,
                     )
@@ -525,7 +549,8 @@ class ClaudeRunner:
                     )
             else:
                 await self._parse_stream(
-                    process, session_id, mode, ws_manager, session_manager
+                    process, session_id, mode, ws_manager, session_manager,
+                    work_dir=work_dir,
                 )
 
             stderr = await process.stderr.read()

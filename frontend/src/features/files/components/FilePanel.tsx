@@ -58,6 +58,16 @@ export function FilePanel({ sessionId, fileChanges = [], onFileClick }: FilePane
   );
 }
 
+/** 절대 경로이면 마지막 3세그먼트로 축약, 상대 경로는 그대로 표시 */
+function shortenFilePath(filePath: string): string {
+  // Windows/Unix 절대 경로 감지
+  const isAbsolute = /^[A-Z]:[/\\]/i.test(filePath) || filePath.startsWith('/');
+  if (!isAbsolute) return filePath;
+  const parts = filePath.split(/[/\\]/);
+  if (parts.length <= 3) return filePath;
+  return '.../' + parts.slice(-3).join('/');
+}
+
 interface FileChangeItemProps {
   sessionId: string;
   change: FileChange;
@@ -124,8 +134,8 @@ function FileChangeItem({ sessionId, change, onFullView }: FileChangeItemProps) 
               <Maximize2 className="h-3 w-3 text-muted-foreground" />
             </button>
           </div>
-          <div className="font-mono text-[11px] text-primary break-all pl-5">
-            {change.file}
+          <div className="font-mono text-[11px] text-primary break-all pl-5" title={change.file}>
+            {shortenFilePath(change.file)}
           </div>
         </button>
       </CollapsibleTrigger>

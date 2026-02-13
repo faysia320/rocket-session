@@ -27,10 +27,10 @@ export const sessionsApi = {
   files: (id: string) => api.get<unknown[]>(`/api/sessions/${id}/files`),
 
   fileContent: (sessionId: string, filePath: string) =>
-    api.getText(`/api/sessions/${sessionId}/file-content/${filePath}`),
+    api.getText(`/api/sessions/${sessionId}/file-content/${encodeURIComponent(filePath)}`),
 
   fileDiff: (sessionId: string, filePath: string) =>
-    api.getText(`/api/sessions/${sessionId}/file-diff/${filePath}`),
+    api.getText(`/api/sessions/${sessionId}/file-diff/${encodeURIComponent(filePath)}`),
 
   exportMarkdown: async (sessionId: string): Promise<void> => {
     const response = await fetch(`/api/sessions/${sessionId}/export`);

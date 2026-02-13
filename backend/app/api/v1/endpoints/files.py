@@ -18,6 +18,34 @@ router = APIRouter(prefix="/sessions", tags=["files"])
 MAX_FILE_SIZE = 1 * 1024 * 1024
 
 
+def _resolve_safe_path(file_path: str, work_dir: Path) -> Path:
+    """파일 경로를 work_dir 기준으로 안전하게 해석한다.
+
+    절대 경로가 들어와도 work_dir 하위인지 검증하고,
+    상대 경로는 work_dir 기준으로 결합한다.
+    Path traversal 공격을 방지한다.
+    """
+    resolved_work_dir = work_dir.resolve()
+    path = Path(file_path)
+
+    if path.is_absolute():
+        # 절대 경로: work_dir 기준 상대 경로로 변환 시도
+        resolved = path.resolve()
+        try:
+            rel = resolved.relative_to(resolved_work_dir)
+        except ValueError:
+            raise HTTPException(403, "접근 금지: 작업 디렉토리 외부 경로입니다")
+        return resolved_work_dir / rel
+    else:
+        # 상대 경로: work_dir과 결합 후 검증
+        resolved = (resolved_work_dir / path).resolve()
+        try:
+            resolved.relative_to(resolved_work_dir)
+        except ValueError:
+            raise HTTPException(403, "접근 금지: 작업 디렉토리 외부 경로입니다")
+        return resolved
+
+
 @router.get("/{session_id}/file-content/{file_path:path}")
 async def get_file_content(
     session_id: str,
@@ -28,14 +56,8 @@ async def get_file_content(
     if not session:
         raise HTTPException(404, "Session not found")
 
-    work_dir = Path(session["work_dir"]).resolve()
-    target = (work_dir / file_path).resolve()
-
-    # Path traversal 방지: 대상이 work_dir 하위인지 검증
-    try:
-        target.relative_to(work_dir)
-    except ValueError:
-        raise HTTPException(403, "접근 금지: 작업 디렉토리 외부 경로입니다")
+    work_dir = Path(session["work_dir"])
+    target = _resolve_safe_path(file_path, work_dir)
 
     if not target.exists():
         raise HTTPException(404, "파일을 찾을 수 없습니다")
@@ -65,21 +87,18 @@ async def get_file_diff(
     if not session:
         raise HTTPException(404, "Session not found")
 
-    work_dir = Path(session["work_dir"]).resolve()
-    target = (work_dir / file_path).resolve()
-
-    # Path traversal 방지
-    try:
-        target.relative_to(work_dir)
-    except ValueError:
-        raise HTTPException(403, "접근 금지: 작업 디렉토리 외부 경로입니다")
+    work_dir = Path(session["work_dir"])
+    target = _resolve_safe_path(file_path, work_dir)
+    # git diff에는 work_dir 기준 상대 경로 사용
+    resolved_work_dir = work_dir.resolve()
+    rel_path = str(target.relative_to(resolved_work_dir))
 
     async def run_git_diff() -> str:
         def _run() -> str:
             # 먼저 HEAD 대비 변경사항 확인 (staged + unstaged)
             try:
                 result = subprocess.run(
-                    ["git", "diff", "HEAD", "--", file_path],
+                    ["git", "diff", "HEAD", "--", rel_path],
                     cwd=str(work_dir),
                     capture_output=True,
                     text=True,
@@ -93,7 +112,7 @@ async def get_file_diff(
             # HEAD diff가 없으면 unstaged 변경사항 확인
             try:
                 result = subprocess.run(
-                    ["git", "diff", "--", file_path],
+                    ["git", "diff", "--", rel_path],
                     cwd=str(work_dir),
                     capture_output=True,
                     text=True,
@@ -107,7 +126,7 @@ async def get_file_diff(
             # staged 변경사항 확인
             try:
                 result = subprocess.run(
-                    ["git", "diff", "--cached", "--", file_path],
+                    ["git", "diff", "--cached", "--", rel_path],
                     cwd=str(work_dir),
                     capture_output=True,
                     text=True,
