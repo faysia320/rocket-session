@@ -55,7 +55,13 @@ export const MessageBubble = memo(function MessageBubble({
     case 'permission_request':
       return <PermissionRequestMessage message={message} />;
     default:
-      return null;
+      return (
+        <div className="px-2 py-0.5">
+          <span className="font-mono text-[10px] text-muted-foreground/50">
+            [{type}]
+          </span>
+        </div>
+      );
   }
 });
 

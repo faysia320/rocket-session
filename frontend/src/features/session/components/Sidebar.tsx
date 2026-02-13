@@ -182,19 +182,9 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
 
       {/* Footer */}
       <div className={cn('py-3 border-t border-border', collapsed ? 'px-2' : 'px-4')}>
-        {collapsed ? (
-          <div className="flex justify-center">
-            <ThemeToggle />
-          </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-mono text-[11px] text-muted-foreground">Claude Code CLI</div>
-              <div className="font-mono text-[10px] text-muted-foreground/70">Dashboard v1.0</div>
-            </div>
-            <ThemeToggle />
-          </div>
-        )}
+        <div className={cn('flex items-center', collapsed ? 'justify-center' : 'justify-end')}>
+          <ThemeToggle />
+        </div>
       </div>
       <ImportLocalDialog
         open={importOpen}
