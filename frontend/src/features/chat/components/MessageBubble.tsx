@@ -62,7 +62,7 @@ function UserMessage({ message }: { message: any }) {
     <div className="flex justify-end animate-[fadeIn_0.2s_ease]">
       <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-xl rounded-br-sm">
         <div className="font-mono text-[10px] font-semibold opacity-70 mb-1">You</div>
-        <div className="font-mono text-[13px] leading-normal whitespace-pre-wrap">
+        <div className="font-mono text-[13px] leading-normal whitespace-pre-wrap select-text">
           {message.content || message.prompt}
         </div>
       </div>
@@ -80,7 +80,7 @@ function AssistantText({ message }: { message: any }) {
             streaming{'…'}
           </span>
         </div>
-        <div className="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words">
+        <div className="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words select-text">
           <FormattedText text={message.text} />
         </div>
       </div>
@@ -129,7 +129,7 @@ function ResultMessage({
             </>
           ) : null}
         </div>
-        <div className="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words">
+        <div className="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words select-text">
           <FormattedText text={message.text} />
         </div>
         {(message.cost || message.duration_ms) ? (
@@ -213,7 +213,7 @@ function ToolUseMessage({ message }: { message: any }) {
           <div className="mt-1.5 space-y-1.5">
             <div>
               <div className="font-mono text-[10px] text-muted-foreground/70 mb-0.5">Input</div>
-              <pre className="font-mono text-[11px] text-muted-foreground bg-input p-2 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap">
+              <pre className="font-mono text-[11px] text-muted-foreground bg-input p-2 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
                 {JSON.stringify(input, null, 2)}
               </pre>
             </div>
@@ -221,7 +221,7 @@ function ToolUseMessage({ message }: { message: any }) {
               <div>
                 <div className="font-mono text-[10px] text-muted-foreground/70 mb-0.5">Output</div>
                 <pre className={cn(
-                  'font-mono text-[11px] bg-input p-2 rounded-sm overflow-auto max-h-[300px] whitespace-pre-wrap',
+                  'font-mono text-[11px] bg-input p-2 rounded-sm overflow-auto max-h-[300px] whitespace-pre-wrap select-text',
                   message.is_error ? 'text-destructive' : 'text-muted-foreground'
                 )}>
                   {message.output}

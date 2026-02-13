@@ -29,7 +29,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
   return (
     <aside
       className={cn(
-        'h-screen flex flex-col bg-card border-r border-border overflow-hidden transition-[width,min-width] duration-200 ease-in-out',
+        'h-full flex flex-col bg-sidebar border-r border-sidebar-border overflow-hidden transition-[width,min-width] duration-200 ease-in-out',
         collapsed ? 'w-16 min-w-16' : 'w-[260px] min-w-[260px]',
       )}
     >

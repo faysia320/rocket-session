@@ -310,7 +310,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       </div>
 
       {/* 메시지 영역 */}
-      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto select-text">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50">
             <div className="font-mono text-[32px] text-primary animate-[blink_1.2s_ease-in-out_infinite]">

@@ -13,7 +13,7 @@ export function UsageFooter() {
 
   if (isLoading) {
     return (
-      <footer className="h-8 shrink-0 border-t border-border bg-card flex items-center px-3">
+      <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center px-3">
         <div className="h-3 w-48 animate-pulse rounded bg-muted" />
       </footer>
     );
@@ -21,7 +21,7 @@ export function UsageFooter() {
 
   if (isError || !data || !data.available) {
     return (
-      <footer className="h-8 shrink-0 border-t border-border bg-card flex items-center px-3 gap-1.5 text-xs text-muted-foreground">
+      <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center px-3 gap-1.5 text-xs text-muted-foreground">
         <AlertCircle className="h-3 w-3" />
         <span>{data?.error ? data.error : '사용량 정보를 가져올 수 없습니다'}</span>
       </footer>
@@ -31,7 +31,7 @@ export function UsageFooter() {
   const { plan, block_5h, weekly } = data;
 
   return (
-    <footer className="h-8 shrink-0 border-t border-border bg-card flex items-center px-3 text-xs text-muted-foreground">
+    <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center px-3 text-xs text-muted-foreground">
       <div className="flex items-center gap-3">
         {/* 플랜 배지 */}
         <span className="flex items-center gap-1 text-primary font-medium">
