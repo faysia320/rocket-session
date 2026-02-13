@@ -30,10 +30,14 @@ const AVAILABLE_TOOLS = [
 
 interface SessionSettingsProps {
   sessionId: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function SessionSettings({ sessionId }: SessionSettingsProps) {
-  const [open, setOpen] = useState(false);
+export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange: controlledOnOpenChange }: SessionSettingsProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [timeoutMinutes, setTimeoutMinutes] = useState('');

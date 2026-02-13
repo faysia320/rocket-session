@@ -210,6 +210,15 @@ export function useClaudeSocket(sessionId: string) {
     }
   }, []);
 
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    setFileChanges([]);
+  }, []);
+
+  const addSystemMessage = useCallback((text: string) => {
+    setMessages((prev) => [...prev, { type: 'system', text }]);
+  }, []);
+
   return {
     connected,
     messages,
@@ -218,5 +227,7 @@ export function useClaudeSocket(sessionId: string) {
     fileChanges,
     sendPrompt,
     stopExecution,
+    clearMessages,
+    addSystemMessage,
   };
 }

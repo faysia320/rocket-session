@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { FileChange } from '@/types';
+import { useSlashCommands } from '../hooks/useSlashCommands';
+import { SlashCommandPopup } from './SlashCommandPopup';
+import type { SlashCommand } from '../constants/slashCommands';
 
 interface ChatPanelProps {
   sessionId: string;
@@ -21,11 +24,16 @@ interface ChatPanelProps {
  * onFileChanges 콜백을 통해 파일 변경 사항을 상위로 전달합니다.
  */
 export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }: ChatPanelProps) {
-  const { connected, messages, status, sessionInfo, fileChanges, sendPrompt, stopExecution } =
+  const { connected, messages, status, sessionInfo, fileChanges, sendPrompt, stopExecution, clearMessages, addSystemMessage } =
     useClaudeSocket(sessionId);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const slashCommands = useSlashCommands({
+    connected,
+    isRunning: status === 'running',
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -38,6 +46,40 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
     }
   }, [fileChanges, onFileChanges]);
 
+  const executeSlashCommand = (cmd: SlashCommand) => {
+    setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '44px';
+    }
+    switch (cmd.id) {
+      case 'help': {
+        const helpText =
+          '사용 가능한 명령어:\n' +
+          '  /help     - 명령어 목록 표시\n' +
+          '  /clear    - 대화 내역 초기화\n' +
+          '  /compact  - 컨텍스트 압축 (CLI 전달)\n' +
+          '  /model    - 모델 변경 (CLI 전달)\n' +
+          '  /settings - 세션 설정 열기\n' +
+          '  /files    - 파일 패널 토글';
+        addSystemMessage(helpText);
+        break;
+      }
+      case 'clear':
+        clearMessages();
+        break;
+      case 'compact':
+      case 'model':
+        sendPrompt(`/${cmd.id}`);
+        break;
+      case 'settings':
+        setSettingsOpen(true);
+        break;
+      case 'files':
+        onToggleFiles();
+        break;
+    }
+  };
+
   const handleSubmit = () => {
     const prompt = input.trim();
     if (!prompt || status === 'running') return;
@@ -49,6 +91,13 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (slashCommands.isOpen) {
+      const selected = slashCommands.handleKeyDown(e);
+      if (selected) {
+        executeSlashCommand(slashCommands.selectCommand(selected));
+      }
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -56,7 +105,9 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
   };
 
   const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+    const val = e.target.value;
+    setInput(val);
+    slashCommands.handleInputChange(val);
     e.target.style.height = '44px';
     e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
   };
@@ -96,7 +147,7 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
               Running
             </Badge>
           ) : null}
-          <SessionSettings sessionId={sessionId} />
+          <SessionSettings sessionId={sessionId} open={settingsOpen} onOpenChange={setSettingsOpen} />
           <Button
             variant="outline"
             size="icon"
@@ -130,7 +181,16 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
 
       {/* 입력 영역 */}
       <div className="px-4 py-3 border-t border-border bg-secondary">
-        <div className="flex items-end gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50">
+        <div className="relative">
+          {slashCommands.isOpen ? (
+            <SlashCommandPopup
+              commands={slashCommands.filteredCommands}
+              activeIndex={slashCommands.activeIndex}
+              onSelect={(cmd) => executeSlashCommand(slashCommands.selectCommand(cmd))}
+              onHover={slashCommands.setActiveIndex}
+            />
+          ) : null}
+          <div className="flex items-end gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50">
           <Textarea
             ref={textareaRef}
             className="flex-1 font-mono text-[13px] bg-transparent border-0 outline-none resize-none min-h-[44px] leading-[22px] py-[11px] focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -159,9 +219,9 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
             )}
           </div>
         </div>
+        </div>
         <div className="font-mono text-[10px] text-muted-foreground/70 mt-1.5 pl-0.5">
-          Shift+Enter for new line {'\u00B7'} Commands are sent to Claude Code CLI
-          via <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">--output-format stream-json</code>
+          Shift+Enter 줄바꿈 {'\u00B7'} <span className="text-muted-foreground">/</span> 명령어
         </div>
       </div>
     </div>
