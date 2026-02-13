@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+import subprocess
 import sys
 import tempfile
 from datetime import datetime
@@ -19,6 +20,42 @@ if TYPE_CHECKING:
     from app.services.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
+
+
+class _AsyncStreamReader:
+    """Windows subprocess 파이프를 비동기로 읽기 위한 래퍼."""
+
+    def __init__(self, stream):
+        self._stream = stream
+
+    async def readline(self):
+        return await asyncio.to_thread(self._stream.readline)
+
+    async def read(self):
+        return await asyncio.to_thread(self._stream.read)
+
+
+class _AsyncProcessWrapper:
+    """subprocess.Popen을 asyncio.Process 인터페이스로 감싸는 래퍼 (Windows용)."""
+
+    def __init__(self, popen: subprocess.Popen):
+        self._popen = popen
+        self.stdout = _AsyncStreamReader(popen.stdout)
+        self.stderr = _AsyncStreamReader(popen.stderr)
+        self.pid = popen.pid
+
+    def terminate(self):
+        self._popen.terminate()
+
+    def kill(self):
+        self._popen.kill()
+
+    async def wait(self):
+        return await asyncio.to_thread(self._popen.wait)
+
+    @property
+    def returncode(self):
+        return self._popen.returncode
 
 
 class ClaudeRunner:
@@ -110,13 +147,23 @@ class ClaudeRunner:
             # CLAUDECODE 환경변수 제거 (중첩 세션 방지)
             env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
 
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=session["work_dir"],
-                env=env,
-            )
+            if sys.platform == "win32":
+                popen = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=session["work_dir"],
+                    env=env,
+                )
+                process = _AsyncProcessWrapper(popen)
+            else:
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=session["work_dir"],
+                    env=env,
+                )
             session_manager.set_process(session_id, process)
 
             current_text = ""
