@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
-import { ChevronDown, ChevronUp, Sun, Moon } from 'lucide-react';
+import { ChevronDown, ChevronUp, Sun, Moon, Columns2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { SessionInfo } from '@/types';
 import { DirectoryPicker } from '@/features/directory/components/DirectoryPicker';
+import { useSessionStore } from '@/store';
 
 interface SidebarProps {
   sessions: SessionInfo[];
@@ -24,6 +25,8 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [timeoutMinutes, setTimeoutMinutes] = useState('');
+  const splitView = useSessionStore((s) => s.splitView);
+  const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
 
   const handleCreate = () => {
     const options: { system_prompt?: string; timeout_seconds?: number } = {};
@@ -55,9 +58,19 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
       <div className="px-4 pt-5 pb-3 border-b border-border">
         <div className="flex items-center gap-2">
           <span className="text-lg text-primary">{'\u25C6'}</span>
-          <span className="font-mono text-sm font-semibold text-foreground tracking-tight">
+          <span className="font-mono text-sm font-semibold text-foreground tracking-tight flex-1">
             CC Dashboard
           </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn('h-7 w-7', splitView && 'bg-muted')}
+            onClick={toggleSplitView}
+            title="Split View"
+            aria-label={splitView ? '\uB2E8\uC77C \uBDF0\uB85C \uC804\uD658' : '\uBD84\uD560 \uBDF0\uB85C \uC804\uD658'}
+          >
+            <Columns2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -67,7 +80,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
           <div className="flex flex-col gap-2">
             <DirectoryPicker value={workDir} onChange={setWorkDir} />
 
-            {/* 고급 설정 토글 */}
+            {/* \uACE0\uAE09 \uC124\uC815 \uD1A0\uAE00 */}
             <button
               type="button"
               className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
@@ -168,7 +181,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
                     e.stopPropagation();
                     onDelete(s.id);
                   }}
-                  aria-label="세션 삭제"
+                  aria-label="\uC138\uC158 \uC0AD\uC81C"
                 >
                   {'\u00D7'}
                 </Button>
@@ -219,7 +232,7 @@ function ThemeToggle() {
       size="icon"
       className="h-8 w-8"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      aria-label="테마 변경"
+      aria-label="\uD14C\uB9C8 \uBCC0\uACBD"
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>

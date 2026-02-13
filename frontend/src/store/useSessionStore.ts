@@ -2,14 +2,16 @@ import { create } from 'zustand';
 
 interface SessionState {
   activeSessionId: string | null;
-  showFiles: boolean;
+  splitView: boolean;
   setActiveSessionId: (id: string | null) => void;
-  toggleFiles: () => void;
+  setSplitView: (v: boolean) => void;
+  toggleSplitView: () => void;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
   activeSessionId: null,
-  showFiles: true,
+  splitView: false,
   setActiveSessionId: (id) => set({ activeSessionId: id }),
-  toggleFiles: () => set((state) => ({ showFiles: !state.showFiles })),
+  setSplitView: (v) => set({ splitView: v }),
+  toggleSplitView: () => set((state) => ({ splitView: !state.splitView })),
 }));
