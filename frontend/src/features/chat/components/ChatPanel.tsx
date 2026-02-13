@@ -301,6 +301,14 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           >
             {'\u25BC'}
           </button>
+          <button
+            type="button"
+            className="font-mono text-[13px] text-muted-foreground hover:text-foreground px-1 ml-1"
+            onClick={handleToggleSearch}
+            aria-label="검색 닫기"
+          >
+            {'\u00D7'}
+          </button>
         </div>
       ) : null}
 

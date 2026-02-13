@@ -5,6 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import type { SessionInfo } from '@/types';
 import { ImportLocalDialog } from './ImportLocalDialog';
@@ -222,6 +232,7 @@ function SessionItem({
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const startEditing = useCallback(() => {
@@ -288,12 +299,33 @@ function SessionItem({
           className="w-5 h-5 opacity-50 hover:opacity-100"
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(s.id);
+            setDeleteConfirmOpen(true);
           }}
           aria-label="세션 삭제"
         >
           {'×'}
         </Button>
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-mono text-sm">
+                세션을 삭제하시겠습니까?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="font-mono text-xs">
+                "{s.name || s.id}" 세션의 모든 대화 기록과 파일 변경 이력이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="font-mono text-xs">취소</AlertDialogCancel>
+              <AlertDialogAction
+                className="font-mono text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => onDelete(s.id)}
+              >
+                삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       <div className="flex items-center gap-1 mb-0.5">
         <span className="font-mono text-[10px] text-muted-foreground">

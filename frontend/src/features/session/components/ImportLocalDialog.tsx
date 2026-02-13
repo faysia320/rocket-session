@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Download, Loader2, GitBranch, MessageSquare, FolderOpen } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { localSessionsApi } from '@/lib/api/local-sessions.api';
 import type { LocalSessionMeta } from '@/types';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface ImportLocalDialogProps {
   open: boolean;
@@ -14,11 +16,17 @@ interface ImportLocalDialogProps {
   onImported: (dashboardSessionId: string) => void;
 }
 
+type FlatItem =
+  | { type: 'group-header'; cwd: string; count: number }
+  | { type: 'session'; meta: LocalSessionMeta };
+
 export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLocalDialogProps) {
   const [sessions, setSessions] = useState<LocalSessionMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hideImported, setHideImported] = useState(false);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -51,12 +59,35 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
     }
   };
 
-  const grouped = sessions.reduce<Record<string, LocalSessionMeta[]>>((acc, s) => {
-    const key = s.cwd || s.project_dir;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(s);
-    return acc;
-  }, {});
+  const filtered = useMemo(() => {
+    const base = hideImported
+      ? sessions.filter((s) => !s.already_imported)
+      : sessions;
+    return base.reduce<Record<string, LocalSessionMeta[]>>((acc, s) => {
+      const key = s.cwd || s.project_dir;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(s);
+      return acc;
+    }, {});
+  }, [sessions, hideImported]);
+
+  const flatItems = useMemo(() => {
+    const result: FlatItem[] = [];
+    for (const [cwd, items] of Object.entries(filtered)) {
+      result.push({ type: 'group-header', cwd, count: items.length });
+      for (const s of items) {
+        result.push({ type: 'session', meta: s });
+      }
+    }
+    return result;
+  }, [filtered]);
+
+  const virtualizer = useVirtualizer({
+    count: flatItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (i) => (flatItems[i].type === 'group-header' ? 36 : 56),
+    overscan: 10,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,6 +97,9 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
             <Download className="h-4 w-4" />
             Import Local Sessions
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Scan and import local Claude sessions from your project directories
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -79,33 +113,66 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
             No local sessions found
           </div>
         ) : (
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="flex flex-col gap-4 pb-2">
-              {Object.entries(grouped).map(([cwd, items]) => (
-                <div key={cwd}>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <FolderOpen className="h-3 w-3 text-muted-foreground" />
-                    <span className="font-mono text-[10px] text-muted-foreground truncate" title={cwd}>
-                      {truncateCwd(cwd)}
-                    </span>
-                    <Badge variant="secondary" className="font-mono text-[9px] ml-auto">
-                      {items.length}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    {items.map((s) => (
-                      <SessionRow
-                        key={s.session_id}
-                        meta={s}
-                        importing={importing === s.session_id}
-                        onImport={() => handleImport(s)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+          <>
+            <div className="flex items-center gap-2 py-2 border-b border-border">
+              <Checkbox
+                id="hide-imported"
+                checked={hideImported}
+                onCheckedChange={(checked) => setHideImported(checked === true)}
+              />
+              <Label
+                htmlFor="hide-imported"
+                className="font-mono text-xs text-foreground cursor-pointer"
+              >
+                Import된 세션 숨기기
+              </Label>
             </div>
-          </ScrollArea>
+            <div
+              ref={parentRef}
+              className="flex-1 -mx-6 px-6 overflow-auto"
+            >
+              <div
+                className="relative"
+                style={{ height: `${virtualizer.getTotalSize()}px` }}
+              >
+                {virtualizer.getVirtualItems().map((vItem) => {
+                  const item = flatItems[vItem.index];
+                  return (
+                    <div
+                      key={vItem.key}
+                      className="absolute top-0 left-0 w-full"
+                      style={{
+                        transform: `translateY(${vItem.start}px)`,
+                      }}
+                    >
+                      {item.type === 'group-header' ? (
+                        <div className="flex items-center gap-1.5 mb-2 h-9">
+                          <FolderOpen className="h-3 w-3 text-muted-foreground" />
+                          <span
+                            className="font-mono text-[10px] text-muted-foreground truncate"
+                            title={item.cwd}
+                          >
+                            {truncateCwd(item.cwd)}
+                          </span>
+                          <Badge variant="secondary" className="font-mono text-[9px] ml-auto">
+                            {item.count}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <div className="mb-1">
+                          <SessionRow
+                            meta={item.meta}
+                            importing={importing === item.meta.session_id}
+                            onImport={() => handleImport(item.meta)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         )}
       </DialogContent>
     </Dialog>
