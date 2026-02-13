@@ -2,8 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
 import { MessageBubble } from './MessageBubble';
 
-export function ChatPanel({ sessionId, onToggleFiles, showFiles }) {
-  const { connected, messages, status, sessionInfo, fileChanges, sendPrompt, stopExecution } = useClaudeSocket(sessionId);
+/**
+ * 메인 채팅 인터페이스.
+ * onFileChanges 콜백을 통해 파일 변경 사항을 상위로 전달합니다.
+ */
+export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }) {
+  const { connected, messages, status, sessionInfo, fileChanges, sendPrompt, stopExecution } =
+    useClaudeSocket(sessionId);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -11,6 +16,13 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // 파일 변경 사항을 상위 컴포넌트로 전달
+  useEffect(() => {
+    if (onFileChanges) {
+      onFileChanges(fileChanges);
+    }
+  }, [fileChanges, onFileChanges]);
 
   const handleSubmit = () => {
     const prompt = input.trim();
@@ -31,7 +43,6 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles }) {
 
   const handleTextareaInput = (e) => {
     setInput(e.target.value);
-    // Auto-resize
     e.target.style.height = '44px';
     e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
   };
@@ -41,30 +52,32 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles }) {
       {/* Top bar */}
       <div style={styles.topbar}>
         <div style={styles.topLeft}>
-          <span style={{
-            ...styles.connDot,
-            backgroundColor: connected ? 'var(--success)' : 'var(--error)',
-            boxShadow: connected ? '0 0 8px var(--success)' : 'none',
-          }} />
+          <span
+            style={{
+              ...styles.connDot,
+              backgroundColor: connected ? 'var(--success)' : 'var(--error)',
+              boxShadow: connected ? '0 0 8px var(--success)' : 'none',
+            }}
+          />
           <span style={styles.topLabel}>
             {connected ? 'Connected' : 'Disconnected'}
           </span>
-          {sessionInfo?.claude_session_id && (
+          {sessionInfo?.claude_session_id ? (
             <>
               <span style={styles.separator}>|</span>
               <span style={styles.topMeta}>
-                Claude Session: {sessionInfo.claude_session_id.slice(0, 12)}…
+                Claude Session: {sessionInfo.claude_session_id.slice(0, 12)}{'\u2026'}
               </span>
             </>
-          )}
+          ) : null}
         </div>
         <div style={styles.topRight}>
-          {status === 'running' && (
+          {status === 'running' ? (
             <div style={styles.runningBadge}>
               <span style={styles.spinner} />
               Running
             </div>
-          )}
+          ) : null}
           <button
             style={{
               ...styles.iconBtn,
@@ -73,21 +86,21 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles }) {
             onClick={onToggleFiles}
             title="Toggle file panel"
           >
-            📁
+            {'\u{1F4C1}'}
           </button>
         </div>
       </div>
 
       {/* Messages area */}
       <div style={styles.messages}>
-        {messages.length === 0 && (
+        {messages.length === 0 ? (
           <div style={styles.emptyChat}>
             <div style={styles.emptyChatIcon}>{'>'}_</div>
             <div style={styles.emptyChatText}>
               Send a prompt to start working with Claude Code
             </div>
           </div>
-        )}
+        ) : null}
         {messages.map((msg, i) => (
           <MessageBubble key={i} message={msg} />
         ))}
@@ -103,14 +116,14 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles }) {
             value={input}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
-            placeholder="Enter a prompt for Claude Code…"
+            placeholder="Enter a prompt for Claude Code\u2026"
             rows={1}
             disabled={!connected}
           />
           <div style={styles.inputActions}>
             {status === 'running' ? (
               <button style={styles.stopBtn} onClick={stopExecution}>
-                ■ Stop
+                {'\u25A0'} Stop
               </button>
             ) : (
               <button
@@ -121,13 +134,14 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles }) {
                 onClick={handleSubmit}
                 disabled={!input.trim() || !connected}
               >
-                Send ↵
+                Send {'\u21B5'}
               </button>
             )}
           </div>
         </div>
         <div style={styles.inputHint}>
-          Shift+Enter for new line · Commands are sent to Claude Code CLI via <code style={styles.code}>--output-format stream-json</code>
+          Shift+Enter for new line {'\u00B7'} Commands are sent to Claude Code CLI
+          via <code style={styles.code}>--output-format stream-json</code>
         </div>
       </div>
     </div>
