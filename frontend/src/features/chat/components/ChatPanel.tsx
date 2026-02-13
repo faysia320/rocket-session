@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { FolderOpen, Send, Square } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
 import { MessageBubble } from './MessageBubble';
+import { ActivityStatusBar } from './ActivityStatusBar';
 import { SessionSettings } from '@/features/session/components/SessionSettings';
 import { FilePanel } from '@/features/files/components/FilePanel';
 import { FileViewer } from '@/features/files/components/FileViewer';
@@ -15,7 +17,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import type { FileChange } from '@/types';
+import type { FileChange, SessionMode } from '@/types';
+import { sessionsApi } from '@/lib/api/sessions.api';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { SlashCommandPopup } from './SlashCommandPopup';
 import type { SlashCommand } from '../constants/slashCommands';
@@ -26,16 +29,27 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ sessionId }: ChatPanelProps) {
-  const { connected, messages, status, sessionInfo, fileChanges, sendPrompt, stopExecution, clearMessages, addSystemMessage } =
+  const { connected, messages, status, sessionInfo, fileChanges, activeTools, sendPrompt, stopExecution, clearMessages, addSystemMessage } =
     useClaudeSocket(sessionId);
   const [input, setInput] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottom = useRef(true);
+  const isInitialLoad = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
+  const [mode, setMode] = useState<SessionMode>('normal');
 
   const workDir = (sessionInfo as Record<string, unknown>)?.work_dir as string | undefined;
+
+  // 세션 정보에서 mode 동기화
+  useEffect(() => {
+    const sessionMode = (sessionInfo as Record<string, unknown>)?.mode as SessionMode | undefined;
+    if (sessionMode) {
+      setMode(sessionMode);
+    }
+  }, [sessionInfo]);
 
   const { data: skillsData } = useQuery({
     queryKey: ['skills', workDir],
@@ -50,9 +64,43 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     skills: skillsData?.skills,
   });
 
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 60,
+    overscan: 10,
+  });
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    isNearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+  }, []);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messages.length === 0) {
+      isInitialLoad.current = true;
+      return;
+    }
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      requestAnimationFrame(() => {
+        virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
+      });
+      return;
+    }
+    if (isNearBottom.current) {
+      requestAnimationFrame(() => {
+        virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
+      });
+    }
+  }, [messages, virtualizer]);
+
+  const cycleMode = () => {
+    const next: SessionMode = mode === 'normal' ? 'plan' : 'normal';
+    setMode(next);
+    sessionsApi.update(sessionId, { mode: next }).catch(() => {});
+  };
 
   const handleFileClick = (change: FileChange) => {
     setSelectedFile(change);
@@ -82,7 +130,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         break;
       case 'compact':
       case 'model':
-        sendPrompt(`/${cmd.id}`);
+        sendPrompt(`/${cmd.id}`, { mode });
         break;
       case 'settings':
         setSettingsOpen(true);
@@ -93,7 +141,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       default:
         // skill 명령어: CLI에 그대로 전달
         if (cmd.source === 'skill') {
-          sendPrompt(`/${cmd.id}`);
+          sendPrompt(`/${cmd.id}`, { mode });
         }
         break;
     }
@@ -102,7 +150,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const handleSubmit = () => {
     const prompt = input.trim();
     if (!prompt || status === 'running') return;
-    sendPrompt(prompt);
+    sendPrompt(prompt, { mode });
     setInput('');
     if (textareaRef.current) {
       textareaRef.current.style.height = '44px';
@@ -115,6 +163,11 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       if (selected) {
         executeSlashCommand(slashCommands.selectCommand(selected));
       }
+      return;
+    }
+    if (e.key === 'Tab' && e.shiftKey) {
+      e.preventDefault();
+      cycleMode();
       return;
     }
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -151,7 +204,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             <>
               <span className="text-muted-foreground/70 text-xs">|</span>
               <span className="font-mono text-[11px] text-muted-foreground/70">
-                Claude Session: {sessionInfo.claude_session_id.slice(0, 12)}{'\u2026'}
+                Claude Session: {sessionInfo.claude_session_id.slice(0, 12)}…
               </span>
             </>
           ) : null}
@@ -192,9 +245,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       </div>
 
       {/* 메시지 영역 */}
-      <div className="flex-1 overflow-auto p-4 flex flex-col gap-2">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-50">
+          <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50">
             <div className="font-mono text-[32px] text-primary animate-[blink_1.2s_ease-in-out_infinite]">
               {'>'}_
             </div>
@@ -202,12 +255,31 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
               Send a prompt to start working with Claude Code
             </div>
           </div>
-        ) : null}
-        {messages.map((msg, i) => (
-          <MessageBubble key={i} message={msg} />
-        ))}
-        <div ref={messagesEndRef} />
+        ) : (
+          <div style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+            {virtualizer.getVirtualItems().map((virtualItem) => (
+              <div
+                key={messages[virtualItem.index].id}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                <div className="px-4 pb-2">
+                  <MessageBubble message={messages[virtualItem.index]} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      <ActivityStatusBar activeTools={activeTools} status={status} />
 
       {/* 입력 영역 */}
       <div className="px-4 py-3 border-t border-border bg-secondary">
@@ -221,13 +293,23 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             />
           ) : null}
           <div className="flex items-end gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50">
+          {mode === 'plan' ? (
+            <button
+              type="button"
+              onClick={cycleMode}
+              className="flex items-center self-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-all duration-200 cursor-pointer shrink-0"
+              title="Plan 모드 (Shift+Tab으로 전환)"
+            >
+              Plan
+            </button>
+          ) : null}
           <Textarea
             ref={textareaRef}
             className="flex-1 font-mono text-[13px] bg-transparent border-0 outline-none resize-none min-h-[44px] leading-[22px] py-[11px] focus-visible:ring-0 focus-visible:ring-offset-0"
             value={input}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
-            placeholder="Enter a prompt for Claude Code\u2026"
+            placeholder="Enter a prompt for Claude Code…"
             rows={1}
             disabled={!connected}
           />
@@ -251,7 +333,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         </div>
         </div>
         <div className="font-mono text-[10px] text-muted-foreground/70 mt-1.5 pl-0.5">
-          Shift+Enter 줄바꿈 {'\u00B7'} <span className="text-muted-foreground">/</span> 명령어
+          Shift+Enter 줄바꿈 {'·'} Shift+Tab 모드 전환 {'·'} <span className="text-muted-foreground">/</span> 명령어
         </div>
       </div>
 

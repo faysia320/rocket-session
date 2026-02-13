@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/types';
 
-export function MessageBubble({ message }: { message: Message }) {
+export const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {
   const { type } = message;
 
   switch (type) {
@@ -29,7 +29,7 @@ export function MessageBubble({ message }: { message: Message }) {
     default:
       return null;
   }
-}
+});
 
 function UserMessage({ message }: { message: any }) {
   return (
@@ -49,9 +49,9 @@ function AssistantText({ message }: { message: any }) {
     <div className="flex animate-[fadeIn_0.2s_ease]">
       <div className="max-w-[85%] px-3.5 py-3 bg-muted border border-border rounded-xl rounded-bl-sm">
         <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground mb-1.5">
-          <span className="text-primary text-xs">{'\u25C6'}</span> Claude
+          <span className="text-primary text-xs">{'◆'}</span> Claude
           <span className="text-primary animate-[pulse_1.5s_ease-in-out_infinite] ml-1">
-            streaming{'\u2026'}
+            streaming{'…'}
           </span>
         </div>
         <div className="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words">
@@ -70,7 +70,7 @@ function ResultMessage({ message }: { message: any }) {
         "border border-[hsl(var(--border-bright))]"
       )}>
         <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground mb-1.5">
-          <span className="text-primary text-xs">{'\u25C6'}</span> Claude
+          <span className="text-primary text-xs">{'◆'}</span> Claude
         </div>
         <div className="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words">
           <FormattedText text={message.text} />
@@ -84,7 +84,7 @@ function ResultMessage({ message }: { message: any }) {
             ) : null}
             {message.duration_ms ? (
               <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
-                {'\u23F1'} {(message.duration_ms / 1000).toFixed(1)}s
+                {'⏱'} {(message.duration_ms / 1000).toFixed(1)}s
               </span>
             ) : null}
           </div>
@@ -94,10 +94,29 @@ function ResultMessage({ message }: { message: any }) {
   );
 }
 
+function ToolStatusIcon({ status }: { status?: 'running' | 'done' | 'error' }) {
+  if (status === 'done') {
+    return <span className="text-success text-xs font-bold shrink-0">{'\u2713'}</span>;
+  }
+  if (status === 'error') {
+    return <span className="text-destructive text-xs font-bold shrink-0">{'\u2715'}</span>;
+  }
+  return (
+    <span className="inline-block w-3 h-3 border-[1.5px] border-info/40 border-t-info rounded-full animate-spin shrink-0" />
+  );
+}
+
 function ToolUseMessage({ message }: { message: any }) {
   const [expanded, setExpanded] = useState(false);
   const toolName = message.tool || 'Tool';
   const input = message.input || {};
+  const toolStatus: 'running' | 'done' | 'error' = message.status || 'running';
+
+  const borderColor = toolStatus === 'error'
+    ? 'border-l-destructive'
+    : toolStatus === 'done'
+      ? 'border-l-success'
+      : 'border-l-info';
 
   return (
     <Collapsible
@@ -105,13 +124,10 @@ function ToolUseMessage({ message }: { message: any }) {
       onOpenChange={setExpanded}
       className="animate-[slideInLeft_0.2s_ease] cursor-pointer"
     >
-      <div className="px-3 py-2 bg-secondary border border-border rounded-sm border-l-[3px] border-l-info">
+      <div className={cn('px-3 py-2 bg-secondary border border-border rounded-sm border-l-[3px]', borderColor)}>
         <CollapsibleTrigger asChild>
           <div className="flex items-center gap-2">
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: getToolColor(toolName) }}
-            />
+            <ToolStatusIcon status={toolStatus} />
             <span className="font-mono text-xs font-semibold text-foreground">
               {toolName}
             </span>
@@ -129,9 +145,25 @@ function ToolUseMessage({ message }: { message: any }) {
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <pre className="font-mono text-[11px] text-muted-foreground bg-input p-2 rounded-sm mt-1.5 overflow-auto max-h-[200px] whitespace-pre-wrap">
-            {JSON.stringify(input, null, 2)}
-          </pre>
+          <div className="mt-1.5 space-y-1.5">
+            <div>
+              <div className="font-mono text-[10px] text-muted-foreground/70 mb-0.5">Input</div>
+              <pre className="font-mono text-[11px] text-muted-foreground bg-input p-2 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap">
+                {JSON.stringify(input, null, 2)}
+              </pre>
+            </div>
+            {message.output ? (
+              <div>
+                <div className="font-mono text-[10px] text-muted-foreground/70 mb-0.5">Output</div>
+                <pre className={cn(
+                  'font-mono text-[11px] bg-input p-2 rounded-sm overflow-auto max-h-[300px] whitespace-pre-wrap',
+                  message.is_error ? 'text-destructive' : 'text-muted-foreground'
+                )}>
+                  {message.output}
+                </pre>
+              </div>
+            ) : null}
+          </div>
         </CollapsibleContent>
       </div>
     </Collapsible>
@@ -157,7 +189,7 @@ function ErrorMessage({ message }: { message: any }) {
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-sm">
-        <span className="text-sm">{'\u26A0'}</span>
+        <span className="text-sm">{'⚠'}</span>
         <span className="font-mono text-xs text-destructive">
           {errorText}
         </span>
@@ -206,18 +238,4 @@ function EventMessage({ message }: { message: any }) {
       </CollapsibleContent>
     </Collapsible>
   );
-}
-
-function getToolColor(name: string): string {
-  const colors: Record<string, string> = {
-    Write: '#22c55e',
-    Edit: '#3b82f6',
-    MultiEdit: '#3b82f6',
-    Read: '#8b5cf6',
-    Bash: '#f59e0b',
-    Grep: '#ec4899',
-    Glob: '#06b6d4',
-    TodoWrite: '#14b8a6',
-  };
-  return colors[name] || '#94a3b8';
 }

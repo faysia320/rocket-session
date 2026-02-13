@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { config } from '@/config/env';
-import type { Message, FileChange } from '@/types';
+import type { Message, FileChange, SessionMode } from '@/types';
 
 /**
  * WebSocket URL을 현재 페이지 기반으로 동적 생성.
@@ -26,6 +26,12 @@ interface HistoryItem {
   timestamp?: string;
 }
 
+// 메시지 고유 ID 생성기
+let _msgIdCounter = 0;
+function generateMessageId(): string {
+  return `msg-${Date.now()}-${++_msgIdCounter}`;
+}
+
 export function useClaudeSocket(sessionId: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -35,6 +41,7 @@ export function useClaudeSocket(sessionId: string) {
   const [status, setStatus] = useState<'idle' | 'running'>('idle');
   const [sessionInfo, setSessionInfo] = useState<SessionState | null>(null);
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
+  const [activeTools, setActiveTools] = useState<Message[]>([]);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
     switch (data.type) {
@@ -42,7 +49,8 @@ export function useClaudeSocket(sessionId: string) {
         setSessionInfo(data.session as SessionState);
         if (data.history) {
           setMessages(
-            (data.history as HistoryItem[]).map((h) => ({
+            (data.history as HistoryItem[]).map((h, index) => ({
+              id: `hist-${index}`,
               type: h.role === 'user' ? 'user_message' : 'result',
               message: h as unknown as string,
               text: h.content,
@@ -61,25 +69,41 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'status':
         setStatus(data.status as 'idle' | 'running');
+        if (data.status === 'idle') setActiveTools([]);
         break;
 
       case 'user_message':
-        setMessages((prev) => [...prev, data as unknown as Message]);
+        setMessages((prev) => [...prev, { ...(data as unknown as Message), id: generateMessageId() }]);
         break;
 
       case 'assistant_text':
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (last && last.type === 'assistant_text') {
-            return [...prev.slice(0, -1), data as unknown as Message];
+            // 스트리밍 중 기존 ID 유지 (virtualizer key 안정성)
+            return [...prev.slice(0, -1), { ...(data as unknown as Message), id: last.id }];
           }
-          return [...prev, data as unknown as Message];
+          return [...prev, { ...(data as unknown as Message), id: generateMessageId() }];
         });
         break;
 
       case 'tool_use':
-        setMessages((prev) => [...prev, data as unknown as Message]);
+        setMessages((prev) => [...prev, { ...(data as unknown as Message), id: generateMessageId(), status: 'running' }]);
+        setActiveTools((prev) => [...prev, data as unknown as Message]);
         break;
+
+      case 'tool_result': {
+        const toolUseId = data.tool_use_id as string;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.type === 'tool_use' && msg.tool_use_id === toolUseId && msg.status === 'running'
+              ? { ...msg, status: data.is_error ? 'error' : 'done', output: data.output as string, is_error: data.is_error as boolean }
+              : msg
+          )
+        );
+        setActiveTools((prev) => prev.filter((t) => t.tool_use_id !== toolUseId));
+        break;
+      }
 
       case 'file_change':
         setFileChanges((prev) => [...prev, data.change as FileChange]);
@@ -91,12 +115,12 @@ export function useClaudeSocket(sessionId: string) {
             prev[prev.length - 1]?.type === 'assistant_text'
               ? prev.slice(0, -1)
               : prev;
-          return [...cleaned, data as unknown as Message];
+          return [...cleaned, { ...(data as unknown as Message), id: generateMessageId() }];
         });
         break;
 
       case 'error':
-        setMessages((prev) => [...prev, data as unknown as Message]);
+        setMessages((prev) => [...prev, { ...(data as unknown as Message), id: generateMessageId() }]);
         if (data.message === 'Session not found') {
           shouldReconnect.current = false;
         }
@@ -105,7 +129,7 @@ export function useClaudeSocket(sessionId: string) {
       case 'stderr':
         setMessages((prev) => [
           ...prev,
-          { type: 'stderr', text: data.text as string },
+          { id: generateMessageId(), type: 'stderr', text: data.text as string },
         ]);
         break;
 
@@ -113,14 +137,14 @@ export function useClaudeSocket(sessionId: string) {
         setStatus('idle');
         setMessages((prev) => [
           ...prev,
-          { type: 'system', text: 'Session stopped by user.' },
+          { id: generateMessageId(), type: 'system', text: 'Session stopped by user.' },
         ]);
         break;
 
       case 'event':
         setMessages((prev) => [
           ...prev,
-          { type: 'event', event: data.event as Record<string, unknown> },
+          { id: generateMessageId(), type: 'event', event: data.event as Record<string, unknown> },
         ]);
         break;
 
@@ -192,17 +216,21 @@ export function useClaudeSocket(sessionId: string) {
     };
   }, [connect]);
 
-  const sendPrompt = useCallback((prompt: string, allowedTools?: string[]) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          type: 'prompt',
-          prompt,
-          allowed_tools: allowedTools,
-        })
-      );
-    }
-  }, []);
+  const sendPrompt = useCallback(
+    (prompt: string, options?: { allowedTools?: string[]; mode?: SessionMode }) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'prompt',
+            prompt,
+            allowed_tools: options?.allowedTools,
+            mode: options?.mode,
+          })
+        );
+      }
+    },
+    []
+  );
 
   const stopExecution = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -216,7 +244,7 @@ export function useClaudeSocket(sessionId: string) {
   }, []);
 
   const addSystemMessage = useCallback((text: string) => {
-    setMessages((prev) => [...prev, { type: 'system', text }]);
+    setMessages((prev) => [...prev, { id: generateMessageId(), type: 'system', text }]);
   }, []);
 
   return {
@@ -225,6 +253,7 @@ export function useClaudeSocket(sessionId: string) {
     status,
     sessionInfo,
     fileChanges,
+    activeTools,
     sendPrompt,
     stopExecution,
     clearMessages,
