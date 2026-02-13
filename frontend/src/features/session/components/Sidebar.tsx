@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { SessionInfo } from '@/types';
+import { DirectoryPicker } from '@/features/directory/components/DirectoryPicker';
 
 interface SidebarProps {
   sessions: SessionInfo[];
@@ -64,14 +65,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
       <div className="px-3 pt-3">
         {showInput ? (
           <div className="flex flex-col gap-2">
-            <Input
-              className="font-mono text-xs"
-              placeholder="Working directory (optional)"
-              value={workDir}
-              onChange={(e) => setWorkDir(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !showAdvanced && handleCreate()}
-              autoFocus
-            />
+            <DirectoryPicker value={workDir} onChange={setWorkDir} />
 
             {/* 고급 설정 토글 */}
             <button

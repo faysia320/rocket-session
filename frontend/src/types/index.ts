@@ -6,3 +6,11 @@ export type {
   WebSocketEventType,
   WebSocketEvent,
 } from './message';
+export type {
+  DirectoryEntry,
+  DirectoryListResponse,
+  GitInfo,
+  WorktreeInfo,
+  WorktreeListResponse,
+  CreateWorktreeRequest,
+} from './filesystem';
