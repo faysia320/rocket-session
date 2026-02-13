@@ -134,6 +134,12 @@ class SessionManager:
         timestamp: str,
         cost: float | None = None,
         duration_ms: int | None = None,
+        is_error: bool = False,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        cache_creation_tokens: int | None = None,
+        cache_read_tokens: int | None = None,
+        model: str | None = None,
     ):
         await self._db.add_message(
             session_id=session_id,
@@ -142,6 +148,12 @@ class SessionManager:
             timestamp=timestamp,
             cost=cost,
             duration_ms=duration_ms,
+            is_error=is_error,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_creation_tokens=cache_creation_tokens,
+            cache_read_tokens=cache_read_tokens,
+            model=model,
         )
 
     async def get_history(self, session_id: str) -> list[dict]:

@@ -1,5 +1,5 @@
-import { useState, memo } from 'react';
-import { Maximize2 } from 'lucide-react';
+import { useState, memo, useMemo } from 'react';
+import { Maximize2, Brain } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn, highlightText } from '@/lib/utils';
@@ -42,6 +42,8 @@ export const MessageBubble = memo(function MessageBubble({
       );
     case 'tool_use':
       return <ToolUseMessage message={message} />;
+    case 'thinking':
+      return <ThinkingMessage message={message} />;
     case 'file_change':
       return <FileChangeMessage message={message} />;
     case 'error':
@@ -99,6 +101,20 @@ function AssistantText({ message }: { message: Message }) {
   );
 }
 
+/** 모델명을 짧은 표시명으로 변환 */
+function formatModelName(model: string): string {
+  if (model.includes('opus')) return 'Opus';
+  if (model.includes('sonnet')) return 'Sonnet';
+  if (model.includes('haiku')) return 'Haiku';
+  return model.split('-').slice(0, 2).join(' ');
+}
+
+/** 토큰 수를 읽기 쉬운 형태로 포맷 (예: 1234 → "1.2k") */
+function formatTokens(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
+}
+
 function ResultMessage({
   message,
   isRunning = false,
@@ -113,15 +129,22 @@ function ResultMessage({
   onOpenReview?: (messageId: string) => void;
 }) {
   const showPlanApproval = message.mode === 'plan' && onExecutePlan;
+  const hasMetadata = message.cost || message.duration_ms || message.model || message.input_tokens;
 
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className={cn(
         "pl-3 border-l-2 border-primary/40",
+        message.is_error && "border-l-destructive",
         showPlanApproval && !message.planExecuted && "border-l-primary"
       )}>
         <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground mb-1.5">
           <span className="text-primary text-xs">{'◆'}</span> Claude
+          {message.is_error ? (
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
+              Error
+            </span>
+          ) : null}
           {message.mode === 'plan' ? (
             <>
               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/15 text-primary border border-primary/30">
@@ -142,16 +165,32 @@ function ResultMessage({
         <div className="text-foreground select-text">
           <MarkdownRenderer content={message.text || ''} />
         </div>
-        {(message.cost || message.duration_ms) ? (
-          <div className="flex gap-2 mt-2.5 pt-2 border-t border-border/30">
+        {hasMetadata ? (
+          <div className="flex flex-wrap gap-2 mt-2.5 pt-2 border-t border-border/30">
+            {message.model ? (
+              <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+                {formatModelName(message.model)}
+              </span>
+            ) : null}
             {message.cost ? (
               <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
-                {'\u{1F4B0}'} ${Number(message.cost).toFixed(4)}
+                ${Number(message.cost).toFixed(4)}
               </span>
             ) : null}
             {message.duration_ms ? (
               <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
-                {'⏱'} {(message.duration_ms / 1000).toFixed(1)}s
+                {(message.duration_ms / 1000).toFixed(1)}s
+              </span>
+            ) : null}
+            {message.input_tokens ? (
+              <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+                in:{formatTokens(message.input_tokens)}
+                {message.cache_read_tokens ? ` (cache:${formatTokens(message.cache_read_tokens)})` : ''}
+              </span>
+            ) : null}
+            {message.output_tokens ? (
+              <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+                out:{formatTokens(message.output_tokens)}
               </span>
             ) : null}
           </div>
@@ -193,6 +232,17 @@ function ToolUseMessage({ message }: { message: Message }) {
       ? 'border-l-success'
       : 'border-l-info';
 
+  // 실행 시간 계산 (timestamp → completed_at)
+  const elapsed = useMemo(() => {
+    if (toolStatus !== 'done' && toolStatus !== 'error') return null;
+    if (!message.timestamp || !message.completed_at) return null;
+    const start = new Date(message.timestamp).getTime();
+    const end = new Date(message.completed_at).getTime();
+    const diff = (end - start) / 1000;
+    if (diff < 0 || !Number.isFinite(diff)) return null;
+    return diff < 1 ? `${(diff * 1000).toFixed(0)}ms` : `${diff.toFixed(1)}s`;
+  }, [toolStatus, message.timestamp, message.completed_at]);
+
   return (
     <Collapsible
       open={expanded}
@@ -212,6 +262,11 @@ function ToolUseMessage({ message }: { message: Message }) {
                   input.path ||
                   (input.command?.slice(0, 60) +
                     (input.command?.length > 60 ? '\u2026' : ''))}
+              </span>
+            ) : null}
+            {elapsed ? (
+              <span className="font-mono text-[10px] text-muted-foreground/70 shrink-0">
+                {elapsed}
               </span>
             ) : null}
             <span className="font-mono text-[10px] text-muted-foreground/70">
@@ -252,6 +307,36 @@ function ToolUseMessage({ message }: { message: Message }) {
   );
 }
 
+function ThinkingMessage({ message }: { message: Message }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <Collapsible
+      open={expanded}
+      onOpenChange={setExpanded}
+      className="animate-[fadeIn_0.2s_ease] cursor-pointer"
+    >
+      <div className="pl-3 border-l-2 border-muted-foreground/30">
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground/70">
+            <Brain className="h-3 w-3" />
+            <span>Thinking{'\u2026'}</span>
+            <span className="text-[10px] text-muted-foreground/50">
+              {expanded ? '\u25BE' : '\u25B8'}
+            </span>
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-1.5 text-muted-foreground/80 select-text">
+            <MarkdownRenderer content={message.text || ''} />
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
+// FileChangeMessage: 현재 tool_use + file_change 이벤트에서 tool_use 경로로 표시되므로
+// 이 컴포넌트가 직접 사용되는 경우는 드물지만, 향후 활용을 위해 유지
 function FileChangeMessage({ message }: { message: Message }) {
   return (
     <div className="flex items-center gap-1.5 px-2 py-1 animate-[fadeIn_0.2s_ease]">

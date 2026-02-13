@@ -33,6 +33,14 @@ interface HistoryItem {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: string;
+  cost?: number;
+  duration_ms?: number;
+  is_error?: boolean | number;
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_tokens?: number;
+  cache_read_tokens?: number;
+  model?: string;
 }
 
 export function useClaudeSocket(sessionId: string) {
@@ -107,6 +115,14 @@ export function useClaudeSocket(sessionId: string) {
               message: h as unknown as string,
               text: h.content,
               timestamp: h.timestamp,
+              cost: h.cost,
+              duration_ms: h.duration_ms,
+              is_error: Boolean(h.is_error),
+              input_tokens: h.input_tokens,
+              output_tokens: h.output_tokens,
+              cache_creation_tokens: h.cache_creation_tokens,
+              cache_read_tokens: h.cache_read_tokens,
+              model: h.model,
             }))
           );
           // 현재 턴 이벤트가 있으면 순차 재생 (새로고침 후 running 세션 복구)
@@ -194,6 +210,7 @@ export function useClaudeSocket(sessionId: string) {
                   is_error: data.is_error as boolean,
                   is_truncated: data.is_truncated as boolean | undefined,
                   full_length: data.full_length as number | undefined,
+                  completed_at: data.timestamp as string,
                 }
               : msg
           )
@@ -259,6 +276,24 @@ export function useClaudeSocket(sessionId: string) {
         });
         break;
 
+      case 'thinking':
+        setMessages((prev) => {
+          // 현재 턴에서 마지막 thinking 메시지 역순 탐색 (tool_use/user_message/result 경계까지)
+          let lastIdx = -1;
+          for (let i = prev.length - 1; i >= 0; i--) {
+            const t = prev[i].type;
+            if (t === 'user_message' || t === 'result' || t === 'tool_use' || t === 'tool_result') break;
+            if (t === 'thinking') { lastIdx = i; break; }
+          }
+          if (lastIdx >= 0) {
+            const updated = [...prev];
+            updated[lastIdx] = { ...(data as unknown as Message), id: prev[lastIdx].id };
+            return updated;
+          }
+          return [...prev, { ...(data as unknown as Message), id: generateMessageId() }];
+        });
+        break;
+
       case 'event':
         setMessages((prev) => [
           ...prev,
@@ -289,6 +324,12 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'permission_response':
         setPendingPermission(null);
+        if (data.reason) {
+          setMessages((prev) => [
+            ...prev,
+            { id: generateMessageId(), type: 'system', text: `Permission: ${data.reason as string}` },
+          ]);
+        }
         break;
 
       case 'raw':

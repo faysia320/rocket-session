@@ -9,6 +9,7 @@ export type MessageType =
   | 'stderr'
   | 'system'
   | 'event'
+  | 'thinking'
   | 'permission_request';
 
 export interface FileChange {
@@ -38,8 +39,14 @@ export interface Message {
   is_truncated?: boolean;
   full_length?: number;
   timestamp?: string;
+  completed_at?: string;
   mode?: 'normal' | 'plan';
   planExecuted?: boolean;
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_tokens?: number;
+  cache_read_tokens?: number;
+  model?: string;
 }
 
 export type WebSocketEventType =
@@ -56,6 +63,8 @@ export type WebSocketEventType =
   | 'stderr'
   | 'stopped'
   | 'event'
+  | 'raw'
+  | 'thinking'
   | 'permission_request'
   | 'permission_response'
   | 'missed_events';

@@ -216,23 +216,27 @@ class ClaudeRunner:
         mode: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
-        current_text_holder: list[str],
+        turn_state: dict,
     ) -> None:
         """파싱된 JSON 이벤트를 타입별로 처리."""
         event_type = event.get("type", "")
 
-        if event_type == "system" and event.get("session_id"):
-            await session_manager.update_claude_session_id(
-                session_id, event["session_id"]
-            )
-            await ws_manager.broadcast_event(
-                session_id,
-                {"type": "session_info", "claude_session_id": event["session_id"]},
-            )
+        if event_type == "system":
+            # session_id가 있으면 Claude 세션 연결, 없으면 일반 system 이벤트로 전달
+            if event.get("session_id"):
+                await session_manager.update_claude_session_id(
+                    session_id, event["session_id"]
+                )
+                await ws_manager.broadcast_event(
+                    session_id,
+                    {"type": "session_info", "claude_session_id": event["session_id"]},
+                )
+            else:
+                await ws_manager.broadcast_event(session_id, {"type": "event", "event": event})
 
         elif event_type == "assistant":
             await self._handle_assistant_event(
-                event, session_id, ws_manager, session_manager, current_text_holder
+                event, session_id, ws_manager, session_manager, turn_state
             )
 
         elif event_type == "user":
@@ -241,7 +245,7 @@ class ClaudeRunner:
         elif event_type == "result":
             await self._handle_result_event(
                 event, session_id, mode, ws_manager, session_manager,
-                current_text_holder,
+                turn_state,
             )
 
         else:
@@ -253,15 +257,30 @@ class ClaudeRunner:
         session_id: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
-        current_text_holder: list[str],
+        turn_state: dict,
     ) -> None:
         """assistant 타입 이벤트 처리."""
         msg = event.get("message", {})
         content_blocks = msg.get("content", [])
+
+        # 모델명 추출 (assistant 메시지에 포함됨)
+        model = msg.get("model")
+        if model:
+            turn_state["model"] = model
+
         has_new_text = False
         for block in content_blocks:
-            if block.get("type") == "text":
-                current_text_holder[0] = block.get("text", "")
+            if block.get("type") == "thinking":
+                # thinking 블록 (extended thinking 모드)
+                thinking_text = block.get("thinking", "")
+                if thinking_text:
+                    await ws_manager.broadcast_event(session_id, {
+                        "type": "thinking",
+                        "text": thinking_text,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+            elif block.get("type") == "text":
+                turn_state["text"] = block.get("text", "")
                 has_new_text = True
             elif block.get("type") == "tool_use":
                 tool_name = block.get("name", "unknown")
@@ -296,12 +315,12 @@ class ClaudeRunner:
                         },
                     )
 
-        if has_new_text and current_text_holder[0]:
+        if has_new_text and turn_state["text"]:
             await ws_manager.broadcast_event(
                 session_id,
                 {
                     "type": "assistant_text",
-                    "text": current_text_holder[0],
+                    "text": turn_state["text"],
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
@@ -346,16 +365,25 @@ class ClaudeRunner:
         mode: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
-        current_text_holder: list[str],
+        turn_state: dict,
     ) -> None:
         """result 타입 이벤트 처리."""
         result_text = event.get("result") or ""
         # result 텍스트가 비어있으면 스트리밍된 텍스트를 폴백으로 사용
-        if not result_text and current_text_holder:
-            result_text = current_text_holder[0]
+        if not result_text and turn_state.get("text"):
+            result_text = turn_state["text"]
+        is_error = event.get("is_error", False)
         cost_info = event.get("cost_usd", event.get("cost", None))
         duration = event.get("duration_ms", None)
         session_id_from_result = event.get("session_id", None)
+
+        # 토큰 사용량 추출
+        usage = event.get("usage", {})
+        input_tokens = usage.get("input_tokens")
+        output_tokens = usage.get("output_tokens")
+        cache_creation_tokens = usage.get("cache_creation_input_tokens")
+        cache_read_tokens = usage.get("cache_read_input_tokens")
+        model = turn_state.get("model")
 
         if session_id_from_result:
             await session_manager.update_claude_session_id(
@@ -365,13 +393,23 @@ class ClaudeRunner:
         result_event = {
             "type": "result",
             "text": result_text,
+            "is_error": is_error,
             "cost": cost_info,
             "duration_ms": duration,
             "session_id": session_id_from_result,
             "mode": mode,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cache_creation_tokens": cache_creation_tokens,
+            "cache_read_tokens": cache_read_tokens,
+            "model": model,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         await ws_manager.broadcast_event(session_id, result_event)
+
+        # is_error일 때 세션 상태를 error로 전환
+        if is_error:
+            await session_manager.update_status(session_id, SessionStatus.ERROR)
 
         await session_manager.add_message(
             session_id=session_id,
@@ -380,6 +418,12 @@ class ClaudeRunner:
             timestamp=datetime.now(timezone.utc).isoformat(),
             cost=cost_info,
             duration_ms=duration,
+            is_error=is_error,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_creation_tokens=cache_creation_tokens,
+            cache_read_tokens=cache_read_tokens,
+            model=model,
         )
 
     async def _parse_stream(
@@ -391,7 +435,7 @@ class ClaudeRunner:
         session_manager: SessionManager,
     ) -> None:
         """subprocess stdout에서 JSON 스트림을 읽고 이벤트별로 처리."""
-        current_text_holder = [""]
+        turn_state = {"text": "", "model": None}
 
         while True:
             line = await process.stdout.readline()
@@ -416,7 +460,7 @@ class ClaudeRunner:
                 mode,
                 ws_manager,
                 session_manager,
-                current_text_holder,
+                turn_state,
             )
 
     @staticmethod
