@@ -22,6 +22,8 @@ async def create_session(
         allowed_tools=req.allowed_tools,
         system_prompt=req.system_prompt,
         timeout_seconds=req.timeout_seconds,
+        permission_mode=req.permission_mode or False,
+        permission_required_tools=req.permission_required_tools,
     )
     # create() 반환 dict에는 message_count/file_changes_count가 없으므로 재조회
     sessions = await manager.list_all()
@@ -68,6 +70,8 @@ async def update_session(
         system_prompt=req.system_prompt,
         timeout_seconds=req.timeout_seconds,
         mode=req.mode,
+        permission_mode=req.permission_mode,
+        permission_required_tools=req.permission_required_tools,
     )
     if not updated:
         raise HTTPException(404, "Session not found")

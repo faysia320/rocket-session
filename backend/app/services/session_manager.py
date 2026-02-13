@@ -1,6 +1,7 @@
 """세션 생명주기 관리 (CRUD, 프로세스 종료) - SQLite 영속성."""
 
 import asyncio
+import json
 import logging
 import uuid
 from datetime import datetime
@@ -25,9 +26,12 @@ class SessionManager:
         allowed_tools: str | None = None,
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
+        permission_mode: bool = False,
+        permission_required_tools: list[str] | None = None,
     ) -> dict:
         sid = str(uuid.uuid4())[:8]
         created_at = datetime.utcnow().isoformat()
+        perm_tools_json = json.dumps(permission_required_tools) if permission_required_tools else None
         session = await self._db.create_session(
             session_id=sid,
             work_dir=work_dir,
@@ -35,6 +39,8 @@ class SessionManager:
             allowed_tools=allowed_tools,
             system_prompt=system_prompt,
             timeout_seconds=timeout_seconds,
+            permission_mode=permission_mode,
+            permission_required_tools=perm_tools_json,
         )
         logger.info("세션 생성: %s", sid)
         return session
@@ -126,17 +132,29 @@ class SessionManager:
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
         mode: str | None = None,
+        permission_mode: bool | None = None,
+        permission_required_tools: list[str] | None = None,
     ) -> dict | None:
+        perm_tools_json = json.dumps(permission_required_tools) if permission_required_tools is not None else None
         return await self._db.update_session_settings(
             session_id=session_id,
             allowed_tools=allowed_tools,
             system_prompt=system_prompt,
             timeout_seconds=timeout_seconds,
             mode=mode,
+            permission_mode=permission_mode,
+            permission_required_tools=perm_tools_json,
         )
 
     @staticmethod
     def to_info(session: dict) -> SessionInfo:
+        perm_tools_raw = session.get("permission_required_tools")
+        perm_tools = None
+        if perm_tools_raw:
+            try:
+                perm_tools = json.loads(perm_tools_raw)
+            except (json.JSONDecodeError, TypeError):
+                perm_tools = None
         return SessionInfo(
             id=session["id"],
             claude_session_id=session.get("claude_session_id"),
@@ -149,6 +167,8 @@ class SessionManager:
             system_prompt=session.get("system_prompt"),
             timeout_seconds=session.get("timeout_seconds"),
             mode=session.get("mode", "normal"),
+            permission_mode=bool(session.get("permission_mode", 0)),
+            permission_required_tools=perm_tools,
         )
 
     @staticmethod

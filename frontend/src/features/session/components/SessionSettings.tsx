@@ -13,6 +13,8 @@ import {
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { AVAILABLE_TOOLS } from '../constants/tools';
 
+const PERMISSION_TOOLS = ['Bash', 'Write', 'Edit', 'MultiEdit'] as const;
+
 interface SessionSettingsProps {
   sessionId: string;
   open?: boolean;
@@ -26,6 +28,8 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [timeoutMinutes, setTimeoutMinutes] = useState('');
+  const [permissionMode, setPermissionMode] = useState(false);
+  const [permissionTools, setPermissionTools] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const loadSession = useCallback(async () => {
@@ -34,6 +38,8 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
       setSelectedTools(s.allowed_tools ? s.allowed_tools.split(',').map((t) => t.trim()) : []);
       setSystemPrompt(s.system_prompt ?? '');
       setTimeoutMinutes(s.timeout_seconds ? String(Math.round(s.timeout_seconds / 60)) : '');
+      setPermissionMode(s.permission_mode ?? false);
+      setPermissionTools(s.permission_required_tools ?? []);
     } catch {
       // ignore
     }
@@ -51,6 +57,12 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
     );
   };
 
+  const handlePermissionToolToggle = (tool: string, checked: boolean) => {
+    setPermissionTools((prev) =>
+      checked ? [...prev, tool] : prev.filter((t) => t !== tool),
+    );
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -59,6 +71,8 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
         allowed_tools: selectedTools.length > 0 ? selectedTools.join(',') : null,
         system_prompt: systemPrompt || null,
         timeout_seconds: timeoutSec,
+        permission_mode: permissionMode,
+        permission_required_tools: permissionMode && permissionTools.length > 0 ? permissionTools : null,
       });
       setOpen(false);
     } catch {
@@ -126,6 +140,43 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
             />
+          </div>
+
+          {/* Permission Mode */}
+          <div className="space-y-3">
+            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+              PERMISSION MODE
+            </Label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={permissionMode}
+                onCheckedChange={(checked) => setPermissionMode(checked === true)}
+              />
+              <span className="font-mono text-xs text-foreground">
+                도구 실행 전 확인 요청 활성화
+              </span>
+            </label>
+            <p className="font-mono text-[10px] text-muted-foreground/70">
+              활성화하면 아래 선택한 도구 실행 시 사용자 승인을 요청합니다.
+            </p>
+            {permissionMode ? (
+              <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-warning/30">
+                {PERMISSION_TOOLS.map((tool) => (
+                  <label
+                    key={tool}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={permissionTools.includes(tool)}
+                      onCheckedChange={(checked) =>
+                        handlePermissionToolToggle(tool, checked === true)
+                      }
+                    />
+                    <span className="font-mono text-xs text-foreground">{tool}</span>
+                  </label>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {/* 타임아웃 */}

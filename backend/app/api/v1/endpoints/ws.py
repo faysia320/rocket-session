@@ -11,6 +11,7 @@ from app.api.dependencies import (
     get_settings,
     get_ws_manager,
 )
+from app.api.v1.endpoints.permissions import respond_permission
 
 router = APIRouter()
 
@@ -105,6 +106,12 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
             elif msg_type == "stop":
                 await manager.kill_process(session_id)
                 await ws_manager.broadcast(session_id, {"type": "stopped"})
+
+            elif msg_type == "permission_respond":
+                perm_id = data.get("permission_id", "")
+                behavior = data.get("behavior", "deny")
+                if perm_id:
+                    await respond_permission(perm_id, behavior)
 
             elif msg_type == "ping":
                 await ws.send_json({"type": "pong"})

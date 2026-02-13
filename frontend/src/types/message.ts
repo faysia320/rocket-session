@@ -8,7 +8,8 @@ export type MessageType =
   | 'error'
   | 'stderr'
   | 'system'
-  | 'event';
+  | 'event'
+  | 'permission_request';
 
 export interface FileChange {
   tool: string;
@@ -34,6 +35,8 @@ export interface Message {
   cost?: number;
   duration_ms?: number;
   timestamp?: string;
+  mode?: 'normal' | 'plan';
+  planExecuted?: boolean;
 }
 
 export type WebSocketEventType =
@@ -49,7 +52,16 @@ export type WebSocketEventType =
   | 'error'
   | 'stderr'
   | 'stopped'
-  | 'event';
+  | 'event'
+  | 'permission_request'
+  | 'permission_response';
+
+export interface PermissionRequestData {
+  permission_id: string;
+  tool_name: string;
+  tool_input: Record<string, unknown>;
+  timestamp?: string;
+}
 
 export interface WebSocketEvent {
   type: WebSocketEventType;

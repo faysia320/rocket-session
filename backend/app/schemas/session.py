@@ -11,6 +11,8 @@ class CreateSessionRequest(BaseModel):
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = None
     mode: Optional[str] = None
+    permission_mode: Optional[bool] = None
+    permission_required_tools: Optional[list[str]] = None
 
 
 class UpdateSessionRequest(BaseModel):
@@ -18,6 +20,8 @@ class UpdateSessionRequest(BaseModel):
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = None
     mode: Optional[str] = None
+    permission_mode: Optional[bool] = None
+    permission_required_tools: Optional[list[str]] = None
 
 
 class SendPromptRequest(BaseModel):
@@ -37,3 +41,5 @@ class SessionInfo(BaseModel):
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = None
     mode: str = "normal"
+    permission_mode: bool = False
+    permission_required_tools: Optional[list[str]] = None

@@ -13,6 +13,8 @@ export interface SessionInfo {
   system_prompt?: string;
   timeout_seconds?: number;
   mode?: SessionMode;
+  permission_mode?: boolean;
+  permission_required_tools?: string[];
 }
 
 export interface CreateSessionRequest {
@@ -21,6 +23,8 @@ export interface CreateSessionRequest {
   system_prompt?: string | null;
   timeout_seconds?: number | null;
   mode?: SessionMode | null;
+  permission_mode?: boolean | null;
+  permission_required_tools?: string[] | null;
 }
 
 export interface UpdateSessionRequest {
@@ -28,4 +32,6 @@ export interface UpdateSessionRequest {
   system_prompt?: string | null;
   timeout_seconds?: number | null;
   mode?: SessionMode | null;
+  permission_mode?: boolean | null;
+  permission_required_tools?: string[] | null;
 }

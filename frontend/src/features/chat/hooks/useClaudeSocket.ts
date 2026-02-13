@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { config } from '@/config/env';
-import type { Message, FileChange, SessionMode } from '@/types';
+import type { Message, FileChange, SessionMode, PermissionRequestData } from '@/types';
 
 /**
  * WebSocket URL을 현재 페이지 기반으로 동적 생성.
@@ -36,12 +36,14 @@ export function useClaudeSocket(sessionId: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldReconnect = useRef(true);
+  const lastModeRef = useRef<'normal' | 'plan'>('normal');
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<'idle' | 'running'>('idle');
   const [sessionInfo, setSessionInfo] = useState<SessionState | null>(null);
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
   const [activeTools, setActiveTools] = useState<Message[]>([]);
+  const [pendingPermission, setPendingPermission] = useState<PermissionRequestData | null>(null);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
     switch (data.type) {
@@ -115,7 +117,11 @@ export function useClaudeSocket(sessionId: string) {
             prev[prev.length - 1]?.type === 'assistant_text'
               ? prev.slice(0, -1)
               : prev;
-          return [...cleaned, { ...(data as unknown as Message), id: generateMessageId() }];
+          return [...cleaned, {
+            ...(data as unknown as Message),
+            id: generateMessageId(),
+            mode: (data.mode as 'normal' | 'plan') || lastModeRef.current,
+          }];
         });
         break;
 
@@ -146,6 +152,31 @@ export function useClaudeSocket(sessionId: string) {
           ...prev,
           { id: generateMessageId(), type: 'event', event: data.event as Record<string, unknown> },
         ]);
+        break;
+
+      case 'permission_request': {
+        const permData: PermissionRequestData = {
+          permission_id: data.permission_id as string,
+          tool_name: data.tool_name as string,
+          tool_input: (data.tool_input as Record<string, unknown>) || {},
+          timestamp: new Date().toISOString(),
+        };
+        setPendingPermission(permData);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: generateMessageId(),
+            type: 'permission_request',
+            tool: permData.tool_name,
+            input: permData.tool_input,
+            timestamp: permData.timestamp,
+          },
+        ]);
+        break;
+      }
+
+      case 'permission_response':
+        setPendingPermission(null);
         break;
 
       default:
@@ -219,6 +250,7 @@ export function useClaudeSocket(sessionId: string) {
   const sendPrompt = useCallback(
     (prompt: string, options?: { allowedTools?: string[]; mode?: SessionMode }) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
+        lastModeRef.current = options?.mode || 'normal';
         wsRef.current.send(
           JSON.stringify({
             type: 'prompt',
@@ -247,6 +279,26 @@ export function useClaudeSocket(sessionId: string) {
     setMessages((prev) => [...prev, { id: generateMessageId(), type: 'system', text }]);
   }, []);
 
+  const updateMessage = useCallback((id: string, patch: Partial<Message>) => {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+  }, []);
+
+  const respondPermission = useCallback(
+    (permissionId: string, behavior: 'allow' | 'deny') => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'permission_respond',
+            permission_id: permissionId,
+            behavior,
+          })
+        );
+      }
+      setPendingPermission(null);
+    },
+    []
+  );
+
   return {
     connected,
     messages,
@@ -254,9 +306,12 @@ export function useClaudeSocket(sessionId: string) {
     sessionInfo,
     fileChanges,
     activeTools,
+    pendingPermission,
     sendPrompt,
     stopExecution,
     clearMessages,
     addSystemMessage,
+    updateMessage,
+    respondPermission,
   };
 }

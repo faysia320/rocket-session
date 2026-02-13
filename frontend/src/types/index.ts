@@ -3,6 +3,7 @@ export type {
   MessageType,
   FileChange,
   Message,
+  PermissionRequestData,
   WebSocketEventType,
   WebSocketEvent,
 } from './message';
@@ -21,3 +22,4 @@ export type {
   ImportLocalSessionRequest,
   ImportLocalSessionResponse,
 } from './local-session';
+export type { BlockUsage, WeeklyUsage, UsageInfo } from './usage';

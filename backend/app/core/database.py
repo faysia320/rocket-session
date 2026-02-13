@@ -62,14 +62,18 @@ class Database:
         await self._db.execute("PRAGMA foreign_keys=ON")
         await self._db.executescript(_SCHEMA)
 
-        # 마이그레이션: 기존 DB에 mode 컬럼이 없을 수 있음
-        try:
-            await self._db.execute(
-                "ALTER TABLE sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'"
-            )
-            await self._db.commit()
-        except Exception:
-            pass  # 이미 존재하면 무시
+        # 마이그레이션: 기존 DB에 새 컬럼이 없을 수 있음
+        migrations = [
+            "ALTER TABLE sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
+            "ALTER TABLE sessions ADD COLUMN permission_mode INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE sessions ADD COLUMN permission_required_tools TEXT",
+        ]
+        for migration in migrations:
+            try:
+                await self._db.execute(migration)
+                await self._db.commit()
+            except Exception:
+                pass  # 이미 존재하면 무시
 
         await self._db.commit()
         logger.info("데이터베이스 초기화 완료: %s", self._db_path)
@@ -98,11 +102,13 @@ class Database:
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
         mode: str = "normal",
+        permission_mode: bool = False,
+        permission_required_tools: str | None = None,
     ) -> dict:
         await self.conn.execute(
-            """INSERT INTO sessions (id, work_dir, status, created_at, allowed_tools, system_prompt, timeout_seconds, mode)
-               VALUES (?, ?, 'idle', ?, ?, ?, ?, ?)""",
-            (session_id, work_dir, created_at, allowed_tools, system_prompt, timeout_seconds, mode),
+            """INSERT INTO sessions (id, work_dir, status, created_at, allowed_tools, system_prompt, timeout_seconds, mode, permission_mode, permission_required_tools)
+               VALUES (?, ?, 'idle', ?, ?, ?, ?, ?, ?, ?)""",
+            (session_id, work_dir, created_at, allowed_tools, system_prompt, timeout_seconds, mode, int(permission_mode), permission_required_tools),
         )
         await self.conn.commit()
         return await self.get_session(session_id)
@@ -155,6 +161,8 @@ class Database:
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
         mode: str | None = None,
+        permission_mode: bool | None = None,
+        permission_required_tools: str | None = None,
     ) -> dict | None:
         fields = []
         values = []
@@ -170,6 +178,12 @@ class Database:
         if mode is not None:
             fields.append("mode = ?")
             values.append(mode)
+        if permission_mode is not None:
+            fields.append("permission_mode = ?")
+            values.append(int(permission_mode))
+        if permission_required_tools is not None:
+            fields.append("permission_required_tools = ?")
+            values.append(permission_required_tools)
         if not fields:
             return await self.get_session(session_id)
         values.append(session_id)

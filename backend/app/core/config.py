@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     claude_work_dir: str = os.path.expanduser("~")
     claude_allowed_tools: str = "Read,Write,Edit,Bash"
     claude_model: str = ""
+    claude_plan: str = "Max"
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8101

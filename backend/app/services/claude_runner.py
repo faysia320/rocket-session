@@ -6,7 +6,10 @@ import asyncio
 import json
 import logging
 import os
+import sys
+import tempfile
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.core.config import Settings
@@ -54,6 +57,39 @@ class ClaudeRunner:
             else:
                 system_prompt = plan_instruction
             allowed_tools = "Read,Glob,Grep,WebFetch,WebSearch,TodoRead"
+
+        # Permission 모드: MCP config 및 --permission-prompt-tool 설정
+        mcp_config_path = None
+        if session.get("permission_mode"):
+            mcp_server_script = str(Path(__file__).parent / "permission_mcp_server.py")
+            mcp_config = {
+                "mcpServers": {
+                    "permission": {
+                        "command": sys.executable,
+                        "args": [mcp_server_script],
+                        "env": {
+                            "PERMISSION_SESSION_ID": session_id,
+                            "PERMISSION_API_BASE": f"http://localhost:{self._settings.backend_port}",
+                            "PERMISSION_TIMEOUT": "120",
+                        },
+                    }
+                }
+            }
+            mcp_config_path = Path(tempfile.gettempdir()) / f"mcp-perm-{session_id}.json"
+            mcp_config_path.write_text(json.dumps(mcp_config), encoding="utf-8")
+            cmd.extend(["--mcp-config", str(mcp_config_path)])
+            cmd.extend(["--permission-prompt-tool", "mcp__permission__handle_request"])
+
+            # permission_required_tools에 해당하는 도구는 allowedTools에서 제외
+            perm_tools_raw = session.get("permission_required_tools")
+            if perm_tools_raw and allowed_tools:
+                try:
+                    required = json.loads(perm_tools_raw) if isinstance(perm_tools_raw, str) else perm_tools_raw
+                except (json.JSONDecodeError, TypeError):
+                    required = []
+                if required:
+                    tool_list = [t.strip() for t in allowed_tools.split(",")]
+                    allowed_tools = ",".join(t for t in tool_list if t not in required)
 
         if allowed_tools:
             cmd.extend(["--allowedTools", allowed_tools])
@@ -210,6 +246,7 @@ class ClaudeRunner:
                             "cost": cost_info,
                             "duration_ms": duration,
                             "session_id": session_id_from_result,
+                            "mode": mode,
                             "timestamp": datetime.utcnow().isoformat(),
                         }
                         await ws_manager.broadcast(session_id, result_event)
@@ -273,3 +310,9 @@ class ClaudeRunner:
             await ws_manager.broadcast(
                 session_id, {"type": "status", "status": "idle"}
             )
+            # MCP config 임시 파일 정리
+            if mcp_config_path and mcp_config_path.exists():
+                try:
+                    mcp_config_path.unlink()
+                except OSError:
+                    pass
