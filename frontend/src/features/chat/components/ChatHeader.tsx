@@ -12,13 +12,14 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import type { FileChange, SessionMode } from '@/types';
+import type { FileChange, SessionMode, GitInfo } from '@/types';
 import type { ReconnectState } from '../hooks/useClaudeSocket';
+import { GitActionsBar } from './GitActionsBar';
 
 interface ChatHeaderProps {
   connected: boolean;
   workDir?: string;
-  gitBranch?: string;
+  gitInfo: GitInfo | null;
   mode: SessionMode;
   status: 'idle' | 'running';
   sessionId: string;
@@ -33,12 +34,14 @@ interface ChatHeaderProps {
   filesOpen: boolean;
   onFilesOpenChange: (open: boolean) => void;
   onRetryConnect?: () => void;
+  onSendPrompt: (prompt: string) => void;
+  onRemoveWorktree?: () => void;
 }
 
 export const ChatHeader = memo(function ChatHeader({
   connected,
   workDir,
-  gitBranch,
+  gitInfo,
   mode,
   status,
   sessionId,
@@ -53,6 +56,8 @@ export const ChatHeader = memo(function ChatHeader({
   filesOpen,
   onFilesOpenChange,
   onRetryConnect,
+  onSendPrompt,
+  onRemoveWorktree,
 }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
@@ -96,15 +101,22 @@ export const ChatHeader = memo(function ChatHeader({
             </span>
           </>
         ) : null}
-        {gitBranch ? (
+        {gitInfo?.branch ? (
           <>
             <span className="text-muted-foreground/70 text-xs">|</span>
             <GitBranch className="h-3 w-3 text-muted-foreground/70 shrink-0" />
             <span className="font-mono text-[11px] text-muted-foreground/70">
-              {gitBranch}
+              {gitInfo.branch}
             </span>
           </>
         ) : null}
+        <GitActionsBar
+          gitInfo={gitInfo}
+          status={status}
+          connected={connected}
+          onSendPrompt={onSendPrompt}
+          onRemoveWorktree={onRemoveWorktree}
+        />
       </div>
       <div className="flex items-center gap-2">
         <ModeIndicator mode={mode} onToggle={onToggleMode} />

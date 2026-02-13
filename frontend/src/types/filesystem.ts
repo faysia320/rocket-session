@@ -24,6 +24,7 @@ export interface GitInfo {
   remote_url: string | null;
   ahead: number;
   behind: number;
+  is_worktree: boolean;
 }
 
 export interface WorktreeInfo {

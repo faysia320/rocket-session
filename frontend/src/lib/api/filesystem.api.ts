@@ -24,6 +24,9 @@ export const filesystemApi = {
   createWorktree: (req: CreateWorktreeRequest) =>
     api.post<WorktreeInfo>('/api/fs/worktrees', req),
 
+  removeWorktree: (path: string, force = false) =>
+    api.delete<{ ok: boolean }>(`/api/fs/worktrees?path=${encodeURIComponent(path)}&force=${force}`),
+
   listSkills: (path: string) =>
     api.get<SkillListResponse>(`/api/fs/skills?path=${encodeURIComponent(path)}`),
 };

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
 import { MessageBubble } from './MessageBubble';
 import { PermissionDialog } from './PermissionDialog';
@@ -14,6 +15,7 @@ import type { FileChange, SessionMode, Message } from '@/types';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import type { SlashCommand } from '../constants/slashCommands';
+import { toast } from 'sonner';
 import { filesystemApi } from '@/lib/api/filesystem.api';
 import { useGitInfo } from '@/features/directory/hooks/useGitInfo';
 import { computeEstimateSize, computeMessageGaps, computeSearchMatches } from '../utils/chatComputations';
@@ -38,8 +40,21 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
 
+  const queryClient = useQueryClient();
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? '');
+
+  // running → idle 전환 시 gitInfo 자동 갱신
+  const prevStatusRef = useRef(status);
+  useEffect(() => {
+    if (prevStatusRef.current === 'running' && status === 'idle' && workDir) {
+      const timer = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['git-info', workDir] });
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+    prevStatusRef.current = status;
+  }, [status, workDir, queryClient]);
 
   // 세션 정보에서 mode 동기화
   useEffect(() => {
@@ -239,12 +254,26 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     sendPrompt(prompt, { mode, images });
   }, [sendPrompt, mode]);
 
+  const navigate = useNavigate();
+  const handleRemoveWorktree = useCallback(async () => {
+    if (!workDir) return;
+    try {
+      await filesystemApi.removeWorktree(workDir, true);
+      await sessionsApi.delete(sessionId);
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success('워크트리가 삭제되었습니다.');
+      navigate({ to: '/' });
+    } catch (err) {
+      toast.error(`워크트리 삭제 실패: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, [workDir, sessionId, queryClient, navigate]);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <ChatHeader
         connected={connected}
         workDir={workDir}
-        gitBranch={gitInfo?.branch ?? undefined}
+        gitInfo={gitInfo ?? null}
         mode={mode}
         status={status}
         sessionId={sessionId}
@@ -259,6 +288,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         filesOpen={filesOpen}
         onFilesOpenChange={setFilesOpen}
         onRetryConnect={reconnect}
+        onSendPrompt={handleSendPrompt}
+        onRemoveWorktree={handleRemoveWorktree}
       />
 
       {/* 검색 바 */}
