@@ -1,5 +1,6 @@
 import { memo, useState, useRef, useCallback } from 'react';
 import { Send, Square, Image, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { SlashCommandPopup } from './SlashCommandPopup';
@@ -12,9 +13,6 @@ import type { useSlashCommands } from '../hooks/useSlashCommands';
 interface PendingImage {
   file: File;
   preview: string;
-  uploading: boolean;
-  uploadedPath?: string;
-  error?: string;
 }
 
 interface ChatInputProps {
@@ -63,7 +61,6 @@ export const ChatInput = memo(function ChatInput({
     const newImages: PendingImage[] = validFiles.map(file => ({
       file,
       preview: URL.createObjectURL(file),
-      uploading: false,
     }));
     setPendingImages(prev => [...prev, ...newImages]);
   }, []);
@@ -90,7 +87,7 @@ export const ChatInput = memo(function ChatInput({
           const result = await sessionsApi.uploadImage(sessionId, img.file);
           imagePaths.push(result.path);
         } catch {
-          // 업로드 실패 시 건너뜀
+          toast.error(`이미지 업로드 실패: ${img.file.name}`);
         }
       }
 

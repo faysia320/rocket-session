@@ -9,7 +9,8 @@ import {
 } from '@/components/ui/collapsible';
 import { DiffViewer } from './DiffViewer';
 import { sessionsApi } from '@/lib/api/sessions.api';
-import { cn } from '@/lib/utils';
+import { cn, formatTime } from '@/lib/utils';
+import { getToolBadgeStyle } from '../constants/toolColors';
 import type { FileChange } from '@/types';
 
 interface FilePanelProps {
@@ -104,28 +105,9 @@ function FileChangeItem({ sessionId, change, onFullView }: FileChangeItemProps) 
               )}
             />
             <Badge
-              variant={
-                change.tool === 'Write'
-                  ? 'default'
-                  : change.tool === 'Edit'
-                    ? 'secondary'
-                    : 'outline'
-              }
+              variant="outline"
               className="font-mono text-[10px]"
-              style={{
-                background:
-                  change.tool === 'Write'
-                    ? 'rgba(34,197,94,0.15)'
-                    : change.tool === 'Edit'
-                      ? 'rgba(59,130,246,0.15)'
-                      : 'rgba(148,163,184,0.15)',
-                color:
-                  change.tool === 'Write'
-                    ? 'hsl(var(--success))'
-                    : change.tool === 'Edit'
-                      ? 'hsl(var(--info))'
-                      : 'hsl(var(--muted-foreground))',
-              }}
+              style={getToolBadgeStyle(change.tool)}
             >
               {change.tool}
             </Badge>
@@ -148,38 +130,26 @@ function FileChangeItem({ sessionId, change, onFullView }: FileChangeItemProps) 
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="border border-t-0 border-border rounded-b-sm bg-background max-h-[300px] overflow-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
-          ) : diff !== null ? (
-            diff.trim() ? (
-              <DiffViewer diff={diff} />
-            ) : (
-              <div className="flex items-center justify-center py-4">
-                <span className="font-mono text-xs text-muted-foreground">
-                  변경사항 없음
-                </span>
+        <div className="border border-t-0 border-border rounded-b-sm bg-background">
+          <ScrollArea className="max-h-[300px]">
+            {loading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
-            )
-          ) : null}
+            ) : diff !== null ? (
+              diff.trim() ? (
+                <DiffViewer diff={diff} />
+              ) : (
+                <div className="flex items-center justify-center py-4">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    변경사항 없음
+                  </span>
+                </div>
+              )
+            ) : null}
+          </ScrollArea>
         </div>
       </CollapsibleContent>
     </Collapsible>
   );
-}
-
-function formatTime(ts?: string): string {
-  if (!ts) return '';
-  try {
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  } catch {
-    return '';
-  }
 }

@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/dialog';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { DiffViewer } from './DiffViewer';
-import { cn } from '@/lib/utils';
+import { cn, formatTime } from '@/lib/utils';
+import { getToolBadgeStyle } from '../constants/toolColors';
 
 interface FileViewerProps {
   sessionId: string;
@@ -71,20 +72,7 @@ export function FileViewer({ sessionId, filePath, tool, timestamp, open, onOpenC
             <Badge
               variant="outline"
               className="font-mono text-[9px] px-1 py-0"
-              style={{
-                background:
-                  tool === 'Write'
-                    ? 'rgba(34,197,94,0.15)'
-                    : tool === 'Edit'
-                      ? 'rgba(59,130,246,0.15)'
-                      : 'rgba(148,163,184,0.15)',
-                color:
-                  tool === 'Write'
-                    ? 'hsl(var(--success))'
-                    : tool === 'Edit'
-                      ? 'hsl(var(--info))'
-                      : 'hsl(var(--muted-foreground))',
-              }}
+              style={getToolBadgeStyle(tool)}
             >
               {tool}
             </Badge>
@@ -131,7 +119,8 @@ export function FileViewer({ sessionId, filePath, tool, timestamp, open, onOpenC
           </button>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 max-h-[60vh]">
+        <div className="flex-1 min-h-0 overflow-hidden">
+        <ScrollArea className="h-full">
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -164,21 +153,8 @@ export function FileViewer({ sessionId, filePath, tool, timestamp, open, onOpenC
             </pre>
           )}
         </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
-}
-
-function formatTime(ts?: string): string {
-  if (!ts) return '';
-  try {
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  } catch {
-    return '';
-  }
 }

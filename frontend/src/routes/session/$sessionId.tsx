@@ -10,7 +10,7 @@ function SessionPage() {
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <ChatPanel sessionId={sessionId} />
+      <ChatPanel key={sessionId} sessionId={sessionId} />
     </div>
   );
 }
