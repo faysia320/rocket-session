@@ -3,6 +3,7 @@ export type MessageType =
   | 'assistant_text'
   | 'result'
   | 'tool_use'
+  | 'tool_result'
   | 'file_change'
   | 'error'
   | 'stderr'
@@ -16,6 +17,7 @@ export interface FileChange {
 }
 
 export interface Message {
+  id: string;
   type: MessageType;
   text?: string;
   message?: string;
@@ -23,6 +25,10 @@ export interface Message {
   prompt?: string;
   tool?: string;
   input?: Record<string, unknown>;
+  tool_use_id?: string;
+  output?: string;
+  is_error?: boolean;
+  status?: 'running' | 'done' | 'error';
   change?: FileChange;
   event?: Record<string, unknown>;
   cost?: number;
@@ -37,6 +43,7 @@ export type WebSocketEventType =
   | 'user_message'
   | 'assistant_text'
   | 'tool_use'
+  | 'tool_result'
   | 'file_change'
   | 'result'
   | 'error'

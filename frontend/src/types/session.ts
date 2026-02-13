@@ -1,4 +1,5 @@
 export type SessionStatus = 'idle' | 'running' | 'error' | 'stopped';
+export type SessionMode = 'normal' | 'plan';
 
 export interface SessionInfo {
   id: string;
@@ -11,6 +12,7 @@ export interface SessionInfo {
   allowed_tools?: string;
   system_prompt?: string;
   timeout_seconds?: number;
+  mode?: SessionMode;
 }
 
 export interface CreateSessionRequest {
@@ -18,10 +20,12 @@ export interface CreateSessionRequest {
   allowed_tools?: string | null;
   system_prompt?: string | null;
   timeout_seconds?: number | null;
+  mode?: SessionMode | null;
 }
 
 export interface UpdateSessionRequest {
   allowed_tools?: string | null;
   system_prompt?: string | null;
   timeout_seconds?: number | null;
+  mode?: SessionMode | null;
 }
