@@ -214,19 +214,23 @@ export function useClaudeSocket(sessionId: string) {
         setFileChanges((prev) => [...prev, data.change as FileChange]);
         break;
 
-      case 'result':
+      case 'result': {
         setMessages((prev) => {
-          const cleaned =
-            prev[prev.length - 1]?.type === 'assistant_text'
-              ? prev.slice(0, -1)
-              : prev;
+          const lastMsg = prev[prev.length - 1];
+          const isLastAssistant = lastMsg?.type === 'assistant_text';
+          const cleaned = isLastAssistant ? prev.slice(0, -1) : prev;
+          const resultData = data as unknown as Message;
+          // result 텍스트가 없으면 이전 assistant_text 텍스트를 보존
+          const text = resultData.text || (isLastAssistant ? lastMsg.text : undefined);
           return [...cleaned, {
-            ...(data as unknown as Message),
+            ...resultData,
+            text,
             id: generateMessageId(),
             mode: (data.mode as 'normal' | 'plan') || lastModeRef.current,
           }];
         });
         break;
+      }
 
       case 'error':
         setMessages((prev) => [...prev, { ...(data as unknown as Message), id: generateMessageId() }]);
@@ -403,6 +407,12 @@ export function useClaudeSocket(sessionId: string) {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }, []);
 
+  const reconnect = useCallback(() => {
+    reconnectAttempt.current = 0;
+    setReconnectState({ status: 'reconnecting', attempt: 0, maxAttempts: RECONNECT_MAX_ATTEMPTS });
+    connect();
+  }, [connect]);
+
   const respondPermission = useCallback(
     (permissionId: string, behavior: 'allow' | 'deny') => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -435,5 +445,6 @@ export function useClaudeSocket(sessionId: string) {
     addSystemMessage,
     updateMessage,
     respondPermission,
+    reconnect,
   };
 }

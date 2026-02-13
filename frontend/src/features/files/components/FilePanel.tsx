@@ -21,7 +21,7 @@ interface FilePanelProps {
 
 export function FilePanel({ sessionId, fileChanges = [], onFileClick }: FilePanelProps) {
   return (
-    <div className="flex flex-col overflow-hidden">
+    <div className="flex flex-col overflow-hidden flex-1 min-h-0">
       <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-border">
         <span className="text-sm">{'\u{1F4C1}'}</span>
         <span className="font-mono text-xs font-semibold text-foreground flex-1">
@@ -32,7 +32,7 @@ export function FilePanel({ sessionId, fileChanges = [], onFileClick }: FilePane
         </Badge>
       </div>
 
-      <ScrollArea className="flex-1 max-h-[400px] p-2">
+      <ScrollArea className="flex-1 min-h-0 p-2">
         {fileChanges.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
             <div className="text-[28px] mb-2 opacity-40">{'\u{1F4C2}'}</div>
@@ -131,7 +131,7 @@ function FileChangeItem({ sessionId, change, onFullView }: FileChangeItemProps) 
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="border border-t-0 border-border rounded-b-sm bg-background">
-          <ScrollArea className="max-h-[300px]">
+          <div className="max-h-[300px] overflow-auto">
             {loading ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -147,7 +147,7 @@ function FileChangeItem({ sessionId, change, onFullView }: FileChangeItemProps) 
                 </div>
               )
             ) : null}
-          </ScrollArea>
+          </div>
         </div>
       </CollapsibleContent>
     </Collapsible>

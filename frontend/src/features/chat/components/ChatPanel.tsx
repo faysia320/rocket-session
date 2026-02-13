@@ -22,7 +22,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ sessionId }: ChatPanelProps) {
-  const { connected, loading, messages, status, sessionInfo, fileChanges, activeTools, pendingPermission, reconnectState, sendPrompt, stopExecution, clearMessages, addSystemMessage, updateMessage, respondPermission } =
+  const { connected, loading, messages, status, sessionInfo, fileChanges, activeTools, pendingPermission, reconnectState, sendPrompt, stopExecution, clearMessages, addSystemMessage, updateMessage, respondPermission, reconnect } =
     useClaudeSocket(sessionId);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
@@ -272,6 +272,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onSettingsOpenChange={setSettingsOpen}
         filesOpen={filesOpen}
         onFilesOpenChange={setFilesOpen}
+        onRetryConnect={reconnect}
       />
 
       {/* 검색 바 */}
@@ -366,6 +367,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                     <MessageBubble
                       message={messages[virtualItem.index]}
                       isRunning={status === 'running'}
+                      searchQuery={searchQuery || undefined}
                       onExecutePlan={handleExecutePlan}
                       onDismissPlan={handleDismissPlan}
                       onOpenReview={handleOpenReview}

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { createElement } from 'react';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -18,4 +20,17 @@ export function formatTime(ts?: string): string {
   } catch {
     return '';
   }
+}
+
+/** 텍스트 내 검색어를 <mark>로 하이라이트하여 ReactNode 배열 반환 */
+export function highlightText(text: string, query: string): ReactNode[] {
+  if (!query || !text) return [text];
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+  const parts = text.split(regex);
+  return parts.map((part, i) =>
+    regex.test(part)
+      ? createElement('mark', { key: i, className: 'bg-primary/30 text-foreground rounded-sm px-0.5' }, part)
+      : part
+  );
 }

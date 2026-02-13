@@ -2,13 +2,14 @@ import { useState, memo } from 'react';
 import { Maximize2 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { cn } from '@/lib/utils';
+import { cn, highlightText } from '@/lib/utils';
 import type { Message } from '@/types';
 import { PlanApprovalButton } from './PlanApprovalButton';
 
 interface MessageBubbleProps {
   message: Message;
   isRunning?: boolean;
+  searchQuery?: string;
   onExecutePlan?: (messageId: string) => void;
   onDismissPlan?: (messageId: string) => void;
   onOpenReview?: (messageId: string) => void;
@@ -17,6 +18,7 @@ interface MessageBubbleProps {
 export const MessageBubble = memo(function MessageBubble({
   message,
   isRunning = false,
+  searchQuery,
   onExecutePlan,
   onDismissPlan,
   onOpenReview,
@@ -25,7 +27,7 @@ export const MessageBubble = memo(function MessageBubble({
 
   switch (type) {
     case 'user_message':
-      return <UserMessage message={message} />;
+      return <UserMessage message={message} searchQuery={searchQuery} />;
     case 'assistant_text':
       return <AssistantText message={message} />;
     case 'result':
@@ -43,11 +45,11 @@ export const MessageBubble = memo(function MessageBubble({
     case 'file_change':
       return <FileChangeMessage message={message} />;
     case 'error':
-      return <ErrorMessage message={message} />;
+      return <ErrorMessage message={message} searchQuery={searchQuery} />;
     case 'stderr':
       return <StderrMessage message={message} />;
     case 'system':
-      return <SystemMessage message={message} />;
+      return <SystemMessage message={message} searchQuery={searchQuery} />;
     case 'event':
       return <EventMessage message={message} />;
     case 'permission_request':
@@ -57,7 +59,7 @@ export const MessageBubble = memo(function MessageBubble({
   }
 });
 
-function UserMessage({ message }: { message: Message }) {
+function UserMessage({ message, searchQuery }: { message: Message; searchQuery?: string }) {
   // user_message의 실제 텍스트: message.message 객체의 content 또는 prompt
   const msg = message.message as unknown as Record<string, string> | undefined;
   const text = msg?.content || msg?.prompt || message.content || message.prompt || '';
@@ -66,7 +68,7 @@ function UserMessage({ message }: { message: Message }) {
       <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-xl rounded-br-sm">
         <div className="font-mono text-[10px] font-semibold opacity-70 mb-1">You</div>
         <div className="font-mono text-[13px] leading-normal whitespace-pre-wrap select-text">
-          {text}
+          {searchQuery ? highlightText(text, searchQuery) : text}
         </div>
       </div>
     </div>
@@ -258,14 +260,14 @@ function FileChangeMessage({ message }: { message: Message }) {
   );
 }
 
-function ErrorMessage({ message }: { message: Message }) {
+function ErrorMessage({ message, searchQuery }: { message: Message; searchQuery?: string }) {
   const errorText = message.message || message.text || 'Unknown error';
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-sm">
         <span className="text-sm">{'⚠'}</span>
         <span className="font-mono text-xs text-destructive">
-          {errorText}
+          {searchQuery ? highlightText(String(errorText), searchQuery) : errorText}
         </span>
       </div>
     </div>
@@ -282,11 +284,11 @@ function StderrMessage({ message }: { message: Message }) {
   );
 }
 
-function SystemMessage({ message }: { message: Message }) {
+function SystemMessage({ message, searchQuery }: { message: Message; searchQuery?: string }) {
   return (
     <div className="text-center p-1 animate-[fadeIn_0.2s_ease]">
       <span className="font-mono text-[11px] text-muted-foreground/70 italic">
-        {message.text}
+        {searchQuery ? highlightText(message.text || '', searchQuery) : message.text}
       </span>
     </div>
   );

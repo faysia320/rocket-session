@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { FolderOpen, GitBranch, Download, Search } from 'lucide-react';
+import { FolderOpen, GitBranch, Download, Search, RefreshCw } from 'lucide-react';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { ModeIndicator } from './ModeIndicator';
 import { SessionSettings } from '@/features/session/components/SessionSettings';
@@ -32,6 +32,7 @@ interface ChatHeaderProps {
   onSettingsOpenChange: (open: boolean) => void;
   filesOpen: boolean;
   onFilesOpenChange: (open: boolean) => void;
+  onRetryConnect?: () => void;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -51,6 +52,7 @@ export const ChatHeader = memo(function ChatHeader({
   onSettingsOpenChange,
   filesOpen,
   onFilesOpenChange,
+  onRetryConnect,
 }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
@@ -74,6 +76,17 @@ export const ChatHeader = memo(function ChatHeader({
                 ? 'Connection Failed'
                 : 'Disconnected'}
         </span>
+        {reconnectState?.status === 'failed' && onRetryConnect ? (
+          <button
+            type="button"
+            onClick={onRetryConnect}
+            className="flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
+            aria-label="재연결 시도"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Retry
+          </button>
+        ) : null}
         {workDir ? (
           <>
             <span className="text-muted-foreground/70 text-xs">|</span>
@@ -143,7 +156,7 @@ export const ChatHeader = memo(function ChatHeader({
               ) : null}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[560px] p-0 bg-card border-border" align="end">
+          <PopoverContent className="w-[560px] max-h-[70vh] p-0 bg-card border-border flex flex-col" align="end">
             <FilePanel sessionId={sessionId} fileChanges={fileChanges} onFileClick={onFileClick} />
           </PopoverContent>
         </Popover>
