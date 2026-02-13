@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import get_session_manager, get_settings
 from app.core.config import Settings
-from app.schemas.session import CreateSessionRequest, SessionInfo
+from app.schemas.session import CreateSessionRequest, SessionInfo, UpdateSessionRequest
 from app.services.session_manager import SessionManager
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -17,13 +17,24 @@ async def create_session(
     manager: SessionManager = Depends(get_session_manager),
 ):
     work_dir = req.work_dir or settings.claude_work_dir
-    session = manager.create(work_dir)
+    session = await manager.create(
+        work_dir=work_dir,
+        allowed_tools=req.allowed_tools,
+        system_prompt=req.system_prompt,
+        timeout_seconds=req.timeout_seconds,
+    )
+    # create() 반환 dict에는 message_count/file_changes_count가 없으므로 재조회
+    sessions = await manager.list_all()
+    for s in sessions:
+        if s["id"] == session["id"]:
+            return manager.to_info(s)
     return manager.to_info(session)
 
 
 @router.get("/")
 async def list_sessions(manager: SessionManager = Depends(get_session_manager)):
-    return [manager.to_info(s) for s in manager.list_all()]
+    sessions = await manager.list_all()
+    return [manager.to_info(s) for s in sessions]
 
 
 @router.get("/{session_id}")
@@ -31,10 +42,40 @@ async def get_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = manager.get(session_id)
+    session = await manager.get(session_id)
     if not session:
         raise HTTPException(404, "Session not found")
+    # 카운트 포함을 위해 list_all에서 찾기
+    sessions = await manager.list_all()
+    for s in sessions:
+        if s["id"] == session_id:
+            return manager.to_info(s)
     return manager.to_info(session)
+
+
+@router.patch("/{session_id}", response_model=SessionInfo)
+async def update_session(
+    session_id: str,
+    req: UpdateSessionRequest,
+    manager: SessionManager = Depends(get_session_manager),
+):
+    session = await manager.get(session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+    updated = await manager.update_settings(
+        session_id=session_id,
+        allowed_tools=req.allowed_tools,
+        system_prompt=req.system_prompt,
+        timeout_seconds=req.timeout_seconds,
+    )
+    if not updated:
+        raise HTTPException(404, "Session not found")
+    # 카운트 포함 재조회
+    sessions = await manager.list_all()
+    for s in sessions:
+        if s["id"] == session_id:
+            return manager.to_info(s)
+    return manager.to_info(updated)
 
 
 @router.get("/{session_id}/history")
@@ -42,10 +83,10 @@ async def get_history(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = manager.get(session_id)
+    session = await manager.get(session_id)
     if not session:
         raise HTTPException(404, "Session not found")
-    return session.history
+    return await manager.get_history(session_id)
 
 
 @router.get("/{session_id}/files")
@@ -53,10 +94,10 @@ async def get_file_changes(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = manager.get(session_id)
+    session = await manager.get(session_id)
     if not session:
         raise HTTPException(404, "Session not found")
-    return session.file_changes
+    return await manager.get_file_changes(session_id)
 
 
 @router.post("/{session_id}/stop")
@@ -64,10 +105,10 @@ async def stop_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = manager.get(session_id)
+    session = await manager.get(session_id)
     if not session:
         raise HTTPException(404, "Session not found")
-    await manager.kill_process(session)
+    await manager.kill_process(session_id)
     return {"status": "stopped"}
 
 

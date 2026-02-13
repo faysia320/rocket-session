@@ -7,6 +7,15 @@ from pydantic import BaseModel
 
 class CreateSessionRequest(BaseModel):
     work_dir: Optional[str] = None
+    allowed_tools: Optional[str] = None
+    system_prompt: Optional[str] = None
+    timeout_seconds: Optional[int] = None
+
+
+class UpdateSessionRequest(BaseModel):
+    allowed_tools: Optional[str] = None
+    system_prompt: Optional[str] = None
+    timeout_seconds: Optional[int] = None
 
 
 class SendPromptRequest(BaseModel):
@@ -16,9 +25,12 @@ class SendPromptRequest(BaseModel):
 
 class SessionInfo(BaseModel):
     id: str
-    claude_session_id: Optional[str]
+    claude_session_id: Optional[str] = None
     work_dir: str
     status: str
     created_at: str
-    message_count: int
-    file_changes_count: int
+    message_count: int = 0
+    file_changes_count: int = 0
+    allowed_tools: Optional[str] = None
+    system_prompt: Optional[str] = None
+    timeout_seconds: Optional[int] = None
