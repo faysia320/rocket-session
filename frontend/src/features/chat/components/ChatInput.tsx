@@ -1,22 +1,35 @@
 import { memo, useState, useRef, useCallback } from 'react';
-import { Send, Square } from 'lucide-react';
+import { Send, Square, Image, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { SlashCommandPopup } from './SlashCommandPopup';
+import { cn } from '@/lib/utils';
+import { sessionsApi } from '@/lib/api/sessions.api';
 import type { SessionMode } from '@/types';
 import type { SlashCommand } from '../constants/slashCommands';
 import type { useSlashCommands } from '../hooks/useSlashCommands';
+
+interface PendingImage {
+  file: File;
+  preview: string;
+  uploading: boolean;
+  uploadedPath?: string;
+  error?: string;
+}
 
 interface ChatInputProps {
   connected: boolean;
   status: 'idle' | 'running';
   mode: SessionMode;
   slashCommands: ReturnType<typeof useSlashCommands>;
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string, images?: string[]) => void;
   onStop: () => void;
   onModeToggle: () => void;
   onSlashCommand: (cmd: SlashCommand) => void;
+  sessionId?: string;
 }
+
+const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
 
 export const ChatInput = memo(function ChatInput({
   connected,
@@ -27,23 +40,66 @@ export const ChatInput = memo(function ChatInput({
   onStop,
   onModeToggle,
   onSlashCommand,
+  sessionId,
 }: ChatInputProps) {
   const [input, setInput] = useState('');
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetTextarea = useCallback(() => {
     setInput('');
+    setPendingImages([]);
     if (textareaRef.current) {
       textareaRef.current.style.height = '44px';
     }
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const addImages = useCallback((files: File[]) => {
+    const validFiles = files.filter(f => ACCEPTED_IMAGE_TYPES.includes(f.type));
+    if (validFiles.length === 0) return;
+
+    const newImages: PendingImage[] = validFiles.map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      uploading: false,
+    }));
+    setPendingImages(prev => [...prev, ...newImages]);
+  }, []);
+
+  const removeImage = useCallback((index: number) => {
+    setPendingImages(prev => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[index].preview);
+      updated.splice(index, 1);
+      return updated;
+    });
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
     const prompt = input.trim();
-    if (!prompt || status === 'running') return;
-    onSubmit(prompt);
+    if ((!prompt && pendingImages.length === 0) || status === 'running') return;
+
+    // 이미지가 있으면 업로드 먼저
+    if (pendingImages.length > 0 && sessionId) {
+      const imagePaths: string[] = [];
+
+      for (const img of pendingImages) {
+        try {
+          const result = await sessionsApi.uploadImage(sessionId, img.file);
+          imagePaths.push(result.path);
+        } catch {
+          // 업로드 실패 시 건너뜀
+        }
+      }
+
+      onSubmit(prompt || '이 이미지를 분석해주세요.', imagePaths.length > 0 ? imagePaths : undefined);
+    } else {
+      onSubmit(prompt);
+    }
     resetTextarea();
-  }, [input, status, onSubmit, resetTextarea]);
+  }, [input, pendingImages, status, sessionId, onSubmit, resetTextarea]);
 
   const executeSlashCommand = useCallback((cmd: SlashCommand) => {
     resetTextarea();
@@ -58,6 +114,15 @@ export const ChatInput = memo(function ChatInput({
       }
       return;
     }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (status === 'running') {
+        onStop();
+      } else {
+        resetTextarea();
+      }
+      return;
+    }
     if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
       onModeToggle();
@@ -67,7 +132,7 @@ export const ChatInput = memo(function ChatInput({
       e.preventDefault();
       handleSubmit();
     }
-  }, [slashCommands, onModeToggle, handleSubmit, executeSlashCommand]);
+  }, [slashCommands, status, onStop, resetTextarea, onModeToggle, handleSubmit, executeSlashCommand]);
 
   const handleTextareaInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -77,8 +142,48 @@ export const ChatInput = memo(function ChatInput({
     e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
   }, [slashCommands]);
 
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === 'file' && ACCEPTED_IMAGE_TYPES.includes(item.type)) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addImages(imageFiles);
+    }
+  }, [addImages]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    addImages(files);
+  }, [addImages]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
   return (
-    <div className="px-4 py-3 border-t border-border bg-secondary">
+    <div
+      className="px-4 py-3 border-t border-border bg-secondary"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    >
       <div className="relative">
         {slashCommands.isOpen ? (
           <SlashCommandPopup
@@ -88,7 +193,47 @@ export const ChatInput = memo(function ChatInput({
             onHover={slashCommands.setActiveIndex}
           />
         ) : null}
-        <div className="flex items-end gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50">
+
+        {/* 드래그 오버레이 */}
+        {isDragOver ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-[var(--radius-md)]">
+            <div className="flex items-center gap-2 font-mono text-sm text-primary font-semibold">
+              <Image className="h-5 w-5" />
+              이미지를 여기에 놓으세요
+            </div>
+          </div>
+        ) : null}
+
+        {/* 이미지 미리보기 */}
+        {pendingImages.length > 0 ? (
+          <div className="flex gap-2 mb-2 flex-wrap">
+            {pendingImages.map((img, i) => (
+              <div key={img.preview} className="relative group">
+                <img
+                  src={img.preview}
+                  alt={img.file.name}
+                  className="h-16 w-16 object-cover rounded-md border border-border"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeImage(i)}
+                  className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="이미지 제거"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+                <div className="font-mono text-[9px] text-muted-foreground truncate max-w-[64px] mt-0.5">
+                  {img.file.name}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className={cn(
+          'flex items-end gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50',
+          isDragOver && 'border-primary/50'
+        )}>
           {mode === 'plan' ? (
             <button
               type="button"
@@ -99,12 +244,37 @@ export const ChatInput = memo(function ChatInput({
               Plan
             </button>
           ) : null}
+
+          {/* 이미지 첨부 버튼 */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="self-center text-muted-foreground hover:text-foreground transition-colors p-1 shrink-0"
+            aria-label="이미지 첨부"
+            title="이미지 첨부"
+          >
+            <Image className="h-4 w-4" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              addImages(files);
+              e.target.value = '';
+            }}
+          />
+
           <Textarea
             ref={textareaRef}
             className="flex-1 font-mono text-[13px] bg-transparent border-0 outline-none resize-none min-h-[44px] leading-[22px] py-[11px] focus-visible:ring-0 focus-visible:ring-offset-0"
             value={input}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder="Enter a prompt for Claude Code…"
             rows={1}
             disabled={!connected}
@@ -119,7 +289,7 @@ export const ChatInput = memo(function ChatInput({
               <Button
                 size="sm"
                 onClick={handleSubmit}
-                disabled={!input.trim() || !connected}
+                disabled={(!input.trim() && pendingImages.length === 0) || !connected}
                 className="font-mono text-xs font-semibold"
               >
                 Send <Send className="h-3 w-3 ml-1.5" />
@@ -129,7 +299,7 @@ export const ChatInput = memo(function ChatInput({
         </div>
       </div>
       <div className="font-mono text-[10px] text-muted-foreground/70 mt-1.5 pl-0.5">
-        Shift+Enter 줄바꿈 {'·'} Shift+Tab 모드 전환 {'·'} <span className="text-muted-foreground">/</span> 명령어
+        Shift+Enter 줄바꿈 {'·'} Shift+Tab 모드 전환 {'·'} Esc 정지/클리어 {'·'} <span className="text-muted-foreground">/</span> 명령어 {'·'} 이미지 붙여넣기/드래그
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { FolderOpen, GitBranch } from 'lucide-react';
+import { FolderOpen, GitBranch, Download, Search } from 'lucide-react';
+import { sessionsApi } from '@/lib/api/sessions.api';
 import { ModeIndicator } from './ModeIndicator';
 import { SessionSettings } from '@/features/session/components/SessionSettings';
 import { FilePanel } from '@/features/files/components/FilePanel';
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { FileChange, SessionMode } from '@/types';
+import type { ReconnectState } from '../hooks/useClaudeSocket';
 
 interface ChatHeaderProps {
   connected: boolean;
@@ -21,6 +23,9 @@ interface ChatHeaderProps {
   status: 'idle' | 'running';
   sessionId: string;
   fileChanges: FileChange[];
+  reconnectState?: ReconnectState;
+  searchOpen?: boolean;
+  onToggleSearch?: () => void;
   onToggleMode: () => void;
   onFileClick: (change: FileChange) => void;
   settingsOpen: boolean;
@@ -37,6 +42,9 @@ export const ChatHeader = memo(function ChatHeader({
   status,
   sessionId,
   fileChanges,
+  reconnectState,
+  searchOpen,
+  onToggleSearch,
   onToggleMode,
   onFileClick,
   settingsOpen,
@@ -52,11 +60,19 @@ export const ChatHeader = memo(function ChatHeader({
             'w-[7px] h-[7px] rounded-full transition-all',
             connected
               ? 'bg-success shadow-[0_0_8px_hsl(var(--success))]'
-              : 'bg-destructive'
+              : reconnectState?.status === 'reconnecting'
+                ? 'bg-warning animate-pulse'
+                : 'bg-destructive'
           )}
         />
         <span className="font-mono text-xs text-muted-foreground">
-          {connected ? 'Connected' : 'Disconnected'}
+          {connected
+            ? 'Connected'
+            : reconnectState?.status === 'reconnecting'
+              ? `Reconnecting (${reconnectState.attempt}/${reconnectState.maxAttempts})`
+              : reconnectState?.status === 'failed'
+                ? 'Connection Failed'
+                : 'Disconnected'}
         </span>
         {workDir ? (
           <>
@@ -88,6 +104,27 @@ export const ChatHeader = memo(function ChatHeader({
             Running
           </Badge>
         ) : null}
+        {onToggleSearch ? (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onToggleSearch}
+            className={cn(searchOpen && 'bg-muted')}
+            aria-label="메시지 검색"
+            title="메시지 검색"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+        ) : null}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => sessionsApi.exportMarkdown(sessionId)}
+          aria-label="대화 내보내기"
+          title="대화 내보내기 (Markdown)"
+        >
+          <Download className="h-4 w-4" />
+        </Button>
         <SessionSettings sessionId={sessionId} open={settingsOpen} onOpenChange={onSettingsOpenChange} />
         <Popover open={filesOpen} onOpenChange={onFilesOpenChange}>
           <PopoverTrigger asChild>
@@ -95,7 +132,7 @@ export const ChatHeader = memo(function ChatHeader({
               variant="outline"
               size="icon"
               title="File changes"
-              className={cn(filesOpen && 'bg-muted')}
+              className={cn('relative', filesOpen && 'bg-muted')}
               aria-label="파일 변경 패널"
             >
               <FolderOpen className="h-4 w-4" />
@@ -106,8 +143,8 @@ export const ChatHeader = memo(function ChatHeader({
               ) : null}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[320px] p-0 bg-card border-border" align="end">
-            <FilePanel fileChanges={fileChanges} onFileClick={onFileClick} />
+          <PopoverContent className="w-[560px] p-0 bg-card border-border" align="end">
+            <FilePanel sessionId={sessionId} fileChanges={fileChanges} onFileClick={onFileClick} />
           </PopoverContent>
         </Popover>
       </div>

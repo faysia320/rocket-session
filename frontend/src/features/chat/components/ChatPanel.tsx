@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useQuery } from '@tanstack/react-query';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
@@ -8,6 +8,7 @@ import { PlanReviewDialog } from './PlanReviewDialog';
 import { ChatHeader } from './ChatHeader';
 import { ChatInput } from './ChatInput';
 import { ActivityStatusBar } from './ActivityStatusBar';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { FileViewer } from '@/features/files/components/FileViewer';
 import type { FileChange, SessionMode, Message } from '@/types';
 import { sessionsApi } from '@/lib/api/sessions.api';
@@ -21,7 +22,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ sessionId }: ChatPanelProps) {
-  const { connected, messages, status, sessionInfo, fileChanges, activeTools, pendingPermission, sendPrompt, stopExecution, clearMessages, addSystemMessage, updateMessage, respondPermission } =
+  const { connected, loading, messages, status, sessionInfo, fileChanges, activeTools, pendingPermission, reconnectState, sendPrompt, stopExecution, clearMessages, addSystemMessage, updateMessage, respondPermission } =
     useClaudeSocket(sessionId);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
@@ -32,6 +33,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [mode, setMode] = useState<SessionMode>('normal');
   const [planReviewOpen, setPlanReviewOpen] = useState(false);
   const [planReviewMessage, setPlanReviewMessage] = useState<Message | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMatchIndex, setSearchMatchIndex] = useState(0);
 
   const workDir = (sessionInfo as Record<string, unknown>)?.work_dir as string | undefined;
   const { gitInfo } = useGitInfo(workDir ?? '');
@@ -156,6 +160,33 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     [messages]
   );
 
+  // 검색: 매칭된 메시지 인덱스 목록
+  const searchMatches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return messages
+      .map((m, i) => ({ index: i, match: (m.text || m.content || '').toLowerCase().includes(q) }))
+      .filter((r) => r.match)
+      .map((r) => r.index);
+  }, [messages, searchQuery]);
+
+  // 검색 결과 이동 시 스크롤
+  useEffect(() => {
+    if (searchMatches.length > 0 && searchMatchIndex < searchMatches.length) {
+      virtualizer.scrollToIndex(searchMatches[searchMatchIndex], { align: 'center' });
+    }
+  }, [searchMatchIndex, searchMatches, virtualizer]);
+
+  const handleToggleSearch = useCallback(() => {
+    setSearchOpen((prev) => {
+      if (prev) {
+        setSearchQuery('');
+        setSearchMatchIndex(0);
+      }
+      return !prev;
+    });
+  }, []);
+
   const handleFileClick = useCallback((change: FileChange) => {
     setSelectedFile(change);
     setFilesOpen(false);
@@ -196,8 +227,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   }, [addSystemMessage, clearMessages, sendPrompt, mode]);
 
-  const handleSendPrompt = useCallback((prompt: string) => {
-    sendPrompt(prompt, { mode });
+  const handleSendPrompt = useCallback((prompt: string, images?: string[]) => {
+    sendPrompt(prompt, { mode, images });
   }, [sendPrompt, mode]);
 
   return (
@@ -210,6 +241,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         status={status}
         sessionId={sessionId}
         fileChanges={fileChanges}
+        reconnectState={reconnectState}
+        searchOpen={searchOpen}
+        onToggleSearch={handleToggleSearch}
         onToggleMode={cycleMode}
         onFileClick={handleFileClick}
         settingsOpen={settingsOpen}
@@ -218,9 +252,65 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onFilesOpenChange={setFilesOpen}
       />
 
+      {/* 검색 바 */}
+      {searchOpen ? (
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-secondary/50">
+          <input
+            className="flex-1 font-mono text-[13px] bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
+            placeholder="메시지 검색…"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setSearchMatchIndex(0); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setSearchMatchIndex((prev) => (searchMatches.length > 0 ? (prev + 1) % searchMatches.length : 0));
+              }
+              if (e.key === 'Escape') handleToggleSearch();
+            }}
+            autoFocus
+          />
+          <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+            {searchMatches.length > 0
+              ? `${searchMatchIndex + 1}/${searchMatches.length}`
+              : searchQuery ? '0 results' : ''}
+          </span>
+          <button
+            type="button"
+            className="font-mono text-[11px] text-muted-foreground hover:text-foreground px-1"
+            onClick={() => setSearchMatchIndex((p) => (p > 0 ? p - 1 : searchMatches.length - 1))}
+            disabled={searchMatches.length === 0}
+            aria-label="이전 검색 결과"
+          >
+            {'\u25B2'}
+          </button>
+          <button
+            type="button"
+            className="font-mono text-[11px] text-muted-foreground hover:text-foreground px-1"
+            onClick={() => setSearchMatchIndex((p) => (p + 1) % Math.max(searchMatches.length, 1))}
+            disabled={searchMatches.length === 0}
+            aria-label="다음 검색 결과"
+          >
+            {'\u25BC'}
+          </button>
+        </div>
+      ) : null}
+
       {/* 메시지 영역 */}
-      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto select-text">
-        {messages.length === 0 ? (
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto select-text pt-3">
+        {loading ? (
+          <div className="px-4 space-y-4 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="flex justify-end">
+                  <div className="h-10 w-48 bg-muted rounded-xl" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-3 w-20 bg-muted rounded" />
+                  <div className="h-16 w-full bg-muted rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50">
             <div className="font-mono text-[32px] text-primary animate-[blink_1.2s_ease-in-out_infinite]">
               {'>'}_
@@ -244,14 +334,20 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
               >
-                <div className="px-4 pb-2">
-                  <MessageBubble
-                    message={messages[virtualItem.index]}
-                    isRunning={status === 'running'}
-                    onExecutePlan={handleExecutePlan}
-                    onDismissPlan={handleDismissPlan}
-                    onOpenReview={handleOpenReview}
-                  />
+                <div className={
+                  searchQuery && searchMatches.includes(virtualItem.index)
+                    ? 'px-4 pb-2 ring-1 ring-primary/40 rounded-sm bg-primary/5'
+                    : 'px-4 pb-2'
+                }>
+                  <ErrorBoundary>
+                    <MessageBubble
+                      message={messages[virtualItem.index]}
+                      isRunning={status === 'running'}
+                      onExecutePlan={handleExecutePlan}
+                      onDismissPlan={handleDismissPlan}
+                      onOpenReview={handleOpenReview}
+                    />
+                  </ErrorBoundary>
                 </div>
               </div>
             ))}
@@ -270,6 +366,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onStop={stopExecution}
         onModeToggle={cycleMode}
         onSlashCommand={handleSlashCommand}
+        sessionId={sessionId}
       />
 
       {/* Permission Dialog */}

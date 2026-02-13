@@ -14,6 +14,23 @@ function getWsUrl(sessionId: string, lastSeq?: number): string {
   return lastSeq ? `${base}?last_seq=${lastSeq}` : base;
 }
 
+// 재연결 상태
+export interface ReconnectState {
+  status: 'connected' | 'reconnecting' | 'failed';
+  attempt: number;
+  maxAttempts: number;
+}
+
+// 재연결 설정
+const RECONNECT_MAX_ATTEMPTS = 10;
+const RECONNECT_BASE_DELAY = 1000;
+const RECONNECT_MAX_DELAY = 30000;
+
+function getBackoffDelay(attempt: number): number {
+  const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, attempt), RECONNECT_MAX_DELAY);
+  return delay * (0.8 + Math.random() * 0.4);
+}
+
 // 세션 상태 인터페이스 (부분 타입)
 interface SessionState {
   claude_session_id?: string;
@@ -46,6 +63,13 @@ export function useClaudeSocket(sessionId: string) {
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
   const [activeTools, setActiveTools] = useState<Message[]>([]);
   const [pendingPermission, setPendingPermission] = useState<PermissionRequestData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const reconnectAttempt = useRef(0);
+  const [reconnectState, setReconnectState] = useState<ReconnectState>({
+    status: 'reconnecting',
+    attempt: 0,
+    maxAttempts: RECONNECT_MAX_ATTEMPTS,
+  });
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
     // 모든 이벤트에서 seq 추적
@@ -56,9 +80,14 @@ export function useClaudeSocket(sessionId: string) {
     switch (data.type) {
       case 'session_state':
         setSessionInfo(data.session as SessionState);
+        setLoading(false);
         // latest_seq 업데이트 (서버에서 전달)
         if (typeof data.latest_seq === 'number' && data.latest_seq > lastSeqRef.current) {
           lastSeqRef.current = data.latest_seq;
+        }
+        // running 상태 복원
+        if (data.is_running) {
+          setStatus('running');
         }
         // 재연결 시에는 히스토리를 덮어쓰지 않음
         if (!data.is_reconnect && data.history) {
@@ -71,6 +100,16 @@ export function useClaudeSocket(sessionId: string) {
               timestamp: h.timestamp,
             }))
           );
+          // 현재 턴 이벤트가 있으면 순차 재생 (새로고침 후 running 세션 복구)
+          if (data.current_turn_events) {
+            const turnEvents = data.current_turn_events as Record<string, unknown>[];
+            for (const event of turnEvents) {
+              // user_message는 history에 이미 포함되므로 스킵
+              if (event.type !== 'user_message') {
+                handleMessage(event);
+              }
+            }
+          }
         }
         break;
 
@@ -122,7 +161,14 @@ export function useClaudeSocket(sessionId: string) {
         setMessages((prev) =>
           prev.map((msg) =>
             msg.type === 'tool_use' && msg.tool_use_id === toolUseId && msg.status === 'running'
-              ? { ...msg, status: data.is_error ? 'error' : 'done', output: data.output as string, is_error: data.is_error as boolean }
+              ? {
+                  ...msg,
+                  status: data.is_error ? 'error' : 'done',
+                  output: data.output as string,
+                  is_error: data.is_error as boolean,
+                  is_truncated: data.is_truncated as boolean | undefined,
+                  full_length: data.full_length as number | undefined,
+                }
               : msg
           )
         );
@@ -209,6 +255,7 @@ export function useClaudeSocket(sessionId: string) {
 
   const connect = useCallback(() => {
     if (!sessionId) return;
+    setLoading(true);
 
     // 기존 연결이 있으면 먼저 정리 (StrictMode 이중 마운트 대응)
     if (wsRef.current) {
@@ -230,6 +277,8 @@ export function useClaudeSocket(sessionId: string) {
 
     ws.onopen = () => {
       setConnected(true);
+      reconnectAttempt.current = 0;
+      setReconnectState({ status: 'connected', attempt: 0, maxAttempts: RECONNECT_MAX_ATTEMPTS });
       console.log('[WS]', seq ? `Reconnected (last_seq=${seq})` : 'Connected', 'to session', sessionId);
     };
 
@@ -246,7 +295,17 @@ export function useClaudeSocket(sessionId: string) {
       setConnected(false);
       console.log('[WS] Disconnected');
       if (shouldReconnect.current) {
-        reconnectTimer.current = setTimeout(() => connect(), 3000);
+        const attempt = reconnectAttempt.current;
+        if (attempt >= RECONNECT_MAX_ATTEMPTS) {
+          setReconnectState({ status: 'failed', attempt, maxAttempts: RECONNECT_MAX_ATTEMPTS });
+          console.warn('[WS] Max reconnect attempts reached');
+          return;
+        }
+        reconnectAttempt.current = attempt + 1;
+        const delay = getBackoffDelay(attempt);
+        setReconnectState({ status: 'reconnecting', attempt: attempt + 1, maxAttempts: RECONNECT_MAX_ATTEMPTS });
+        console.log(`[WS] Reconnecting in ${Math.round(delay)}ms (attempt ${attempt + 1}/${RECONNECT_MAX_ATTEMPTS})`);
+        reconnectTimer.current = setTimeout(() => connect(), delay);
       }
     };
 
@@ -273,7 +332,7 @@ export function useClaudeSocket(sessionId: string) {
   }, [connect]);
 
   const sendPrompt = useCallback(
-    (prompt: string, options?: { allowedTools?: string[]; mode?: SessionMode }) => {
+    (prompt: string, options?: { allowedTools?: string[]; mode?: SessionMode; images?: string[] }) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         lastModeRef.current = options?.mode || 'normal';
         wsRef.current.send(
@@ -282,6 +341,7 @@ export function useClaudeSocket(sessionId: string) {
             prompt,
             allowed_tools: options?.allowedTools,
             mode: options?.mode,
+            images: options?.images,
           })
         );
       }
@@ -327,12 +387,14 @@ export function useClaudeSocket(sessionId: string) {
 
   return {
     connected,
+    loading,
     messages,
     status,
     sessionInfo,
     fileChanges,
     activeTools,
     pendingPermission,
+    reconnectState,
     sendPrompt,
     stopExecution,
     clearMessages,

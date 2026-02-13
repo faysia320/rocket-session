@@ -1,6 +1,6 @@
 import { useState, memo } from 'react';
 import { Maximize2 } from 'lucide-react';
-import { FormattedText } from '@/components/ui/FormattedText';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/types';
@@ -25,7 +25,7 @@ export const MessageBubble = memo(function MessageBubble({
 
   switch (type) {
     case 'user_message':
-      return <UserMessage message={message.message || message} />;
+      return <UserMessage message={message} />;
     case 'assistant_text':
       return <AssistantText message={message} />;
     case 'result':
@@ -57,20 +57,23 @@ export const MessageBubble = memo(function MessageBubble({
   }
 });
 
-function UserMessage({ message }: { message: any }) {
+function UserMessage({ message }: { message: Message }) {
+  // user_message의 실제 텍스트: message.message 객체의 content 또는 prompt
+  const msg = message.message as unknown as Record<string, string> | undefined;
+  const text = msg?.content || msg?.prompt || message.content || message.prompt || '';
   return (
     <div className="flex justify-end animate-[fadeIn_0.2s_ease]">
       <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-xl rounded-br-sm">
         <div className="font-mono text-[10px] font-semibold opacity-70 mb-1">You</div>
         <div className="font-mono text-[13px] leading-normal whitespace-pre-wrap select-text">
-          {message.content || message.prompt}
+          {text}
         </div>
       </div>
     </div>
   );
 }
 
-function AssistantText({ message }: { message: any }) {
+function AssistantText({ message }: { message: Message }) {
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="pl-3 border-l-2 border-primary/40">
@@ -80,8 +83,8 @@ function AssistantText({ message }: { message: any }) {
             streaming{'…'}
           </span>
         </div>
-        <div className="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words select-text">
-          <FormattedText text={message.text} />
+        <div className="text-foreground select-text">
+          <MarkdownRenderer content={message.text || ''} />
         </div>
       </div>
     </div>
@@ -95,7 +98,7 @@ function ResultMessage({
   onDismissPlan,
   onOpenReview,
 }: {
-  message: any;
+  message: Message;
   isRunning?: boolean;
   onExecutePlan?: (messageId: string) => void;
   onDismissPlan?: (messageId: string) => void;
@@ -128,8 +131,8 @@ function ResultMessage({
             </>
           ) : null}
         </div>
-        <div className="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words select-text">
-          <FormattedText text={message.text} />
+        <div className="text-foreground select-text">
+          <MarkdownRenderer content={message.text || ''} />
         </div>
         {(message.cost || message.duration_ms) ? (
           <div className="flex gap-2 mt-2.5 pt-2 border-t border-border/30">
@@ -170,10 +173,10 @@ function ToolStatusIcon({ status }: { status?: 'running' | 'done' | 'error' }) {
   );
 }
 
-function ToolUseMessage({ message }: { message: any }) {
+function ToolUseMessage({ message }: { message: Message }) {
   const [expanded, setExpanded] = useState(false);
   const toolName = message.tool || 'Tool';
-  const input = message.input || {};
+  const input = (message.input || {}) as Record<string, string>;
   const toolStatus: 'running' | 'done' | 'error' = message.status || 'running';
 
   const borderColor = toolStatus === 'error'
@@ -218,7 +221,14 @@ function ToolUseMessage({ message }: { message: any }) {
             </div>
             {message.output ? (
               <div>
-                <div className="font-mono text-[10px] text-muted-foreground/70 mb-0.5">Output</div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-mono text-[10px] text-muted-foreground/70">Output</span>
+                  {message.is_truncated && message.full_length ? (
+                    <span className="font-mono text-[10px] text-warning">
+                      ({message.output.length.toLocaleString()}/{message.full_length.toLocaleString()}자 표시)
+                    </span>
+                  ) : null}
+                </div>
                 <pre className={cn(
                   'font-mono text-[11px] bg-input p-2 rounded-sm overflow-auto max-h-[300px] whitespace-pre-wrap select-text',
                   message.is_error ? 'text-destructive' : 'text-muted-foreground'
@@ -234,7 +244,7 @@ function ToolUseMessage({ message }: { message: any }) {
   );
 }
 
-function FileChangeMessage({ message }: { message: any }) {
+function FileChangeMessage({ message }: { message: Message }) {
   return (
     <div className="flex items-center gap-1.5 px-2 py-1 animate-[fadeIn_0.2s_ease]">
       <span className="text-xs">{'\u{1F4DD}'}</span>
@@ -248,7 +258,7 @@ function FileChangeMessage({ message }: { message: any }) {
   );
 }
 
-function ErrorMessage({ message }: { message: any }) {
+function ErrorMessage({ message }: { message: Message }) {
   const errorText = message.message || message.text || 'Unknown error';
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
@@ -262,7 +272,7 @@ function ErrorMessage({ message }: { message: any }) {
   );
 }
 
-function StderrMessage({ message }: { message: any }) {
+function StderrMessage({ message }: { message: Message }) {
   return (
     <div className="px-2 py-1 animate-[fadeIn_0.2s_ease]">
       <pre className="font-mono text-[11px] text-warning whitespace-pre-wrap opacity-70">
@@ -272,7 +282,7 @@ function StderrMessage({ message }: { message: any }) {
   );
 }
 
-function SystemMessage({ message }: { message: any }) {
+function SystemMessage({ message }: { message: Message }) {
   return (
     <div className="text-center p-1 animate-[fadeIn_0.2s_ease]">
       <span className="font-mono text-[11px] text-muted-foreground/70 italic">
@@ -282,7 +292,7 @@ function SystemMessage({ message }: { message: any }) {
   );
 }
 
-function EventMessage({ message }: { message: any }) {
+function EventMessage({ message }: { message: Message }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <Collapsible
@@ -292,7 +302,7 @@ function EventMessage({ message }: { message: any }) {
     >
       <CollapsibleTrigger asChild>
         <span className="font-mono text-[10px] text-muted-foreground/70">
-          Event: {message.event?.type || 'unknown'}
+          Event: {String(message.event?.type || 'unknown')}
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -304,7 +314,7 @@ function EventMessage({ message }: { message: any }) {
   );
 }
 
-function PermissionRequestMessage({ message }: { message: any }) {
+function PermissionRequestMessage({ message }: { message: Message }) {
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="flex items-center gap-2 px-3 py-2 bg-warning/10 border border-warning/20 rounded-sm border-l-[3px] border-l-warning">

@@ -35,6 +35,8 @@ export interface Message {
   event?: Record<string, unknown>;
   cost?: number;
   duration_ms?: number;
+  is_truncated?: boolean;
+  full_length?: number;
   timestamp?: string;
   mode?: 'normal' | 'plan';
   planExecuted?: boolean;
