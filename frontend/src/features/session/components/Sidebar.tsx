@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { ChevronDown, ChevronUp, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -202,10 +203,32 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-border">
-        <div className="font-mono text-[11px] text-muted-foreground">Claude Code CLI</div>
-        <div className="font-mono text-[10px] text-muted-foreground/70">Dashboard v1.0</div>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-mono text-[11px] text-muted-foreground">Claude Code CLI</div>
+            <div className="font-mono text-[10px] text-muted-foreground/70">Dashboard v1.0</div>
+          </div>
+          <ThemeToggle />
+        </div>
       </div>
     </aside>
+  );
+}
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === 'dark';
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      aria-label="테마 변경"
+    >
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </Button>
   );
 }
 

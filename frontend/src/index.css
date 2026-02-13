@@ -8,7 +8,73 @@
 @layer base {
   :root {
     /* ==========================================================================
-       Deep Space Color Palette - HSL format for shadcn/ui
+       Catppuccin Latte (Light) Color Palette - HSL format for shadcn/ui
+       ========================================================================== */
+    --background: 220 23% 95%;
+    --foreground: 234 16% 35%;
+    --card: 220 22% 92%;
+    --card-foreground: 234 16% 35%;
+    --popover: 220 23% 95%;
+    --popover-foreground: 234 16% 35%;
+    --primary: 266 85% 58%;
+    --primary-foreground: 220 23% 95%;
+    --secondary: 223 16% 83%;
+    --secondary-foreground: 234 16% 35%;
+    --muted: 223 16% 83%;
+    --muted-foreground: 233 10% 47%;
+    --accent: 266 85% 58%;
+    --accent-foreground: 220 23% 95%;
+    --destructive: 347 87% 44%;
+    --destructive-foreground: 220 23% 95%;
+    --border: 225 14% 77%;
+    --border-bright: 227 12% 71%;
+    --input: 220 22% 92%;
+    --ring: 266 85% 58%;
+    --radius: 0.625rem;
+
+    /* Semantic colors */
+    --success: 109 58% 40%;
+    --info: 220 91% 54%;
+    --warning: 35 77% 49%;
+
+    /* Sidebar */
+    --sidebar-background: 220 22% 92%;
+    --sidebar-foreground: 234 16% 35%;
+    --sidebar-border: 225 14% 77%;
+
+    /* Legacy hex variables (Catppuccin Latte) */
+    --bg-primary: #eff1f5;
+    --bg-secondary: #e6e9ef;
+    --bg-tertiary: #dce0e8;
+    --bg-card: #e6e9ef;
+    --bg-input: #e6e9ef;
+    --bg-hover: #ccd0da;
+    --text-primary: #4c4f69;
+    --text-secondary: #5c5f77;
+    --text-muted: #6c6f85;
+    --text-dim: #7c7f93;
+    --accent-bright: #8839ef;
+    --accent-dim: #7628e0;
+    --accent-glow: rgba(136, 57, 239, 0.15);
+
+    /* Font Override */
+    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* Shadow (light theme) */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 20px rgba(136, 57, 239, 0.08);
+
+    /* Radius Override */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+  }
+
+  .dark {
+    /* ==========================================================================
+       Deep Space (Dark) Color Palette - HSL format for shadcn/ui
        ========================================================================== */
     --background: 220 50% 5%;
     --foreground: 215 25% 90%;
@@ -30,7 +96,6 @@
     --border-bright: 215 20% 27%;
     --input: 220 45% 8%;
     --ring: 38 92% 50%;
-    --radius: 0.625rem;
 
     /* Semantic colors */
     --success: 142 71% 45%;
@@ -57,19 +122,11 @@
     --accent-dim: #d97706;
     --accent-glow: rgba(245, 158, 11, 0.15);
 
-    /* Font Override */
-    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-
-    /* Shadow Override (deeper for dark theme) */
+    /* Shadow (deeper for dark theme) */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
     --shadow-glow: 0 0 20px rgba(245, 158, 11, 0.1);
-
-    /* Radius Override */
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 16px;
   }
 
   * {
@@ -85,6 +142,7 @@
   body {
     @apply bg-background text-foreground overflow-hidden antialiased;
     font-family: var(--font-sans);
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
