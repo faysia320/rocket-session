@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { config } from '../../../config/env';
 
-const WS_BASE = `ws://${window.location.hostname}:8000`;
+/**
+ * WebSocket URL을 현재 페이지 기반으로 동적 생성.
+ * Vite proxy를 통해 /ws 경로가 백엔드로 프록시됩니다.
+ */
+function getWsUrl(sessionId) {
+  const wsBase =
+    config.WS_BASE_URL ||
+    `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+  return `${wsBase}/ws/${sessionId}`;
+}
 
 export function useClaudeSocket(sessionId) {
   const wsRef = useRef(null);
@@ -14,7 +24,7 @@ export function useClaudeSocket(sessionId) {
   const connect = useCallback(() => {
     if (!sessionId) return;
 
-    const ws = new WebSocket(`${WS_BASE}/ws/${sessionId}`);
+    const ws = new WebSocket(getWsUrl(sessionId));
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -34,7 +44,6 @@ export function useClaudeSocket(sessionId) {
     ws.onclose = () => {
       setConnected(false);
       console.log('[WS] Disconnected');
-      // Auto-reconnect after 3s
       reconnectTimer.current = setTimeout(() => connect(), 3000);
     };
 
@@ -47,16 +56,22 @@ export function useClaudeSocket(sessionId) {
     switch (data.type) {
       case 'session_state':
         setSessionInfo(data.session);
-        if (data.history) setMessages(data.history.map(h => ({
-          type: h.role === 'user' ? 'user_message' : 'result',
-          message: h,
-          text: h.content,
-          timestamp: h.timestamp,
-        })));
+        if (data.history)
+          setMessages(
+            data.history.map((h) => ({
+              type: h.role === 'user' ? 'user_message' : 'result',
+              message: h,
+              text: h.content,
+              timestamp: h.timestamp,
+            })),
+          );
         break;
 
       case 'session_info':
-        setSessionInfo(prev => ({ ...prev, claude_session_id: data.claude_session_id }));
+        setSessionInfo((prev) => ({
+          ...prev,
+          claude_session_id: data.claude_session_id,
+        }));
         break;
 
       case 'status':
@@ -64,14 +79,13 @@ export function useClaudeSocket(sessionId) {
         break;
 
       case 'user_message':
-        setMessages(prev => [...prev, data]);
+        setMessages((prev) => [...prev, data]);
         break;
 
       case 'assistant_text':
-        setMessages(prev => {
+        setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (last && last.type === 'assistant_text') {
-            // Replace with latest (Claude sends full text each time)
             return [...prev.slice(0, -1), data];
           }
           return [...prev, data];
@@ -79,39 +93,47 @@ export function useClaudeSocket(sessionId) {
         break;
 
       case 'tool_use':
-        setMessages(prev => [...prev, data]);
+        setMessages((prev) => [...prev, data]);
         break;
 
       case 'file_change':
-        setFileChanges(prev => [...prev, data.change]);
+        setFileChanges((prev) => [...prev, data.change]);
         break;
 
       case 'result':
-        setMessages(prev => {
-          // Remove the streaming assistant_text, replace with final result
-          const filtered = prev.filter(m => m.type !== 'assistant_text' || prev.indexOf(m) !== prev.length - 1);
-          // If last was assistant_text, remove it
-          const cleaned = prev[prev.length - 1]?.type === 'assistant_text' ? prev.slice(0, -1) : prev;
+        setMessages((prev) => {
+          const cleaned =
+            prev[prev.length - 1]?.type === 'assistant_text'
+              ? prev.slice(0, -1)
+              : prev;
           return [...cleaned, data];
         });
         break;
 
       case 'error':
-        setMessages(prev => [...prev, data]);
+        setMessages((prev) => [...prev, data]);
         break;
 
       case 'stderr':
-        setMessages(prev => [...prev, { type: 'stderr', text: data.text }]);
+        setMessages((prev) => [
+          ...prev,
+          { type: 'stderr', text: data.text },
+        ]);
         break;
 
       case 'stopped':
         setStatus('idle');
-        setMessages(prev => [...prev, { type: 'system', text: 'Session stopped by user.' }]);
+        setMessages((prev) => [
+          ...prev,
+          { type: 'system', text: 'Session stopped by user.' },
+        ]);
         break;
 
       case 'event':
-        // generic events
-        setMessages(prev => [...prev, { type: 'event', event: data.event }]);
+        setMessages((prev) => [
+          ...prev,
+          { type: 'event', event: data.event },
+        ]);
         break;
 
       default:
@@ -129,11 +151,13 @@ export function useClaudeSocket(sessionId) {
 
   const sendPrompt = useCallback((prompt, allowedTools) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'prompt',
-        prompt,
-        allowed_tools: allowedTools,
-      }));
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'prompt',
+          prompt,
+          allowed_tools: allowedTools,
+        }),
+      );
     }
   }, []);
 

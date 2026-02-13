@@ -15,7 +15,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
       {/* Header */}
       <div style={styles.header}>
         <div style={styles.logo}>
-          <span style={styles.logoIcon}>◆</span>
+          <span style={styles.logoIcon}>{'\u25C6'}</span>
           <span style={styles.logoText}>CC Dashboard</span>
         </div>
       </div>
@@ -28,13 +28,17 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
               style={styles.input}
               placeholder="Working directory (optional)"
               value={workDir}
-              onChange={e => setWorkDir(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
+              onChange={(e) => setWorkDir(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               autoFocus
             />
             <div style={styles.newActions}>
-              <button style={styles.createBtn} onClick={handleCreate}>Create</button>
-              <button style={styles.cancelBtn} onClick={() => setShowInput(false)}>Cancel</button>
+              <button style={styles.createBtn} onClick={handleCreate}>
+                Create
+              </button>
+              <button style={styles.cancelBtn} onClick={() => setShowInput(false)}>
+                Cancel
+              </button>
             </div>
           </div>
         ) : (
@@ -55,7 +59,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
         {sessions.length === 0 ? (
           <div style={styles.emptyList}>No active sessions</div>
         ) : (
-          sessions.map(s => (
+          sessions.map((s) => (
             <div
               key={s.id}
               style={{
@@ -65,23 +69,32 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
               onClick={() => onSelect(s.id)}
             >
               <div style={styles.itemTop}>
-                <span style={{
-                  ...styles.statusDot,
-                  backgroundColor: s.status === 'running' ? 'var(--success)' :
-                                   s.status === 'error' ? 'var(--error)' : 'var(--text-muted)',
-                }} />
+                <span
+                  style={{
+                    ...styles.statusDot,
+                    backgroundColor:
+                      s.status === 'running'
+                        ? 'var(--success)'
+                        : s.status === 'error'
+                          ? 'var(--error)'
+                          : 'var(--text-muted)',
+                  }}
+                />
                 <span style={styles.itemId}>{s.id}</span>
                 <button
                   style={styles.deleteBtn}
-                  onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(s.id);
+                  }}
                   title="Delete session"
                 >
-                  ×
+                  {'\u00D7'}
                 </button>
               </div>
               <div style={styles.itemMeta}>
                 <span style={styles.metaText}>{s.message_count} msgs</span>
-                <span style={styles.metaDot}>·</span>
+                <span style={styles.metaDot}>{'\u00B7'}</span>
                 <span style={styles.metaText}>{s.file_changes_count} changes</span>
               </div>
               <div style={styles.itemPath} title={s.work_dir}>
@@ -103,7 +116,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
 
 function truncatePath(p) {
   if (!p) return '~';
-  const parts = p.split('/');
+  const parts = p.split(/[/\\]/);
   if (parts.length <= 3) return p;
   return '~/' + parts.slice(-2).join('/');
 }

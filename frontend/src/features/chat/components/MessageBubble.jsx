@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FormattedText } from '../../../components/ui/FormattedText';
 
 export function MessageBubble({ message }) {
   const { type } = message;
@@ -43,8 +44,8 @@ function AssistantText({ message }) {
     <div style={styles.assistantRow}>
       <div style={styles.assistantBubble}>
         <div style={styles.assistantLabel}>
-          <span style={styles.claudeIcon}>◆</span> Claude
-          <span style={styles.streaming}>streaming…</span>
+          <span style={styles.claudeIcon}>{'\u25C6'}</span> Claude
+          <span style={styles.streaming}>streaming{'\u2026'}</span>
         </div>
         <div style={styles.assistantText}>
           <FormattedText text={message.text} />
@@ -59,17 +60,25 @@ function ResultMessage({ message }) {
     <div style={styles.assistantRow}>
       <div style={styles.resultBubble}>
         <div style={styles.assistantLabel}>
-          <span style={styles.claudeIcon}>◆</span> Claude
+          <span style={styles.claudeIcon}>{'\u25C6'}</span> Claude
         </div>
         <div style={styles.assistantText}>
           <FormattedText text={message.text} />
         </div>
-        {(message.cost || message.duration_ms) && (
+        {(message.cost || message.duration_ms) ? (
           <div style={styles.resultMeta}>
-            {message.cost && <span style={styles.metaChip}>💰 ${Number(message.cost).toFixed(4)}</span>}
-            {message.duration_ms && <span style={styles.metaChip}>⏱ {(message.duration_ms / 1000).toFixed(1)}s</span>}
+            {message.cost ? (
+              <span style={styles.metaChip}>
+                {'\u{1F4B0}'} ${Number(message.cost).toFixed(4)}
+              </span>
+            ) : null}
+            {message.duration_ms ? (
+              <span style={styles.metaChip}>
+                {'\u23F1'} {(message.duration_ms / 1000).toFixed(1)}s
+              </span>
+            ) : null}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -82,36 +91,39 @@ function ToolUseMessage({ message }) {
 
   const getToolColor = (name) => {
     const colors = {
-      'Write': '#22c55e',
-      'Edit': '#3b82f6',
-      'MultiEdit': '#3b82f6',
-      'Read': '#8b5cf6',
-      'Bash': '#f59e0b',
-      'Grep': '#ec4899',
-      'Glob': '#06b6d4',
-      'TodoWrite': '#14b8a6',
+      Write: '#22c55e',
+      Edit: '#3b82f6',
+      MultiEdit: '#3b82f6',
+      Read: '#8b5cf6',
+      Bash: '#f59e0b',
+      Grep: '#ec4899',
+      Glob: '#06b6d4',
+      TodoWrite: '#14b8a6',
     };
     return colors[name] || '#94a3b8';
   };
 
   return (
-    <div style={styles.toolRow} onClick={() => setExpanded(p => !p)}>
+    <div style={styles.toolRow} onClick={() => setExpanded((p) => !p)}>
       <div style={styles.toolBubble}>
         <div style={styles.toolHeader}>
-          <span style={{ ...styles.toolDot, backgroundColor: getToolColor(toolName) }} />
+          <span
+            style={{ ...styles.toolDot, backgroundColor: getToolColor(toolName) }}
+          />
           <span style={styles.toolName}>{toolName}</span>
           {input.file_path || input.path || input.command ? (
             <span style={styles.toolTarget}>
-              {input.file_path || input.path || (input.command?.slice(0, 60) + (input.command?.length > 60 ? '…' : ''))}
+              {input.file_path ||
+                input.path ||
+                (input.command?.slice(0, 60) +
+                  (input.command?.length > 60 ? '\u2026' : ''))}
             </span>
           ) : null}
-          <span style={styles.expandIcon}>{expanded ? '▾' : '▸'}</span>
+          <span style={styles.expandIcon}>{expanded ? '\u25BE' : '\u25B8'}</span>
         </div>
-        {expanded && (
-          <pre style={styles.toolDetail}>
-            {JSON.stringify(input, null, 2)}
-          </pre>
-        )}
+        {expanded ? (
+          <pre style={styles.toolDetail}>{JSON.stringify(input, null, 2)}</pre>
+        ) : null}
       </div>
     </div>
   );
@@ -120,9 +132,10 @@ function ToolUseMessage({ message }) {
 function FileChangeMessage({ message }) {
   return (
     <div style={styles.fileChangeRow}>
-      <span style={styles.fileIcon}>📝</span>
+      <span style={styles.fileIcon}>{'\u{1F4DD}'}</span>
       <span style={styles.fileText}>
-        {message.change?.tool}: <code style={styles.filePath}>{message.change?.file}</code>
+        {message.change?.tool}:{' '}
+        <code style={styles.filePath}>{message.change?.file}</code>
       </span>
     </div>
   );
@@ -132,7 +145,7 @@ function ErrorMessage({ message }) {
   return (
     <div style={styles.errorRow}>
       <div style={styles.errorBubble}>
-        <span style={styles.errorIcon}>⚠</span>
+        <span style={styles.errorIcon}>{'\u26A0'}</span>
         <span style={styles.errorText}>{message.message || message.text}</span>
       </div>
     </div>
@@ -158,55 +171,20 @@ function SystemMessage({ message }) {
 function EventMessage({ message }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div style={styles.eventRow} onClick={() => setExpanded(p => !p)}>
-      <span style={styles.eventLabel}>Event: {message.event?.type || 'unknown'}</span>
-      {expanded && (
-        <pre style={styles.eventDetail}>{JSON.stringify(message.event, null, 2)}</pre>
-      )}
+    <div style={styles.eventRow} onClick={() => setExpanded((p) => !p)}>
+      <span style={styles.eventLabel}>
+        Event: {message.event?.type || 'unknown'}
+      </span>
+      {expanded ? (
+        <pre style={styles.eventDetail}>
+          {JSON.stringify(message.event, null, 2)}
+        </pre>
+      ) : null}
     </div>
   );
 }
 
-function FormattedText({ text }) {
-  if (!text) return null;
-
-  // Simple code block detection
-  const parts = text.split(/(```[\s\S]*?```)/g);
-
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (part.startsWith('```') && part.endsWith('```')) {
-          const lines = part.slice(3, -3);
-          const firstNewline = lines.indexOf('\n');
-          const lang = firstNewline > 0 ? lines.slice(0, firstNewline).trim() : '';
-          const code = firstNewline > 0 ? lines.slice(firstNewline + 1) : lines;
-          return (
-            <pre key={i} style={styles.codeBlock}>
-              {lang && <div style={styles.codeLang}>{lang}</div>}
-              <code>{code}</code>
-            </pre>
-          );
-        }
-        // Inline code
-        const inlineParts = part.split(/(`[^`]+`)/g);
-        return (
-          <span key={i}>
-            {inlineParts.map((ip, j) => {
-              if (ip.startsWith('`') && ip.endsWith('`')) {
-                return <code key={j} style={styles.inlineCode}>{ip.slice(1, -1)}</code>;
-              }
-              return <span key={j}>{ip}</span>;
-            })}
-          </span>
-        );
-      })}
-    </>
-  );
-}
-
 const styles = {
-  // User messages
   userRow: {
     display: 'flex',
     justifyContent: 'flex-end',
@@ -232,8 +210,6 @@ const styles = {
     lineHeight: 1.5,
     whiteSpace: 'pre-wrap',
   },
-
-  // Assistant messages
   assistantRow: {
     display: 'flex',
     animation: 'fadeIn 0.2s ease',
@@ -294,8 +270,6 @@ const styles = {
     padding: '2px 8px',
     borderRadius: '8px',
   },
-
-  // Tool use
   toolRow: {
     animation: 'slideInLeft 0.2s ease',
     cursor: 'pointer',
@@ -350,8 +324,6 @@ const styles = {
     maxHeight: '200px',
     whiteSpace: 'pre-wrap',
   },
-
-  // File change
   fileChangeRow: {
     display: 'flex',
     alignItems: 'center',
@@ -371,8 +343,6 @@ const styles = {
     padding: '1px 4px',
     borderRadius: '3px',
   },
-
-  // Error
   errorRow: { animation: 'fadeIn 0.2s ease' },
   errorBubble: {
     display: 'flex',
@@ -389,8 +359,6 @@ const styles = {
     fontSize: '12px',
     color: 'var(--error)',
   },
-
-  // Stderr
   stderrRow: {
     padding: '4px 8px',
     animation: 'fadeIn 0.2s ease',
@@ -402,8 +370,6 @@ const styles = {
     whiteSpace: 'pre-wrap',
     opacity: 0.7,
   },
-
-  // System
   systemRow: {
     textAlign: 'center',
     padding: '4px',
@@ -415,8 +381,6 @@ const styles = {
     color: 'var(--text-dim)',
     fontStyle: 'italic',
   },
-
-  // Event
   eventRow: {
     padding: '4px 8px',
     cursor: 'pointer',
@@ -438,35 +402,5 @@ const styles = {
     maxHeight: '120px',
     overflow: 'auto',
     whiteSpace: 'pre-wrap',
-  },
-
-  // Code formatting
-  codeBlock: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: '12px',
-    background: 'var(--bg-input)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-sm)',
-    padding: '10px 12px',
-    margin: '8px 0',
-    overflow: 'auto',
-    whiteSpace: 'pre',
-    lineHeight: 1.5,
-  },
-  codeLang: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: '10px',
-    color: 'var(--text-dim)',
-    marginBottom: '6px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-  inlineCode: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: '12px',
-    background: 'var(--bg-input)',
-    padding: '1px 5px',
-    borderRadius: '3px',
-    border: '1px solid var(--border)',
   },
 };

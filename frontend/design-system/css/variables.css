@@ -1,0 +1,445 @@
+/**
+ * Design System - CSS Variables
+ *
+ * 디자인 토큰을 CSS 변수로 정의합니다.
+ * 이 파일은 tokens/*.ts의 값들을 CSS에서 사용할 수 있게 합니다.
+ *
+ * 사용법:
+ * 1. index.css에서 @import '../design-system/css/variables.css';
+ * 2. 또는 Tailwind config에서 참조
+ */
+
+/* =============================================================================
+   Spacing Scale
+   ============================================================================= */
+:root {
+  /* Base spacing unit: 4px */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem; /* 2px */
+  --space-1: 0.25rem; /* 4px */
+  --space-1-5: 0.375rem; /* 6px */
+  --space-2: 0.5rem; /* 8px */
+  --space-2-5: 0.625rem; /* 10px */
+  --space-3: 0.75rem; /* 12px */
+  --space-3-5: 0.875rem; /* 14px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+  --space-7: 1.75rem; /* 28px */
+  --space-8: 2rem; /* 32px */
+  --space-9: 2.25rem; /* 36px */
+  --space-10: 2.5rem; /* 40px */
+  --space-11: 2.75rem; /* 44px */
+  --space-12: 3rem; /* 48px */
+  --space-14: 3.5rem; /* 56px */
+  --space-16: 4rem; /* 64px */
+  --space-20: 5rem; /* 80px */
+  --space-24: 6rem; /* 96px */
+}
+
+/* =============================================================================
+   Typography
+   ============================================================================= */
+:root {
+  /* Font Families */
+  --font-sans: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+
+  /* Font Sizes */
+  --font-size-2xs: 0.625rem; /* 10px */
+  --font-size-xs: 0.6875rem; /* 11px */
+  --font-size-sm: 0.75rem; /* 12px */
+  --font-size-md: 0.8125rem; /* 13px */
+  --font-size-base: 0.875rem; /* 14px */
+  --font-size-lg: 1rem; /* 16px */
+  --font-size-xl: 1.125rem; /* 18px */
+  --font-size-2xl: 1.25rem; /* 20px */
+  --font-size-3xl: 1.5rem; /* 24px */
+  --font-size-4xl: 1.875rem; /* 30px */
+  --font-size-5xl: 2.25rem; /* 36px */
+
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Line Heights */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* Letter Spacing */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+}
+
+/* =============================================================================
+   Border Radius
+   ============================================================================= */
+:root {
+  --radius-none: 0;
+  --radius-sm: 0.125rem; /* 2px */
+  --radius-md: 0.25rem; /* 4px */
+  --radius-default: 0.375rem; /* 6px */
+  --radius-lg: 0.5rem; /* 8px */
+  --radius-xl: 0.75rem; /* 12px */
+  --radius-2xl: 1rem; /* 16px */
+  --radius-3xl: 1.5rem; /* 24px */
+  --radius-full: 9999px;
+
+  /* Shadcn/Tailwind 호환 (기존 --radius 유지) */
+  /* --radius: 0.5rem; <- index.css에서 이미 정의됨 */
+}
+
+/* =============================================================================
+   Component Sizes
+   ============================================================================= */
+:root {
+  /* Input Heights */
+  --input-height-xs: 1.25rem; /* 20px */
+  --input-height-sm: 1.75rem; /* 28px */
+  --input-height-md: 2.25rem; /* 36px */
+  --input-height-lg: 2.75rem; /* 44px */
+
+  /* Button Heights (Input과 동일) */
+  --button-height-xs: var(--input-height-xs);
+  --button-height-sm: var(--input-height-sm);
+  --button-height-md: var(--input-height-md);
+  --button-height-lg: var(--input-height-lg);
+
+  /* Icon Sizes */
+  --icon-size-xs: 0.75rem; /* 12px */
+  --icon-size-sm: 0.875rem; /* 14px */
+  --icon-size-md: 1rem; /* 16px */
+  --icon-size-lg: 1.25rem; /* 20px */
+  --icon-size-xl: 1.5rem; /* 24px */
+  --icon-size-2xl: 2rem; /* 32px */
+  --icon-size-3xl: 2.5rem; /* 40px */
+  --icon-size-4xl: 3rem; /* 48px */
+}
+
+/* =============================================================================
+   Layout
+   ============================================================================= */
+:root {
+  /* Page Layout */
+  --layout-page-padding: var(--space-6);
+  --layout-section-gap: var(--space-8);
+
+  /* Sidebar */
+  --layout-sidebar-width: 240px;
+  --layout-sidebar-collapsed-width: 48px;
+
+  /* Header & Footer */
+  --layout-header-height: var(--space-14);
+  --layout-tab-bar-height: var(--space-10);
+  --layout-status-bar-height: var(--space-6);
+}
+
+/* =============================================================================
+   Breakpoints
+   ============================================================================= */
+:root {
+  /* Breakpoint Scale (Tailwind 호환) */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* Container Max Widths */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+  --container-prose: 65ch;
+
+  /* Container Padding (화면 크기별 기본 여백) */
+  --container-padding-base: 1rem; /* 16px - 모바일 */
+  --container-padding-sm: 1.5rem; /* 24px - sm 이상 */
+  --container-padding-lg: 2rem; /* 32px - lg 이상 */
+  --container-padding-xl: 3rem; /* 48px - xl 이상 */
+}
+
+/* =============================================================================
+   Primitive Colors (참조용)
+   ============================================================================= */
+:root {
+  /* Gray Scale */
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f5f5f5;
+  --color-gray-200: #e5e5e5;
+  --color-gray-300: #d4d4d4;
+  --color-gray-400: #a3a3a3;
+  --color-gray-500: #737373;
+  --color-gray-600: #525252;
+  --color-gray-700: #404040;
+  --color-gray-800: #262626;
+  --color-gray-900: #171717;
+  --color-gray-950: #0a0a0a;
+
+  /* Blue */
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-300: #93c5fd;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-800: #1e40af;
+  --color-blue-900: #1e3a8a;
+
+  /* Red */
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+  --color-red-900: #7f1d1d;
+
+  /* Green */
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-300: #86efac;
+  --color-green-400: #4ade80;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
+  --color-green-800: #166534;
+  --color-green-900: #14532d;
+
+  /* Yellow */
+  --color-yellow-50: #fefce8;
+  --color-yellow-100: #fef9c3;
+  --color-yellow-200: #fef08a;
+  --color-yellow-300: #fde047;
+  --color-yellow-400: #facc15;
+  --color-yellow-500: #eab308;
+  --color-yellow-600: #ca8a04;
+  --color-yellow-700: #a16207;
+  --color-yellow-800: #854d0e;
+  --color-yellow-900: #713f12;
+
+  /* VS Code Dark Theme */
+  --color-vscode-background: #1e1e1e;
+  --color-vscode-surface: #252526;
+  --color-vscode-surface-hover: #2a2d2e;
+  --color-vscode-border: #3c3c3c;
+  --color-vscode-border-light: #4c4c4c;
+  --color-vscode-text: #d4d4d4;
+  --color-vscode-text-muted: #858585;
+}
+
+/* =============================================================================
+   Scrollbar
+   ============================================================================= */
+:root {
+  --scrollbar-width: 10px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: hsl(var(--border));
+  --scrollbar-thumb-hover: hsl(var(--muted-foreground) / 0.5);
+}
+
+.dark {
+  --scrollbar-track: var(--color-vscode-background);
+  --scrollbar-thumb: var(--color-vscode-border-light);
+  --scrollbar-thumb-hover: var(--color-gray-500);
+}
+
+/* =============================================================================
+   Wijmo Grid Component
+   ============================================================================= */
+:root {
+  /* Wijmo Light Mode */
+  --wijmo-background: #ffffff;
+  --wijmo-text: #28364e;
+  --wijmo-header: #dee0ef;
+  --wijmo-header-text: #434c60;
+  --wijmo-selected: #e2e7fa;
+  --wijmo-selected-text: #4568e0;
+  --wijmo-border: #bbc6d9;
+  --wijmo-input-border: var(--color-gray-300);
+  --wijmo-input-text: var(--color-gray-800);
+}
+
+.dark {
+  /* Wijmo Dark Mode */
+  --wijmo-background: var(--color-vscode-background);
+  --wijmo-text: var(--color-gray-300);
+  --wijmo-header: var(--color-vscode-surface);
+  --wijmo-header-text: #9c9fa7;
+  --wijmo-selected: #3a3c4c;
+  --wijmo-selected-text: #ffffff;
+  --wijmo-border: #3a3a3a;
+  --wijmo-input-border: var(--color-vscode-border-light);
+  --wijmo-input-text: var(--color-gray-300);
+}
+
+/* =============================================================================
+   Shadows
+   ============================================================================= */
+:root {
+  /* Elevation Shadows */
+  --shadow-none: none;
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+
+  /* Component Shadows */
+  --shadow-button: var(--shadow-sm);
+  --shadow-card: var(--shadow-sm);
+  --shadow-dropdown: var(--shadow-lg);
+  --shadow-modal: var(--shadow-xl);
+  --shadow-tooltip: var(--shadow-md);
+
+  /* Focus Ring */
+  --ring-width: 2px;
+  --ring-offset: 0px;
+}
+
+.dark {
+  /* Darker shadows for dark mode */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.6);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.3);
+}
+
+/* =============================================================================
+   Transitions
+   ============================================================================= */
+:root {
+  /* Duration */
+  --duration-0: 0ms;
+  --duration-75: 75ms;
+  --duration-100: 100ms;
+  --duration-150: 150ms;
+  --duration-200: 200ms;
+  --duration-300: 300ms;
+  --duration-500: 500ms;
+  --duration-700: 700ms;
+  --duration-1000: 1000ms;
+
+  /* Easing */
+  --ease-linear: linear;
+  --ease-in: ease-in;
+  --ease-out: ease-out;
+  --ease-in-out: ease-in-out;
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* Transition Presets */
+  --transition-colors: color, background-color, border-color, box-shadow, opacity;
+  --transition-button: var(--transition-colors) var(--duration-150) var(--ease-smooth);
+  --transition-input: border-color var(--duration-150) var(--ease-smooth),
+    box-shadow var(--duration-150) var(--ease-smooth);
+  --transition-dropdown: opacity var(--duration-150) var(--ease-out),
+    transform var(--duration-150) var(--ease-out);
+  --transition-modal: opacity var(--duration-200) var(--ease-out),
+    transform var(--duration-200) var(--ease-out);
+  --transition-sidebar: width var(--duration-300) var(--ease-smooth),
+    transform var(--duration-300) var(--ease-smooth);
+}
+
+/* =============================================================================
+   Z-Index
+   ============================================================================= */
+:root {
+  --z-behind: -1;
+  --z-base: 0;
+  --z-raised: 10;
+  --z-dropdown: 20;
+  --z-sticky: 30;
+  --z-fixed: 40;
+  --z-overlay: 50;
+  --z-modal: 60;
+  --z-popover: 70;
+  --z-tooltip: 80;
+  --z-toast: 90;
+  --z-max: 100;
+}
+
+/* =============================================================================
+   Semantic Status Colors
+   ============================================================================= */
+:root {
+  /* Deploy Status Colors */
+  --status-dev: #3b82f6;
+  --status-dev-bg: rgb(59 130 246 / 0.15);
+  --status-staging: #f59e0b;
+  --status-staging-bg: rgb(245 158 11 / 0.15);
+  --status-prod: #ef4444;
+  --status-prod-bg: rgb(239 68 68 / 0.15);
+
+  /* Alert Colors */
+  --alert-error-bg: #fee2e2;
+  --alert-error-text: #7f1d1d;
+}
+
+.dark {
+  --alert-error-bg: #3f1d1d;
+  --alert-error-text: #fee2e2;
+}
+
+/* =============================================================================
+   Type Badge Colors
+   ============================================================================= */
+:root {
+  /* String Type (Emerald) - Light mode */
+  --badge-type-string-bg: 152 76% 90%; /* emerald-100에 가까운 밝은 배경 */
+  --badge-type-string-text: 158 64% 32%; /* emerald-700 - 진한 텍스트 */
+  --badge-type-string-border: 156 72% 67%; /* emerald-400 - 뚜렷한 테두리 */
+
+  /* Number Type (Blue) - Light mode */
+  --badge-type-number-bg: 214 95% 93%; /* blue-100에 가까운 밝은 배경 */
+  --badge-type-number-text: 221 83% 40%; /* blue-700 - 진한 텍스트 */
+  --badge-type-number-border: 213 94% 68%; /* blue-400 - 뚜렷한 테두리 */
+
+  /* Array Type (Purple) - Light mode */
+  --badge-type-array-bg: 270 91% 93%; /* purple-100에 가까운 밝은 배경 */
+  --badge-type-array-text: 272 72% 40%; /* purple-700 - 진한 텍스트 */
+  --badge-type-array-border: 270 76% 65%; /* purple-400 - 뚜렷한 테두리 */
+}
+
+.dark {
+  /* String Type (Emerald) - Dark mode */
+  --badge-type-string-bg: 155 40% 16%; /* 어두운 에메랄드 배경 */
+  --badge-type-string-text: 156 72% 67%; /* emerald-400 - 밝은 텍스트 */
+  --badge-type-string-border: 155 47% 30%; /* 중간 톤 테두리 */
+
+  /* Number Type (Blue) - Dark mode */
+  --badge-type-number-bg: 217 50% 18%; /* 어두운 블루 배경 */
+  --badge-type-number-text: 213 94% 68%; /* blue-400 - 밝은 텍스트 */
+  --badge-type-number-border: 217 70% 35%; /* 중간 톤 테두리 */
+
+  /* Array Type (Purple) - Dark mode */
+  --badge-type-array-bg: 272 40% 18%; /* 어두운 퍼플 배경 */
+  --badge-type-array-text: 270 76% 70%; /* purple-400 - 밝은 텍스트 */
+  --badge-type-array-border: 272 50% 32%; /* 중간 톤 테두리 */
+}

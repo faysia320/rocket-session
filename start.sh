@@ -15,11 +15,23 @@ if ! command -v python3 &> /dev/null; then
 fi
 echo "✅ Python3 found"
 
+if ! command -v uv &> /dev/null; then
+    echo "❌ uv not found. Please install uv: https://docs.astral.sh/uv/"
+    exit 1
+fi
+echo "✅ uv found"
+
 if ! command -v node &> /dev/null; then
     echo "❌ Node.js not found. Please install Node.js 18+"
     exit 1
 fi
 echo "✅ Node.js found"
+
+if ! command -v pnpm &> /dev/null; then
+    echo "❌ pnpm not found. Install with: npm install -g pnpm"
+    exit 1
+fi
+echo "✅ pnpm found"
 
 if ! command -v claude &> /dev/null; then
     echo "❌ Claude Code CLI not found."
@@ -38,12 +50,12 @@ if [ ! -f .env ]; then
     echo "📝 Created .env from .env.example - please edit CLAUDE_WORK_DIR"
 fi
 
-pip install -r requirements.txt --quiet 2>/dev/null || pip install -r requirements.txt --quiet --break-system-packages 2>/dev/null
+uv sync --quiet
 echo "✅ Backend dependencies installed"
 
 # Start backend in background
-echo "🚀 Starting backend on :8000..."
-uvicorn main:app --host 0.0.0.0 --port 8000 &
+echo "🚀 Starting backend on :8101..."
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8101 &
 BACKEND_PID=$!
 
 cd ..
@@ -52,17 +64,17 @@ cd ..
 echo ""
 echo "Setting up frontend..."
 cd frontend
-npm install --silent 2>/dev/null
+pnpm install --silent 2>/dev/null
 echo "✅ Frontend dependencies installed"
-
-# Start frontend
-echo "🚀 Starting frontend on :5173..."
-echo ""
-echo "═══════════════════════════════════════════════"
-echo "  Open http://localhost:5173 in your browser"
-echo "═══════════════════════════════════════════════"
-echo ""
-npm run dev
 
 # Cleanup on exit
 trap "kill $BACKEND_PID 2>/dev/null" EXIT
+
+# Start frontend
+echo "🚀 Starting frontend on :8100..."
+echo ""
+echo "═══════════════════════════════════════════════"
+echo "  Open http://localhost:8100 in your browser"
+echo "═══════════════════════════════════════════════"
+echo ""
+pnpm dev
