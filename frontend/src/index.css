@@ -1,0 +1,181 @@
+/* Design System Variables */
+@import '../design-system/css/variables.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ==========================================================================
+       Deep Space Color Palette - HSL format for shadcn/ui
+       ========================================================================== */
+    --background: 220 50% 5%;
+    --foreground: 215 25% 90%;
+    --card: 220 37% 7%;
+    --card-foreground: 215 25% 90%;
+    --popover: 220 37% 7%;
+    --popover-foreground: 215 25% 90%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 220 50% 5%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 215 25% 90%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 220 50% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --border-bright: 215 20% 27%;
+    --input: 220 45% 8%;
+    --ring: 38 92% 50%;
+    --radius: 0.625rem;
+
+    /* Semantic colors */
+    --success: 142 71% 45%;
+    --info: 217 91% 60%;
+    --warning: 38 92% 50%;
+
+    /* Sidebar */
+    --sidebar-background: 220 37% 7%;
+    --sidebar-foreground: 215 25% 90%;
+    --sidebar-border: 217 33% 17%;
+
+    /* Legacy Deep Space variables (그라데이션 호환) */
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111827;
+    --bg-tertiary: #1a2233;
+    --bg-card: #0f1520;
+    --bg-input: #0d1219;
+    --bg-hover: #1e293b;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-dim: #475569;
+    --accent-bright: #fbbf24;
+    --accent-dim: #d97706;
+    --accent-glow: rgba(245, 158, 11, 0.15);
+
+    /* Font Override */
+    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* Shadow Override (deeper for dark theme) */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(245, 158, 11, 0.1);
+
+    /* Radius Override */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full w-full;
+  }
+
+  body {
+    @apply bg-background text-foreground overflow-hidden antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-bright));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border-bright)) transparent;
+}
+
+/* Selection */
+::selection {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Accessibility: 애니메이션 줄이기 선호 사용자를 위한 설정 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
