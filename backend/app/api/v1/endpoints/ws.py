@@ -68,6 +68,11 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                     current_session.get("allowed_tools") if current_session else None
                 ) or settings.claude_allowed_tools
 
+                # 모드: 요청 > 세션 DB 설정 > 기본값
+                mode = data.get("mode") or (
+                    current_session.get("mode") if current_session else None
+                ) or "normal"
+
                 ts = datetime.utcnow().isoformat()
                 await manager.add_message(
                     session_id=session_id,
@@ -93,6 +98,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                         session_id,
                         ws_manager,
                         manager,
+                        mode=mode,
                     )
                 )
 

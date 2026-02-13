@@ -67,6 +67,7 @@ async def update_session(
         allowed_tools=req.allowed_tools,
         system_prompt=req.system_prompt,
         timeout_seconds=req.timeout_seconds,
+        mode=req.mode,
     )
     if not updated:
         raise HTTPException(404, "Session not found")

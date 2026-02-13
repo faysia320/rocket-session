@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TEXT NOT NULL,
     allowed_tools TEXT,
     system_prompt TEXT,
-    timeout_seconds INTEGER
+    timeout_seconds INTEGER,
+    mode TEXT NOT NULL DEFAULT 'normal'
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -60,6 +61,16 @@ class Database:
         await self._db.execute("PRAGMA journal_mode=WAL")
         await self._db.execute("PRAGMA foreign_keys=ON")
         await self._db.executescript(_SCHEMA)
+
+        # 마이그레이션: 기존 DB에 mode 컬럼이 없을 수 있음
+        try:
+            await self._db.execute(
+                "ALTER TABLE sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'"
+            )
+            await self._db.commit()
+        except Exception:
+            pass  # 이미 존재하면 무시
+
         await self._db.commit()
         logger.info("데이터베이스 초기화 완료: %s", self._db_path)
 
@@ -86,11 +97,12 @@ class Database:
         allowed_tools: str | None = None,
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
+        mode: str = "normal",
     ) -> dict:
         await self.conn.execute(
-            """INSERT INTO sessions (id, work_dir, status, created_at, allowed_tools, system_prompt, timeout_seconds)
-               VALUES (?, ?, 'idle', ?, ?, ?, ?)""",
-            (session_id, work_dir, created_at, allowed_tools, system_prompt, timeout_seconds),
+            """INSERT INTO sessions (id, work_dir, status, created_at, allowed_tools, system_prompt, timeout_seconds, mode)
+               VALUES (?, ?, 'idle', ?, ?, ?, ?, ?)""",
+            (session_id, work_dir, created_at, allowed_tools, system_prompt, timeout_seconds, mode),
         )
         await self.conn.commit()
         return await self.get_session(session_id)
@@ -142,6 +154,7 @@ class Database:
         allowed_tools: str | None = None,
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
+        mode: str | None = None,
     ) -> dict | None:
         fields = []
         values = []
@@ -154,6 +167,9 @@ class Database:
         if timeout_seconds is not None:
             fields.append("timeout_seconds = ?")
             values.append(timeout_seconds)
+        if mode is not None:
+            fields.append("mode = ?")
+            values.append(mode)
         if not fields:
             return await self.get_session(session_id)
         values.append(session_id)

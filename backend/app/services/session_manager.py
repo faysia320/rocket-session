@@ -125,12 +125,14 @@ class SessionManager:
         allowed_tools: str | None = None,
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
+        mode: str | None = None,
     ) -> dict | None:
         return await self._db.update_session_settings(
             session_id=session_id,
             allowed_tools=allowed_tools,
             system_prompt=system_prompt,
             timeout_seconds=timeout_seconds,
+            mode=mode,
         )
 
     @staticmethod
@@ -146,6 +148,7 @@ class SessionManager:
             allowed_tools=session.get("allowed_tools"),
             system_prompt=session.get("system_prompt"),
             timeout_seconds=session.get("timeout_seconds"),
+            mode=session.get("mode", "normal"),
         )
 
     @staticmethod
