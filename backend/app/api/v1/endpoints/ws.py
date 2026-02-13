@@ -81,7 +81,7 @@ async def _handle_prompt(
         "content": prompt,
         "timestamp": ts,
     }
-    await ws_manager.broadcast(
+    await ws_manager.broadcast_event(
         session_id, {"type": "user_message", "message": user_msg}
     )
 
@@ -111,7 +111,7 @@ async def _handle_stop(
     if runner_task and not runner_task.done():
         runner_task.cancel()
     await manager.kill_process(session_id)
-    await ws_manager.broadcast(session_id, {"type": "stopped"})
+    await ws_manager.broadcast_event(session_id, {"type": "stopped"})
 
 
 async def _handle_permission_respond(data: dict) -> None:
@@ -137,21 +137,48 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
         await ws.close()
         return
 
+    # last_seq 쿼리 파라미터 파싱 (재연결 시)
+    last_seq_param = ws.query_params.get("last_seq")
+    last_seq = int(last_seq_param) if last_seq_param and last_seq_param.isdigit() else None
+
     ws_manager.register(session_id, ws)
     runner_task: asyncio.Task | None = None
 
     try:
-        # 세션 정보 + 히스토리를 함께 전송
         session_with_counts = await manager.get_with_counts(session_id) or session
+        latest_seq = ws_manager.get_latest_seq(session_id)
 
-        history = await manager.get_history(session_id)
-        await ws.send_json(
-            {
-                "type": "session_state",
-                "session": manager.to_info_dict(session_with_counts),
-                "history": history,
-            }
-        )
+        if last_seq is not None:
+            # 재연결: 세션 상태만 전송 (히스토리 없음) + 놓친 이벤트 전송
+            await ws.send_json(
+                {
+                    "type": "session_state",
+                    "session": manager.to_info_dict(session_with_counts),
+                    "latest_seq": latest_seq,
+                    "is_reconnect": True,
+                }
+            )
+            # 놓친 이벤트 조회 및 전송
+            missed = await ws_manager.get_buffered_events_after(session_id, last_seq)
+            if missed:
+                await ws.send_json(
+                    {
+                        "type": "missed_events",
+                        "events": missed,
+                        "latest_seq": latest_seq,
+                    }
+                )
+        else:
+            # 최초 연결: 기존 로직 + latest_seq 필드 추가
+            history = await manager.get_history(session_id)
+            await ws.send_json(
+                {
+                    "type": "session_state",
+                    "session": manager.to_info_dict(session_with_counts),
+                    "history": history,
+                    "latest_seq": latest_seq,
+                }
+            )
 
         while True:
             data = await ws.receive_json()

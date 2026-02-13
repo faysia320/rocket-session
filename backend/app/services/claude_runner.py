@@ -187,7 +187,7 @@ class ClaudeRunner:
             await session_manager.update_claude_session_id(
                 session_id, event["session_id"]
             )
-            await ws_manager.broadcast(
+            await ws_manager.broadcast_event(
                 session_id,
                 {"type": "session_info", "claude_session_id": event["session_id"]},
             )
@@ -206,7 +206,7 @@ class ClaudeRunner:
             )
 
         else:
-            await ws_manager.broadcast(session_id, {"type": "event", "event": event})
+            await ws_manager.broadcast_event(session_id, {"type": "event", "event": event})
 
     async def _handle_assistant_event(
         self,
@@ -233,7 +233,7 @@ class ClaudeRunner:
                     "tool_use_id": tool_use_id,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
-                await ws_manager.broadcast(session_id, tool_event)
+                await ws_manager.broadcast_event(session_id, tool_event)
 
                 if tool_name in ("Write", "Edit", "MultiEdit"):
                     file_path = tool_input.get(
@@ -243,7 +243,7 @@ class ClaudeRunner:
                     await session_manager.add_file_change(
                         session_id, tool_name, file_path, ts
                     )
-                    await ws_manager.broadcast(
+                    await ws_manager.broadcast_event(
                         session_id,
                         {
                             "type": "file_change",
@@ -256,7 +256,7 @@ class ClaudeRunner:
                     )
 
         if current_text_holder[0]:
-            await ws_manager.broadcast(
+            await ws_manager.broadcast_event(
                 session_id,
                 {
                     "type": "assistant_text",
@@ -283,7 +283,7 @@ class ClaudeRunner:
                     )
                 else:
                     output_text = str(raw_content)
-                await ws_manager.broadcast(
+                await ws_manager.broadcast_event(
                     session_id,
                     {
                         "type": "tool_result",
@@ -322,7 +322,7 @@ class ClaudeRunner:
             "mode": mode,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        await ws_manager.broadcast(session_id, result_event)
+        await ws_manager.broadcast_event(session_id, result_event)
 
         await session_manager.add_message(
             session_id=session_id,
@@ -356,7 +356,7 @@ class ClaudeRunner:
             try:
                 event = json.loads(line_str)
             except json.JSONDecodeError:
-                await ws_manager.broadcast(
+                await ws_manager.broadcast_event(
                     session_id, {"type": "raw", "text": line_str}
                 )
                 continue
@@ -391,7 +391,7 @@ class ClaudeRunner:
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
         await session_manager.update_status(session_id, SessionStatus.RUNNING)
-        await ws_manager.broadcast(
+        await ws_manager.broadcast_event(
             session_id, {"type": "status", "status": SessionStatus.RUNNING}
         )
 
@@ -422,7 +422,7 @@ class ClaudeRunner:
                         await asyncio.wait_for(process.wait(), timeout=5)
                     except asyncio.TimeoutError:
                         process.kill()
-                    await ws_manager.broadcast(
+                    await ws_manager.broadcast_event(
                         session_id,
                         {
                             "type": "error",
@@ -438,7 +438,7 @@ class ClaudeRunner:
             if stderr:
                 stderr_text = stderr.decode("utf-8").strip()
                 if stderr_text:
-                    await ws_manager.broadcast(
+                    await ws_manager.broadcast_event(
                         session_id, {"type": "stderr", "text": stderr_text}
                     )
 
@@ -448,14 +448,14 @@ class ClaudeRunner:
             error_msg = str(e) or f"{type(e).__name__}: (no message)"
             logger.error("세션 %s 실행 오류: %s", session_id, error_msg, exc_info=True)
             await session_manager.update_status(session_id, SessionStatus.ERROR)
-            await ws_manager.broadcast(
+            await ws_manager.broadcast_event(
                 session_id, {"type": "error", "message": error_msg}
             )
 
         finally:
             await session_manager.update_status(session_id, SessionStatus.IDLE)
             session_manager.clear_process(session_id)
-            await ws_manager.broadcast(
+            await ws_manager.broadcast_event(
                 session_id, {"type": "status", "status": SessionStatus.IDLE}
             )
             self._cleanup_mcp_config(mcp_config_path)

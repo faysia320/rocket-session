@@ -71,6 +71,7 @@ async def init_dependencies():
     settings = get_settings()
     _database = Database(settings.database_path)
     await _database.initialize()
+    _ws_manager.set_database(_database)
     _session_manager = SessionManager(_database)
     _local_scanner = LocalSessionScanner(_database)
     _usage_service = UsageService(settings)

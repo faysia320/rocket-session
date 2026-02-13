@@ -65,7 +65,7 @@ async def request_permission(session_id: str, body: PermissionRequest):
 
     # WebSocket으로 프론트엔드에 permission 요청 브로드캐스트
     ws_manager = get_ws_manager()
-    await ws_manager.broadcast(
+    await ws_manager.broadcast_event(
         session_id,
         {
             "type": "permission_request",
@@ -85,7 +85,7 @@ async def request_permission(session_id: str, body: PermissionRequest):
             "Permission 요청 타임아웃: %s (세션: %s)", permission_id, session_id
         )
         # 타임아웃 시 프론트엔드에 알림
-        await ws_manager.broadcast(
+        await ws_manager.broadcast_event(
             session_id,
             {
                 "type": "permission_response",
@@ -110,7 +110,7 @@ async def respond_permission(permission_id: str, behavior: str) -> bool:
 
     # 프론트엔드에 응답 확인 브로드캐스트
     ws_manager = get_ws_manager()
-    await ws_manager.broadcast(
+    await ws_manager.broadcast_event(
         entry["session_id"],
         {
             "type": "permission_response",

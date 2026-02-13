@@ -42,9 +42,20 @@ CREATE TABLE IF NOT EXISTS file_changes (
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    seq INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_file_changes_session_id ON file_changes(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_session_seq ON events(session_id, seq);
 """
 
 
@@ -293,6 +304,45 @@ class Database:
         )
         row = await cursor.fetchone()
         return row["cnt"] if row else 0
+
+    # --- Events (WebSocket 이벤트 버퍼링) ---
+
+    async def add_event(
+        self,
+        session_id: str,
+        seq: int,
+        event_type: str,
+        payload: str,
+        timestamp: str,
+    ):
+        await self.conn.execute(
+            """INSERT INTO events (session_id, seq, event_type, payload, timestamp)
+               VALUES (?, ?, ?, ?, ?)""",
+            (session_id, seq, event_type, payload, timestamp),
+        )
+        await self.conn.commit()
+
+    async def get_events_after(self, session_id: str, after_seq: int) -> list[dict]:
+        cursor = await self.conn.execute(
+            "SELECT seq, event_type, payload, timestamp FROM events WHERE session_id = ? AND seq > ? ORDER BY seq",
+            (session_id, after_seq),
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def get_all_events(self, session_id: str) -> list[dict]:
+        cursor = await self.conn.execute(
+            "SELECT seq, event_type, payload, timestamp FROM events WHERE session_id = ? ORDER BY seq",
+            (session_id,),
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def delete_events(self, session_id: str):
+        await self.conn.execute(
+            "DELETE FROM events WHERE session_id = ?", (session_id,)
+        )
+        await self.conn.commit()
 
     async def find_session_by_claude_id(self, claude_session_id: str) -> dict | None:
         """claude_session_id로 세션 조회."""
