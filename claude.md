@@ -1,6 +1,6 @@
 # Claude Code Dashboard (rocket-session)
 
-> **최종 수정일**: 2026-02-13
+> **최종 수정일**: 2026-02-14
 
 ## 중요 규칙
 
@@ -61,8 +61,16 @@
 이 프로젝트는 **브라우저에서 Claude Code CLI 세션을 관리하고 모니터링하는 웹 대시보드**입니다.
 
 - **목적**: Claude Code CLI를 웹 브라우저에서 제어하고, 실시간 스트리밍 응답을 확인
-- **주요 기능**: 세션 생성/관리, 실시간 메시지 스트리밍(WebSocket), 파일 변경 추적, 도구 사용 모니터링
-- **동작 방식**: FastAPI 백엔드가 Claude Code CLI를 subprocess로 실행하고, `--output-format stream-json`으로 출력을 파싱하여 WebSocket으로 프론트엔드에 전달
+- **주요 기능**:
+  - 세션 생성/관리/내보내기, 로컬 세션 import
+  - 실시간 메시지 스트리밍 (WebSocket + 재연결 이벤트 복구)
+  - 파일 변경 추적 + Git diff 뷰어
+  - Plan Mode (읽기 전용 계획 → 승인 후 실행)
+  - Permission Mode (도구 사용 시 사용자 승인 요청, MCP 서버 연계)
+  - 이미지 업로드 + 슬래시 명령어 자동완성
+  - 사용량 추적 (5시간 블록 + 주간, ccusage 연동)
+  - 디렉토리 탐색 + Git 워크트리 관리
+- **동작 방식**: FastAPI 백엔드가 Claude Code CLI를 subprocess로 실행하고, `--output-format stream-json`으로 출력을 파싱하여 WebSocket으로 프론트엔드에 전달. 모든 데이터는 SQLite에 영속 저장
 
 ---
 
@@ -91,14 +99,17 @@
 | --------------- | ----------------- | -------- |
 | 언어            | Python            | 3.10+    |
 | 프레임워크      | FastAPI           | 0.115.x  |
+| 데이터베이스    | SQLite (aiosqlite)| 0.22+    |
 | WebSocket       | websockets        | 14.1     |
 | 설정 관리       | Pydantic Settings | 2.x      |
+| 파일 업로드     | python-multipart  | 0.0.22+  |
 | 테스트          | pytest + pytest-asyncio | 7.x+  |
 | 패키지 매니저   | **uv**            | -        |
 
 ### 외부 의존성
 
 - Claude Code CLI (`npm install -g @anthropic-ai/claude-code`)
+- [ccusage](https://github.com/ryoppippi/ccusage) (사용량 조회, `npx ccusage`)
 - Active Claude Pro/Max 구독 또는 API key
 
 ---
@@ -109,26 +120,41 @@
 rocket-session/
 ├── backend/                          # FastAPI 백엔드
 │   ├── app/
-│   │   ├── main.py                   # FastAPI 앱 팩토리 + CORS
+│   │   ├── main.py                   # FastAPI 앱 팩토리 + CORS + 라이프사이클
 │   │   ├── core/
-│   │   │   └── config.py             # Pydantic BaseSettings (환경 설정)
+│   │   │   ├── config.py             # Pydantic BaseSettings (환경 설정)
+│   │   │   └── database.py           # SQLite 비동기 DB + 스키마 + 마이그레이션
 │   │   ├── api/
 │   │   │   ├── dependencies.py       # DI 프로바이더 (싱글턴)
 │   │   │   └── v1/
 │   │   │       ├── api.py            # 라우터 통합
 │   │   │       └── endpoints/
 │   │   │           ├── health.py     # 헬스체크
-│   │   │           ├── sessions.py   # 세션 CRUD REST API
+│   │   │           ├── sessions.py   # 세션 CRUD + 내보내기
+│   │   │           ├── files.py      # 파일 조회 + diff + 업로드
+│   │   │           ├── filesystem.py # 디렉토리 탐색 + Git + 워크트리 + Skills
+│   │   │           ├── local_sessions.py # 로컬 세션 스캔/import
+│   │   │           ├── permissions.py    # Permission 요청/응답 (MCP 연계)
+│   │   │           ├── usage.py      # 사용량 조회 (ccusage)
 │   │   │           └── ws.py         # WebSocket 엔드포인트
 │   │   ├── models/
-│   │   │   └── session.py            # 세션 도메인 모델 (인메모리)
+│   │   │   └── session.py            # 세션 도메인 모델
 │   │   ├── schemas/
-│   │   │   └── session.py            # Request/Response Pydantic 스키마
+│   │   │   ├── session.py            # 세션 Request/Response 스키마
+│   │   │   ├── usage.py              # 사용량 스키마
+│   │   │   ├── filesystem.py         # 파일시스템 + Git 스키마
+│   │   │   └── local_session.py      # 로컬 세션 스키마
 │   │   └── services/
 │   │       ├── session_manager.py    # 세션 생명주기 관리
-│   │       ├── claude_runner.py      # Claude CLI subprocess 실행 + JSON 스트림 파서
-│   │       └── websocket_manager.py  # WebSocket 연결 레지스트리 + 브로드캐스트
+│   │       ├── claude_runner.py      # Claude CLI subprocess + JSON 스트림 파싱
+│   │       ├── websocket_manager.py  # WS 연결 관리 + 이벤트 버퍼링
+│   │       ├── usage_service.py      # ccusage CLI 사용량 조회
+│   │       ├── filesystem_service.py # 파일시스템 + Git 워크트리
+│   │       ├── local_session_scanner.py # 로컬 세션 스캐너
+│   │       └── permission_mcp_server.py # Permission MCP 서버 (stdio)
+│   ├── data/                         # SQLite DB 파일 (sessions.db)
 │   ├── tests/                        # pytest 테스트
+│   ├── Dockerfile                    # 컨테이너 (Python 3.11 + Node.js 22)
 │   ├── .env.example                  # 환경 변수 템플릿
 │   └── pyproject.toml
 │
@@ -141,45 +167,61 @@ rocket-session/
 │   │   ├── config/
 │   │   │   └── env.ts                # 환경 설정
 │   │   ├── types/
-│   │   │   ├── session.ts            # SessionInfo, SessionStatus 타입
-│   │   │   ├── message.ts            # Message, FileChange, WebSocketEvent 타입
+│   │   │   ├── session.ts            # SessionInfo, SessionStatus, SessionMode
+│   │   │   ├── message.ts            # Message, FileChange, WebSocketEvent
+│   │   │   ├── usage.ts              # Usage 타입
+│   │   │   ├── filesystem.ts         # FileSystem, Git 타입
+│   │   │   ├── local-session.ts      # LocalSession 타입
 │   │   │   └── index.ts              # barrel export
 │   │   ├── store/
 │   │   │   ├── useSessionStore.ts    # Zustand - 활성 세션 ID, UI 상태
 │   │   │   └── index.ts
 │   │   ├── routes/
-│   │   │   ├── __root.tsx            # 루트 레이아웃 (Sidebar + Outlet)
+│   │   │   ├── __root.tsx            # 루트 레이아웃 (Sidebar + UsageFooter)
 │   │   │   ├── index.tsx             # 홈 (EmptyState)
 │   │   │   └── session/
-│   │   │       └── $sessionId.tsx    # 세션 상세 (ChatPanel + FilePanel)
+│   │   │       ├── $sessionId.tsx    # 세션 작업 공간 (ChatPanel + FilePanel)
+│   │   │       └── new.tsx           # 새 세션 생성
 │   │   ├── components/
-│   │   │   └── ui/                   # shadcn/ui 컴포넌트 + 공통 UI
+│   │   │   └── ui/                   # shadcn/ui + 공통 컴포넌트 (CodeBlock, MarkdownRenderer 등)
 │   │   ├── features/
 │   │   │   ├── session/              # 세션 관리
-│   │   │   │   ├── components/       # Sidebar
+│   │   │   │   ├── components/       # Sidebar, SessionSettings, SessionSetupPanel, ImportLocalDialog
 │   │   │   │   └── hooks/            # useSessions, sessionKeys
 │   │   │   ├── chat/                 # 채팅 인터페이스
-│   │   │   │   ├── components/       # ChatPanel, MessageBubble
-│   │   │   │   └── hooks/            # useClaudeSocket
-│   │   │   └── files/                # 파일 변경 추적
-│   │   │       └── components/       # FilePanel
+│   │   │   │   ├── components/       # ChatPanel, MessageBubble, ChatInput, ChatHeader
+│   │   │   │   │                     # ActivityStatusBar, ModeIndicator, PermissionDialog
+│   │   │   │   │                     # PlanReviewDialog, PlanApprovalButton, SlashCommandPopup
+│   │   │   │   ├── hooks/            # useClaudeSocket, useSlashCommands
+│   │   │   │   └── constants/        # slashCommands.ts
+│   │   │   ├── files/                # 파일 변경 추적
+│   │   │   │   └── components/       # FilePanel, FileViewer, DiffViewer
+│   │   │   ├── directory/            # 디렉토리 탐색
+│   │   │   │   ├── components/       # DirectoryBrowser, DirectoryPicker, GitInfoCard, WorktreePanel
+│   │   │   │   └── hooks/            # useDirectoryBrowser, useGitInfo, useWorktrees
+│   │   │   └── usage/                # 사용량 표시
+│   │   │       ├── components/       # UsageFooter
+│   │   │       └── hooks/            # useUsage, usageKeys
 │   │   └── lib/
 │   │       ├── utils.ts              # cn() 유틸리티 (clsx + tailwind-merge)
-│   │       └── api/                  # ApiClient 클래스 + 도메인 함수
-│   ├── design-system/                # 디자인 토큰 (CSS 변수)
+│   │       └── api/                  # ApiClient + 도메인별 API 함수
+│   ├── design-system/                # 디자인 시스템
 │   │   ├── css/variables.css         # spacing, typography, radius, shadow 토큰
+│   │   ├── tokens/                   # TS 토큰 (spacing, colors, zIndex 등)
+│   │   ├── eslint/                   # ESLint 규칙 (하드코딩 금지)
+│   │   ├── tailwind/plugin.js        # Tailwind 플러그인
 │   │   └── GUIDELINES.md             # 디자인 시스템 가이드
 │   ├── tsconfig.json                 # TypeScript 설정 (references)
 │   ├── tsconfig.app.json             # 앱 TypeScript 설정 (strict, path aliases)
-│   ├── tsconfig.node.json            # Node TypeScript 설정
 │   ├── tailwind.config.js            # Tailwind CSS 설정 (Deep Space 테마)
-│   ├── postcss.config.js             # PostCSS 설정
 │   ├── components.json               # shadcn/ui 설정
 │   ├── vite.config.ts                # Vite + TanStack Router 플러그인
+│   ├── Dockerfile                    # 컨테이너 (Node.js 22 + nginx)
+│   ├── nginx.conf                    # Nginx 프록시 설정
 │   └── package.json
 │
-├── docker-compose.yml
-├── claude.md                         # 개발 가이드 (이 파일)
+├── docker-compose.yml                # Docker Compose 구성
+├── CLAUDE.md                         # 개발 가이드 (이 파일)
 └── README.md
 ```
 
@@ -187,7 +229,7 @@ rocket-session/
 
 ## 4. 아키텍처
 
-### WebSocket + Subprocess 기반 아키텍처
+### WebSocket + Subprocess + SQLite 기반 아키텍처
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -198,19 +240,26 @@ rocket-session/
                     │ WebSocket + REST API
                     │ (Vite 프록시 → localhost:8101)
 ┌─────────────────────────────────────────────────────────────┐
-│                  API Layer                                   │
-│  FastAPI Endpoints (sessions REST + WebSocket)               │
+│                  API Layer (FastAPI)                         │
+│  Sessions · Files · Filesystem · Usage · Permissions · WS   │
 └─────────────────────────────────────────────────────────────┘
                     │
 ┌─────────────────────────────────────────────────────────────┐
 │                  Service Layer                               │
 │  SessionManager / WebSocketManager / ClaudeRunner            │
+│  UsageService / FilesystemService / LocalSessionScanner      │
+│  PermissionMCPServer                                         │
 └─────────────────────────────────────────────────────────────┘
                     │ subprocess (asyncio)
 ┌─────────────────────────────────────────────────────────────┐
 │              Claude Code CLI                                 │
 │  --output-format stream-json                                 │
 │  --continue / --resume                                       │
+└─────────────────────────────────────────────────────────────┘
+                    │
+┌─────────────────────────────────────────────────────────────┐
+│              SQLite (aiosqlite)                              │
+│  sessions · messages · file_changes · events                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -223,7 +272,9 @@ rocket-session/
                                             ↓
                                      JSON 스트림 파싱
                                             ↓
-                                     WebSocketManager (브로드캐스트)
+                                     SQLite 저장 (messages, file_changes, events)
+                                            ↓
+                                     WebSocketManager (브로드캐스트 + 이벤트 버퍼링)
                                             ↓
                                      ChatPanel (메시지 렌더링)
 ```
@@ -232,11 +283,15 @@ rocket-session/
 
 | 서비스 | 역할 | 상태 저장 |
 |--------|------|----------|
-| `SessionManager` | 세션 생명주기 (CRUD, 상태 전환) | 인메모리 (dict) |
+| `SessionManager` | 세션 생명주기 (CRUD, 상태 전환) | SQLite + 프로세스 핸들(인메모리) |
 | `ClaudeRunner` | Claude CLI subprocess 실행 + 스트리밍 JSON 파싱 | 프로세스 핸들 |
-| `WebSocketManager` | WebSocket 연결 관리 + 이벤트 브로드캐스트 | 연결 레지스트리 |
+| `WebSocketManager` | WebSocket 연결 관리 + 이벤트 브로드캐스트 + 버퍼링 | 연결 레지스트리 + SQLite (events) |
+| `UsageService` | ccusage CLI 호출 + 사용량 캐싱 | 60초 TTL 인메모리 캐시 |
+| `FilesystemService` | 디렉토리 탐색, Git 정보, 워크트리, Skills | 없음 (stateless) |
+| `LocalSessionScanner` | `~/.claude/projects/` JSONL 세션 스캔/import | 없음 |
+| `PermissionMCPServer` | 도구 사용 승인 요청/응답 MCP 서버 (stdio) | asyncio.Event 기반 대기 |
 
-> **참고**: 모든 상태는 인메모리로 관리되며, 서버 재시작 시 초기화됩니다.
+> **참고**: 세션/메시지/파일 변경/이벤트는 SQLite에 영속 저장됩니다. 프로세스 핸들만 인메모리로 관리되어 서버 재시작 시 실행 중인 세션의 프로세스 연결은 끊어집니다.
 
 ---
 
@@ -382,6 +437,7 @@ const activeSessionId = useSessionStore((s) => s.activeSessionId);
 | URL | 라우트 파일 | 설명 |
 |-----|------------|------|
 | `/` | `routes/index.tsx` | 홈 (EmptyState) |
+| `/session/new` | `routes/session/new.tsx` | 새 세션 생성 |
 | `/session/:id` | `routes/session/$sessionId.tsx` | 세션 작업 공간 |
 
 ```typescript
@@ -398,9 +454,16 @@ navigate({ to: '/session/$sessionId', params: { sessionId } });
 ```typescript
 // WebSocket 이벤트 타입
 // - status: 세션 상태 변경
-// - tool_use: Claude 도구 사용 (Read, Write, Edit, Bash)
+// - assistant: Claude 응답 텍스트 (스트리밍)
+// - tool_use: Claude 도구 사용 (Read, Write, Edit, Bash 등)
+// - tool_result: 도구 실행 결과
 // - file_change: 파일 변경 감지
-// - result: Claude 응답 결과
+// - result: Claude 최종 응답 결과 (cost, duration_ms 포함)
+// - permission_request: 도구 사용 승인 요청 (Permission Mode)
+// - permission_response: 승인/거부 응답
+
+// 재연결: last_seq 파라미터로 놓친 이벤트 자동 복구
+// ws://localhost:8101/ws/{sessionId}?last_seq=42
 ```
 
 ### 6.8 shadcn/ui 컴포넌트 추가
@@ -446,21 +509,19 @@ UI 컴포넌트 작성 시 아래 문서를 참조합니다:
 
 ### 7.1 의존성 주입 패턴
 
-모든 서비스는 `app/api/dependencies.py`에서 싱글턴으로 관리됩니다:
+모든 서비스는 `app/api/dependencies.py`에서 싱글턴으로 관리됩니다.
+앱 시작 시 `init_dependencies()`로 DB/서비스를 초기화하고, 종료 시 `shutdown_dependencies()`로 정리합니다:
 
 ```python
-# 싱글턴 인스턴스
-_session_manager = SessionManager()
-_ws_manager = WebSocketManager()
-
-def get_session_manager() -> SessionManager:
-    return _session_manager
-
-def get_ws_manager() -> WebSocketManager:
-    return _ws_manager
-
-def get_claude_runner() -> ClaudeRunner:
-    return ClaudeRunner(get_settings())
+# 주요 의존성 (앱 시작 시 init_dependencies()로 초기화)
+get_settings()           # @lru_cache, Pydantic Settings
+get_database()           # Database (SQLite aiosqlite)
+get_session_manager()    # SessionManager (DB 의존)
+get_ws_manager()         # WebSocketManager
+get_claude_runner()      # ClaudeRunner (Settings 의존)
+get_filesystem_service() # FilesystemService (stateless)
+get_local_scanner()      # LocalSessionScanner (DB 의존)
+get_usage_service()      # UsageService (Settings 의존)
 ```
 
 ### 7.2 새 API 엔드포인트 추가 순서
@@ -479,8 +540,10 @@ def get_claude_runner() -> ClaudeRunner:
 CLAUDE_WORK_DIR=/path/to/your/project    # Claude 작업 디렉토리
 CLAUDE_ALLOWED_TOOLS=Read,Write,Edit,Bash # 허용 도구
 CLAUDE_MODEL=sonnet                       # 모델 (선택사항)
+CLAUDE_PLAN=Max                           # 플랜 (Max/Pro, 사용량 표시용)
 BACKEND_HOST=0.0.0.0                      # 서버 호스트
 BACKEND_PORT=8101                         # 서버 포트
+DATABASE_PATH=data/sessions.db            # SQLite DB 경로
 ```
 
 ---
@@ -540,7 +603,66 @@ pnpm preview                               # 빌드 미리보기
 
 ---
 
-## 10. 새 기능 개발 체크리스트
+## 10. 데이터베이스 스키마
+
+SQLite (`backend/data/sessions.db`), 스키마 정의: `backend/app/core/database.py`
+
+```sql
+-- 세션 메타데이터
+CREATE TABLE sessions (
+    id TEXT PRIMARY KEY,
+    claude_session_id TEXT,        -- Claude CLI 세션 ID
+    work_dir TEXT NOT NULL,        -- 작업 디렉토리
+    status TEXT NOT NULL DEFAULT 'idle',  -- idle | running | error | stopped
+    created_at TEXT NOT NULL,
+    allowed_tools TEXT,            -- 허용 도구 (쉼표 구분)
+    system_prompt TEXT,            -- 시스템 프롬프트
+    timeout_seconds INTEGER,       -- 타임아웃
+    mode TEXT NOT NULL DEFAULT 'normal',  -- normal | plan
+    permission_mode INTEGER NOT NULL DEFAULT 0,  -- 0: 비활성, 1: 활성
+    permission_required_tools TEXT, -- 승인 필요 도구 (JSON 배열)
+    name TEXT                      -- 세션 이름 (첫 프롬프트 자동 설정)
+);
+
+-- 대화 기록
+CREATE TABLE messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL,             -- user | assistant
+    content TEXT NOT NULL,
+    cost REAL,                     -- API 비용 (USD)
+    duration_ms INTEGER,           -- 실행 시간
+    timestamp TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+-- 파일 변경 기록
+CREATE TABLE file_changes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    tool TEXT NOT NULL,             -- Write | Edit | Bash 등
+    file TEXT NOT NULL,             -- 변경된 파일 경로
+    timestamp TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+-- WebSocket 이벤트 버퍼 (재연결 복구용)
+CREATE TABLE events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    seq INTEGER NOT NULL,           -- 시퀀스 번호
+    event_type TEXT NOT NULL,       -- 이벤트 타입
+    payload TEXT NOT NULL,          -- JSON 페이로드
+    timestamp TEXT NOT NULL,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+```
+
+> **마이그레이션**: `database.py`의 `initialize()` 메서드에서 `ALTER TABLE`로 새 컬럼을 추가합니다. `duplicate column` 에러는 무시됩니다.
+
+---
+
+## 11. 새 기능 개발 체크리스트
 
 ### Backend 새 기능 추가
 
@@ -564,11 +686,15 @@ pnpm preview                               # 빌드 미리보기
 
 ---
 
-## 11. 참고 파일
+## 12. 참고 파일
 
 | 파일                                  | 용도                            |
 | ------------------------------------- | ------------------------------- |
 | `README.md`                           | 프로젝트 전체 문서              |
 | `frontend/design-system/GUIDELINES.md`| 디자인 시스템 가이드            |
+| `frontend/design-system/tokens/`      | TS 디자인 토큰 (spacing, colors 등) |
 | `backend/.env.example`                | 환경 변수 템플릿                |
-| `docker-compose.yml`                  | 컨테이너 구성                   |
+| `backend/app/core/database.py`        | DB 스키마 + 마이그레이션        |
+| `docker-compose.yml`                  | Docker Compose 구성             |
+| `backend/Dockerfile`                  | 백엔드 컨테이너 설정            |
+| `frontend/Dockerfile`                 | 프론트엔드 컨테이너 + nginx     |
