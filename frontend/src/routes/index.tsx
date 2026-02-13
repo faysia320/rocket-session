@@ -1,13 +1,12 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useSessions } from '@/features/session/hooks/useSessions';
 
 export const Route = createFileRoute('/')({
   component: IndexPage,
 });
 
 function IndexPage() {
-  const { createSession } = useSessions();
+  const navigate = useNavigate();
 
-  return <EmptyState onNew={() => createSession()} />;
+  return <EmptyState onNew={() => navigate({ to: '/session/new' })} />;
 }

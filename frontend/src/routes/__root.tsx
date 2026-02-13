@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet } from '@tanstack/react-router';
+import { createRootRoute, Outlet, useNavigate, useLocation } from '@tanstack/react-router';
 import { Sidebar } from '@/features/session/components/Sidebar';
 import { ChatPanel } from '@/features/chat/components/ChatPanel';
 import { useSessions } from '@/features/session/hooks/useSessions';
@@ -9,9 +9,12 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
-  const { sessions, activeSessionId, createSession, deleteSession, selectSession } =
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { sessions, activeSessionId, deleteSession, selectSession, refreshSessions } =
     useSessions();
   const splitView = useSessionStore((s) => s.splitView);
+  const isNewSessionRoute = location.pathname === '/session/new';
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
@@ -19,11 +22,15 @@ function RootComponent() {
         sessions={sessions}
         activeSessionId={activeSessionId}
         onSelect={selectSession}
-        onNew={createSession}
+        onNew={() => navigate({ to: '/session/new' })}
         onDelete={deleteSession}
+        onImported={(id) => {
+          refreshSessions();
+          selectSession(id);
+        }}
       />
       <main className="flex-1 flex overflow-hidden">
-        {splitView && sessions.length > 0 ? (
+        {splitView && sessions.length > 0 && !isNewSessionRoute ? (
           sessions.map((s) => (
             <div
               key={s.id}

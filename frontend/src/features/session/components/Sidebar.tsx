@@ -1,56 +1,27 @@
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
-import { ChevronDown, ChevronUp, Sun, Moon, Columns2 } from 'lucide-react';
+import { Sun, Moon, Columns2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { SessionInfo } from '@/types';
-import { DirectoryPicker } from '@/features/directory/components/DirectoryPicker';
+import { ImportLocalDialog } from './ImportLocalDialog';
 import { useSessionStore } from '@/store';
 
 interface SidebarProps {
   sessions: SessionInfo[];
   activeSessionId: string | null;
   onSelect: (id: string) => void;
-  onNew: (workDir?: string, options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number }) => void;
+  onNew: () => void;
   onDelete: (id: string) => void;
+  onImported?: (id: string) => void;
 }
 
-export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }: SidebarProps) {
-  const [workDir, setWorkDir] = useState('');
-  const [showInput, setShowInput] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [systemPrompt, setSystemPrompt] = useState('');
-  const [timeoutMinutes, setTimeoutMinutes] = useState('');
+export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, onImported }: SidebarProps) {
   const splitView = useSessionStore((s) => s.splitView);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
-
-  const handleCreate = () => {
-    const options: { system_prompt?: string; timeout_seconds?: number } = {};
-    if (systemPrompt.trim()) {
-      options.system_prompt = systemPrompt.trim();
-    }
-    if (timeoutMinutes && Number(timeoutMinutes) > 0) {
-      options.timeout_seconds = Number(timeoutMinutes) * 60;
-    }
-    onNew(workDir || undefined, Object.keys(options).length > 0 ? options : undefined);
-    setWorkDir('');
-    setSystemPrompt('');
-    setTimeoutMinutes('');
-    setShowInput(false);
-    setShowAdvanced(false);
-  };
-
-  const handleCancel = () => {
-    setShowInput(false);
-    setShowAdvanced(false);
-    setWorkDir('');
-    setSystemPrompt('');
-    setTimeoutMinutes('');
-  };
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <aside className="w-[260px] min-w-[260px] h-screen flex flex-col bg-card border-r border-border overflow-hidden">
@@ -67,7 +38,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
             className={cn('h-7 w-7', splitView && 'bg-muted')}
             onClick={toggleSplitView}
             title="Split View"
-            aria-label={splitView ? '\uB2E8\uC77C \uBDF0\uB85C \uC804\uD658' : '\uBD84\uD560 \uBDF0\uB85C \uC804\uD658'}
+            aria-label={splitView ? '단일 뷰로 전환' : '분할 뷰로 전환'}
           >
             <Columns2 className="h-4 w-4" />
           </Button>
@@ -76,63 +47,25 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
 
       {/* New Session */}
       <div className="px-3 pt-3">
-        {showInput ? (
-          <div className="flex flex-col gap-2">
-            <DirectoryPicker value={workDir} onChange={setWorkDir} />
-
-            {/* \uACE0\uAE09 \uC124\uC815 \uD1A0\uAE00 */}
-            <button
-              type="button"
-              className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setShowAdvanced((p) => !p)}
-            >
-              {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              Advanced Settings
-            </button>
-
-            {showAdvanced ? (
-              <div className="flex flex-col gap-2 pl-1">
-                <Textarea
-                  className="font-mono text-[10px] min-h-[60px] bg-input border-border"
-                  placeholder="System prompt (optional)"
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                />
-                <Input
-                  className="font-mono text-[10px] w-full"
-                  type="number"
-                  min="1"
-                  placeholder="Timeout (minutes, optional)"
-                  value={timeoutMinutes}
-                  onChange={(e) => setTimeoutMinutes(e.target.value)}
-                />
-              </div>
-            ) : null}
-
-            <div className="flex gap-1.5">
-              <Button variant="default" size="sm" className="flex-1 h-8" onClick={handleCreate}>
-                Create
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 h-8"
-                onClick={handleCancel}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
+        <div className="flex flex-col gap-1.5">
           <Button
             variant="default"
             className="w-full flex items-center gap-2 px-3 py-2.5 font-mono text-[13px] font-semibold"
-            onClick={() => setShowInput(true)}
+            onClick={onNew}
           >
             <span className="text-base font-bold">+</span>
             New Session
           </Button>
-        )}
+          <Button
+            variant="outline"
+            className="w-full flex items-center gap-2 px-3 py-2 font-mono text-[11px]"
+            onClick={() => setImportOpen(true)}
+            aria-label="로컬 세션 불러오기"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Import Local
+          </Button>
+        </div>
       </div>
 
       {/* Sessions list header */}
@@ -181,7 +114,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
                     e.stopPropagation();
                     onDelete(s.id);
                   }}
-                  aria-label="\uC138\uC158 \uC0AD\uC81C"
+                  aria-label="세션 삭제"
                 >
                   {'\u00D7'}
                 </Button>
@@ -218,6 +151,14 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
           <ThemeToggle />
         </div>
       </div>
+      <ImportLocalDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={(id) => {
+          setImportOpen(false);
+          onImported?.(id);
+        }}
+      />
     </aside>
   );
 }
@@ -232,7 +173,7 @@ function ThemeToggle() {
       size="icon"
       className="h-8 w-8"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      aria-label="\uD14C\uB9C8 \uBCC0\uACBD"
+      aria-label="테마 변경"
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>
