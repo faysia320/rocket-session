@@ -37,6 +37,28 @@ export default defineConfig({
       '@design-system': path.resolve(__dirname, './design-system'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('/react-dom/') || id.includes('/react/')) {
+              return 'vendor-react';
+            }
+            if (id.includes('/@tanstack/')) {
+              return 'vendor-tanstack';
+            }
+            if (id.includes('/@radix-ui/')) {
+              return 'vendor-ui';
+            }
+            if (id.includes('/react-markdown/') || id.includes('/remark-gfm/')) {
+              return 'vendor-markdown';
+            }
+          }
+        },
+      },
+    },
+  },
   server: {
     port: 8100,
     proxy: {
