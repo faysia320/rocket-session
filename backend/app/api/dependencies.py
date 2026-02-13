@@ -5,6 +5,7 @@ from functools import lru_cache
 from app.core.config import Settings
 from app.core.database import Database
 from app.services.claude_runner import ClaudeRunner
+from app.services.filesystem_service import FilesystemService
 from app.services.session_manager import SessionManager
 from app.services.websocket_manager import WebSocketManager
 
@@ -12,6 +13,7 @@ from app.services.websocket_manager import WebSocketManager
 _database: Database | None = None
 _session_manager: SessionManager | None = None
 _ws_manager = WebSocketManager()
+_filesystem_service = FilesystemService()
 
 
 @lru_cache()
@@ -37,6 +39,10 @@ def get_ws_manager() -> WebSocketManager:
 
 def get_claude_runner() -> ClaudeRunner:
     return ClaudeRunner(get_settings())
+
+
+def get_filesystem_service() -> FilesystemService:
+    return _filesystem_service
 
 
 async def init_dependencies():
