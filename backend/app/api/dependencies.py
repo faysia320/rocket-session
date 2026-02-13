@@ -6,12 +6,14 @@ from app.core.config import Settings
 from app.core.database import Database
 from app.services.claude_runner import ClaudeRunner
 from app.services.filesystem_service import FilesystemService
+from app.services.local_session_scanner import LocalSessionScanner
 from app.services.session_manager import SessionManager
 from app.services.websocket_manager import WebSocketManager
 
 # 싱글턴 인스턴스 (앱 시작 시 초기화)
 _database: Database | None = None
 _session_manager: SessionManager | None = None
+_local_scanner: LocalSessionScanner | None = None
 _ws_manager = WebSocketManager()
 _filesystem_service = FilesystemService()
 
@@ -45,19 +47,27 @@ def get_filesystem_service() -> FilesystemService:
     return _filesystem_service
 
 
+def get_local_scanner() -> LocalSessionScanner:
+    if _local_scanner is None:
+        raise RuntimeError("LocalSessionScanner가 초기화되지 않았습니다")
+    return _local_scanner
+
+
 async def init_dependencies():
     """앱 시작 시 DB 및 SessionManager 초기화."""
-    global _database, _session_manager
+    global _database, _session_manager, _local_scanner
     settings = get_settings()
     _database = Database(settings.database_path)
     await _database.initialize()
     _session_manager = SessionManager(_database)
+    _local_scanner = LocalSessionScanner(_database)
 
 
 async def shutdown_dependencies():
     """앱 종료 시 DB 연결 정리."""
-    global _database, _session_manager
+    global _database, _session_manager, _local_scanner
     if _database:
         await _database.close()
     _database = None
     _session_manager = None
+    _local_scanner = None

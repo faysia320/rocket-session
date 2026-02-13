@@ -224,3 +224,14 @@ class Database:
         )
         row = await cursor.fetchone()
         return row["cnt"] if row else 0
+
+    async def find_session_by_claude_id(self, claude_session_id: str) -> dict | None:
+        """claude_session_id로 세션 조회."""
+        cursor = await self.conn.execute(
+            "SELECT * FROM sessions WHERE claude_session_id = ?",
+            (claude_session_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        return dict(row)

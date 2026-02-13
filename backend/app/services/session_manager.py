@@ -84,6 +84,10 @@ class SessionManager:
     async def update_claude_session_id(self, session_id: str, claude_session_id: str):
         await self._db.update_claude_session_id(session_id, claude_session_id)
 
+    async def find_by_claude_session_id(self, claude_session_id: str) -> dict | None:
+        """claude_session_id로 세션 조회."""
+        return await self._db.find_session_by_claude_id(claude_session_id)
+
     async def add_message(
         self,
         session_id: str,

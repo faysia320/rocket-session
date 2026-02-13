@@ -7,12 +7,13 @@ from app.schemas.filesystem import (
     CreateWorktreeRequest,
     DirectoryListResponse,
     GitInfo,
+    SkillListResponse,
     WorktreeInfo,
     WorktreeListResponse,
 )
 from app.services.filesystem_service import FilesystemService
 
-router = APIRouter(prefix="/api/fs", tags=["filesystem"])
+router = APIRouter(prefix="/fs", tags=["filesystem"])
 
 
 @router.get("/list", response_model=DirectoryListResponse)
@@ -66,3 +67,11 @@ async def create_worktree(
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/skills", response_model=SkillListResponse)
+async def list_skills(
+    path: str = Query(default="", description="프로젝트 작업 디렉토리 경로"),
+    fs: FilesystemService = Depends(get_filesystem_service),
+):
+    return await fs.list_skills(path)
