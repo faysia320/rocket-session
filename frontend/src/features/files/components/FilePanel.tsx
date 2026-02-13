@@ -2,7 +2,12 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { FileChange } from '@/types';
 
-export function FilePanel({ fileChanges = [] }: { fileChanges?: FileChange[] }) {
+interface FilePanelProps {
+  fileChanges?: FileChange[];
+  onFileClick?: (change: FileChange) => void;
+}
+
+export function FilePanel({ fileChanges = [], onFileClick }: FilePanelProps) {
   return (
     <div className="w-[280px] min-w-[280px] flex flex-col bg-card border-l border-border overflow-hidden">
       <div className="flex items-center gap-2 px-3.5 py-3 border-b border-border bg-secondary">
@@ -28,9 +33,12 @@ export function FilePanel({ fileChanges = [] }: { fileChanges?: FileChange[] }) 
           </div>
         ) : (
           fileChanges.map((change, i) => (
-            <div
+            <button
+              type="button"
               key={i}
-              className="p-2 px-2.5 bg-secondary border border-border rounded-sm mb-1.5 animate-[fadeIn_0.2s_ease]"
+              className="w-full text-left p-2 px-2.5 bg-secondary border border-border rounded-sm mb-1.5 animate-[fadeIn_0.2s_ease] hover:border-primary/30 hover:bg-secondary/80 transition-colors cursor-pointer"
+              onClick={() => onFileClick?.(change)}
+              aria-label={`파일 보기: ${change.file}`}
             >
               <div className="flex items-center justify-between mb-1">
                 <Badge
@@ -66,7 +74,7 @@ export function FilePanel({ fileChanges = [] }: { fileChanges?: FileChange[] }) 
               <div className="font-mono text-[11px] text-primary break-all">
                 {change.file}
               </div>
-            </div>
+            </button>
           ))
         )}
       </ScrollArea>

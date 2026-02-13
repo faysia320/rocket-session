@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { SessionInfo } from '@/types';
 
@@ -10,18 +12,39 @@ interface SidebarProps {
   sessions: SessionInfo[];
   activeSessionId: string | null;
   onSelect: (id: string) => void;
-  onNew: (workDir?: string) => void;
+  onNew: (workDir?: string, options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number }) => void;
   onDelete: (id: string) => void;
 }
 
 export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }: SidebarProps) {
   const [workDir, setWorkDir] = useState('');
   const [showInput, setShowInput] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [timeoutMinutes, setTimeoutMinutes] = useState('');
 
   const handleCreate = () => {
-    onNew(workDir || undefined);
+    const options: { system_prompt?: string; timeout_seconds?: number } = {};
+    if (systemPrompt.trim()) {
+      options.system_prompt = systemPrompt.trim();
+    }
+    if (timeoutMinutes && Number(timeoutMinutes) > 0) {
+      options.timeout_seconds = Number(timeoutMinutes) * 60;
+    }
+    onNew(workDir || undefined, Object.keys(options).length > 0 ? options : undefined);
     setWorkDir('');
+    setSystemPrompt('');
+    setTimeoutMinutes('');
     setShowInput(false);
+    setShowAdvanced(false);
+  };
+
+  const handleCancel = () => {
+    setShowInput(false);
+    setShowAdvanced(false);
+    setWorkDir('');
+    setSystemPrompt('');
+    setTimeoutMinutes('');
   };
 
   return (
@@ -45,9 +68,39 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
               placeholder="Working directory (optional)"
               value={workDir}
               onChange={(e) => setWorkDir(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+              onKeyDown={(e) => e.key === 'Enter' && !showAdvanced && handleCreate()}
               autoFocus
             />
+
+            {/* 고급 설정 토글 */}
+            <button
+              type="button"
+              className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setShowAdvanced((p) => !p)}
+            >
+              {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              Advanced Settings
+            </button>
+
+            {showAdvanced ? (
+              <div className="flex flex-col gap-2 pl-1">
+                <Textarea
+                  className="font-mono text-[10px] min-h-[60px] bg-input border-border"
+                  placeholder="System prompt (optional)"
+                  value={systemPrompt}
+                  onChange={(e) => setSystemPrompt(e.target.value)}
+                />
+                <Input
+                  className="font-mono text-[10px] w-full"
+                  type="number"
+                  min="1"
+                  placeholder="Timeout (minutes, optional)"
+                  value={timeoutMinutes}
+                  onChange={(e) => setTimeoutMinutes(e.target.value)}
+                />
+              </div>
+            ) : null}
+
             <div className="flex gap-1.5">
               <Button variant="default" size="sm" className="flex-1 h-8" onClick={handleCreate}>
                 Create
@@ -56,7 +109,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete }
                 variant="outline"
                 size="sm"
                 className="flex-1 h-8"
-                onClick={() => setShowInput(false)}
+                onClick={handleCancel}
               >
                 Cancel
               </Button>

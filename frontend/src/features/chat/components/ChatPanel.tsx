@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { FolderOpen, Send, Square } from 'lucide-react';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
 import { MessageBubble } from './MessageBubble';
+import { SessionSettings } from '@/features/session/components/SessionSettings';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -95,12 +96,14 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
               Running
             </Badge>
           ) : null}
+          <SessionSettings sessionId={sessionId} />
           <Button
             variant="outline"
             size="icon"
             onClick={onToggleFiles}
             title="Toggle file panel"
             className={cn(showFiles && 'bg-muted')}
+            aria-label="파일 패널 토글"
           >
             <FolderOpen className="h-4 w-4" />
           </Button>

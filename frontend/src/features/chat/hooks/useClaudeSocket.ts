@@ -29,6 +29,7 @@ interface HistoryItem {
 export function useClaudeSocket(sessionId: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldReconnect = useRef(true);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<'idle' | 'running'>('idle');
@@ -96,6 +97,9 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'error':
         setMessages((prev) => [...prev, data as unknown as Message]);
+        if (data.message === 'Session not found') {
+          shouldReconnect.current = false;
+        }
         break;
 
       case 'stderr':
@@ -128,6 +132,7 @@ export function useClaudeSocket(sessionId: string) {
   const connect = useCallback(() => {
     if (!sessionId) return;
 
+    shouldReconnect.current = true;
     const ws = new WebSocket(getWsUrl(sessionId));
     wsRef.current = ws;
 
@@ -148,7 +153,9 @@ export function useClaudeSocket(sessionId: string) {
     ws.onclose = () => {
       setConnected(false);
       console.log('[WS] Disconnected');
-      reconnectTimer.current = setTimeout(() => connect(), 3000);
+      if (shouldReconnect.current) {
+        reconnectTimer.current = setTimeout(() => connect(), 3000);
+      }
     };
 
     ws.onerror = (err) => {

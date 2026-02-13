@@ -1,4 +1,4 @@
-export type { SessionStatus, SessionInfo, CreateSessionRequest } from './session';
+export type { SessionStatus, SessionInfo, CreateSessionRequest, UpdateSessionRequest } from './session';
 export type {
   MessageType,
   FileChange,
