@@ -136,7 +136,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             disabled={creating}
           >
             <Rocket className="h-4 w-4 mr-2" />
-            {creating ? 'Creating\u2026' : 'Create Session'}
+            {creating ? 'Creating…' : 'Create Session'}
           </Button>
           <Button
             variant="outline"

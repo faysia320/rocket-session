@@ -153,7 +153,7 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
             disabled={saving}
           >
             <Save className="h-3.5 w-3.5 mr-1.5" />
-            {saving ? 'Saving\u2026' : 'Save Settings'}
+            {saving ? 'Saving…' : 'Save Settings'}
           </Button>
         </div>
       </PopoverContent>
