@@ -6,11 +6,12 @@ import type { Message, FileChange, SessionMode, PermissionRequestData } from '@/
  * WebSocket URL을 현재 페이지 기반으로 동적 생성.
  * Vite proxy를 통해 /ws 경로가 백엔드로 프록시됩니다.
  */
-function getWsUrl(sessionId: string): string {
+function getWsUrl(sessionId: string, lastSeq?: number): string {
   const wsBase =
     config.WS_BASE_URL ||
     `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
-  return `${wsBase}/ws/${sessionId}`;
+  const base = `${wsBase}/ws/${sessionId}`;
+  return lastSeq ? `${base}?last_seq=${lastSeq}` : base;
 }
 
 // 세션 상태 인터페이스 (부분 타입)
@@ -37,6 +38,7 @@ export function useClaudeSocket(sessionId: string) {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldReconnect = useRef(true);
   const lastModeRef = useRef<'normal' | 'plan'>('normal');
+  const lastSeqRef = useRef<number>(0);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<'idle' | 'running'>('idle');
@@ -46,10 +48,20 @@ export function useClaudeSocket(sessionId: string) {
   const [pendingPermission, setPendingPermission] = useState<PermissionRequestData | null>(null);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
+    // 모든 이벤트에서 seq 추적
+    if (typeof data.seq === 'number' && data.seq > lastSeqRef.current) {
+      lastSeqRef.current = data.seq;
+    }
+
     switch (data.type) {
       case 'session_state':
         setSessionInfo(data.session as SessionState);
-        if (data.history) {
+        // latest_seq 업데이트 (서버에서 전달)
+        if (typeof data.latest_seq === 'number' && data.latest_seq > lastSeqRef.current) {
+          lastSeqRef.current = data.latest_seq;
+        }
+        // 재연결 시에는 히스토리를 덮어쓰지 않음
+        if (!data.is_reconnect && data.history) {
           setMessages(
             (data.history as HistoryItem[]).map((h, index) => ({
               id: `hist-${index}`,
@@ -61,6 +73,17 @@ export function useClaudeSocket(sessionId: string) {
           );
         }
         break;
+
+      case 'missed_events': {
+        // 놓친 이벤트를 순서대로 재처리
+        const events = data.events as Record<string, unknown>[];
+        if (events) {
+          for (const event of events) {
+            handleMessage(event);
+          }
+        }
+        break;
+      }
 
       case 'session_info':
         setSessionInfo((prev) => ({
@@ -200,12 +223,14 @@ export function useClaudeSocket(sessionId: string) {
     }
 
     shouldReconnect.current = true;
-    const ws = new WebSocket(getWsUrl(sessionId));
+    // 재연결 시 last_seq 파라미터로 놓친 이벤트 요청
+    const seq = lastSeqRef.current > 0 ? lastSeqRef.current : undefined;
+    const ws = new WebSocket(getWsUrl(sessionId, seq));
     wsRef.current = ws;
 
     ws.onopen = () => {
       setConnected(true);
-      console.log('[WS] Connected to session', sessionId);
+      console.log('[WS]', seq ? `Reconnected (last_seq=${seq})` : 'Connected', 'to session', sessionId);
     };
 
     ws.onmessage = (evt) => {
@@ -273,6 +298,7 @@ export function useClaudeSocket(sessionId: string) {
   const clearMessages = useCallback(() => {
     setMessages([]);
     setFileChanges([]);
+    lastSeqRef.current = 0;
   }, []);
 
   const addSystemMessage = useCallback((text: string) => {

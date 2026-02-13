@@ -20,6 +20,7 @@ export interface FileChange {
 export interface Message {
   id: string;
   type: MessageType;
+  seq?: number;
   text?: string;
   message?: string;
   content?: string;
@@ -54,7 +55,8 @@ export type WebSocketEventType =
   | 'stopped'
   | 'event'
   | 'permission_request'
-  | 'permission_response';
+  | 'permission_response'
+  | 'missed_events';
 
 export interface PermissionRequestData {
   permission_id: string;
