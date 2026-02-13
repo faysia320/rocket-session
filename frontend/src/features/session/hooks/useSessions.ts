@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useNavigate, useLocation } from '@tanstack/react-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sessionsApi } from '@/lib/api/sessions.api';
-import type { SessionInfo } from '@/types';
+import { sessionKeys } from './sessionKeys';
 
 /**
  * 세션 생성 전용 훅.
@@ -9,79 +10,88 @@ import type { SessionInfo } from '@/types';
  */
 export function useCreateSession() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const createSession = useCallback(async (
-    workDir?: string,
-    options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number },
-  ) => {
-    const session = await sessionsApi.create(workDir, options);
-    navigate({ to: '/session/$sessionId', params: { sessionId: session.id } });
-    return session;
-  }, [navigate]);
+  const mutation = useMutation({
+    mutationFn: (params: {
+      workDir?: string;
+      options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number };
+    }) => sessionsApi.create(params.workDir, params.options),
+    onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      navigate({ to: '/session/$sessionId', params: { sessionId: session.id } });
+    },
+  });
+
+  const createSession = useCallback(
+    async (
+      workDir?: string,
+      options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number },
+    ) => {
+      return mutation.mutateAsync({ workDir, options });
+    },
+    [mutation],
+  );
 
   return { createSession };
 }
 
 /**
- * 세션 관리 훅 - 세션 목록, 생성, 삭제, 선택 로직.
+ * 세션 관리 훅 - TanStack Query 기반 세션 목록, 삭제, 선택 로직.
  */
 export function useSessions() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchSessions = useCallback(() => {
-    sessionsApi.list().then(setSessions).catch(() => {});
-  }, []);
+  const { data: sessions = [] } = useQuery({
+    queryKey: sessionKeys.list(),
+    queryFn: () => sessionsApi.list(),
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
+  });
 
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
-
-  // pathname 변경 시 세션 목록 갱신 (세션 생성/삭제 후 사이드바 반영)
-  useEffect(() => {
-    fetchSessions();
-  }, [location.pathname, fetchSessions]);
-
-  const createSession = useCallback(async (
-    workDir?: string,
-    options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number },
-  ) => {
-    const session = await sessionsApi.create(workDir, options);
-    setSessions((prev) => [...prev, session]);
-    setActiveSessionId(session.id);
-    navigate({ to: '/session/$sessionId', params: { sessionId: session.id } });
-  }, [navigate]);
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => sessionsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+    },
+  });
 
   const deleteSession = useCallback(
     async (id: string) => {
-      await sessionsApi.delete(id);
-      setSessions((prev) => prev.filter((s) => s.id !== id));
-      if (activeSessionId === id) {
-        setActiveSessionId(null);
+      await deleteMutation.mutateAsync(id);
+      if (location.pathname.includes(id)) {
         navigate({ to: '/' });
       }
     },
-    [activeSessionId, navigate],
+    [deleteMutation, navigate, location.pathname],
   );
 
-  const selectSession = useCallback((id: string) => {
-    setActiveSessionId(id);
-    navigate({ to: '/session/$sessionId', params: { sessionId: id } });
-  }, [navigate]);
+  const selectSession = useCallback(
+    (id: string) => {
+      navigate({ to: '/session/$sessionId', params: { sessionId: id } });
+    },
+    [navigate],
+  );
 
-  const refreshSessions = useCallback(async () => {
-    const list = await sessionsApi.list();
-    setSessions(list);
-  }, []);
+  const refreshSessions = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
+  }, [queryClient]);
+
+  const activeSessionId = extractSessionIdFromPath(location.pathname);
 
   return {
     sessions,
     activeSessionId,
-    createSession,
     deleteSession,
     selectSession,
     refreshSessions,
   };
+}
+
+function extractSessionIdFromPath(pathname: string): string | null {
+  const match = pathname.match(/\/session\/([^/]+)/);
+  if (!match || match[1] === 'new') return null;
+  return match[1];
 }
