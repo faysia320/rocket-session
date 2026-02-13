@@ -37,14 +37,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
 
-  const workDir = (sessionInfo as Record<string, unknown>)?.work_dir as string | undefined;
+  const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? '');
 
   // 세션 정보에서 mode 동기화
   useEffect(() => {
-    const sessionMode = (sessionInfo as Record<string, unknown>)?.mode as SessionMode | undefined;
-    if (sessionMode) {
-      setMode(sessionMode);
+    if (sessionInfo?.mode) {
+      setMode(sessionInfo.mode);
     }
   }, [sessionInfo]);
 
@@ -170,6 +169,17 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       .map((r) => r.index);
   }, [messages, searchQuery]);
 
+  // 같은 턴 내 연속 메시지 간격 계산 (assistant 턴 그룹핑)
+  const messageGaps = useMemo(() => {
+    return messages.map((msg, i) => {
+      if (i === 0) return 'normal' as const;
+      const prev = messages[i - 1];
+      const turnTypes = ['assistant_text', 'tool_use', 'tool_result'];
+      if (turnTypes.includes(msg.type) && turnTypes.includes(prev.type)) return 'tight' as const;
+      return 'normal' as const;
+    });
+  }, [messages]);
+
   // 검색 결과 이동 시 스크롤
   useEffect(() => {
     if (searchMatches.length > 0 && searchMatchIndex < searchMatches.length) {
@@ -186,6 +196,18 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       return !prev;
     });
   }, []);
+
+  // Ctrl+F / Cmd+F 검색 단축키
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        handleToggleSearch();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleToggleSearch]);
 
   const handleFileClick = useCallback((change: FileChange) => {
     setSelectedFile(change);
@@ -258,6 +280,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           <input
             className="flex-1 font-mono text-[13px] bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
             placeholder="메시지 검색…"
+            aria-label="메시지 검색"
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setSearchMatchIndex(0); }}
             onKeyDown={(e) => {
@@ -268,7 +291,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             }}
             autoFocus
           />
-          <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+          <span className="font-mono text-[11px] text-muted-foreground shrink-0" aria-live="polite">
             {searchMatches.length > 0
               ? `${searchMatchIndex + 1}/${searchMatches.length}`
               : searchQuery ? '0 results' : ''}
@@ -334,11 +357,11 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
               >
-                <div className={
-                  searchQuery && searchMatches.includes(virtualItem.index)
-                    ? 'px-4 pb-2 ring-1 ring-primary/40 rounded-sm bg-primary/5'
-                    : 'px-4 pb-2'
-                }>
+                <div className={[
+                  'px-4',
+                  messageGaps[virtualItem.index] === 'tight' ? 'pb-0.5' : 'pb-2',
+                  searchQuery && searchMatches.includes(virtualItem.index) ? 'ring-1 ring-primary/40 rounded-sm bg-primary/5' : '',
+                ].filter(Boolean).join(' ')}>
                   <ErrorBoundary>
                     <MessageBubble
                       message={messages[virtualItem.index]}

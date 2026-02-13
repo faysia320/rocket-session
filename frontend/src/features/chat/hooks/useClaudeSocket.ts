@@ -31,10 +31,18 @@ function getBackoffDelay(attempt: number): number {
   return delay * (0.8 + Math.random() * 0.4);
 }
 
-// 세션 상태 인터페이스 (부분 타입)
+// 세션 상태 인터페이스
 interface SessionState {
   claude_session_id?: string;
-  [key: string]: unknown;
+  work_dir?: string;
+  mode?: SessionMode;
+  name?: string;
+  status?: string;
+  allowed_tools?: string;
+  system_prompt?: string;
+  timeout_seconds?: number;
+  permission_mode?: number;
+  permission_required_tools?: string;
 }
 
 // 히스토리 항목 타입
@@ -70,6 +78,24 @@ export function useClaudeSocket(sessionId: string) {
     attempt: 0,
     maxAttempts: RECONNECT_MAX_ATTEMPTS,
   });
+
+  // sessionId 변경 시 모든 상태 초기화 (방어적 코드)
+  useEffect(() => {
+    setMessages([]);
+    setFileChanges([]);
+    setActiveTools([]);
+    setStatus('idle');
+    setSessionInfo(null);
+    setLoading(true);
+    setPendingPermission(null);
+    lastSeqRef.current = 0;
+    reconnectAttempt.current = 0;
+    setReconnectState({
+      status: 'reconnecting',
+      attempt: 0,
+      maxAttempts: RECONNECT_MAX_ATTEMPTS,
+    });
+  }, [sessionId]);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
     // 모든 이벤트에서 seq 추적
@@ -142,10 +168,18 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'assistant_text':
         setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (last && last.type === 'assistant_text') {
-            // 스트리밍 중 기존 ID 유지 (virtualizer key 안정성)
-            return [...prev.slice(0, -1), { ...(data as unknown as Message), id: last.id }];
+          // 같은 턴 내의 마지막 assistant_text를 역순 탐색
+          // (user_message나 result 경계 이전까지만 검색)
+          let lastIdx = -1;
+          for (let i = prev.length - 1; i >= 0; i--) {
+            if (prev[i].type === 'user_message' || prev[i].type === 'result') break;
+            if (prev[i].type === 'assistant_text') { lastIdx = i; break; }
+          }
+          if (lastIdx >= 0) {
+            // 기존 assistant_text를 덮어쓰기 (ID 유지로 virtualizer key 안정성)
+            const updated = [...prev];
+            updated[lastIdx] = { ...(data as unknown as Message), id: prev[lastIdx].id };
+            return updated;
           }
           return [...prev, { ...(data as unknown as Message), id: generateMessageId() }];
         });

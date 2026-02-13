@@ -87,7 +87,7 @@ class ClaudeRunner:
                     shutil.copy2(str(src), str(dest))
                     copied.append(str(dest))
                 except OSError:
-                    pass
+                    logger.warning("이미지 복사 실패: %s", img_path, exc_info=True)
         return copied
 
     def _build_command(
@@ -257,9 +257,11 @@ class ClaudeRunner:
         """assistant 타입 이벤트 처리."""
         msg = event.get("message", {})
         content_blocks = msg.get("content", [])
+        has_new_text = False
         for block in content_blocks:
             if block.get("type") == "text":
                 current_text_holder[0] = block.get("text", "")
+                has_new_text = True
             elif block.get("type") == "tool_use":
                 tool_name = block.get("name", "unknown")
                 tool_input = block.get("input", {})
@@ -293,7 +295,7 @@ class ClaudeRunner:
                         },
                     )
 
-        if current_text_holder[0]:
+        if has_new_text and current_text_holder[0]:
             await ws_manager.broadcast_event(
                 session_id,
                 {
@@ -419,7 +421,7 @@ class ClaudeRunner:
             try:
                 mcp_config_path.unlink()
             except OSError:
-                pass
+                logger.debug("MCP config 정리 실패: %s", mcp_config_path, exc_info=True)
 
     async def run(
         self,
