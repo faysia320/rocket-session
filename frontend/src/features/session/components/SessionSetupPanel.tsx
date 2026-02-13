@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Rocket } from 'lucide-react';
+import { Rocket, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { DirectoryPicker } from '@/features/directory/components/DirectoryPicker';
+import { useGitInfo } from '@/features/directory/hooks/useGitInfo';
+import { filesystemApi } from '@/lib/api/filesystem.api';
 import { AVAILABLE_TOOLS } from '../constants/tools';
 import { useGlobalSettings } from '@/features/settings/hooks/useGlobalSettings';
 
@@ -24,7 +27,10 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [systemPrompt, setSystemPrompt] = useState('');
   const [timeoutMinutes, setTimeoutMinutes] = useState('');
   const [creating, setCreating] = useState(false);
+  const [useWorktree, setUseWorktree] = useState(false);
+  const [worktreeBranch, setWorktreeBranch] = useState('');
   const { data: globalSettings } = useGlobalSettings();
+  const { gitInfo } = useGitInfo(workDir);
 
   // 글로벌 work_dir 기본값 적용
   useEffect(() => {
@@ -42,6 +48,17 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const handleCreate = async () => {
     setCreating(true);
     try {
+      let targetDir = workDir.trim();
+
+      if (useWorktree && worktreeBranch.trim()) {
+        const worktreeInfo = await filesystemApi.createWorktree({
+          repo_path: workDir.trim(),
+          branch: worktreeBranch.trim(),
+          create_branch: true,
+        });
+        targetDir = worktreeInfo.path;
+      }
+
       const options: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number } = {};
       if (selectedTools.length > 0) {
         options.allowed_tools = selectedTools.join(',');
@@ -52,7 +69,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       if (timeoutMinutes && Number(timeoutMinutes) > 0) {
         options.timeout_seconds = Number(timeoutMinutes) * 60;
       }
-      onCreate(workDir.trim(), Object.keys(options).length > 0 ? options : undefined);
+      onCreate(targetDir, Object.keys(options).length > 0 ? options : undefined);
     } catch {
       setCreating(false);
     }
@@ -81,6 +98,39 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           </Label>
           <DirectoryPicker value={workDir} onChange={setWorkDir} />
         </div>
+
+        {/* Git Worktree */}
+        {gitInfo?.is_git_repo ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="worktree-toggle"
+                className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-2 cursor-pointer"
+              >
+                <GitBranch className="h-3.5 w-3.5" />
+                GIT WORKTREE
+              </Label>
+              <Switch
+                id="worktree-toggle"
+                checked={useWorktree}
+                onCheckedChange={setUseWorktree}
+              />
+            </div>
+            {useWorktree ? (
+              <div className="space-y-2 pl-0.5">
+                <p className="font-mono text-[10px] text-muted-foreground/70">
+                  현재 브랜치: <code className="text-info/80">{gitInfo.branch}</code> 기준으로 새 워크트리를 생성합니다
+                </p>
+                <Input
+                  className="font-mono text-xs bg-input border-border"
+                  placeholder="새 브랜치명 (예: feature-auth)"
+                  value={worktreeBranch}
+                  onChange={(e) => setWorktreeBranch(e.target.value)}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* Allowed Tools */}
         <div className="space-y-3">
@@ -147,7 +197,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           <Button
             className="flex-1 font-mono text-sm font-semibold"
             onClick={handleCreate}
-            disabled={creating || !workDir.trim()}
+            disabled={creating || !workDir.trim() || (useWorktree && !worktreeBranch.trim())}
           >
             <Rocket className="h-4 w-4 mr-2" />
             {creating ? 'Creating…' : 'Create Session'}
