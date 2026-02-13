@@ -28,6 +28,7 @@ class GitInfo(BaseModel):
     remote_url: Optional[str] = None
     ahead: int = 0
     behind: int = 0
+    is_worktree: bool = False
 
 
 class WorktreeInfo(BaseModel):

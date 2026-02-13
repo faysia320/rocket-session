@@ -167,6 +167,19 @@ class FilesystemService:
                 except ValueError:
                     pass
 
+        # 워크트리 여부 판별
+        rc_dir, git_dir, _ = await self._run_git_command(
+            "rev-parse", "--git-dir", cwd=cwd
+        )
+        rc_common, git_common, _ = await self._run_git_command(
+            "rev-parse", "--git-common-dir", cwd=cwd
+        )
+        if rc_dir == 0 and rc_common == 0 and git_dir and git_common:
+            import os
+            norm_dir = os.path.normpath(os.path.join(cwd, git_dir))
+            norm_common = os.path.normpath(os.path.join(cwd, git_common))
+            info.is_worktree = norm_dir != norm_common
+
         return info
 
     async def list_worktrees(self, path: str) -> WorktreeListResponse:
@@ -265,6 +278,63 @@ class FilesystemService:
             commit_hash=commit_hash,
             is_main=False,
         )
+
+    async def remove_worktree(self, worktree_path: str, force: bool = False) -> None:
+        """Git 워크트리 삭제 + 연결된 브랜치 정리.
+
+        worktree_path: 삭제할 워크트리의 경로
+        force: 미커밋 변경사항이 있어도 강제 삭제
+        """
+        validated_path = self._validate_path(worktree_path)
+        cwd = str(validated_path)
+
+        # 워크트리인지 확인 (git-dir != git-common-dir)
+        rc_dir, git_dir, _ = await self._run_git_command(
+            "rev-parse", "--git-dir", cwd=cwd
+        )
+        rc_common, git_common, _ = await self._run_git_command(
+            "rev-parse", "--git-common-dir", cwd=cwd
+        )
+        if rc_dir != 0 or rc_common != 0:
+            raise ValueError("유효한 Git 저장소가 아닙니다.")
+
+        import os
+        norm_dir = os.path.normpath(os.path.join(cwd, git_dir))
+        norm_common = os.path.normpath(os.path.join(cwd, git_common))
+        if norm_dir == norm_common:
+            raise ValueError("메인 저장소는 워크트리 삭제 대상이 아닙니다.")
+
+        # 워크트리의 현재 브랜치명 기억 (삭제 후 브랜치 정리용)
+        rc_branch, branch_name, _ = await self._run_git_command(
+            "branch", "--show-current", cwd=cwd
+        )
+        worktree_branch = branch_name if rc_branch == 0 and branch_name else None
+
+        # git-common-dir이 실제 .git 디렉토리 → 메인 레포 경로 추출
+        main_repo = os.path.dirname(norm_common)
+
+        # 메인 레포의 현재 브랜치 확인 (같은 브랜치 삭제 방지)
+        rc_main, main_branch, _ = await self._run_git_command(
+            "branch", "--show-current", cwd=main_repo
+        )
+        main_current = main_branch if rc_main == 0 and main_branch else None
+
+        # 워크트리 삭제 (메인 레포에서 실행)
+        args = ["worktree", "remove"]
+        if force:
+            args.append("--force")
+        args.append(cwd)
+
+        returncode, _, stderr = await self._run_git_command(*args, cwd=main_repo)
+        if returncode != 0:
+            raise RuntimeError(f"워크트리 삭제 실패: {stderr}")
+
+        # 워크트리에 연결되었던 브랜치 삭제 (메인 브랜치와 다른 경우만)
+        if worktree_branch and worktree_branch != main_current:
+            delete_flag = "-D" if force else "-d"
+            await self._run_git_command(
+                "branch", delete_flag, worktree_branch, cwd=main_repo
+            )
 
     async def list_skills(self, path: str) -> SkillListResponse:
         """Skills 목록 조회 (.claude/commands/*.md)."""

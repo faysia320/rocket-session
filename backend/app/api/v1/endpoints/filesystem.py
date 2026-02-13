@@ -69,6 +69,21 @@ async def create_worktree(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.delete("/worktrees")
+async def remove_worktree(
+    path: str = Query(..., description="삭제할 워크트리 경로"),
+    force: bool = Query(default=False, description="미커밋 변경사항이 있어도 강제 삭제"),
+    fs: FilesystemService = Depends(get_filesystem_service),
+):
+    try:
+        await fs.remove_worktree(path, force=force)
+        return {"ok": True}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/skills", response_model=SkillListResponse)
 async def list_skills(
     path: str = Query(default="", description="프로젝트 작업 디렉토리 경로"),
