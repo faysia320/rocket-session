@@ -132,6 +132,18 @@ export function useClaudeSocket(sessionId: string) {
   const connect = useCallback(() => {
     if (!sessionId) return;
 
+    // 기존 연결이 있으면 먼저 정리 (StrictMode 이중 마운트 대응)
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    if (reconnectTimer.current) {
+      clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
+
     shouldReconnect.current = true;
     const ws = new WebSocket(getWsUrl(sessionId));
     wsRef.current = ws;
@@ -166,8 +178,17 @@ export function useClaudeSocket(sessionId: string) {
   useEffect(() => {
     connect();
     return () => {
-      if (wsRef.current) wsRef.current.close();
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      shouldReconnect.current = false;
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
     };
   }, [connect]);
 
