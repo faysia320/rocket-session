@@ -153,12 +153,13 @@ function FileChangeMessage({ message }: { message: any }) {
 }
 
 function ErrorMessage({ message }: { message: any }) {
+  const errorText = message.message || message.text || 'Unknown error';
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-sm">
         <span className="text-sm">{'\u26A0'}</span>
         <span className="font-mono text-xs text-destructive">
-          {message.message || message.text}
+          {errorText}
         </span>
       </div>
     </div>

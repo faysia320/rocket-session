@@ -1,9 +1,15 @@
 """Claude Code Dashboard - FastAPI 앱 팩토리."""
 
+import asyncio
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Windows에서 asyncio subprocess 지원을 위해 ProactorEventLoop 사용
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from app.api.dependencies import get_settings, init_dependencies, shutdown_dependencies
 from app.api.v1.api import api_router

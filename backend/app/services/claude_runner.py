@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -35,7 +36,7 @@ class ClaudeRunner:
         await session_manager.update_status(session_id, "running")
         await ws_manager.broadcast(session_id, {"type": "status", "status": "running"})
 
-        cmd = ["claude", "-p", prompt, "--output-format", "stream-json"]
+        cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose"]
 
         if allowed_tools:
             cmd.extend(["--allowedTools", allowed_tools])
@@ -56,11 +57,15 @@ class ClaudeRunner:
         timeout_seconds = session.get("timeout_seconds")
 
         try:
+            # CLAUDECODE 환경변수 제거 (중첩 세션 방지)
+            env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=session["work_dir"],
+                env=env,
             )
             session_manager.set_process(session_id, process)
 
@@ -213,9 +218,11 @@ class ClaudeRunner:
             await process.wait()
 
         except Exception as e:
+            error_msg = str(e) or f"{type(e).__name__}: (no message)"
+            logger.error("세션 %s 실행 오류: %s", session_id, error_msg, exc_info=True)
             await session_manager.update_status(session_id, "error")
             await ws_manager.broadcast(
-                session_id, {"type": "error", "message": str(e)}
+                session_id, {"type": "error", "message": error_msg}
             )
 
         finally:
