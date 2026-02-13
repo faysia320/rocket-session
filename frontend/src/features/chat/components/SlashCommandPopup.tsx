@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import { Sparkles, Terminal } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { SlashCommand } from '../constants/slashCommands';
@@ -26,7 +27,7 @@ export function SlashCommandPopup({ commands, activeIndex, onSelect, onHover }: 
         <ScrollArea className="max-h-[240px]">
           <div ref={listRef} role="listbox" className="p-1">
             {commands.map((cmd, idx) => {
-              const Icon = cmd.icon;
+              const Icon = cmd.icon ?? (cmd.source === 'skill' ? Sparkles : Terminal);
               return (
                 <div
                   key={cmd.id}
@@ -42,7 +43,12 @@ export function SlashCommandPopup({ commands, activeIndex, onSelect, onHover }: 
                 >
                   <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-mono text-xs font-semibold">{cmd.label}</div>
+                    <div className="font-mono text-xs font-semibold inline-flex items-center">
+                      {cmd.label}
+                      {cmd.source === 'skill' ? (
+                        <span className="ml-1.5 text-[9px] text-muted-foreground/60 font-normal">skill</span>
+                      ) : null}
+                    </div>
                     <div className="font-mono text-[10px] text-muted-foreground truncate">
                       {cmd.description}
                     </div>

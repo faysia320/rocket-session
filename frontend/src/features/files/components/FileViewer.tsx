@@ -95,7 +95,7 @@ export function FileViewer({ sessionId, filePath, tool, timestamp, open, onOpenC
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
               <div className="font-mono text-xs text-destructive mb-1">
-                {'\uD30C\uC77C\uC744 \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4'}
+                파일을 불러올 수 없습니다
               </div>
               <div className="font-mono text-[10px] text-muted-foreground">
                 {error}

@@ -13,4 +13,11 @@ export type {
   WorktreeInfo,
   WorktreeListResponse,
   CreateWorktreeRequest,
+  SkillInfo,
+  SkillListResponse,
 } from './filesystem';
+export type {
+  LocalSessionMeta,
+  ImportLocalSessionRequest,
+  ImportLocalSessionResponse,
+} from './local-session';

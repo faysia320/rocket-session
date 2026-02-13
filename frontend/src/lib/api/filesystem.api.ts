@@ -8,6 +8,7 @@ import type {
   WorktreeListResponse,
   WorktreeInfo,
   CreateWorktreeRequest,
+  SkillListResponse,
 } from '@/types';
 
 export const filesystemApi = {
@@ -22,4 +23,7 @@ export const filesystemApi = {
 
   createWorktree: (req: CreateWorktreeRequest) =>
     api.post<WorktreeInfo>('/api/fs/worktrees', req),
+
+  listSkills: (path: string) =>
+    api.get<SkillListResponse>(`/api/fs/skills?path=${encodeURIComponent(path)}`),
 };

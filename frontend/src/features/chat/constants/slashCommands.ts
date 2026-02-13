@@ -5,10 +5,11 @@ export interface SlashCommand {
   id: string;
   label: string;
   description: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   scope: 'frontend' | 'backend';
   requiresConnection: boolean;
   availableWhileRunning: boolean;
+  source?: 'builtin' | 'skill';
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [

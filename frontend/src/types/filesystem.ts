@@ -43,3 +43,14 @@ export interface CreateWorktreeRequest {
   target_path?: string;
   create_branch: boolean;
 }
+
+export interface SkillInfo {
+  name: string;
+  filename: string;
+  description: string;
+  scope: 'project' | 'user';
+}
+
+export interface SkillListResponse {
+  skills: SkillInfo[];
+}

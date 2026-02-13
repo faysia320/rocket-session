@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { FolderOpen, Send, Square } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
 import { MessageBubble } from './MessageBubble';
 import { SessionSettings } from '@/features/session/components/SessionSettings';
@@ -18,6 +19,7 @@ import type { FileChange } from '@/types';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { SlashCommandPopup } from './SlashCommandPopup';
 import type { SlashCommand } from '../constants/slashCommands';
+import { filesystemApi } from '@/lib/api/filesystem.api';
 
 interface ChatPanelProps {
   sessionId: string;
@@ -32,9 +34,20 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
+
+  const workDir = (sessionInfo as Record<string, unknown>)?.work_dir as string | undefined;
+
+  const { data: skillsData } = useQuery({
+    queryKey: ['skills', workDir],
+    queryFn: () => filesystemApi.listSkills(workDir!),
+    enabled: !!workDir,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const slashCommands = useSlashCommands({
     connected,
     isRunning: status === 'running',
+    skills: skillsData?.skills,
   });
 
   useEffect(() => {
@@ -54,13 +67,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     switch (cmd.id) {
       case 'help': {
         const helpText =
-          '\uC0AC\uC6A9 \uAC00\uB2A5\uD55C \uBA85\uB839\uC5B4:\n' +
-          '  /help     - \uBA85\uB839\uC5B4 \uBAA9\uB85D \uD45C\uC2DC\n' +
-          '  /clear    - \uB300\uD654 \uB0B4\uC5ED \uCD08\uAE30\uD654\n' +
-          '  /compact  - \uCEE8\uD14D\uC2A4\uD2B8 \uC555\uCD95 (CLI \uC804\uB2EC)\n' +
-          '  /model    - \uBAA8\uB378 \uBCC0\uACBD (CLI \uC804\uB2EC)\n' +
-          '  /settings - \uC138\uC158 \uC124\uC815 \uC5F4\uAE30\n' +
-          '  /files    - \uD30C\uC77C \uBCC0\uACBD \uD328\uB110 \uD1A0\uAE00';
+          '사용 가능한 명령어:\n' +
+          '  /help     - 명령어 목록 표시\n' +
+          '  /clear    - 대화 내역 초기화\n' +
+          '  /compact  - 컨텍스트 압축 (CLI 전달)\n' +
+          '  /model    - 모델 변경 (CLI 전달)\n' +
+          '  /settings - 세션 설정 열기\n' +
+          '  /files    - 파일 변경 패널 토글';
         addSystemMessage(helpText);
         break;
       }
@@ -76,6 +89,12 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         break;
       case 'files':
         setFilesOpen((p) => !p);
+        break;
+      default:
+        // skill 명령어: CLI에 그대로 전달
+        if (cmd.source === 'skill') {
+          sendPrompt(`/${cmd.id}`);
+        }
         break;
     }
   };
@@ -114,7 +133,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* \uC0C1\uB2E8\uBC14 */}
+      {/* 상단바 */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
         <div className="flex items-center gap-2">
           <span
@@ -155,7 +174,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                 size="icon"
                 title="File changes"
                 className={cn(filesOpen && 'bg-muted')}
-                aria-label="\uD30C\uC77C \uBCC0\uACBD \uD328\uB110"
+                aria-label="파일 변경 패널"
               >
                 <FolderOpen className="h-4 w-4" />
                 {fileChanges.length > 0 ? (
@@ -172,7 +191,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         </div>
       </div>
 
-      {/* \uBA54\uC2DC\uC9C0 \uC601\uC5ED */}
+      {/* 메시지 영역 */}
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-2">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-50">
@@ -190,7 +209,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* \uC785\uB825 \uC601\uC5ED */}
+      {/* 입력 영역 */}
       <div className="px-4 py-3 border-t border-border bg-secondary">
         <div className="relative">
           {slashCommands.isOpen ? (
@@ -232,7 +251,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         </div>
         </div>
         <div className="font-mono text-[10px] text-muted-foreground/70 mt-1.5 pl-0.5">
-          Shift+Enter \uC904\uBC14\uAFC8 {'\u00B7'} <span className="text-muted-foreground">/</span> \uBA85\uB839\uC5B4
+          Shift+Enter 줄바꿈 {'\u00B7'} <span className="text-muted-foreground">/</span> 명령어
         </div>
       </div>
 

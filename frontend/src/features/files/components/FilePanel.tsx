@@ -38,7 +38,7 @@ export function FilePanel({ fileChanges = [], onFileClick }: FilePanelProps) {
               key={i}
               className="w-full text-left p-2 px-2.5 bg-secondary border border-border rounded-sm mb-1.5 animate-[fadeIn_0.2s_ease] hover:border-primary/30 hover:bg-secondary/80 transition-colors cursor-pointer"
               onClick={() => onFileClick?.(change)}
-              aria-label={`\uD30C\uC77C \uBCF4\uAE30: ${change.file}`}
+              aria-label={`파일 보기: ${change.file}`}
             >
               <div className="flex items-center justify-between mb-1">
                 <Badge

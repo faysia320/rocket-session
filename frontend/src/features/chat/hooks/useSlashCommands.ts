@@ -1,12 +1,14 @@
 import { useState, useCallback, useMemo } from 'react';
 import { SLASH_COMMANDS, type SlashCommand } from '../constants/slashCommands';
+import type { SkillInfo } from '@/types';
 
 interface UseSlashCommandsOptions {
   connected: boolean;
   isRunning: boolean;
+  skills?: SkillInfo[];
 }
 
-export function useSlashCommands({ connected, isRunning }: UseSlashCommandsOptions) {
+export function useSlashCommands({ connected, isRunning, skills }: UseSlashCommandsOptions) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [filterText, setFilterText] = useState('');
@@ -18,16 +20,29 @@ export function useSlashCommands({ connected, isRunning }: UseSlashCommandsOptio
       return true;
     });
 
-    if (!filterText) return available;
+    const skillCommands: SlashCommand[] =
+      skills?.map((skill) => ({
+        id: skill.name,
+        label: '/' + skill.name,
+        description: skill.description,
+        scope: 'backend' as const,
+        requiresConnection: true,
+        availableWhileRunning: false,
+        source: 'skill' as const,
+      })) ?? [];
+
+    const allCommands = [...available, ...skillCommands];
+
+    if (!filterText) return allCommands;
 
     const lower = filterText.toLowerCase();
-    return available.filter(
+    return allCommands.filter(
       (cmd) =>
         cmd.id.includes(lower) ||
         cmd.label.includes(lower) ||
         cmd.description.toLowerCase().includes(lower),
     );
-  }, [filterText, connected, isRunning]);
+  }, [filterText, connected, isRunning, skills]);
 
   const handleInputChange = useCallback((value: string) => {
     if (value === '/') {
