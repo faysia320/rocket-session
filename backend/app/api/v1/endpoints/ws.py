@@ -32,24 +32,24 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
     ws_manager.register(session_id, ws)
 
-    # 세션 정보 + 히스토리를 함께 전송
-    sessions = await manager.list_all()
-    session_with_counts = session
-    for s in sessions:
-        if s["id"] == session_id:
-            session_with_counts = s
-            break
-
-    history = await manager.get_history(session_id)
-    await ws.send_json(
-        {
-            "type": "session_state",
-            "session": manager.to_info_dict(session_with_counts),
-            "history": history,
-        }
-    )
-
     try:
+        # 세션 정보 + 히스토리를 함께 전송
+        sessions = await manager.list_all()
+        session_with_counts = session
+        for s in sessions:
+            if s["id"] == session_id:
+                session_with_counts = s
+                break
+
+        history = await manager.get_history(session_id)
+        await ws.send_json(
+            {
+                "type": "session_state",
+                "session": manager.to_info_dict(session_with_counts),
+                "history": history,
+            }
+        )
+
         while True:
             data = await ws.receive_json()
             msg_type = data.get("type")
@@ -104,4 +104,6 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                 await ws.send_json({"type": "pong"})
 
     except WebSocketDisconnect:
+        pass
+    finally:
         ws_manager.unregister(session_id, ws)
