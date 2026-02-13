@@ -29,7 +29,7 @@ function RootComponent() {
           selectSession(id);
         }}
       />
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
         {splitView && sessions.length > 0 && !isNewSessionRoute ? (
           sessions.map((s) => (
             <div
