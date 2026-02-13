@@ -1,0 +1,14 @@
+.git
+.venv
+__pycache__
+*.pyc
+backend/data/
+frontend/node_modules/
+frontend/dist/
+.env*
+!.env.example
+!.env.docker.example
+.claude/
+.omc/
+.worktrees/
+.serena/

@@ -44,3 +44,6 @@ nul
 .playwright-mcp
 
 .omc
+
+# Docker environment
+.env.docker

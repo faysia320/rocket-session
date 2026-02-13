@@ -1,16 +1,33 @@
 services:
   backend:
     build: ./backend
-    image: querymanager-backend:latest
-    container_name: query_manager_backend
+    container_name: rocket-session-backend
     expose:
-      - "8041"
+      - "8101"
+    volumes:
+      - ./backend/data:/app/data
+      - ${CLAUDE_AUTH_DIR}:/root/.claude:ro
+      - ${HOST_PROJECTS_DIR}:/projects
+    environment:
+      - CLAUDE_WORK_DIR=/projects
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=8101
+    env_file:
+      - .env.docker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8101/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
-    image: querymanager-frontend:latest
-    container_name: query_manager_frontend
+    container_name: rocket-session-frontend
     ports:
-      - "8040:80"
+      - "8100:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
