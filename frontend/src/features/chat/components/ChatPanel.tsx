@@ -4,6 +4,9 @@ import { FolderOpen, Send, Square } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
 import { MessageBubble } from './MessageBubble';
+import { PermissionDialog } from './PermissionDialog';
+import { PlanReviewDialog } from './PlanReviewDialog';
+import { ModeIndicator } from './ModeIndicator';
 import { ActivityStatusBar } from './ActivityStatusBar';
 import { SessionSettings } from '@/features/session/components/SessionSettings';
 import { FilePanel } from '@/features/files/components/FilePanel';
@@ -17,7 +20,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import type { FileChange, SessionMode } from '@/types';
+import type { FileChange, SessionMode, Message } from '@/types';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import { SlashCommandPopup } from './SlashCommandPopup';
@@ -29,7 +32,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ sessionId }: ChatPanelProps) {
-  const { connected, messages, status, sessionInfo, fileChanges, activeTools, sendPrompt, stopExecution, clearMessages, addSystemMessage } =
+  const { connected, messages, status, sessionInfo, fileChanges, activeTools, pendingPermission, sendPrompt, stopExecution, clearMessages, addSystemMessage, updateMessage, respondPermission } =
     useClaudeSocket(sessionId);
   const [input, setInput] = useState('');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -40,6 +43,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [mode, setMode] = useState<SessionMode>('normal');
+  const [planReviewOpen, setPlanReviewOpen] = useState(false);
+  const [planReviewMessage, setPlanReviewMessage] = useState<Message | null>(null);
 
   const workDir = (sessionInfo as Record<string, unknown>)?.work_dir as string | undefined;
 
@@ -96,11 +101,70 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   }, [messages, virtualizer]);
 
+  // Plan result 자동 감지 → Dialog 오픈
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (
+      lastMsg.type === 'result' &&
+      lastMsg.mode === 'plan' &&
+      !lastMsg.planExecuted &&
+      !planReviewOpen
+    ) {
+      setPlanReviewMessage(lastMsg);
+      setPlanReviewOpen(true);
+    }
+  }, [messages, planReviewOpen]);
+
   const cycleMode = () => {
     const next: SessionMode = mode === 'normal' ? 'plan' : 'normal';
     setMode(next);
     sessionsApi.update(sessionId, { mode: next }).catch(() => {});
   };
+
+  const handleExecutePlan = useCallback(
+    (messageId: string) => {
+      updateMessage(messageId, { planExecuted: true });
+      setMode('normal');
+      sessionsApi.update(sessionId, { mode: 'normal' }).catch(() => {});
+      sendPrompt('위의 계획대로 단계별로 실행해줘.', { mode: 'normal' });
+      setPlanReviewOpen(false);
+      setPlanReviewMessage(null);
+    },
+    [sessionId, sendPrompt, updateMessage]
+  );
+
+  const handleDismissPlan = useCallback(
+    (messageId: string) => {
+      updateMessage(messageId, { planExecuted: true });
+      setPlanReviewOpen(false);
+      setPlanReviewMessage(null);
+    },
+    [updateMessage]
+  );
+
+  const handleRevise = useCallback(
+    (feedback: string) => {
+      if (planReviewMessage) {
+        updateMessage(planReviewMessage.id, { planExecuted: true });
+      }
+      sendPrompt(feedback, { mode: 'plan' });
+      setPlanReviewOpen(false);
+      setPlanReviewMessage(null);
+    },
+    [planReviewMessage, sendPrompt, updateMessage]
+  );
+
+  const handleOpenReview = useCallback(
+    (messageId: string) => {
+      const msg = messages.find((m) => m.id === messageId);
+      if (msg) {
+        setPlanReviewMessage(msg);
+        setPlanReviewOpen(true);
+      }
+    },
+    [messages]
+  );
 
   const handleFileClick = (change: FileChange) => {
     setSelectedFile(change);
@@ -210,6 +274,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           ) : null}
         </div>
         <div className="flex items-center gap-2">
+          <ModeIndicator mode={mode} onToggle={cycleMode} />
           {status === 'running' ? (
             <Badge
               variant="outline"
@@ -271,7 +336,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                 }}
               >
                 <div className="px-4 pb-2">
-                  <MessageBubble message={messages[virtualItem.index]} />
+                  <MessageBubble
+                    message={messages[virtualItem.index]}
+                    isRunning={status === 'running'}
+                    onExecutePlan={handleExecutePlan}
+                    onDismissPlan={handleDismissPlan}
+                    onOpenReview={handleOpenReview}
+                  />
                 </div>
               </div>
             ))}
@@ -337,6 +408,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         </div>
       </div>
 
+      {/* Permission Dialog */}
+      <PermissionDialog
+        request={pendingPermission}
+        onAllow={(id) => respondPermission(id, 'allow')}
+        onDeny={(id) => respondPermission(id, 'deny')}
+      />
+
       {/* FileViewer Dialog */}
       {selectedFile ? (
         <FileViewer
@@ -348,6 +426,17 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           onOpenChange={(open) => { if (!open) setSelectedFile(null); }}
         />
       ) : null}
+
+      {/* Plan Review Dialog */}
+      <PlanReviewDialog
+        open={planReviewOpen}
+        onOpenChange={setPlanReviewOpen}
+        message={planReviewMessage}
+        isRunning={status === 'running'}
+        onExecute={handleExecutePlan}
+        onDismiss={handleDismissPlan}
+        onRevise={handleRevise}
+      />
     </div>
   );
 }

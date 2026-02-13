@@ -1,10 +1,26 @@
 import { useState, memo } from 'react';
+import { Maximize2 } from 'lucide-react';
 import { FormattedText } from '@/components/ui/FormattedText';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/types';
+import { PlanApprovalButton } from './PlanApprovalButton';
 
-export const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {
+interface MessageBubbleProps {
+  message: Message;
+  isRunning?: boolean;
+  onExecutePlan?: (messageId: string) => void;
+  onDismissPlan?: (messageId: string) => void;
+  onOpenReview?: (messageId: string) => void;
+}
+
+export const MessageBubble = memo(function MessageBubble({
+  message,
+  isRunning = false,
+  onExecutePlan,
+  onDismissPlan,
+  onOpenReview,
+}: MessageBubbleProps) {
   const { type } = message;
 
   switch (type) {
@@ -13,7 +29,15 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
     case 'assistant_text':
       return <AssistantText message={message} />;
     case 'result':
-      return <ResultMessage message={message} />;
+      return (
+        <ResultMessage
+          message={message}
+          isRunning={isRunning}
+          onExecutePlan={onExecutePlan}
+          onDismissPlan={onDismissPlan}
+          onOpenReview={onOpenReview}
+        />
+      );
     case 'tool_use':
       return <ToolUseMessage message={message} />;
     case 'file_change':
@@ -26,6 +50,8 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
       return <SystemMessage message={message} />;
     case 'event':
       return <EventMessage message={message} />;
+    case 'permission_request':
+      return <PermissionRequestMessage message={message} />;
     default:
       return null;
   }
@@ -62,15 +88,46 @@ function AssistantText({ message }: { message: any }) {
   );
 }
 
-function ResultMessage({ message }: { message: any }) {
+function ResultMessage({
+  message,
+  isRunning = false,
+  onExecutePlan,
+  onDismissPlan,
+  onOpenReview,
+}: {
+  message: any;
+  isRunning?: boolean;
+  onExecutePlan?: (messageId: string) => void;
+  onDismissPlan?: (messageId: string) => void;
+  onOpenReview?: (messageId: string) => void;
+}) {
+  const showPlanApproval = message.mode === 'plan' && onExecutePlan;
+
   return (
     <div className="flex animate-[fadeIn_0.2s_ease]">
       <div className={cn(
         "max-w-[85%] px-3.5 py-3 bg-muted rounded-xl rounded-bl-sm",
-        "border border-[hsl(var(--border-bright))]"
+        "border border-[hsl(var(--border-bright))]",
+        showPlanApproval && !message.planExecuted && "border-primary/30"
       )}>
         <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground mb-1.5">
           <span className="text-primary text-xs">{'◆'}</span> Claude
+          {message.mode === 'plan' ? (
+            <>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/15 text-primary border border-primary/30">
+                Plan
+              </span>
+              <button
+                type="button"
+                onClick={() => onOpenReview?.(message.id)}
+                className="ml-1 p-0.5 rounded hover:bg-primary/15 text-muted-foreground hover:text-primary transition-colors"
+                aria-label="Plan review dialog"
+                title="Plan review dialog"
+              >
+                <Maximize2 className="h-3 w-3" />
+              </button>
+            </>
+          ) : null}
         </div>
         <div className="font-mono text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words">
           <FormattedText text={message.text} />
@@ -88,6 +145,14 @@ function ResultMessage({ message }: { message: any }) {
               </span>
             ) : null}
           </div>
+        ) : null}
+        {showPlanApproval ? (
+          <PlanApprovalButton
+            planExecuted={message.planExecuted}
+            isRunning={isRunning}
+            onExecute={() => onExecutePlan(message.id)}
+            onDismiss={() => onDismissPlan?.(message.id)}
+          />
         ) : null}
       </div>
     </div>
@@ -237,5 +302,20 @@ function EventMessage({ message }: { message: any }) {
         </pre>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+function PermissionRequestMessage({ message }: { message: any }) {
+  return (
+    <div className="animate-[fadeIn_0.2s_ease]">
+      <div className="flex items-center gap-2 px-3 py-2 bg-warning/10 border border-warning/20 rounded-sm border-l-[3px] border-l-warning">
+        <span className="font-mono text-[10px] font-semibold text-warning uppercase tracking-wider">
+          Permission Required
+        </span>
+        <span className="font-mono text-xs text-foreground font-semibold">
+          {message.tool}
+        </span>
+      </div>
+    </div>
   );
 }
