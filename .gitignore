@@ -1,24 +1,43 @@
-# Dependencies
-frontend/node_modules/
-backend/__pycache__/
-backend/**/__pycache__/
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
 
-# Environment
-backend/.env
+# Virtual environments
+.venv
 
-# Build
-frontend/dist/
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+frontend/*.local
+frontend/coverage
+frontend/playwright-report
+frontend/test-results
+frontend/.playwright
+node_modules
 
-# IDE
-.vscode/
-.idea/
+# Test coverage
+htmlcov/
+.coverage
 
-# OS
-.DS_Store
-Thumbs.db
+# Temporary Claude files
+tmpclaude-*-cwd
 
-# uv
-backend/.venv/
+# Temporary Wijmo reference files
+tmp-wijmo/
 
-# Claude
-.claude/
+# Git worktrees
+.worktrees/
+.serena/
+nul
+
+# Claude local settings
+.claude/settings.local.json
+
+.playwright-mcp
+
+.omc

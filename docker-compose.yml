@@ -1,0 +1,16 @@
+services:
+  backend:
+    build: ./backend
+    image: querymanager-backend:latest
+    container_name: query_manager_backend
+    expose:
+      - "8041"
+
+  frontend:
+    build: ./frontend
+    image: querymanager-frontend:latest
+    container_name: query_manager_frontend
+    ports:
+      - "8040:80"
+    depends_on:
+      - backend

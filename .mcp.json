@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@playwright/mcp@latest"]
+    },
+    "serena": {
+      "type": "sse",
+      "url": "http://localhost:9121/sse"
+    }
+  }
+}
