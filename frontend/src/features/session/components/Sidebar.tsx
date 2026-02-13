@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon, Columns2, Download, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,10 +16,11 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  onRename?: (id: string, name: string) => void;
   onImported?: (id: string) => void;
 }
 
-export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, onImported }: SidebarProps) {
+export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, onRename, onImported }: SidebarProps) {
   const splitView = useSessionStore((s) => s.splitView);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
   const collapsed = useSessionStore((s) => s.sidebarCollapsed);
@@ -166,57 +167,14 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <div
+              <SessionItem
                 key={s.id}
-                className={cn(
-                  'px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-all border border-transparent',
-                  s.id === activeSessionId && 'bg-muted border-[hsl(var(--border-bright))]',
-                )}
-                onClick={() => onSelect(s.id)}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={cn(
-                      'w-1.5 h-1.5 rounded-full shrink-0',
-                      s.status === 'running' && 'bg-green-500',
-                      s.status === 'error' && 'bg-red-500',
-                      s.status !== 'running' && s.status !== 'error' && 'bg-muted-foreground',
-                    )}
-                  />
-                  <span className="font-mono text-[13px] font-medium text-foreground flex-1">
-                    {s.id}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-5 h-5 opacity-50 hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(s.id);
-                    }}
-                    aria-label="세션 삭제"
-                  >
-                    {'×'}
-                  </Button>
-                </div>
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {s.message_count} msgs
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground/70">
-                    {'·'}
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {s.file_changes_count} changes
-                  </span>
-                </div>
-                <div
-                  className="font-mono text-[10px] text-muted-foreground/70 truncate"
-                  title={s.work_dir}
-                >
-                  {truncatePath(s.work_dir)}
-                </div>
-              </div>
+                session={s}
+                isActive={s.id === activeSessionId}
+                onSelect={onSelect}
+                onDelete={onDelete}
+                onRename={onRename}
+              />
             ),
           )
         )}
@@ -264,6 +222,115 @@ function ThemeToggle() {
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>
+  );
+}
+
+function SessionItem({
+  session: s,
+  isActive,
+  onSelect,
+  onDelete,
+  onRename,
+}: {
+  session: SessionInfo;
+  isActive: boolean;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+  onRename?: (id: string, name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startEditing = useCallback(() => {
+    setEditValue(s.name || s.id);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  }, [s.name, s.id]);
+
+  const commitEdit = useCallback(() => {
+    setEditing(false);
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== (s.name || s.id) && onRename) {
+      onRename(s.id, trimmed);
+    }
+  }, [editValue, s.name, s.id, onRename]);
+
+  const displayName = s.name || s.id;
+
+  return (
+    <div
+      className={cn(
+        'px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-all border border-transparent',
+        isActive && 'bg-muted border-[hsl(var(--border-bright))]',
+      )}
+      onClick={() => onSelect(s.id)}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <span
+          className={cn(
+            'w-1.5 h-1.5 rounded-full shrink-0',
+            s.status === 'running' && 'bg-green-500',
+            s.status === 'error' && 'bg-red-500',
+            s.status !== 'running' && s.status !== 'error' && 'bg-muted-foreground',
+          )}
+        />
+        {editing ? (
+          <input
+            ref={inputRef}
+            className="font-mono text-[13px] font-medium text-foreground flex-1 bg-input border border-border rounded px-1 py-0.5 outline-none focus:border-primary/50 min-w-0"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitEdit();
+              if (e.key === 'Escape') setEditing(false);
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span
+            className="font-mono text-[13px] font-medium text-foreground flex-1 truncate"
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              startEditing();
+            }}
+            title={displayName}
+          >
+            {displayName}
+          </span>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-5 h-5 opacity-50 hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(s.id);
+          }}
+          aria-label="세션 삭제"
+        >
+          {'×'}
+        </Button>
+      </div>
+      <div className="flex items-center gap-1 mb-0.5">
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {s.message_count} msgs
+        </span>
+        <span className="font-mono text-[10px] text-muted-foreground/70">
+          {'·'}
+        </span>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {s.file_changes_count} changes
+        </span>
+      </div>
+      <div
+        className="font-mono text-[10px] text-muted-foreground/70 truncate"
+        title={s.work_dir}
+      >
+        {truncatePath(s.work_dir)}
+      </div>
+    </div>
   );
 }
 

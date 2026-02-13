@@ -1,13 +1,24 @@
+import { useState, useCallback } from 'react';
+import { ChevronRight, Maximize2, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { DiffViewer } from './DiffViewer';
+import { sessionsApi } from '@/lib/api/sessions.api';
+import { cn } from '@/lib/utils';
 import type { FileChange } from '@/types';
 
 interface FilePanelProps {
+  sessionId: string;
   fileChanges?: FileChange[];
   onFileClick?: (change: FileChange) => void;
 }
 
-export function FilePanel({ fileChanges = [], onFileClick }: FilePanelProps) {
+export function FilePanel({ sessionId, fileChanges = [], onFileClick }: FilePanelProps) {
   return (
     <div className="flex flex-col overflow-hidden">
       <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-border">
@@ -33,52 +44,129 @@ export function FilePanel({ fileChanges = [], onFileClick }: FilePanelProps) {
           </div>
         ) : (
           fileChanges.map((change, i) => (
-            <button
-              type="button"
+            <FileChangeItem
               key={i}
-              className="w-full text-left p-2 px-2.5 bg-secondary border border-border rounded-sm mb-1.5 animate-[fadeIn_0.2s_ease] hover:border-primary/30 hover:bg-secondary/80 transition-colors cursor-pointer"
-              onClick={() => onFileClick?.(change)}
-              aria-label={`파일 보기: ${change.file}`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <Badge
-                  variant={
-                    change.tool === 'Write'
-                      ? 'default'
-                      : change.tool === 'Edit'
-                        ? 'secondary'
-                        : 'outline'
-                  }
-                  className="font-mono text-[10px]"
-                  style={{
-                    background:
-                      change.tool === 'Write'
-                        ? 'rgba(34,197,94,0.15)'
-                        : change.tool === 'Edit'
-                          ? 'rgba(59,130,246,0.15)'
-                          : 'rgba(148,163,184,0.15)',
-                    color:
-                      change.tool === 'Write'
-                        ? 'hsl(var(--success))'
-                        : change.tool === 'Edit'
-                          ? 'hsl(var(--info))'
-                          : 'hsl(var(--muted-foreground))',
-                  }}
-                >
-                  {change.tool}
-                </Badge>
-                <span className="font-mono text-[10px] text-muted-foreground/70">
-                  {formatTime(change.timestamp)}
-                </span>
-              </div>
-              <div className="font-mono text-[11px] text-primary break-all">
-                {change.file}
-              </div>
-            </button>
+              sessionId={sessionId}
+              change={change}
+              onFullView={onFileClick}
+            />
           ))
         )}
       </ScrollArea>
     </div>
+  );
+}
+
+interface FileChangeItemProps {
+  sessionId: string;
+  change: FileChange;
+  onFullView?: (change: FileChange) => void;
+}
+
+function FileChangeItem({ sessionId, change, onFullView }: FileChangeItemProps) {
+  const [open, setOpen] = useState(false);
+  const [diff, setDiff] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleOpenChange = useCallback(async (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen && diff === null) {
+      setLoading(true);
+      try {
+        const result = await sessionsApi.fileDiff(sessionId, change.file);
+        setDiff(result);
+      } catch {
+        setDiff('');
+      } finally {
+        setLoading(false);
+      }
+    }
+  }, [sessionId, change.file, diff]);
+
+  const handleFullView = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onFullView?.(change);
+  }, [onFullView, change]);
+
+  return (
+    <Collapsible open={open} onOpenChange={handleOpenChange} className="mb-1.5">
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="w-full text-left p-2 px-2.5 bg-secondary border border-border rounded-sm animate-[fadeIn_0.2s_ease] hover:border-primary/30 hover:bg-secondary/80 transition-colors cursor-pointer"
+          aria-label={`Diff 보기: ${change.file}`}
+        >
+          <div className="flex items-center gap-1.5 mb-1">
+            <ChevronRight
+              className={cn(
+                'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150',
+                open && 'rotate-90',
+              )}
+            />
+            <Badge
+              variant={
+                change.tool === 'Write'
+                  ? 'default'
+                  : change.tool === 'Edit'
+                    ? 'secondary'
+                    : 'outline'
+              }
+              className="font-mono text-[10px]"
+              style={{
+                background:
+                  change.tool === 'Write'
+                    ? 'rgba(34,197,94,0.15)'
+                    : change.tool === 'Edit'
+                      ? 'rgba(59,130,246,0.15)'
+                      : 'rgba(148,163,184,0.15)',
+                color:
+                  change.tool === 'Write'
+                    ? 'hsl(var(--success))'
+                    : change.tool === 'Edit'
+                      ? 'hsl(var(--info))'
+                      : 'hsl(var(--muted-foreground))',
+              }}
+            >
+              {change.tool}
+            </Badge>
+            <span className="font-mono text-[10px] text-muted-foreground/70 ml-auto shrink-0">
+              {formatTime(change.timestamp)}
+            </span>
+            <button
+              type="button"
+              className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0"
+              onClick={handleFullView}
+              aria-label={`전체 보기: ${change.file}`}
+              title="전체 보기"
+            >
+              <Maximize2 className="h-3 w-3 text-muted-foreground" />
+            </button>
+          </div>
+          <div className="font-mono text-[11px] text-primary break-all pl-5">
+            {change.file}
+          </div>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="border border-t-0 border-border rounded-b-sm bg-background max-h-[300px] overflow-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : diff !== null ? (
+            diff.trim() ? (
+              <DiffViewer diff={diff} />
+            ) : (
+              <div className="flex items-center justify-center py-4">
+                <span className="font-mono text-xs text-muted-foreground">
+                  변경사항 없음
+                </span>
+              </div>
+            )
+          ) : null}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

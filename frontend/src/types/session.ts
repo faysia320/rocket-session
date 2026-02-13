@@ -15,6 +15,7 @@ export interface SessionInfo {
   mode?: SessionMode;
   permission_mode?: boolean;
   permission_required_tools?: string[];
+  name?: string;
 }
 
 export interface CreateSessionRequest {
@@ -34,4 +35,5 @@ export interface UpdateSessionRequest {
   mode?: SessionMode | null;
   permission_mode?: boolean | null;
   permission_required_tools?: string[] | null;
+  name?: string | null;
 }

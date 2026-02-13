@@ -12,7 +12,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { sessions, activeSessionId, deleteSession, selectSession, refreshSessions } =
+  const { sessions, activeSessionId, deleteSession, renameSession, selectSession, refreshSessions } =
     useSessions();
   const splitView = useSessionStore((s) => s.splitView);
   const isNewSessionRoute = location.pathname === '/session/new';
@@ -26,6 +26,7 @@ function RootComponent() {
           onSelect={selectSession}
           onNew={() => navigate({ to: '/session/new' })}
           onDelete={deleteSession}
+          onRename={renameSession}
           onImported={(id) => {
             refreshSessions();
             selectSession(id);

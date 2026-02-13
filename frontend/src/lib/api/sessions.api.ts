@@ -28,4 +28,37 @@ export const sessionsApi = {
 
   fileContent: (sessionId: string, filePath: string) =>
     api.getText(`/api/sessions/${sessionId}/file-content/${filePath}`),
+
+  fileDiff: (sessionId: string, filePath: string) =>
+    api.getText(`/api/sessions/${sessionId}/file-diff/${filePath}`),
+
+  exportMarkdown: async (sessionId: string): Promise<void> => {
+    const response = await fetch(`/api/sessions/${sessionId}/export`);
+    if (!response.ok) {
+      throw new Error(`Export failed: HTTP ${response.status}`);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `session-${sessionId}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  uploadImage: async (sessionId: string, file: File): Promise<{ path: string; name: string; size: number }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`/api/sessions/${sessionId}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+    return response.json();
+  },
 };

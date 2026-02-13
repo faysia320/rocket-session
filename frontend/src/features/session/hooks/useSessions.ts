@@ -75,6 +75,21 @@ export function useSessions() {
     [navigate],
   );
 
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      sessionsApi.update(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+    },
+  });
+
+  const renameSession = useCallback(
+    async (id: string, name: string) => {
+      await renameMutation.mutateAsync({ id, name });
+    },
+    [renameMutation],
+  );
+
   const refreshSessions = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
   }, [queryClient]);
@@ -85,6 +100,7 @@ export function useSessions() {
     sessions,
     activeSessionId,
     deleteSession,
+    renameSession,
     selectSession,
     refreshSessions,
   };
