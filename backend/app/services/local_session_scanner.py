@@ -184,9 +184,7 @@ class LocalSessionScanner:
         await session_manager.update_claude_session_id(dashboard_id, session_id)
 
         # 메시지 파싱 및 저장
-        messages_imported = await asyncio.to_thread(
-            self._parse_messages, jsonl_path
-        )
+        messages_imported = await asyncio.to_thread(self._parse_messages, jsonl_path)
 
         for msg in messages_imported:
             await session_manager.add_message(
@@ -241,11 +239,13 @@ class LocalSessionScanner:
                         continue
 
                     timestamp = obj.get("timestamp", "")
-                    messages.append({
-                        "role": message.get("role", msg_type),
-                        "content": content,
-                        "timestamp": timestamp,
-                    })
+                    messages.append(
+                        {
+                            "role": message.get("role", msg_type),
+                            "content": content,
+                            "timestamp": timestamp,
+                        }
+                    )
         except Exception:
             logger.warning("메시지 파싱 실패: %s", jsonl_path, exc_info=True)
 

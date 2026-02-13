@@ -2,7 +2,15 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import files, filesystem, health, local_sessions, permissions, sessions, usage
+from app.api.v1.endpoints import (
+    files,
+    filesystem,
+    health,
+    local_sessions,
+    permissions,
+    sessions,
+    usage,
+)
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])

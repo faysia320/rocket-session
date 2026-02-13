@@ -31,57 +31,79 @@ def write_message(msg: dict):
 
 def write_error(msg_id, code: int, message: str):
     """JSON-RPC 에러 응답을 씁니다."""
-    write_message({
-        "jsonrpc": "2.0",
-        "id": msg_id,
-        "error": {"code": code, "message": message},
-    })
+    write_message(
+        {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "error": {"code": code, "message": message},
+        }
+    )
 
 
 def handle_initialize(msg: dict):
     """MCP initialize 핸들링."""
-    write_message({
-        "jsonrpc": "2.0",
-        "id": msg.get("id"),
-        "result": {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {"tools": {}},
-            "serverInfo": {
-                "name": "permission-prompt",
-                "version": "1.0.0",
+    write_message(
+        {
+            "jsonrpc": "2.0",
+            "id": msg.get("id"),
+            "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {}},
+                "serverInfo": {
+                    "name": "permission-prompt",
+                    "version": "1.0.0",
+                },
             },
-        },
-    })
+        }
+    )
 
 
 def handle_tools_list(msg: dict):
     """사용 가능한 도구 목록 반환."""
-    write_message({
-        "jsonrpc": "2.0",
-        "id": msg.get("id"),
-        "result": {
-            "tools": [
-                {
-                    "name": "handle_request",
-                    "description": "Handle a permission prompt request from Claude CLI",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {
-                            "tool_name": {
-                                "type": "string",
-                                "description": "Name of the tool requesting permission",
+    write_message(
+        {
+            "jsonrpc": "2.0",
+            "id": msg.get("id"),
+            "result": {
+                "tools": [
+                    {
+                        "name": "handle_request",
+                        "description": "Handle a permission prompt request from Claude CLI",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "tool_name": {
+                                    "type": "string",
+                                    "description": "Name of the tool requesting permission",
+                                },
+                                "input": {
+                                    "type": "object",
+                                    "description": "Tool input parameters",
+                                },
                             },
-                            "input": {
-                                "type": "object",
-                                "description": "Tool input parameters",
-                            },
+                            "required": ["tool_name", "input"],
                         },
-                        "required": ["tool_name", "input"],
-                    },
+                    }
+                ]
+            },
+        }
+    )
+
+
+def _make_deny_response(msg_id) -> dict:
+    """deny 동작의 JSON-RPC 응답을 생성합니다."""
+    return {
+        "jsonrpc": "2.0",
+        "id": msg_id,
+        "result": {
+            "content": [
+                {
+                    "type": "text",
+                    "text": json.dumps({"behavior": "deny"}),
                 }
-            ]
+            ],
         },
-    })
+    }
 
 
 def handle_tool_call(msg: dict):
@@ -108,10 +130,12 @@ def handle_tool_call(msg: dict):
 
     # Backend에 permission request POST
     url = f"{api_base}/api/permissions/{session_id}/request"
-    payload = json.dumps({
-        "tool_name": request_tool,
-        "tool_input": request_input,
-    }).encode("utf-8")
+    payload = json.dumps(
+        {
+            "tool_name": request_tool,
+            "tool_input": request_input,
+        }
+    ).encode("utf-8")
 
     try:
         req = urllib.request.Request(
@@ -131,46 +155,26 @@ def handle_tool_call(msg: dict):
             "behavior": behavior,
         }
 
-        write_message({
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "result": {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps(permission_result),
-                    }
-                ],
-            },
-        })
+        write_message(
+            {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps(permission_result),
+                        }
+                    ],
+                },
+            }
+        )
 
-    except urllib.error.URLError as e:
+    except urllib.error.URLError:
         # 네트워크 오류 시 deny
-        write_message({
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "result": {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps({"behavior": "deny"}),
-                    }
-                ],
-            },
-        })
-    except Exception as e:
-        write_message({
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "result": {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps({"behavior": "deny"}),
-                    }
-                ],
-            },
-        })
+        write_message(_make_deny_response(msg_id))
+    except Exception:
+        write_message(_make_deny_response(msg_id))
 
 
 def main():

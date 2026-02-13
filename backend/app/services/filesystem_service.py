@@ -2,6 +2,8 @@
 
 import asyncio
 import os
+import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -18,6 +20,10 @@ from app.schemas.filesystem import (
 
 class FilesystemService:
     """파일시스템 탐색 및 Git 워크트리 관리 서비스."""
+
+    def __init__(self):
+        self._git_cache: dict[str, tuple[float, GitInfo]] = {}
+        self._git_cache_ttl: float = 10.0  # 10초 TTL
 
     def _validate_path(self, path: str) -> Path:
         """경로 유효성 검사 및 확장."""
@@ -53,7 +59,11 @@ class FilesystemService:
                 )
 
         # 상위 디렉토리 계산 (루트면 None)
-        parent = None if validated_path.parent == validated_path else str(validated_path.parent)
+        parent = (
+            None
+            if validated_path.parent == validated_path
+            else str(validated_path.parent)
+        )
 
         return DirectoryListResponse(
             path=str(validated_path),
@@ -65,22 +75,37 @@ class FilesystemService:
         self, *args: str, cwd: str, timeout: float = 10.0
     ) -> tuple[int, str, str]:
         """git 명령 실행 후 (returncode, stdout, stderr) 반환."""
-        proc = await asyncio.create_subprocess_exec(
-            "git",
-            *args,
-            cwd=cwd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-            return proc.returncode or 0, stdout.decode().strip(), stderr.decode().strip()
-        except asyncio.TimeoutError:
-            proc.kill()
-            return -1, "", "timeout"
+
+        def _run() -> tuple[int, str, str]:
+            try:
+                result = subprocess.run(
+                    ["git", *args],
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                )
+                return result.returncode, result.stdout.strip(), result.stderr.strip()
+            except subprocess.TimeoutExpired:
+                return -1, "", "timeout"
+            except FileNotFoundError:
+                return -1, "", "git not found"
+
+        return await asyncio.to_thread(_run)
 
     async def get_git_info(self, path: str) -> GitInfo:
-        """Git 저장소 정보 조회."""
+        """Git 저장소 정보 조회 (10초 TTL 캐시)."""
+        now = time.monotonic()
+        cached = self._git_cache.get(path)
+        if cached and (now - cached[0]) < self._git_cache_ttl:
+            return cached[1]
+
+        result = await self._fetch_git_info(path)
+        self._git_cache[path] = (now, result)
+        return result
+
+    async def _fetch_git_info(self, path: str) -> GitInfo:
+        """Git 저장소 정보 실제 조회."""
         validated_path = self._validate_path(path)
         cwd = str(validated_path)
 

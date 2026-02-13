@@ -49,10 +49,10 @@ class CreateWorktreeRequest(BaseModel):
 
 
 class SkillInfo(BaseModel):
-    name: str           # 파일명(확장자 제외) → 슬래시 명령어 이름
-    filename: str       # 원본 파일명 (e.g. "commit.md")
-    description: str    # .md 파일 첫 줄 (빈 줄 제외)
-    scope: str          # "project" (.claude/commands/) 또는 "user" (~/.claude/commands/)
+    name: str  # 파일명(확장자 제외) → 슬래시 명령어 이름
+    filename: str  # 원본 파일명 (e.g. "commit.md")
+    description: str  # .md 파일 첫 줄 (빈 줄 제외)
+    scope: str  # "project" (.claude/commands/) 또는 "user" (~/.claude/commands/)
 
 
 class SkillListResponse(BaseModel):

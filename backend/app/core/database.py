@@ -1,7 +1,7 @@
 """SQLite 데이터베이스 연결 관리 및 테이블 초기화."""
 
-import json
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import aiosqlite
@@ -41,6 +41,10 @@ CREATE TABLE IF NOT EXISTS file_changes (
     timestamp TEXT NOT NULL,
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_file_changes_session_id ON file_changes(session_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
 """
 
 
@@ -72,8 +76,11 @@ class Database:
             try:
                 await self._db.execute(migration)
                 await self._db.commit()
-            except Exception:
-                pass  # 이미 존재하면 무시
+            except aiosqlite.OperationalError as e:
+                if "duplicate column" in str(e).lower():
+                    continue  # 이미 존재하는 컬럼 - 정상
+                logger.error("마이그레이션 실패: %s - %s", migration, e)
+                raise
 
         await self._db.commit()
         logger.info("데이터베이스 초기화 완료: %s", self._db_path)
@@ -90,6 +97,16 @@ class Database:
         if self._db is None:
             raise RuntimeError("데이터베이스가 초기화되지 않았습니다")
         return self._db
+
+    @asynccontextmanager
+    async def transaction(self):
+        """트랜잭션 컨텍스트 매니저. 블록 종료 시 commit, 예외 시 rollback."""
+        try:
+            yield self.conn
+            await self.conn.commit()
+        except Exception:
+            await self.conn.rollback()
+            raise
 
     # --- Sessions CRUD ---
 
@@ -108,7 +125,17 @@ class Database:
         await self.conn.execute(
             """INSERT INTO sessions (id, work_dir, status, created_at, allowed_tools, system_prompt, timeout_seconds, mode, permission_mode, permission_required_tools)
                VALUES (?, ?, 'idle', ?, ?, ?, ?, ?, ?, ?)""",
-            (session_id, work_dir, created_at, allowed_tools, system_prompt, timeout_seconds, mode, int(permission_mode), permission_required_tools),
+            (
+                session_id,
+                work_dir,
+                created_at,
+                allowed_tools,
+                system_prompt,
+                timeout_seconds,
+                mode,
+                int(permission_mode),
+                permission_required_tools,
+            ),
         )
         await self.conn.commit()
         return await self.get_session(session_id)
@@ -132,6 +159,20 @@ class Database:
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
 
+    async def get_session_with_counts(self, session_id: str) -> dict | None:
+        """단일 세션을 message_count, file_changes_count와 함께 조회."""
+        cursor = await self.conn.execute(
+            """SELECT s.*,
+                      (SELECT COUNT(*) FROM messages WHERE session_id = s.id) as message_count,
+                      (SELECT COUNT(*) FROM file_changes WHERE session_id = s.id) as file_changes_count
+               FROM sessions s WHERE s.id = ?""",
+            (session_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        return dict(row)
+
     async def delete_session(self, session_id: str) -> bool:
         cursor = await self.conn.execute(
             "DELETE FROM sessions WHERE id = ?", (session_id,)
@@ -145,9 +186,7 @@ class Database:
         )
         await self.conn.commit()
 
-    async def update_claude_session_id(
-        self, session_id: str, claude_session_id: str
-    ):
+    async def update_claude_session_id(self, session_id: str, claude_session_id: str):
         await self.conn.execute(
             "UPDATE sessions SET claude_session_id = ? WHERE id = ?",
             (claude_session_id, session_id),

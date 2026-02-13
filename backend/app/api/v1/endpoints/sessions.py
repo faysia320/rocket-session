@@ -25,12 +25,8 @@ async def create_session(
         permission_mode=req.permission_mode or False,
         permission_required_tools=req.permission_required_tools,
     )
-    # create() 반환 dict에는 message_count/file_changes_count가 없으므로 재조회
-    sessions = await manager.list_all()
-    for s in sessions:
-        if s["id"] == session["id"]:
-            return manager.to_info(s)
-    return manager.to_info(session)
+    session_with_counts = await manager.get_with_counts(session["id"]) or session
+    return manager.to_info(session_with_counts)
 
 
 @router.get("/")
@@ -44,14 +40,9 @@ async def get_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = await manager.get(session_id)
+    session = await manager.get_with_counts(session_id)
     if not session:
         raise HTTPException(404, "Session not found")
-    # 카운트 포함을 위해 list_all에서 찾기
-    sessions = await manager.list_all()
-    for s in sessions:
-        if s["id"] == session_id:
-            return manager.to_info(s)
     return manager.to_info(session)
 
 
@@ -75,12 +66,8 @@ async def update_session(
     )
     if not updated:
         raise HTTPException(404, "Session not found")
-    # 카운트 포함 재조회
-    sessions = await manager.list_all()
-    for s in sessions:
-        if s["id"] == session_id:
-            return manager.to_info(s)
-    return manager.to_info(updated)
+    session_with_counts = await manager.get_with_counts(session_id) or updated
+    return manager.to_info(session_with_counts)
 
 
 @router.get("/{session_id}/history")

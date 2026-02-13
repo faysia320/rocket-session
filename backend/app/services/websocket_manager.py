@@ -40,7 +40,8 @@ class WebSocketManager:
                     dead.append(ws)
                     continue
                 await ws.send_json(message)
-            except Exception:
+            except Exception as e:
+                logger.debug("WebSocket 전송 실패 (세션 %s): %s", session_id, e)
                 dead.append(ws)
         for ws in dead:
             ws_list.remove(ws)

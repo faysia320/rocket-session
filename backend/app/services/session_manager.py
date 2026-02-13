@@ -4,9 +4,10 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import Database
+from app.models.session import SessionStatus
 from app.schemas.session import SessionInfo
 
 logger = logging.getLogger(__name__)
@@ -30,8 +31,10 @@ class SessionManager:
         permission_required_tools: list[str] | None = None,
     ) -> dict:
         sid = str(uuid.uuid4())[:8]
-        created_at = datetime.utcnow().isoformat()
-        perm_tools_json = json.dumps(permission_required_tools) if permission_required_tools else None
+        created_at = datetime.now(timezone.utc).isoformat()
+        perm_tools_json = (
+            json.dumps(permission_required_tools) if permission_required_tools else None
+        )
         session = await self._db.create_session(
             session_id=sid,
             work_dir=work_dir,
@@ -50,6 +53,10 @@ class SessionManager:
         if not session:
             logger.warning("세션 조회 실패: %s", session_id)
         return session
+
+    async def get_with_counts(self, session_id: str) -> dict | None:
+        """message_count, file_changes_count를 포함한 단일 세션 조회."""
+        return await self._db.get_session_with_counts(session_id)
 
     async def list_all(self) -> list[dict]:
         return await self._db.list_sessions()
@@ -73,7 +80,7 @@ class SessionManager:
             except Exception:
                 pass
         self._processes.pop(session_id, None)
-        await self._db.update_session_status(session_id, "idle")
+        await self._db.update_session_status(session_id, SessionStatus.IDLE)
 
     def set_process(self, session_id: str, process: asyncio.subprocess.Process):
         self._processes[session_id] = process
@@ -135,7 +142,11 @@ class SessionManager:
         permission_mode: bool | None = None,
         permission_required_tools: list[str] | None = None,
     ) -> dict | None:
-        perm_tools_json = json.dumps(permission_required_tools) if permission_required_tools is not None else None
+        perm_tools_json = (
+            json.dumps(permission_required_tools)
+            if permission_required_tools is not None
+            else None
+        )
         return await self._db.update_session_settings(
             session_id=session_id,
             allowed_tools=allowed_tools,

@@ -3,9 +3,8 @@
 import asyncio
 import logging
 import uuid
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.api.dependencies import get_ws_manager
@@ -15,6 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/permissions", tags=["permissions"])
 
 # 인메모리 pending 요청 저장소
+MAX_PENDING = 100
 _pending: dict[str, dict] = {}
 
 
@@ -32,9 +32,24 @@ def get_pending() -> dict[str, dict]:
     return _pending
 
 
+def clear_pending():
+    """서버 종료 시 모든 pending 요청 정리."""
+    for entry in _pending.values():
+        entry["response"] = {"behavior": "deny"}
+        entry["event"].set()
+    _pending.clear()
+
+
 @router.post("/{session_id}/request")
 async def request_permission(session_id: str, body: PermissionRequest):
     """MCP 서버가 호출 - 사용자에게 권한 요청을 전달하고 응답 대기."""
+    if len(_pending) >= MAX_PENDING:
+        logger.warning("Pending 요청 수 초과 (%d), 가장 오래된 요청 정리", MAX_PENDING)
+        oldest_id = next(iter(_pending))
+        oldest = _pending.pop(oldest_id)
+        oldest["response"] = {"behavior": "deny"}
+        oldest["event"].set()
+
     permission_id = str(uuid.uuid4())[:12]
     event = asyncio.Event()
 
@@ -50,12 +65,15 @@ async def request_permission(session_id: str, body: PermissionRequest):
 
     # WebSocket으로 프론트엔드에 permission 요청 브로드캐스트
     ws_manager = get_ws_manager()
-    await ws_manager.broadcast(session_id, {
-        "type": "permission_request",
-        "permission_id": permission_id,
-        "tool_name": body.tool_name,
-        "tool_input": body.tool_input,
-    })
+    await ws_manager.broadcast(
+        session_id,
+        {
+            "type": "permission_request",
+            "permission_id": permission_id,
+            "tool_name": body.tool_name,
+            "tool_input": body.tool_input,
+        },
+    )
 
     try:
         # 프론트엔드 응답 대기 (최대 120초)
@@ -63,14 +81,19 @@ async def request_permission(session_id: str, body: PermissionRequest):
         response = pending_entry.get("response", {"behavior": "deny"})
         return response
     except asyncio.TimeoutError:
-        logger.warning("Permission 요청 타임아웃: %s (세션: %s)", permission_id, session_id)
+        logger.warning(
+            "Permission 요청 타임아웃: %s (세션: %s)", permission_id, session_id
+        )
         # 타임아웃 시 프론트엔드에 알림
-        await ws_manager.broadcast(session_id, {
-            "type": "permission_response",
-            "permission_id": permission_id,
-            "behavior": "deny",
-            "reason": "timeout",
-        })
+        await ws_manager.broadcast(
+            session_id,
+            {
+                "type": "permission_response",
+                "permission_id": permission_id,
+                "behavior": "deny",
+                "reason": "timeout",
+            },
+        )
         return {"behavior": "deny"}
     finally:
         _pending.pop(permission_id, None)
@@ -87,9 +110,12 @@ async def respond_permission(permission_id: str, behavior: str) -> bool:
 
     # 프론트엔드에 응답 확인 브로드캐스트
     ws_manager = get_ws_manager()
-    await ws_manager.broadcast(entry["session_id"], {
-        "type": "permission_response",
-        "permission_id": permission_id,
-        "behavior": behavior,
-    })
+    await ws_manager.broadcast(
+        entry["session_id"],
+        {
+            "type": "permission_response",
+            "permission_id": permission_id,
+            "behavior": behavior,
+        },
+    )
     return True

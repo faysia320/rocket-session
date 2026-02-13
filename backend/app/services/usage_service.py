@@ -89,7 +89,9 @@ class UsageService:
             raise TimeoutError(f"ccusage {command} 시간 초과 (15초)")
 
         if proc.returncode != 0:
-            err_msg = stderr.decode().strip() if stderr else f"종료 코드: {proc.returncode}"
+            err_msg = (
+                stderr.decode().strip() if stderr else f"종료 코드: {proc.returncode}"
+            )
             raise RuntimeError(f"ccusage {command} 실패: {err_msg}")
 
         return json.loads(stdout.decode())

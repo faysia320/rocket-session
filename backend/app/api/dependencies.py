@@ -18,6 +18,7 @@ _local_scanner: LocalSessionScanner | None = None
 _usage_service: UsageService | None = None
 _ws_manager = WebSocketManager()
 _filesystem_service = FilesystemService()
+_claude_runner: ClaudeRunner | None = None
 
 
 @lru_cache()
@@ -42,7 +43,10 @@ def get_ws_manager() -> WebSocketManager:
 
 
 def get_claude_runner() -> ClaudeRunner:
-    return ClaudeRunner(get_settings())
+    global _claude_runner
+    if _claude_runner is None:
+        _claude_runner = ClaudeRunner(get_settings())
+    return _claude_runner
 
 
 def get_filesystem_service() -> FilesystemService:
@@ -74,10 +78,11 @@ async def init_dependencies():
 
 async def shutdown_dependencies():
     """앱 종료 시 DB 연결 정리."""
-    global _database, _session_manager, _local_scanner, _usage_service
+    global _database, _session_manager, _local_scanner, _usage_service, _claude_runner
     if _database:
         await _database.close()
     _database = None
     _session_manager = None
     _local_scanner = None
     _usage_service = None
+    _claude_runner = None
