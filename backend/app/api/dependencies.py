@@ -76,6 +76,12 @@ async def init_dependencies():
     _local_scanner = LocalSessionScanner(_database)
     _usage_service = UsageService(settings)
 
+    # 서버 재시작 시 프로세스/task가 없는 stale running 세션을 idle로 복구
+    await _database.conn.execute(
+        "UPDATE sessions SET status = 'idle' WHERE status = 'running'"
+    )
+    await _database.conn.commit()
+
 
 async def shutdown_dependencies():
     """앱 종료 시 DB 연결 정리."""

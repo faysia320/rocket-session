@@ -22,6 +22,7 @@ class UpdateSessionRequest(BaseModel):
     mode: Optional[str] = None
     permission_mode: Optional[bool] = None
     permission_required_tools: Optional[list[str]] = None
+    name: Optional[str] = None
 
 
 class SendPromptRequest(BaseModel):
@@ -43,3 +44,4 @@ class SessionInfo(BaseModel):
     mode: str = "normal"
     permission_mode: bool = False
     permission_required_tools: Optional[list[str]] = None
+    name: Optional[str] = None

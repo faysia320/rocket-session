@@ -1,6 +1,7 @@
 """세션 CRUD REST 엔드포인트."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import PlainTextResponse
 
 from app.api.dependencies import get_session_manager, get_settings
 from app.core.config import Settings
@@ -63,6 +64,7 @@ async def update_session(
         mode=req.mode,
         permission_mode=req.permission_mode,
         permission_required_tools=req.permission_required_tools,
+        name=req.name,
     )
     if not updated:
         raise HTTPException(404, "Session not found")
@@ -102,6 +104,41 @@ async def stop_session(
         raise HTTPException(404, "Session not found")
     await manager.kill_process(session_id)
     return {"status": "stopped"}
+
+
+@router.get("/{session_id}/export")
+async def export_session(
+    session_id: str,
+    manager: SessionManager = Depends(get_session_manager),
+):
+    session = await manager.get(session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+    history = await manager.get_history(session_id)
+    session_name = session.get("name") or session_id
+    lines = [f"# {session_name}", ""]
+    for msg in history:
+        role = msg.get("role", "unknown")
+        content = msg.get("content", "")
+        if role == "user":
+            lines.append(f"> **User**: {content}")
+            lines.append("")
+        elif role == "assistant":
+            lines.append(f"**Claude**:")
+            lines.append("")
+            lines.append(content)
+            lines.append("")
+        else:
+            lines.append(f"```\n{content}\n```")
+            lines.append("")
+    md_content = "\n".join(lines)
+    return PlainTextResponse(
+        content=md_content,
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="session-{session_id}.md"'
+        },
+    )
 
 
 @router.delete("/{session_id}")

@@ -82,6 +82,7 @@ class Database:
             "ALTER TABLE sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
             "ALTER TABLE sessions ADD COLUMN permission_mode INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE sessions ADD COLUMN permission_required_tools TEXT",
+            "ALTER TABLE sessions ADD COLUMN name TEXT",
         ]
         for migration in migrations:
             try:
@@ -213,6 +214,7 @@ class Database:
         mode: str | None = None,
         permission_mode: bool | None = None,
         permission_required_tools: str | None = None,
+        name: str | None = None,
     ) -> dict | None:
         fields = []
         values = []
@@ -234,6 +236,9 @@ class Database:
         if permission_required_tools is not None:
             fields.append("permission_required_tools = ?")
             values.append(permission_required_tools)
+        if name is not None:
+            fields.append("name = ?")
+            values.append(name)
         if not fields:
             return await self.get_session(session_id)
         values.append(session_id)

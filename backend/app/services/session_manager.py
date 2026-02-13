@@ -20,6 +20,8 @@ class SessionManager:
         self._db = db
         # 프로세스 핸들은 인메모리로 관리 (DB에 저장 불가)
         self._processes: dict[str, asyncio.subprocess.Process] = {}
+        # runner task (stdout 읽기 코루틴) - WS 연결과 독립적으로 관리
+        self._runner_tasks: dict[str, asyncio.Task] = {}
 
     async def create(
         self,
@@ -69,7 +71,14 @@ class SessionManager:
         return deleted
 
     async def kill_process(self, session_id: str):
-        """실행 중인 Claude CLI 프로세스를 안전하게 종료."""
+        """실행 중인 Claude CLI 프로세스 및 runner task를 안전하게 종료."""
+        # runner task 취소 (stdout reader)
+        runner_task = self._runner_tasks.get(session_id)
+        if runner_task and not runner_task.done():
+            runner_task.cancel()
+        self._runner_tasks.pop(session_id, None)
+
+        # 프로세스 종료
         process = self._processes.get(session_id)
         if process and process.returncode is None:
             try:
@@ -90,6 +99,22 @@ class SessionManager:
 
     def clear_process(self, session_id: str):
         self._processes.pop(session_id, None)
+
+    def set_runner_task(self, session_id: str, task: asyncio.Task):
+        """runner task 등록."""
+        self._runner_tasks[session_id] = task
+
+    def get_runner_task(self, session_id: str) -> asyncio.Task | None:
+        """runner task 조회. 완료된 task는 자동 정리."""
+        task = self._runner_tasks.get(session_id)
+        if task and task.done():
+            self._runner_tasks.pop(session_id, None)
+            return None
+        return task
+
+    def clear_runner_task(self, session_id: str):
+        """runner task 참조 제거."""
+        self._runner_tasks.pop(session_id, None)
 
     async def update_status(self, session_id: str, status: str):
         await self._db.update_session_status(session_id, status)
@@ -141,6 +166,7 @@ class SessionManager:
         mode: str | None = None,
         permission_mode: bool | None = None,
         permission_required_tools: list[str] | None = None,
+        name: str | None = None,
     ) -> dict | None:
         perm_tools_json = (
             json.dumps(permission_required_tools)
@@ -155,6 +181,7 @@ class SessionManager:
             mode=mode,
             permission_mode=permission_mode,
             permission_required_tools=perm_tools_json,
+            name=name,
         )
 
     @staticmethod
@@ -180,6 +207,7 @@ class SessionManager:
             mode=session.get("mode", "normal"),
             permission_mode=bool(session.get("permission_mode", 0)),
             permission_required_tools=perm_tools,
+            name=session.get("name"),
         )
 
     @staticmethod

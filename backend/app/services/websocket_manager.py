@@ -142,6 +142,24 @@ class WebSocketManager:
 
         return []
 
+    def get_current_turn_events(self, session_id: str) -> list[dict]:
+        """현재 턴(마지막 user_message 이후)의 이벤트 목록 반환."""
+        buffer = self._event_buffers.get(session_id)
+        if not buffer:
+            return []
+
+        # 버퍼에서 마지막 user_message 이벤트의 seq 찾기
+        last_user_seq = 0
+        for evt in buffer:
+            if evt.event_type == "user_message":
+                last_user_seq = evt.seq
+
+        if last_user_seq == 0:
+            return []
+
+        # 해당 seq 이후 모든 이벤트 반환 (user_message 자체는 제외)
+        return [e.payload for e in buffer if e.seq > last_user_seq]
+
     def clear_buffer(self, session_id: str):
         """세션의 인메모리 버퍼 정리."""
         self._event_buffers.pop(session_id, None)
