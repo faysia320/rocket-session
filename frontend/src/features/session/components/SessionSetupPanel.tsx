@@ -43,7 +43,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       if (timeoutMinutes && Number(timeoutMinutes) > 0) {
         options.timeout_seconds = Number(timeoutMinutes) * 60;
       }
-      onCreate(workDir || undefined, Object.keys(options).length > 0 ? options : undefined);
+      onCreate(workDir.trim(), Object.keys(options).length > 0 ? options : undefined);
     } catch {
       setCreating(false);
     }
@@ -68,7 +68,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         {/* Working Directory */}
         <div className="space-y-2">
           <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-            WORKING DIRECTORY
+            WORKING DIRECTORY <span className="text-destructive">*</span>
           </Label>
           <DirectoryPicker value={workDir} onChange={setWorkDir} />
         </div>
@@ -133,7 +133,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           <Button
             className="flex-1 font-mono text-sm font-semibold"
             onClick={handleCreate}
-            disabled={creating}
+            disabled={creating || !workDir.trim()}
           >
             <Rocket className="h-4 w-4 mr-2" />
             {creating ? 'Creating…' : 'Create Session'}

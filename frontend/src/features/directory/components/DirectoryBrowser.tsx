@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Folder, FolderGit2, ArrowUp } from 'lucide-react';
+import { Folder, FolderGit2, ArrowUp, Star, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useDirectoryBrowser } from '../hooks/useDirectoryBrowser';
+import { useFavoriteDirectories } from '../hooks/useFavoriteDirectories';
 import type { DirectoryEntry } from '@/types';
 
 interface DirectoryBrowserProps {
@@ -25,6 +27,7 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
   const { currentPath, entries, parent, isLoading, navigateTo, goUp } = useDirectoryBrowser(initialPath || '~');
   const [selected, setSelected] = useState<string | null>(null);
   const [pathInput, setPathInput] = useState('');
+  const { favorites, removeFavorite } = useFavoriteDirectories();
 
   const handleNavigate = () => {
     if (pathInput.trim()) {
@@ -76,6 +79,50 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
 
           <ScrollArea className="h-[300px] border border-border rounded-md">
             <div className="p-1">
+              {favorites.length > 0 ? (
+                <>
+                  <div className="px-2 py-1">
+                    <span className="font-mono text-[10px] font-semibold text-warning/80 tracking-wider">
+                      FAVORITES
+                    </span>
+                  </div>
+                  {favorites.map((fav) => (
+                    <div
+                      key={fav.path}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors group',
+                        selected === fav.path ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 flex-1 min-w-0"
+                        onClick={() => setSelected(fav.path)}
+                        onDoubleClick={() => {
+                          navigateTo(fav.path);
+                          setSelected(null);
+                        }}
+                      >
+                        <Star className="h-3.5 w-3.5 text-warning fill-warning shrink-0" />
+                        <span className="font-mono text-xs truncate">{fav.name}</span>
+                        <span className="font-mono text-[9px] text-muted-foreground/60 truncate ml-auto">
+                          {fav.path}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={() => removeFavorite(fav.path)}
+                        aria-label={`${fav.name} 즐겨찾기 해제`}
+                      >
+                        <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                      </button>
+                    </div>
+                  ))}
+                  <Separator className="my-1" />
+                </>
+              ) : null}
+
               {parent ? (
                 <button
                   type="button"
