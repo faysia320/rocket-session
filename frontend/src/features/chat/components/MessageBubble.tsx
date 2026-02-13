@@ -72,8 +72,8 @@ function UserMessage({ message }: { message: any }) {
 
 function AssistantText({ message }: { message: any }) {
   return (
-    <div className="flex animate-[fadeIn_0.2s_ease]">
-      <div className="max-w-[85%] px-3.5 py-3 bg-muted border border-border rounded-xl rounded-bl-sm">
+    <div className="animate-[fadeIn_0.2s_ease]">
+      <div className="pl-3 border-l-2 border-primary/40">
         <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground mb-1.5">
           <span className="text-primary text-xs">{'◆'}</span> Claude
           <span className="text-primary animate-[pulse_1.5s_ease-in-out_infinite] ml-1">
@@ -104,11 +104,10 @@ function ResultMessage({
   const showPlanApproval = message.mode === 'plan' && onExecutePlan;
 
   return (
-    <div className="flex animate-[fadeIn_0.2s_ease]">
+    <div className="animate-[fadeIn_0.2s_ease]">
       <div className={cn(
-        "max-w-[85%] px-3.5 py-3 bg-muted rounded-xl rounded-bl-sm",
-        "border border-[hsl(var(--border-bright))]",
-        showPlanApproval && !message.planExecuted && "border-primary/30"
+        "pl-3 border-l-2 border-primary/40",
+        showPlanApproval && !message.planExecuted && "border-l-primary"
       )}>
         <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground mb-1.5">
           <span className="text-primary text-xs">{'◆'}</span> Claude
@@ -133,7 +132,7 @@ function ResultMessage({
           <FormattedText text={message.text} />
         </div>
         {(message.cost || message.duration_ms) ? (
-          <div className="flex gap-2 mt-2.5 pt-2 border-t border-border">
+          <div className="flex gap-2 mt-2.5 pt-2 border-t border-border/30">
             {message.cost ? (
               <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
                 {'\u{1F4B0}'} ${Number(message.cost).toFixed(4)}
