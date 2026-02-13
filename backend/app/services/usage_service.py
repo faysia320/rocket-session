@@ -65,6 +65,7 @@ class UsageService:
 
             result = UsageInfo(
                 plan=self._settings.claude_plan,
+                account_id=self._settings.claude_account_id,
                 block_5h=block_5h,
                 weekly=weekly,
                 available=True,
@@ -72,6 +73,7 @@ class UsageService:
         except Exception as e:
             result = UsageInfo(
                 plan=self._settings.claude_plan,
+                account_id=self._settings.claude_account_id,
                 available=False,
                 error=str(e),
             )

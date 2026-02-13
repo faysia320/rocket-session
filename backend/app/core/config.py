@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     claude_allowed_tools: str = "Read,Write,Edit,Bash"
     claude_model: str = ""
     claude_plan: str = "Max"
+    claude_account_id: str = ""
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8101

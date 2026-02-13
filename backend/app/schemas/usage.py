@@ -25,6 +25,7 @@ class UsageInfo(BaseModel):
     """전체 사용량 정보."""
 
     plan: str = "Max"
+    account_id: str = ""
     block_5h: BlockUsage = BlockUsage()
     weekly: WeeklyUsage = WeeklyUsage()
     available: bool = True
