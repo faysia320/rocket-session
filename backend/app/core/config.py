@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     backend_host: str = "0.0.0.0"
     backend_port: int = 8101
 
-    cors_origins: list[str] = ["*"]
+    cors_origins: list[str] = ["http://localhost:8100", "http://localhost:8101"]
 
     database_path: str = str(
         Path(__file__).resolve().parent.parent.parent / "data" / "sessions.db"

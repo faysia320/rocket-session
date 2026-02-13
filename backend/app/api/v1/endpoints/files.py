@@ -160,8 +160,12 @@ async def upload_file(
     if len(content) > MAX_UPLOAD_SIZE:
         raise HTTPException(413, "파일이 너무 큽니다 (최대 10MB)")
 
-    # 임시 디렉토리에 저장
-    ext = Path(file.filename or "image").suffix or ".png"
+    # 확장자 화이트리스트 검증 (경로 조작 방지)
+    ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
+    safe_name = Path(file.filename or "image").name  # 경로 구분자 제거
+    ext = Path(safe_name).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        ext = ".png"
     upload_dir = Path(tempfile.gettempdir()) / "rocket-session-uploads" / session_id
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_name = f"{uuid.uuid4().hex[:8]}{ext}"
