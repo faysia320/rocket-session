@@ -24,6 +24,12 @@ export default defineConfig({
       '/ws': {
         target: 'ws://localhost:8101',
         ws: true,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            if (err.message?.includes('ECONNABORTED') || err.message?.includes('ECONNRESET')) return;
+            console.error('[Vite WS Proxy]', err.message);
+          });
+        },
       },
     },
   },
