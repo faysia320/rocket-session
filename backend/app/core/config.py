@@ -18,6 +18,8 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["*"]
 
+    database_path: str = str(Path(__file__).resolve().parent.parent.parent / "data" / "sessions.db")
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

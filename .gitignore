@@ -20,6 +20,9 @@ frontend/test-results
 frontend/.playwright
 node_modules
 
+# Database
+backend/data/
+
 # Test coverage
 htmlcov/
 .coverage

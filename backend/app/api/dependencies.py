@@ -3,11 +3,14 @@
 from functools import lru_cache
 
 from app.core.config import Settings
+from app.core.database import Database
 from app.services.claude_runner import ClaudeRunner
 from app.services.session_manager import SessionManager
 from app.services.websocket_manager import WebSocketManager
 
-_session_manager = SessionManager()
+# 싱글턴 인스턴스 (앱 시작 시 초기화)
+_database: Database | None = None
+_session_manager: SessionManager | None = None
 _ws_manager = WebSocketManager()
 
 
@@ -16,7 +19,15 @@ def get_settings() -> Settings:
     return Settings()
 
 
+def get_database() -> Database:
+    if _database is None:
+        raise RuntimeError("데이터베이스가 초기화되지 않았습니다")
+    return _database
+
+
 def get_session_manager() -> SessionManager:
+    if _session_manager is None:
+        raise RuntimeError("SessionManager가 초기화되지 않았습니다")
     return _session_manager
 
 
@@ -26,3 +37,21 @@ def get_ws_manager() -> WebSocketManager:
 
 def get_claude_runner() -> ClaudeRunner:
     return ClaudeRunner(get_settings())
+
+
+async def init_dependencies():
+    """앱 시작 시 DB 및 SessionManager 초기화."""
+    global _database, _session_manager
+    settings = get_settings()
+    _database = Database(settings.database_path)
+    await _database.initialize()
+    _session_manager = SessionManager(_database)
+
+
+async def shutdown_dependencies():
+    """앱 종료 시 DB 연결 정리."""
+    global _database, _session_manager
+    if _database:
+        await _database.close()
+    _database = None
+    _session_manager = None
