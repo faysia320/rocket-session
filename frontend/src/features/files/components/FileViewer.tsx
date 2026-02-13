@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
-import { X, FileCode, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileCode, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { sessionsApi } from '@/lib/api/sessions.api';
 
 interface FileViewerProps {
@@ -10,15 +16,17 @@ interface FileViewerProps {
   filePath: string;
   tool: string;
   timestamp?: string;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function FileViewer({ sessionId, filePath, tool, timestamp, onClose }: FileViewerProps) {
+export function FileViewer({ sessionId, filePath, tool, timestamp, open, onOpenChange }: FileViewerProps) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!open) return;
     setLoading(true);
     setError(null);
     setContent(null);
@@ -33,20 +41,21 @@ export function FileViewer({ sessionId, filePath, tool, timestamp, onClose }: Fi
         setError(err.message);
         setLoading(false);
       });
-  }, [sessionId, filePath]);
+  }, [sessionId, filePath, open]);
 
   const fileName = filePath.split(/[/\\]/).pop() ?? filePath;
 
   return (
-    <div className="flex flex-col h-full bg-card border-l border-border overflow-hidden">
-      {/* 헤더 */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-secondary min-h-[44px]">
-        <FileCode className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="font-mono text-xs text-foreground truncate" title={filePath}>
-            {fileName}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col bg-card border-border p-0 gap-0">
+        <DialogHeader className="px-4 py-3 border-b border-border bg-secondary">
+          <div className="flex items-center gap-2">
+            <FileCode className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <DialogTitle className="font-mono text-xs text-foreground truncate" title={filePath}>
+              {fileName}
+            </DialogTitle>
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <DialogDescription className="flex items-center gap-1.5 mt-0.5">
             <Badge
               variant="outline"
               className="font-mono text-[9px] px-1 py-0"
@@ -72,48 +81,34 @@ export function FileViewer({ sessionId, filePath, tool, timestamp, onClose }: Fi
                 {formatTime(timestamp)}
               </span>
             ) : null}
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 shrink-0"
-          onClick={onClose}
-          aria-label="파일 뷰어 닫기"
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+            <span className="font-mono text-[10px] text-muted-foreground truncate ml-1" title={filePath}>
+              {filePath}
+            </span>
+          </DialogDescription>
+        </DialogHeader>
 
-      {/* 경로 */}
-      <div className="px-3 py-1.5 border-b border-border bg-muted/50">
-        <div className="font-mono text-[10px] text-muted-foreground truncate" title={filePath}>
-          {filePath}
-        </div>
-      </div>
-
-      {/* 본문 */}
-      <ScrollArea className="flex-1">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <div className="font-mono text-xs text-destructive mb-1">
-              파일을 불러올 수 없습니다
+        <ScrollArea className="flex-1 min-h-0 max-h-[60vh]">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-            <div className="font-mono text-[10px] text-muted-foreground">
-              {error}
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="font-mono text-xs text-destructive mb-1">
+                {'\uD30C\uC77C\uC744 \uBD88\uB7EC\uC62C \uC218 \uC5C6\uC2B5\uB2C8\uB2E4'}
+              </div>
+              <div className="font-mono text-[10px] text-muted-foreground">
+                {error}
+              </div>
             </div>
-          </div>
-        ) : (
-          <pre className="px-3 py-2 font-mono text-[11px] text-foreground/90 leading-[1.6] whitespace-pre-wrap break-all">
-            {content}
-          </pre>
-        )}
-      </ScrollArea>
-    </div>
+          ) : (
+            <pre className="px-4 py-3 font-mono text-[11px] text-foreground/90 leading-[1.6] whitespace-pre-wrap break-all">
+              {content}
+            </pre>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }
 

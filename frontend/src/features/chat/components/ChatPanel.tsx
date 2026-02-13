@@ -3,9 +3,16 @@ import { FolderOpen, Send, Square } from 'lucide-react';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
 import { MessageBubble } from './MessageBubble';
 import { SessionSettings } from '@/features/session/components/SessionSettings';
+import { FilePanel } from '@/features/files/components/FilePanel';
+import { FileViewer } from '@/features/files/components/FileViewer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { FileChange } from '@/types';
 import { useSlashCommands } from '../hooks/useSlashCommands';
@@ -14,22 +21,17 @@ import type { SlashCommand } from '../constants/slashCommands';
 
 interface ChatPanelProps {
   sessionId: string;
-  onToggleFiles: () => void;
-  showFiles: boolean;
-  onFileChanges: (changes: FileChange[]) => void;
 }
 
-/**
- * 메인 채팅 인터페이스.
- * onFileChanges 콜백을 통해 파일 변경 사항을 상위로 전달합니다.
- */
-export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }: ChatPanelProps) {
+export function ChatPanel({ sessionId }: ChatPanelProps) {
   const { connected, messages, status, sessionInfo, fileChanges, sendPrompt, stopExecution, clearMessages, addSystemMessage } =
     useClaudeSocket(sessionId);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [filesOpen, setFilesOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const slashCommands = useSlashCommands({
     connected,
     isRunning: status === 'running',
@@ -39,12 +41,10 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 파일 변경 사항을 상위 컴포넌트로 전달
-  useEffect(() => {
-    if (onFileChanges) {
-      onFileChanges(fileChanges);
-    }
-  }, [fileChanges, onFileChanges]);
+  const handleFileClick = (change: FileChange) => {
+    setSelectedFile(change);
+    setFilesOpen(false);
+  };
 
   const executeSlashCommand = (cmd: SlashCommand) => {
     setInput('');
@@ -54,13 +54,13 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
     switch (cmd.id) {
       case 'help': {
         const helpText =
-          '사용 가능한 명령어:\n' +
-          '  /help     - 명령어 목록 표시\n' +
-          '  /clear    - 대화 내역 초기화\n' +
-          '  /compact  - 컨텍스트 압축 (CLI 전달)\n' +
-          '  /model    - 모델 변경 (CLI 전달)\n' +
-          '  /settings - 세션 설정 열기\n' +
-          '  /files    - 파일 패널 토글';
+          '\uC0AC\uC6A9 \uAC00\uB2A5\uD55C \uBA85\uB839\uC5B4:\n' +
+          '  /help     - \uBA85\uB839\uC5B4 \uBAA9\uB85D \uD45C\uC2DC\n' +
+          '  /clear    - \uB300\uD654 \uB0B4\uC5ED \uCD08\uAE30\uD654\n' +
+          '  /compact  - \uCEE8\uD14D\uC2A4\uD2B8 \uC555\uCD95 (CLI \uC804\uB2EC)\n' +
+          '  /model    - \uBAA8\uB378 \uBCC0\uACBD (CLI \uC804\uB2EC)\n' +
+          '  /settings - \uC138\uC158 \uC124\uC815 \uC5F4\uAE30\n' +
+          '  /files    - \uD30C\uC77C \uBCC0\uACBD \uD328\uB110 \uD1A0\uAE00';
         addSystemMessage(helpText);
         break;
       }
@@ -75,7 +75,7 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
         setSettingsOpen(true);
         break;
       case 'files':
-        onToggleFiles();
+        setFilesOpen((p) => !p);
         break;
     }
   };
@@ -113,8 +113,8 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-r border-border">
-      {/* 상단바 */}
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* \uC0C1\uB2E8\uBC14 */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
         <div className="flex items-center gap-2">
           <span
@@ -148,20 +148,31 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
             </Badge>
           ) : null}
           <SessionSettings sessionId={sessionId} open={settingsOpen} onOpenChange={setSettingsOpen} />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onToggleFiles}
-            title="Toggle file panel"
-            className={cn(showFiles && 'bg-muted')}
-            aria-label="파일 패널 토글"
-          >
-            <FolderOpen className="h-4 w-4" />
-          </Button>
+          <Popover open={filesOpen} onOpenChange={setFilesOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                title="File changes"
+                className={cn(filesOpen && 'bg-muted')}
+                aria-label="\uD30C\uC77C \uBCC0\uACBD \uD328\uB110"
+              >
+                <FolderOpen className="h-4 w-4" />
+                {fileChanges.length > 0 ? (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                    {fileChanges.length > 99 ? '99+' : fileChanges.length}
+                  </span>
+                ) : null}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[320px] p-0 bg-card border-border" align="end">
+              <FilePanel fileChanges={fileChanges} onFileClick={handleFileClick} />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
-      {/* 메시지 영역 */}
+      {/* \uBA54\uC2DC\uC9C0 \uC601\uC5ED */}
       <div className="flex-1 overflow-auto p-4 flex flex-col gap-2">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-50">
@@ -179,7 +190,7 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 입력 영역 */}
+      {/* \uC785\uB825 \uC601\uC5ED */}
       <div className="px-4 py-3 border-t border-border bg-secondary">
         <div className="relative">
           {slashCommands.isOpen ? (
@@ -197,7 +208,7 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
             value={input}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
-            placeholder="Enter a prompt for Claude Code…"
+            placeholder="Enter a prompt for Claude Code\u2026"
             rows={1}
             disabled={!connected}
           />
@@ -221,9 +232,21 @@ export function ChatPanel({ sessionId, onToggleFiles, showFiles, onFileChanges }
         </div>
         </div>
         <div className="font-mono text-[10px] text-muted-foreground/70 mt-1.5 pl-0.5">
-          Shift+Enter 줄바꿈 {'\u00B7'} <span className="text-muted-foreground">/</span> 명령어
+          Shift+Enter \uC904\uBC14\uAFC8 {'\u00B7'} <span className="text-muted-foreground">/</span> \uBA85\uB839\uC5B4
         </div>
       </div>
+
+      {/* FileViewer Dialog */}
+      {selectedFile ? (
+        <FileViewer
+          sessionId={sessionId}
+          filePath={selectedFile.file}
+          tool={selectedFile.tool}
+          timestamp={selectedFile.timestamp}
+          open={!!selectedFile}
+          onOpenChange={(open) => { if (!open) setSelectedFile(null); }}
+        />
+      ) : null}
     </div>
   );
 }

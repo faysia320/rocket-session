@@ -9,8 +9,8 @@ interface FilePanelProps {
 
 export function FilePanel({ fileChanges = [], onFileClick }: FilePanelProps) {
   return (
-    <div className="w-[280px] min-w-[280px] flex flex-col bg-card border-l border-border overflow-hidden">
-      <div className="flex items-center gap-2 px-3.5 py-3 border-b border-border bg-secondary">
+    <div className="flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-border">
         <span className="text-sm">{'\u{1F4C1}'}</span>
         <span className="font-mono text-xs font-semibold text-foreground flex-1">
           File Changes
@@ -20,9 +20,9 @@ export function FilePanel({ fileChanges = [], onFileClick }: FilePanelProps) {
         </Badge>
       </div>
 
-      <ScrollArea className="flex-1 p-2">
+      <ScrollArea className="flex-1 max-h-[400px] p-2">
         {fileChanges.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
             <div className="text-[28px] mb-2 opacity-40">{'\u{1F4C2}'}</div>
             <div className="font-mono text-xs text-muted-foreground mb-1">
               No file changes yet
@@ -38,7 +38,7 @@ export function FilePanel({ fileChanges = [], onFileClick }: FilePanelProps) {
               key={i}
               className="w-full text-left p-2 px-2.5 bg-secondary border border-border rounded-sm mb-1.5 animate-[fadeIn_0.2s_ease] hover:border-primary/30 hover:bg-secondary/80 transition-colors cursor-pointer"
               onClick={() => onFileClick?.(change)}
-              aria-label={`파일 보기: ${change.file}`}
+              aria-label={`\uD30C\uC77C \uBCF4\uAE30: ${change.file}`}
             >
               <div className="flex items-center justify-between mb-1">
                 <Badge
