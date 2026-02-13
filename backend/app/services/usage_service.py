@@ -34,23 +34,32 @@ class UsageService:
             if isinstance(block_data, dict):
                 data_list = block_data.get("data", [])
                 if data_list:
-                    latest = data_list[0]
+                    # 활성 블록 우선, 없으면 gap이 아닌 마지막 블록
+                    latest = next(
+                        (b for b in reversed(data_list) if b.get("isActive")),
+                        next(
+                            (b for b in reversed(data_list) if not b.get("isGap")),
+                            data_list[-1],
+                        ),
+                    )
+                    burn = latest.get("burnRate") or {}
+                    proj = latest.get("projection") or {}
                     block_5h = BlockUsage(
                         total_tokens=latest.get("totalTokens", 0),
                         cost_usd=latest.get("costUSD", 0.0),
                         is_active=latest.get("isActive", False),
-                        time_remaining=latest.get("timeRemaining", ""),
-                        burn_rate=latest.get("burnRate", 0),
+                        time_remaining=f"{proj.get('remainingMinutes', 0)}분" if proj.get("remainingMinutes") else "",
+                        burn_rate=round(burn.get("costPerHour", 0), 2) if burn else 0,
                     )
 
             weekly = WeeklyUsage()
             if isinstance(weekly_data, dict):
                 weekly_list = weekly_data.get("weekly", [])
                 if weekly_list:
-                    latest = weekly_list[0]
+                    latest = weekly_list[-1]  # 마지막 = 현재 주
                     weekly = WeeklyUsage(
                         total_tokens=latest.get("totalTokens", 0),
-                        cost_usd=latest.get("costUSD", 0.0),
+                        cost_usd=latest.get("totalCost", 0.0),
                         models_used=latest.get("modelsUsed", []),
                     )
 
