@@ -1,8 +1,10 @@
 import { useCallback } from 'react';
 import { useNavigate, useLocation } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { sessionKeys } from './sessionKeys';
+import type { SessionInfo } from '@/types';
 
 /**
  * 세션 생성 전용 훅.
@@ -44,7 +46,7 @@ export function useSessions() {
   const location = useLocation();
   const queryClient = useQueryClient();
 
-  const { data: sessions = [] } = useQuery({
+  const { data: sessions = [], isLoading, isError } = useQuery({
     queryKey: sessionKeys.list(),
     queryFn: () => sessionsApi.list(),
     staleTime: 10_000,
@@ -53,7 +55,21 @@ export function useSessions() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => sessionsApi.delete(id),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
+      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
+      queryClient.setQueryData<SessionInfo[]>(sessionKeys.list(), (old) =>
+        old?.filter((s) => s.id !== id) ?? [],
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(sessionKeys.list(), context.previous);
+      }
+      toast.error('세션 삭제에 실패했습니다');
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
     },
   });
@@ -78,7 +94,21 @@ export function useSessions() {
   const renameMutation = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       sessionsApi.update(id, { name }),
-    onSuccess: () => {
+    onMutate: async ({ id, name }) => {
+      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
+      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
+      queryClient.setQueryData<SessionInfo[]>(sessionKeys.list(), (old) =>
+        old?.map((s) => (s.id === id ? { ...s, name } : s)) ?? [],
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(sessionKeys.list(), context.previous);
+      }
+      toast.error('세션 이름 변경에 실패했습니다');
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
     },
   });
@@ -99,6 +129,8 @@ export function useSessions() {
   return {
     sessions,
     activeSessionId,
+    isLoading,
+    isError,
     deleteSession,
     renameSession,
     selectSession,
