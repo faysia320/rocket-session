@@ -24,7 +24,7 @@ interface ChatHeaderProps {
   connected: boolean;
   workDir?: string;
   gitInfo: GitInfo | null;
-  status: "idle" | "running";
+  status: "idle" | "running" | "error";
   sessionId: string;
   fileChanges: FileChange[];
   reconnectState?: ReconnectState;
@@ -82,14 +82,18 @@ export const ChatHeader = memo(function ChatHeader({
                 : "bg-destructive"
               : status === "running"
                 ? "bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]"
-                : "bg-success shadow-[0_0_8px_hsl(var(--success))]",
+                : status === "error"
+                  ? "bg-destructive shadow-[0_0_8px_hsl(var(--destructive))]"
+                  : "bg-success shadow-[0_0_8px_hsl(var(--success))]",
           )}
         />
         <span className={cn(
           "font-mono text-xs",
           status === "running" && connected
             ? "text-primary font-semibold"
-            : "text-muted-foreground",
+            : status === "error" && connected
+              ? "text-destructive font-semibold"
+              : "text-muted-foreground",
         )}>
           {!connected
             ? reconnectState?.status === "reconnecting"
@@ -99,7 +103,9 @@ export const ChatHeader = memo(function ChatHeader({
                 : "Disconnected"
             : status === "running"
               ? "Running"
-              : "Connected"}
+              : status === "error"
+                ? "Error"
+                : "Connected"}
         </span>
         {reconnectState?.status === "failed" && onRetryConnect ? (
           <button

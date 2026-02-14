@@ -12,7 +12,7 @@ import { ChatInput } from "./ChatInput";
 import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { FileViewer } from "@/features/files/components/FileViewer";
-import type { FileChange, SessionMode, ResultMsg, UserMsg } from "@/types";
+import type { FileChange, SessionMode, SessionInfo, ResultMsg, UserMsg } from "@/types";
 import { useSessionStore } from "@/store";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { useSlashCommands } from "../hooks/useSlashCommands";
@@ -20,6 +20,7 @@ import type { SlashCommand } from "../constants/slashCommands";
 import { toast } from "sonner";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
+import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { GitActionsBar } from "./GitActionsBar";
 import {
@@ -77,11 +78,19 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? "");
 
-  // 세션 상태 전환 시 알림 + gitInfo 갱신
+  // 세션 상태 전환 시 알림 + gitInfo 갱신 + 세션 목록 캐시 동기화
   const prevStatusRef = useRef(status);
   useEffect(() => {
     const prev = prevStatusRef.current;
     if (prev === status) return;
+
+    // 세션 목록 캐시에 상태를 실시간 반영 (사이드바 동기화)
+    queryClient.setQueryData<SessionInfo[]>(
+      sessionKeys.list(),
+      (old) => old?.map((s) =>
+        s.id === sessionId ? { ...s, status } : s,
+      ),
+    );
 
     // running → idle: 작업 완료
     if (prev === "running" && status === "idle") {
@@ -107,7 +116,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
 
     prevStatusRef.current = status;
-  }, [status, workDir, queryClient, notify]);
+  }, [status, workDir, queryClient, notify, sessionId]);
 
   // 에러 메시지 수신 시 알림
   const prevMsgCountRef = useRef(messages.length);

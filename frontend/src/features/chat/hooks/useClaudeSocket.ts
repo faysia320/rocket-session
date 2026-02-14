@@ -64,7 +64,7 @@ export function useClaudeSocket(sessionId: string) {
   const lastSeqRef = useRef<number>(0);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [status, setStatus] = useState<"idle" | "running">("idle");
+  const [status, setStatus] = useState<"idle" | "running" | "error">("idle");
   const [sessionInfo, setSessionInfo] = useState<SessionState | null>(null);
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
   const [activeTools, setActiveTools] = useState<ToolUseMsg[]>([]);
@@ -211,8 +211,8 @@ export function useClaudeSocket(sessionId: string) {
         break;
 
       case "status":
-        setStatus(data.status as "idle" | "running");
-        if (data.status === "idle") {
+        setStatus(data.status as "idle" | "running" | "error");
+        if (data.status === "idle" || data.status === "error") {
           setActiveTools([]);
           // running 상태로 남아있는 모든 tool_use를 정리 (강제 중지 등)
           setMessages((prev) =>

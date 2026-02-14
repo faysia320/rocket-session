@@ -17,7 +17,7 @@ interface PendingImage {
 
 interface ChatInputProps {
   connected: boolean;
-  status: "idle" | "running";
+  status: "idle" | "running" | "error";
   mode: SessionMode;
   slashCommands: ReturnType<typeof useSlashCommands>;
   onSubmit: (prompt: string, images?: string[]) => void;

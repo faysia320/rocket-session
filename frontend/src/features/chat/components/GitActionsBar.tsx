@@ -25,7 +25,7 @@ import type { GitInfo } from "@/types";
 
 interface GitActionsBarProps {
   gitInfo: GitInfo | null;
-  status: "idle" | "running";
+  status: "idle" | "running" | "error";
   connected: boolean;
   onSendPrompt: (prompt: string) => void;
   onRemoveWorktree?: () => void;

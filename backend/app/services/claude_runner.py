@@ -514,6 +514,9 @@ class ClaudeRunner:
         # is_error일 때 세션 상태를 error로 전환
         if is_error:
             await session_manager.update_status(session_id, SessionStatus.ERROR)
+            await ws_manager.broadcast_event(
+                session_id, {"type": WsEventType.STATUS, "status": SessionStatus.ERROR}
+            )
 
         await session_manager.add_message(
             session_id=session_id,
@@ -669,10 +672,15 @@ class ClaudeRunner:
             )
 
         finally:
-            await session_manager.update_status(session_id, SessionStatus.IDLE)
+            # ERROR 상태인 경우 보존, 그 외에는 IDLE로 전환
+            current_session = await session_manager.get(session_id)
+            current_status = current_session.get("status") if current_session else None
+            if current_status != SessionStatus.ERROR:
+                await session_manager.update_status(session_id, SessionStatus.IDLE)
+            final_status = current_status if current_status == SessionStatus.ERROR else SessionStatus.IDLE
             session_manager.clear_process(session_id)
             await ws_manager.broadcast_event(
-                session_id, {"type": WsEventType.STATUS, "status": SessionStatus.IDLE}
+                session_id, {"type": WsEventType.STATUS, "status": final_status}
             )
             # 턴 완료 후 인메모리 이벤트 버퍼 정리
             ws_manager.clear_buffer(session_id)

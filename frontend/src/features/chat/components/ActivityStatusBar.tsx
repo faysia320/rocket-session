@@ -3,7 +3,7 @@ import type { ToolUseMsg } from "@/types";
 
 interface ActivityStatusBarProps {
   activeTools: ToolUseMsg[];
-  status: "idle" | "running";
+  status: "idle" | "running" | "error";
 }
 
 const TOOL_LABELS: Record<string, string> = {
