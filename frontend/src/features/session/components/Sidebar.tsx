@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo, memo } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon, Columns2, LayoutGrid, Download, PanelLeftClose, PanelLeftOpen, Plus, Settings, Search, X, Bell, BellOff } from 'lucide-react';
-import { useDesktopNotification } from '@/features/chat/hooks/useDesktopNotification';
+import { useNotificationCenter } from '@/features/notification/hooks/useNotificationCenter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -46,7 +46,7 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
   const [importOpen, setImportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'idle' | 'error'>('all');
-  const { enabled: notificationsEnabled, toggle: toggleNotifications } = useDesktopNotification();
+  const { settings: notificationSettings, toggleEnabled: toggleNotifications, requestDesktopPermission } = useNotificationCenter();
 
   const filteredSessions = useMemo(() => {
     let filtered = sessions;
@@ -243,15 +243,20 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn('h-8 w-8', notificationsEnabled && 'text-primary')}
-                onClick={toggleNotifications}
-                aria-label={notificationsEnabled ? '알림 비활성화' : '알림 활성화'}
+                className={cn('h-8 w-8', notificationSettings.enabled && 'text-primary')}
+                onClick={async () => {
+                  if (!notificationSettings.enabled) {
+                    await requestDesktopPermission();
+                  }
+                  toggleNotifications();
+                }}
+                aria-label={notificationSettings.enabled ? '알림 비활성화' : '알림 활성화'}
               >
-                {notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                {notificationSettings.enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
               </Button>
             </TooltipTrigger>
             <TooltipContent side={collapsed ? 'right' : 'top'}>
-              {notificationsEnabled ? '알림 켜짐' : '알림 꺼짐'}
+              {notificationSettings.enabled ? '알림 켜짐' : '알림 꺼짐'}
             </TooltipContent>
           </Tooltip>
           <GlobalSettingsDialog>

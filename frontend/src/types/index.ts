@@ -38,3 +38,11 @@ export type {
 } from './local-session';
 export type { BlockUsage, WeeklyUsage, UsageInfo } from './usage';
 export type { GlobalSettings, UpdateGlobalSettingsRequest } from './settings';
+export type {
+  NotificationCategory,
+  NotificationChannel,
+  CategoryNotificationConfig,
+  NotificationSettings,
+  SoundPack,
+} from './notification';
+export { DEFAULT_NOTIFICATION_SETTINGS, CATEGORY_LABELS } from './notification';

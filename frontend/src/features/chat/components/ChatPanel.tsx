@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
-import { useDesktopNotification } from '../hooks/useDesktopNotification';
+import { useNotificationCenter } from '@/features/notification/hooks/useNotificationCenter';
 import { MessageBubble } from './MessageBubble';
 import { PermissionDialog } from './PermissionDialog';
 import { PlanReviewDialog } from './PlanReviewDialog';
@@ -30,7 +30,7 @@ interface ChatPanelProps {
 export function ChatPanel({ sessionId }: ChatPanelProps) {
   const { connected, loading, messages, status, sessionInfo, fileChanges, activeTools, pendingPermission, reconnectState, tokenUsage, sendPrompt, stopExecution, clearMessages, addSystemMessage, updateMessage, respondPermission, reconnect } =
     useClaudeSocket(sessionId);
-  const { notify } = useDesktopNotification();
+  const { notify } = useNotificationCenter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
   const isInitialLoad = useRef(true);
@@ -49,11 +49,15 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? '');
 
-  // running → idle 전환 시 gitInfo 자동 갱신 + 알림
+  // 세션 상태 전환 시 알림 + gitInfo 갱신
   const prevStatusRef = useRef(status);
   useEffect(() => {
-    if (prevStatusRef.current === 'running' && status === 'idle') {
-      notify('Claude Code', '작업이 완료되었습니다.');
+    const prev = prevStatusRef.current;
+    if (prev === status) return;
+
+    // running → idle: 작업 완료
+    if (prev === 'running' && status === 'idle') {
+      notify('task.complete', { title: 'Claude Code', body: '작업이 완료되었습니다.' });
       if (workDir) {
         const timer = setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ['git-info', workDir] });
@@ -62,8 +66,41 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         return () => clearTimeout(timer);
       }
     }
+
+    // → running: 세션 시작
+    if (status === 'running' && prev !== 'running') {
+      notify('session.start', { title: 'Claude Code', body: '세션이 실행을 시작했습니다.' });
+    }
+
     prevStatusRef.current = status;
   }, [status, workDir, queryClient, notify]);
+
+  // 에러 메시지 수신 시 알림
+  const prevMsgCountRef = useRef(messages.length);
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current) {
+      const newMsgs = messages.slice(prevMsgCountRef.current);
+      for (const msg of newMsgs) {
+        if (msg.type === 'error') {
+          notify('task.error', { title: 'Claude Code', body: '세션에서 에러가 발생했습니다.' });
+          break;
+        }
+      }
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages.length, messages, notify]);
+
+  // Permission 요청 시 알림
+  const prevPermissionRef = useRef(pendingPermission);
+  useEffect(() => {
+    if (pendingPermission && pendingPermission !== prevPermissionRef.current) {
+      notify('input.required', {
+        title: 'Permission 요청',
+        body: `${pendingPermission.tool_name} 도구 사용 승인이 필요합니다.`,
+      });
+    }
+    prevPermissionRef.current = pendingPermission;
+  }, [pendingPermission, notify]);
 
   // 세션 정보에서 mode 동기화
   useEffect(() => {
@@ -326,11 +363,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onSendPrompt={handleSendPrompt}
         onRemoveWorktree={handleRemoveWorktree}
         onMenuToggle={() => setSidebarMobileOpen(true)}
-        tokenUsage={tokenUsage}
         currentModel={sessionInfo?.model as string | undefined}
-        messageCount={messages.length}
       />
-      <SessionStatsBar sessionId={sessionId} />
+      <SessionStatsBar sessionId={sessionId} tokenUsage={tokenUsage} messageCount={messages.length} />
 
       {/* 검색 바 */}
       {searchOpen ? (

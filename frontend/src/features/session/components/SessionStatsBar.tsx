@@ -3,9 +3,17 @@ import { DollarSign, Zap, Clock } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useSessionStats } from '../hooks/useSessionStats';
+import { ContextWindowBar } from '@/features/chat/components/ContextWindowBar';
 
 interface SessionStatsBarProps {
   sessionId: string;
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheCreationTokens: number;
+    cacheReadTokens: number;
+  };
+  messageCount?: number;
 }
 
 function formatCost(cost: number): string {
@@ -29,7 +37,7 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainSeconds}s`;
 }
 
-export const SessionStatsBar = memo(function SessionStatsBar({ sessionId }: SessionStatsBarProps) {
+export const SessionStatsBar = memo(function SessionStatsBar({ sessionId, tokenUsage, messageCount }: SessionStatsBarProps) {
   const { data: stats } = useSessionStats(sessionId);
 
   if (!stats || stats.total_messages === 0) return null;
@@ -93,6 +101,18 @@ export const SessionStatsBar = memo(function SessionStatsBar({ sessionId }: Sess
       <span className="font-mono text-[10px] text-muted-foreground/50">
         {stats.total_messages} msgs
       </span>
+
+      {tokenUsage ? (
+        <div className="ml-auto">
+          <ContextWindowBar
+            inputTokens={tokenUsage.inputTokens}
+            outputTokens={tokenUsage.outputTokens}
+            cacheCreationTokens={tokenUsage.cacheCreationTokens}
+            cacheReadTokens={tokenUsage.cacheReadTokens}
+            messageCount={messageCount}
+          />
+        </div>
+      ) : null}
     </div>
   );
 });

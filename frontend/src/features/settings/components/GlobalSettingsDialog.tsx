@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { DirectoryPicker } from '@/features/directory/components/DirectoryPicker';
+import { NotificationSettingsPanel } from '@/features/notification/components/NotificationSettingsPanel';
 import { useGlobalSettings, useUpdateGlobalSettings } from '../hooks/useGlobalSettings';
 import { AVAILABLE_TOOLS } from '@/features/session/constants/tools';
 
@@ -353,6 +354,11 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
               value={timeoutMinutes}
               onChange={(e) => setTimeoutMinutes(e.target.value)}
             />
+          </div>
+
+          {/* Notification Settings */}
+          <div className="border-t border-border pt-5">
+            <NotificationSettingsPanel />
           </div>
 
           {/* Save */}

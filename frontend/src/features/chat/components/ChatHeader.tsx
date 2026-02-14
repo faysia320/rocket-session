@@ -16,8 +16,6 @@ import { cn } from '@/lib/utils';
 import type { FileChange, SessionMode, GitInfo } from '@/types';
 import type { ReconnectState } from '../hooks/useClaudeSocket';
 import { GitActionsBar } from './GitActionsBar';
-import { ContextWindowBar } from './ContextWindowBar';
-
 interface ChatHeaderProps {
   connected: boolean;
   workDir?: string;
@@ -39,14 +37,7 @@ interface ChatHeaderProps {
   onSendPrompt: (prompt: string) => void;
   onRemoveWorktree?: () => void;
   onMenuToggle?: () => void;
-  tokenUsage?: {
-    inputTokens: number;
-    outputTokens: number;
-    cacheCreationTokens: number;
-    cacheReadTokens: number;
-  };
   currentModel?: string | null;
-  messageCount?: number;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -70,9 +61,7 @@ export const ChatHeader = memo(function ChatHeader({
   onSendPrompt,
   onRemoveWorktree,
   onMenuToggle,
-  tokenUsage,
   currentModel,
-  messageCount,
 }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
@@ -151,15 +140,6 @@ export const ChatHeader = memo(function ChatHeader({
           currentModel={currentModel}
           disabled={status === 'running'}
         />
-        {tokenUsage ? (
-          <ContextWindowBar
-            inputTokens={tokenUsage.inputTokens}
-            outputTokens={tokenUsage.outputTokens}
-            cacheCreationTokens={tokenUsage.cacheCreationTokens}
-            cacheReadTokens={tokenUsage.cacheReadTokens}
-            messageCount={messageCount}
-          />
-        ) : null}
         {status === 'running' ? (
           <Badge
             variant="outline"
