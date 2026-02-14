@@ -57,7 +57,7 @@ async def get_session(
 ):
     session = await manager.get_with_counts(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     return manager.to_info(session)
 
 
@@ -69,7 +69,7 @@ async def update_session(
 ):
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     updated = await manager.update_settings(
         session_id=session_id,
         allowed_tools=req.allowed_tools,
@@ -86,7 +86,7 @@ async def update_session(
         disallowed_tools=req.disallowed_tools,
     )
     if not updated:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     session_with_counts = await manager.get_with_counts(session_id) or updated
     return manager.to_info(session_with_counts)
 
@@ -98,7 +98,7 @@ async def get_history(
 ):
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     return await manager.get_history(session_id)
 
 
@@ -109,7 +109,7 @@ async def get_file_changes(
 ):
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     return await manager.get_file_changes(session_id)
 
 
@@ -120,7 +120,7 @@ async def stop_session(
 ):
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     await manager.kill_process(session_id)
     return {"status": "stopped"}
 
@@ -132,7 +132,7 @@ async def get_session_stats(
 ):
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     stats = await manager.get_session_stats(session_id)
     return stats or {
         "total_messages": 0,
@@ -152,7 +152,7 @@ async def open_terminal(
 ):
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     work_dir = session["work_dir"]
     system = platform.system()
     try:
@@ -164,7 +164,7 @@ async def open_terminal(
             subprocess.Popen(["xterm", "-e", f"cd {work_dir} && bash"], shell=True)
         return {"status": "opened", "work_dir": work_dir}
     except Exception as e:
-        raise HTTPException(500, f"터미널 열기 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"터미널 열기 실패: {str(e)}")
 
 
 @router.get("/{session_id}/export")
@@ -174,7 +174,7 @@ async def export_session(
 ):
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     history = await manager.get_history(session_id)
     session_name = session.get("name") or session_id
     lines = [f"# {session_name}", ""]
@@ -209,5 +209,5 @@ async def delete_session(
 ):
     deleted = await manager.delete(session_id)
     if not deleted:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     return {"status": "deleted"}

@@ -34,7 +34,7 @@ def _resolve_safe_path(file_path: str, work_dir: Path) -> Path:
         try:
             rel = resolved.relative_to(resolved_work_dir)
         except ValueError:
-            raise HTTPException(403, "접근 금지: 작업 디렉토리 외부 경로입니다")
+            raise HTTPException(status_code=403, detail="접근 금지: 작업 디렉토리 외부 경로입니다")
         return resolved_work_dir / rel
     else:
         # 상대 경로: work_dir과 결합 후 검증
@@ -42,7 +42,7 @@ def _resolve_safe_path(file_path: str, work_dir: Path) -> Path:
         try:
             resolved.relative_to(resolved_work_dir)
         except ValueError:
-            raise HTTPException(403, "접근 금지: 작업 디렉토리 외부 경로입니다")
+            raise HTTPException(status_code=403, detail="접근 금지: 작업 디렉토리 외부 경로입니다")
         return resolved
 
 
@@ -54,24 +54,24 @@ async def get_file_content(
 ):
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
     work_dir = Path(session["work_dir"])
     target = _resolve_safe_path(file_path, work_dir)
 
     if not target.exists():
-        raise HTTPException(404, "파일을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
 
     if not target.is_file():
-        raise HTTPException(400, "디렉토리는 조회할 수 없습니다")
+        raise HTTPException(status_code=400, detail="디렉토리는 조회할 수 없습니다")
 
     if target.stat().st_size > MAX_FILE_SIZE:
-        raise HTTPException(413, "파일이 너무 큽니다 (최대 1MB)")
+        raise HTTPException(status_code=413, detail="파일이 너무 큽니다 (최대 1MB)")
 
     try:
         content = target.read_text(encoding="utf-8")
     except UnicodeDecodeError:
-        raise HTTPException(415, "바이너리 파일은 표시할 수 없습니다")
+        raise HTTPException(status_code=415, detail="바이너리 파일은 표시할 수 없습니다")
 
     return PlainTextResponse(content)
 
@@ -85,7 +85,7 @@ async def get_file_diff(
     """파일의 git diff를 조회합니다."""
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
     work_dir = Path(session["work_dir"])
     target = _resolve_safe_path(file_path, work_dir)
@@ -170,21 +170,21 @@ async def upload_file(
     """세션에 이미지 파일을 업로드합니다."""
     session = await manager.get(session_id)
     if not session:
-        raise HTTPException(404, "Session not found")
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
     # MIME 타입 검증
     content_type = file.content_type or ""
     if content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
-            415,
-            f"지원하지 않는 파일 형식입니다: {content_type}. "
+            status_code=415,
+            detail=f"지원하지 않는 파일 형식입니다: {content_type}. "
             f"허용: {', '.join(ALLOWED_IMAGE_TYPES)}",
         )
 
     # 파일 크기 검증
     content = await file.read()
     if len(content) > MAX_UPLOAD_SIZE:
-        raise HTTPException(413, "파일이 너무 큽니다 (최대 10MB)")
+        raise HTTPException(status_code=413, detail="파일이 너무 큽니다 (최대 10MB)")
 
     # 확장자 화이트리스트 검증 (경로 조작 방지)
     ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}

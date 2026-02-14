@@ -50,14 +50,14 @@ async def _handle_prompt(
     """prompt 메시지 처리: 유효성 검사, 메시지 저장, runner task 생성."""
     prompt = data.get("prompt", "")
     if not prompt:
-        await ws.send_json({"type": WsEventType.ERROR, "message": "Empty prompt"})
+        await ws.send_json({"type": WsEventType.ERROR, "message": "프롬프트가 비어있습니다"})
         return
 
     # 이미 실행 중인 runner가 있으면 거부
     existing_task = manager.get_runner_task(session_id)
     if existing_task:
         await ws.send_json(
-            {"type": WsEventType.ERROR, "message": "이미 실행 중인 요청이 있습니다"}
+            {"type": WsEventType.ERROR, "message": "이미 실행 중인 요청이 있습니다."}
         )
         return
 
@@ -179,7 +179,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
     session = await manager.get(session_id)
     if not session:
-        await ws.send_json({"type": WsEventType.ERROR, "message": "Session not found"})
+        await ws.send_json({"type": WsEventType.ERROR, "message": "세션을 찾을 수 없습니다"})
         await ws.close()
         return
 
