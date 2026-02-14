@@ -40,10 +40,10 @@ export function UsageFooter() {
       <div className="flex items-center gap-2">
         <span className="font-mono text-[11px] font-semibold text-primary">Rocket Session</span>
 
-        <span className="text-border">|</span>
+        <span className="text-border hidden sm:inline">|</span>
 
         <span className={cn(
-          'flex items-center gap-1',
+          'items-center gap-1 hidden sm:flex',
           block_5h.is_active ? 'text-info' : 'text-muted-foreground/40',
         )}>
           <Clock className="h-3 w-3" />
@@ -52,10 +52,10 @@ export function UsageFooter() {
             : '--:--'}
         </span>
 
-        <span className="text-border">|</span>
+        <span className="text-border hidden sm:inline">|</span>
 
         <span className={cn(
-          'flex items-center gap-1',
+          'items-center gap-1 hidden sm:flex',
           block_5h.is_active ? 'text-warning' : 'text-muted-foreground/40',
         )}>
           <Flame className="h-3 w-3" />
@@ -66,7 +66,7 @@ export function UsageFooter() {
       </div>
 
       {/* 우측: 계정 ID + 플랜 + 5h + wk */}
-      <div className="flex items-center gap-3">
+      <div className="items-center gap-3 hidden md:flex">
         {account_id ? (
           <>
             <span className="text-muted-foreground/70 truncate max-w-[150px]" title={account_id}>

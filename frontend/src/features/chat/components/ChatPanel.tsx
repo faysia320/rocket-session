@@ -12,6 +12,7 @@ import { ActivityStatusBar } from './ActivityStatusBar';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { FileViewer } from '@/features/files/components/FileViewer';
 import type { FileChange, SessionMode, Message } from '@/types';
+import { useSessionStore } from '@/store';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { useSlashCommands } from '../hooks/useSlashCommands';
 import type { SlashCommand } from '../constants/slashCommands';
@@ -40,6 +41,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
 
+  const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const queryClient = useQueryClient();
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? '');
@@ -290,6 +292,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onRetryConnect={reconnect}
         onSendPrompt={handleSendPrompt}
         onRemoveWorktree={handleRemoveWorktree}
+        onMenuToggle={() => setSidebarMobileOpen(true)}
       />
 
       {/* 검색 바 */}

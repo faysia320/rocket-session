@@ -322,7 +322,12 @@ export const ChatInput = memo(function ChatInput({
         </div>
       </div>
       <div className="font-mono text-[10px] text-muted-foreground/70 mt-1.5 pl-0.5">
-        Shift+Enter 줄바꿈 {'·'} Shift+Tab 모드 전환 {'·'} Esc 정지/클리어 {'·'} <span className="text-muted-foreground">/</span> 명령어 {'·'} 이미지 붙여넣기/드래그
+        <span className="hidden md:inline">
+          Shift+Enter 줄바꿈 {'·'} Shift+Tab 모드 전환 {'·'} Esc 정지/클리어 {'·'} <span className="text-muted-foreground">/</span> 명령어 {'·'} 이미지 붙여넣기/드래그
+        </span>
+        <span className="md:hidden">
+          Enter 전송 {'·'} <span className="text-muted-foreground">/</span> 명령어
+        </span>
       </div>
     </div>
   );

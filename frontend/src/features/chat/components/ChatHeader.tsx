@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { FolderOpen, GitBranch, Download, Search, RefreshCw } from 'lucide-react';
+import { FolderOpen, GitBranch, Download, Search, RefreshCw, Menu } from 'lucide-react';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { ModeIndicator } from './ModeIndicator';
 import { SessionSettings } from '@/features/session/components/SessionSettings';
@@ -36,6 +36,7 @@ interface ChatHeaderProps {
   onRetryConnect?: () => void;
   onSendPrompt: (prompt: string) => void;
   onRemoveWorktree?: () => void;
+  onMenuToggle?: () => void;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -58,10 +59,22 @@ export const ChatHeader = memo(function ChatHeader({
   onRetryConnect,
   onSendPrompt,
   onRemoveWorktree,
+  onMenuToggle,
 }: ChatHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
+      <div className="flex items-center gap-2 min-w-0">
+        {onMenuToggle ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 md:hidden shrink-0"
+            onClick={onMenuToggle}
+            aria-label="메뉴 열기"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        ) : null}
         <span
           className={cn(
             'w-[7px] h-[7px] rounded-full transition-all',
@@ -93,22 +106,22 @@ export const ChatHeader = memo(function ChatHeader({
           </button>
         ) : null}
         {workDir ? (
-          <>
+          <span className="hidden md:contents">
             <span className="text-muted-foreground/70 text-xs">|</span>
             <FolderOpen className="h-3 w-3 text-muted-foreground/70 shrink-0" />
             <span className="font-mono text-[11px] text-muted-foreground/70 truncate max-w-[300px] direction-rtl text-left" title={workDir}>
               {workDir}
             </span>
-          </>
+          </span>
         ) : null}
         {gitInfo?.branch ? (
-          <>
+          <span className="hidden md:contents">
             <span className="text-muted-foreground/70 text-xs">|</span>
             <GitBranch className="h-3 w-3 text-muted-foreground/70 shrink-0" />
             <span className="font-mono text-[11px] text-muted-foreground/70">
               {gitInfo.branch}
             </span>
-          </>
+          </span>
         ) : null}
         <GitActionsBar
           gitInfo={gitInfo}
@@ -168,7 +181,7 @@ export const ChatHeader = memo(function ChatHeader({
               ) : null}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[560px] max-h-[70vh] p-0 bg-card border-border flex flex-col" align="end">
+          <PopoverContent className="w-[calc(100vw-2rem)] md:w-[560px] max-h-[70vh] p-0 bg-card border-border flex flex-col" align="end">
             <FilePanel sessionId={sessionId} fileChanges={fileChanges} onFileClick={onFileClick} />
           </PopoverContent>
         </Popover>
