@@ -305,6 +305,34 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [handleToggleSearch]);
 
+  // 커맨드 팔레트 이벤트 리스너
+  useEffect(() => {
+    const handlers: Record<string, (e: Event) => void> = {
+      "command-palette:clear-messages": () => clearMessages(),
+      "command-palette:toggle-search": () => handleToggleSearch(),
+      "command-palette:toggle-mode": () => cycleMode(),
+      "command-palette:open-settings": () => setSettingsOpen(true),
+      "command-palette:toggle-files": () => setFilesOpen((p) => !p),
+      "command-palette:send-slash": (e: Event) => {
+        const cmd = (e as CustomEvent).detail;
+        if (cmd) sendPrompt(cmd, { mode });
+      },
+      "command-palette:send-prompt": (e: Event) => {
+        const prompt = (e as CustomEvent).detail;
+        if (prompt) sendPrompt(prompt, { mode });
+      },
+    };
+
+    for (const [event, handler] of Object.entries(handlers)) {
+      window.addEventListener(event, handler);
+    }
+    return () => {
+      for (const [event, handler] of Object.entries(handlers)) {
+        window.removeEventListener(event, handler);
+      }
+    };
+  }, [clearMessages, handleToggleSearch, cycleMode, sendPrompt, mode]);
+
   const handleFileClick = useCallback((change: FileChange) => {
     setSelectedFile(change);
     setFilesOpen(false);

@@ -12,6 +12,7 @@ import { SessionDashboardCard } from "@/features/session/components/SessionDashb
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { useSessionStore } from "@/store";
 import { UsageFooter } from "@/features/usage/components/UsageFooter";
+import { CommandPaletteProvider } from "@/features/command-palette/components/CommandPaletteProvider";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { sessionsApi } from "@/lib/api/sessions.api";
@@ -143,6 +144,7 @@ function RootComponent() {
         </main>
       </div>
       <UsageFooter />
+      <CommandPaletteProvider />
     </div>
   );
 }
