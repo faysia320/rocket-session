@@ -5,9 +5,12 @@ import { api } from './client';
 import type { LocalSessionMeta, ImportLocalSessionRequest, ImportLocalSessionResponse } from '@/types';
 
 export const localSessionsApi = {
-  scan: (projectDir?: string) => {
-    const params = projectDir ? `?project_dir=${encodeURIComponent(projectDir)}` : '';
-    return api.get<LocalSessionMeta[]>(`/api/local-sessions/${params}`);
+  scan: (options?: { projectDir?: string; since?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (options?.projectDir) searchParams.set('project_dir', options.projectDir);
+    if (options?.since) searchParams.set('since', options.since);
+    const qs = searchParams.toString();
+    return api.get<LocalSessionMeta[]>(`/api/local-sessions/${qs ? `?${qs}` : ''}`);
   },
 
   import: (req: ImportLocalSessionRequest) =>

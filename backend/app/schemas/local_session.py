@@ -15,6 +15,7 @@ class LocalSessionMeta(BaseModel):
     file_size: int = 0
     message_count: int = 0
     already_imported: bool = False
+    continuation_ids: list[str] = []
 
 
 class ImportLocalSessionRequest(BaseModel):

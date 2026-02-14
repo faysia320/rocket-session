@@ -10,6 +10,7 @@ export interface LocalSessionMeta {
   file_size: number;
   message_count: number;
   already_imported: boolean;
+  continuation_ids: string[];
 }
 
 export interface ImportLocalSessionRequest {

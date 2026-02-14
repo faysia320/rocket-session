@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Download, Loader2, GitBranch, MessageSquare, FolderOpen } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Download, Loader2, GitBranch, MessageSquare, FolderOpen, ChevronRight, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +20,20 @@ type FlatItem =
   | { type: 'group-header'; cwd: string; count: number }
   | { type: 'session'; meta: LocalSessionMeta };
 
+function getYesterdayISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
 export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLocalDialogProps) {
   const [sessions, setSessions] = useState<LocalSessionMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hideImported, setHideImported] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,7 +41,7 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
     setLoading(true);
     setError(null);
     localSessionsApi
-      .scan()
+      .scan({ since: getYesterdayISO() })
       .then(setSessions)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -71,16 +79,42 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
     }, {});
   }, [sessions, hideImported]);
 
+  const toggleGroup = useCallback((cwd: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(cwd)) {
+        next.delete(cwd);
+      } else {
+        next.add(cwd);
+      }
+      return next;
+    });
+  }, []);
+
+  const allGroupKeys = useMemo(() => Object.keys(filtered), [filtered]);
+
+  const allCollapsed = allGroupKeys.length > 0 && allGroupKeys.every((k) => collapsedGroups.has(k));
+
+  const toggleAll = useCallback(() => {
+    if (allCollapsed) {
+      setCollapsedGroups(new Set());
+    } else {
+      setCollapsedGroups(new Set(allGroupKeys));
+    }
+  }, [allCollapsed, allGroupKeys]);
+
   const flatItems = useMemo(() => {
     const result: FlatItem[] = [];
     for (const [cwd, items] of Object.entries(filtered)) {
       result.push({ type: 'group-header', cwd, count: items.length });
-      for (const s of items) {
-        result.push({ type: 'session', meta: s });
+      if (!collapsedGroups.has(cwd)) {
+        for (const s of items) {
+          result.push({ type: 'session', meta: s });
+        }
       }
     }
     return result;
-  }, [filtered]);
+  }, [filtered, collapsedGroups]);
 
   const virtualizer = useVirtualizer({
     count: flatItems.length,
@@ -126,6 +160,18 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
               >
                 Import된 세션 숨기기
               </Label>
+              {allGroupKeys.length > 1 ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 ml-auto font-mono text-[10px] text-muted-foreground"
+                  onClick={toggleAll}
+                  aria-label={allCollapsed ? '모두 펼치기' : '모두 접기'}
+                >
+                  <ChevronsUpDown className="h-3 w-3 mr-0.5" />
+                  {allCollapsed ? '모두 펼치기' : '모두 접기'}
+                </Button>
+              ) : null}
             </div>
             <div
               ref={parentRef}
@@ -146,8 +192,19 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
                       }}
                     >
                       {item.type === 'group-header' ? (
-                        <div className="flex items-center gap-1.5 mb-2 h-9">
-                          <FolderOpen className="h-3 w-3 text-muted-foreground" />
+                        <button
+                          type="button"
+                          className="flex items-center gap-1.5 mb-2 h-9 w-full text-left hover:bg-muted/50 rounded-sm px-1 -mx-1 transition-colors"
+                          onClick={() => toggleGroup(item.cwd)}
+                          aria-expanded={!collapsedGroups.has(item.cwd)}
+                          aria-label={`${truncateCwd(item.cwd)} 그룹 ${collapsedGroups.has(item.cwd) ? '펼치기' : '접기'}`}
+                        >
+                          {collapsedGroups.has(item.cwd) ? (
+                            <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                          ) : (
+                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                          )}
+                          <FolderOpen className="h-3 w-3 text-muted-foreground shrink-0" />
                           <span
                             className="font-mono text-[10px] text-muted-foreground truncate"
                             title={item.cwd}
@@ -157,7 +214,7 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
                           <Badge variant="secondary" className="font-mono text-[9px] ml-auto">
                             {item.count}
                           </Badge>
-                        </div>
+                        </button>
                       ) : (
                         <div className="mb-1">
                           <SessionRow

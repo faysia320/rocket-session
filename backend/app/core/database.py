@@ -102,6 +102,8 @@ class Database:
             "ALTER TABLE messages ADD COLUMN cache_creation_tokens INTEGER",
             "ALTER TABLE messages ADD COLUMN cache_read_tokens INTEGER",
             "ALTER TABLE messages ADD COLUMN model TEXT",
+            # JSONL 실시간 감시용: import된 세션의 JSONL 파일 경로
+            "ALTER TABLE sessions ADD COLUMN jsonl_path TEXT",
         ]
         for migration in migrations:
             try:
