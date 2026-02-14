@@ -62,6 +62,11 @@ export function useClaudeSocket(sessionId: string) {
   const shouldReconnect = useRef(true);
   const lastModeRef = useRef<"normal" | "plan">("normal");
   const lastSeqRef = useRef<number>(0);
+  // RAF 배치: assistant_text 스트리밍 최적화 (프레임당 1회 setState)
+  const pendingTextRef = useRef<AssistantTextMsg | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  // sendPrompt에서 messages에 직접 의존하지 않도록 ref로 동기화
+  const messagesRef = useRef<Message[]>([]);
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<"idle" | "running" | "error">("idle");
@@ -113,6 +118,11 @@ export function useClaudeSocket(sessionId: string) {
       cacheReadTokens: 0,
     });
   }, [sessionId]);
+
+  // messagesRef를 messages와 동기화 (sendPrompt에서 안정적으로 참조)
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
     // seq 기반 중복 방지: lastSeqRef 단조 증가 비교 (Set 대신 O(1) 메모리)
@@ -233,38 +243,45 @@ export function useClaudeSocket(sessionId: string) {
         break;
 
       case "assistant_text":
-        setMessages((prev) => {
-          // 같은 연속 텍스트 블록 내의 마지막 assistant_text를 역순 탐색
-          // tool_use/tool_result 경계 이후의 새 텍스트는 별도 메시지로 추가
-          let lastIdx = -1;
-          for (let i = prev.length - 1; i >= 0; i--) {
-            const t = prev[i].type;
-            if (
-              t === "user_message" ||
-              t === "result" ||
-              t === "tool_use" ||
-              t === "tool_result"
-            )
-              break;
-            if (t === "assistant_text") {
-              lastIdx = i;
-              break;
-            }
-          }
-          if (lastIdx >= 0) {
-            // 기존 assistant_text를 덮어쓰기 (ID 유지로 virtualizer key 안정성)
-            const updated = [...prev];
-            updated[lastIdx] = {
-              ...(data as unknown as AssistantTextMsg),
-              id: prev[lastIdx].id,
-            };
-            return updated;
-          }
-          return [
-            ...prev,
-            { ...(data as unknown as Message), id: generateMessageId() },
-          ];
-        });
+        // RAF 배치: 텍스트를 ref에 축적, 프레임당 1회만 setMessages 호출
+        pendingTextRef.current = data as unknown as AssistantTextMsg;
+        if (rafIdRef.current === null) {
+          rafIdRef.current = requestAnimationFrame(() => {
+            rafIdRef.current = null;
+            const latestText = pendingTextRef.current;
+            if (!latestText) return;
+            pendingTextRef.current = null;
+            setMessages((prev) => {
+              let lastIdx = -1;
+              for (let i = prev.length - 1; i >= 0; i--) {
+                const t = prev[i].type;
+                if (
+                  t === "user_message" ||
+                  t === "result" ||
+                  t === "tool_use" ||
+                  t === "tool_result"
+                )
+                  break;
+                if (t === "assistant_text") {
+                  lastIdx = i;
+                  break;
+                }
+              }
+              if (lastIdx >= 0) {
+                const updated = [...prev];
+                updated[lastIdx] = {
+                  ...latestText,
+                  id: prev[lastIdx].id,
+                };
+                return updated;
+              }
+              return [
+                ...prev,
+                { ...latestText, id: generateMessageId() } as Message,
+              ];
+            });
+          });
+        }
         break;
 
       case "tool_use":
@@ -630,6 +647,10 @@ export function useClaudeSocket(sessionId: string) {
         clearTimeout(reconnectTimer.current);
         reconnectTimer.current = null;
       }
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
     };
   }, [connect]);
 
@@ -682,7 +703,7 @@ export function useClaudeSocket(sessionId: string) {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         // 미전송 답변을 prompt에 prefix로 추가
         let finalPrompt = prompt;
-        const answerCtx = messages
+        const answerCtx = messagesRef.current
           .filter(
             (m) =>
               m.type === "ask_user_question" &&
@@ -732,7 +753,8 @@ export function useClaudeSocket(sessionId: string) {
         );
       }
     },
-    [messages],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- messagesRef로 안정적 참조, 함수 재생성 방지
+    [],
   );
 
   const stopExecution = useCallback(() => {
