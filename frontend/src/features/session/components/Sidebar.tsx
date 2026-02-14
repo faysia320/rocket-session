@@ -29,20 +29,26 @@ interface SidebarProps {
   onDelete: (id: string) => void;
   onRename?: (id: string, name: string) => void;
   onImported?: (id: string) => void;
+  isMobileOverlay?: boolean;
+  isLoading?: boolean;
+  isError?: boolean;
 }
 
-export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, onRename, onImported }: SidebarProps) {
+export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, onRename, onImported, isMobileOverlay, isLoading, isError }: SidebarProps) {
   const splitView = useSessionStore((s) => s.splitView);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
-  const collapsed = useSessionStore((s) => s.sidebarCollapsed);
+  const collapsed = isMobileOverlay ? false : useSessionStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const [importOpen, setImportOpen] = useState(false);
 
   return (
     <aside
       className={cn(
-        'h-full flex flex-col bg-sidebar border-r border-sidebar-border overflow-hidden transition-[width,min-width] duration-200 ease-in-out',
-        collapsed ? 'w-16 min-w-16' : 'w-[260px] min-w-[260px]',
+        'h-full flex flex-col bg-sidebar overflow-hidden',
+        isMobileOverlay
+          ? 'w-[280px]'
+          : 'border-r border-sidebar-border transition-[width,min-width] duration-200 ease-in-out',
+        !isMobileOverlay && (collapsed ? 'w-16 min-w-16' : 'w-[260px] min-w-[260px]'),
       )}
     >
       {/* New Session */}
@@ -99,7 +105,19 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
 
       {/* Sessions list */}
       <ScrollArea className={cn('flex-1 min-h-0', collapsed ? 'px-1 pt-3' : 'px-2')}>
-        {sessions.length === 0 ? (
+        {isLoading ? (
+          <div className="px-2 pt-2 space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-muted rounded-sm animate-pulse" />
+            ))}
+          </div>
+        ) : isError ? (
+          collapsed ? null : (
+            <div className="py-6 px-3 text-center font-mono text-xs text-destructive/80">
+              세션 목록을 불러올 수 없습니다
+            </div>
+          )
+        ) : sessions.length === 0 ? (
           collapsed ? null : (
             <div className="py-6 px-3 text-center font-mono text-xs text-muted-foreground/70">
               No active sessions
@@ -156,36 +174,40 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
             </Button>
           </GlobalSettingsDialog>
           <ThemeToggle />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn('h-8 w-8', splitView && 'bg-muted')}
-                onClick={toggleSplitView}
-                aria-label={splitView ? '단일 뷰로 전환' : '분할 뷰로 전환'}
-              >
-                <Columns2 className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side={collapsed ? 'right' : 'top'}>Split View</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={toggleSidebar}
-                aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
-              >
-                {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side={collapsed ? 'right' : 'top'}>
-              {collapsed ? '사이드바 펼치기' : '사이드바 접기'}
-            </TooltipContent>
-          </Tooltip>
+          {isMobileOverlay ? null : (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn('h-8 w-8', splitView && 'bg-muted')}
+                    onClick={toggleSplitView}
+                    aria-label={splitView ? '단일 뷰로 전환' : '분할 뷰로 전환'}
+                  >
+                    <Columns2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side={collapsed ? 'right' : 'top'}>Split View</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={toggleSidebar}
+                    aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
+                  >
+                    {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side={collapsed ? 'right' : 'top'}>
+                  {collapsed ? '사이드바 펼치기' : '사이드바 접기'}
+                </TooltipContent>
+              </Tooltip>
+            </>
+          )}
         </div>
       </div>
       <ImportLocalDialog
