@@ -1,4 +1,4 @@
-import { AlertCircle, Clock } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
@@ -11,7 +11,7 @@ function formatTimeRemaining(resetsAt: string | null): string {
   if (diffMs <= 0) return "00:00";
   const hours = Math.floor(diffMs / 3_600_000);
   const minutes = Math.floor((diffMs % 3_600_000) / 60_000);
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  return `${String(hours).padStart(2, "0")}h${String(minutes).padStart(2, "0")}m`;
 }
 
 function utilizationColor(util: number): string {
@@ -64,40 +64,26 @@ export function UsageFooter() {
 
   return (
     <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center justify-between px-3 text-xs text-muted-foreground">
-      {/* 좌측: 브랜드 + 5h utilization */}
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-[11px] font-semibold text-primary">
-          Rocket Session
-        </span>
+      {/* 좌측: 브랜드 */}
+      <span className="font-mono text-[11px] font-semibold text-primary">
+        Rocket Session
+      </span>
 
-        <span className="text-border hidden sm:inline">|</span>
-
-        <span className="items-center gap-1 hidden sm:flex">
-          <span className="text-muted-foreground/60">5h:</span>
-          <span className={cn("font-medium", utilizationColor(five_hour.utilization))}>
-            {five_hour.utilization.toFixed(0)}%
-          </span>
+      {/* 우측: 5시간 + 주간 사용량 */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-muted-foreground/60">5시간:</span>
+        <span className={cn("font-medium", utilizationColor(five_hour.utilization))}>
+          {five_hour.utilization.toFixed(0)}%
         </span>
+        <span className="text-muted-foreground/40">({fiveHourCountdown})</span>
 
-        <span className="items-center gap-1 hidden sm:flex text-muted-foreground/60">
-          <Clock className="h-3 w-3" />
-          {fiveHourCountdown}
-        </span>
-      </div>
+        <span className="text-border mx-0.5">|</span>
 
-      {/* 우측: wk utilization */}
-      <div className="items-center gap-2 hidden md:flex">
-        <span className="flex items-center gap-1">
-          <span className="text-muted-foreground/60">wk:</span>
-          <span className={cn("font-medium", utilizationColor(seven_day.utilization))}>
-            {seven_day.utilization.toFixed(0)}%
-          </span>
+        <span className="text-muted-foreground/60">주간:</span>
+        <span className={cn("font-medium", utilizationColor(seven_day.utilization))}>
+          {seven_day.utilization.toFixed(0)}%
         </span>
-
-        <span className="flex items-center gap-1 text-muted-foreground/60">
-          <Clock className="h-3 w-3" />
-          {sevenDayCountdown}
-        </span>
+        <span className="text-muted-foreground/40">({sevenDayCountdown})</span>
       </div>
     </footer>
   );
