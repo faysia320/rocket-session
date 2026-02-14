@@ -230,6 +230,7 @@ class ClaudeRunner:
             stderr=asyncio.subprocess.PIPE,
             cwd=work_dir,
             env=env,
+            limit=10 * 1024 * 1024,  # 10MB - Claude 스트림 JSON 대용량 라인 대응
         )
 
     @staticmethod
