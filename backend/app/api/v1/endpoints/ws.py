@@ -232,11 +232,12 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                 "latest_seq": latest_seq,
                 "is_running": is_running,
             }
-            # running 세션인 경우 현재 턴 이벤트도 전송
-            if is_running:
-                current_turn = ws_manager.get_current_turn_events(session_id)
-                if current_turn:
-                    state_msg["current_turn_events"] = current_turn
+            # 현재 턴 이벤트 전송 (running + 완료된 세션 모두)
+            # running: 인메모리 버퍼에서 실시간 이벤트 복구
+            # idle/error: DB fallback으로 마지막 완료 턴의 중간 이벤트 복구
+            current_turn = await ws_manager.get_current_turn_events(session_id)
+            if current_turn:
+                state_msg["current_turn_events"] = current_turn
             await ws.send_json(state_msg)
 
         while True:

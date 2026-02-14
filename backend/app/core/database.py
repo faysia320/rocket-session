@@ -490,6 +490,27 @@ class Database:
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
 
+    async def get_current_turn_events(self, session_id: str) -> list[dict]:
+        """DB에서 마지막 user_message 이후의 턴 이벤트를 조회."""
+        cursor = await self.conn.execute(
+            "SELECT MAX(seq) as last_seq FROM events "
+            "WHERE session_id = ? AND event_type = 'user_message'",
+            (session_id,),
+        )
+        row = await cursor.fetchone()
+        last_user_seq = row["last_seq"] if row and row["last_seq"] else 0
+
+        if last_user_seq == 0:
+            return []
+
+        cursor = await self.conn.execute(
+            "SELECT seq, event_type, payload, timestamp FROM events "
+            "WHERE session_id = ? AND seq > ? ORDER BY seq",
+            (session_id, last_user_seq),
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
     async def delete_events(self, session_id: str):
         await self.conn.execute(
             "DELETE FROM events WHERE session_id = ?", (session_id,)

@@ -683,6 +683,7 @@ class ClaudeRunner:
             await ws_manager.broadcast_event(
                 session_id, {"type": WsEventType.STATUS, "status": final_status}
             )
-            # 턴 완료 후 인메모리 이벤트 버퍼 정리
+            # 턴 완료 후: DB flush 보장 → 인메모리 이벤트 버퍼 정리
+            await ws_manager.flush_events()
             ws_manager.clear_buffer(session_id)
             self._cleanup_mcp_config(mcp_config_path)

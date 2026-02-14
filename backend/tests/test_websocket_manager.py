@@ -287,7 +287,7 @@ async def test_get_current_turn_events_after_user_message(ws_manager):
     await ws_manager.broadcast_event(session_id, {"type": "assistant", "text": "Hello"})
     await ws_manager.broadcast_event(session_id, {"type": "tool_use", "tool": "Read"})
 
-    events = ws_manager.get_current_turn_events(session_id)
+    events = await ws_manager.get_current_turn_events(session_id)
 
     assert len(events) == 2
     assert events[0]["type"] == "assistant"
@@ -302,7 +302,7 @@ async def test_get_current_turn_events_no_user_message(ws_manager):
     await ws_manager.broadcast_event(session_id, {"type": "status", "data": "idle"})
     await ws_manager.broadcast_event(session_id, {"type": "assistant", "text": "Hello"})
 
-    events = ws_manager.get_current_turn_events(session_id)
+    events = await ws_manager.get_current_turn_events(session_id)
 
     assert len(events) == 0
 

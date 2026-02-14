@@ -135,13 +135,6 @@ export function useClaudeSocket(sessionId: string) {
       case "session_state":
         setSessionInfo(data.session as SessionState);
         setLoading(false);
-        // latest_seq 업데이트 (서버에서 전달)
-        if (
-          typeof data.latest_seq === "number" &&
-          data.latest_seq > lastSeqRef.current
-        ) {
-          lastSeqRef.current = data.latest_seq;
-        }
         // running 상태 복원
         if (data.is_running) {
           setStatus("running");
@@ -186,19 +179,28 @@ export function useClaudeSocket(sessionId: string) {
             cacheCreationTokens: totalCacheCreate,
             cacheReadTokens: totalCacheRead,
           });
-          // 현재 턴 이벤트가 있으면 순차 재생 (새로고침 후 running 세션 복구)
+          // 현재 턴 이벤트가 있으면 순차 재생 (세션 전환/새로고침 후 복구)
+          // latest_seq 업데이트 전에 수행하여 seq 중복 체크에 걸리지 않도록 함
           if (data.current_turn_events) {
             const turnEvents = data.current_turn_events as Record<
               string,
               unknown
             >[];
             for (const event of turnEvents) {
-              // user_message는 history에 이미 포함되므로 스킵
-              if (event.type !== "user_message") {
+              // user_message: history에 이미 포함
+              // result: history의 마지막 assistant 메시지와 중복
+              if (event.type !== "user_message" && event.type !== "result") {
                 handleMessage(event);
               }
             }
           }
+        }
+        // latest_seq 업데이트는 모든 이벤트 재생 후 (seq 중복 방지 메커니즘 회피)
+        if (
+          typeof data.latest_seq === "number" &&
+          data.latest_seq > lastSeqRef.current
+        ) {
+          lastSeqRef.current = data.latest_seq;
         }
         break;
 

@@ -88,6 +88,10 @@ class WebSocketManager:
             except Exception as e:
                 logger.warning("이벤트 배치 DB 저장 실패 (%d건): %s", len(batch), e)
 
+    async def flush_events(self):
+        """외부에서 호출 가능한 이벤트 flush. 큐의 모든 이벤트를 즉시 DB에 저장."""
+        await self._flush_events()
+
     async def _heartbeat_loop(self):
         """30초 간격 ping으로 dead 연결 감지."""
         while True:
@@ -209,23 +213,37 @@ class WebSocketManager:
 
         return []
 
-    def get_current_turn_events(self, session_id: str) -> list[dict]:
-        """현재 턴(마지막 user_message 이후)의 이벤트 목록 반환."""
+    async def get_current_turn_events(self, session_id: str) -> list[dict]:
+        """현재 턴(마지막 user_message 이후)의 이벤트 목록 반환.
+        인메모리 버퍼 우선, 비어있으면 DB fallback.
+        """
+        # 1단계: 인메모리 버퍼 조회
         buffer = self._event_buffers.get(session_id)
-        if not buffer:
-            return []
+        if buffer:
+            last_user_seq = 0
+            for evt in buffer:
+                if evt.event_type == "user_message":
+                    last_user_seq = evt.seq
+            if last_user_seq > 0:
+                return [e.payload for e in buffer if e.seq > last_user_seq]
 
-        # 버퍼에서 마지막 user_message 이벤트의 seq 찾기
-        last_user_seq = 0
-        for evt in buffer:
-            if evt.event_type == "user_message":
-                last_user_seq = evt.seq
+        # 2단계: DB fallback (인메모리 비어있거나 user_message 없는 경우)
+        if self._db:
+            try:
+                rows = await self._db.get_current_turn_events(session_id)
+                results = []
+                for row in rows:
+                    try:
+                        results.append(json.loads(row["payload"]))
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+                return results
+            except Exception as e:
+                logger.warning(
+                    "현재 턴 이벤트 DB 조회 실패 (세션 %s): %s", session_id, e
+                )
 
-        if last_user_seq == 0:
-            return []
-
-        # 해당 seq 이후 모든 이벤트 반환 (user_message 자체는 제외)
-        return [e.payload for e in buffer if e.seq > last_user_seq]
+        return []
 
     def clear_buffer(self, session_id: str):
         """세션의 인메모리 버퍼 정리."""
