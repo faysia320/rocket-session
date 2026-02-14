@@ -1,5 +1,6 @@
 """FastAPI 의존성 주입 프로바이더."""
 
+import logging
 from functools import lru_cache
 
 from app.core.config import Settings
@@ -111,7 +112,10 @@ async def shutdown_dependencies():
     """앱 종료 시 DB 연결 정리."""
     global _database, _session_manager, _local_scanner, _usage_service, _claude_runner, _settings_service, _jsonl_watcher
     if _jsonl_watcher:
-        _jsonl_watcher.stop_all()
+        try:
+            _jsonl_watcher.stop_all()
+        except Exception as e:
+            logging.getLogger(__name__).error("JsonlWatcher 종료 실패: %s", e)
     if _database:
         await _database.close()
     _database = None

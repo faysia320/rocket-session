@@ -137,11 +137,12 @@ class JsonlWatcher:
         if session:
             turn_state["work_dir"] = session.get("work_dir", "")
 
-        # 세션을 running 상태로 전환
-        await self._session_manager.update_status(session_id, SessionStatus.RUNNING)
-        await self._ws_manager.broadcast_event(
-            session_id, {"type": "status", "status": SessionStatus.RUNNING}
-        )
+        # 세션이 IDLE인 경우에만 RUNNING으로 전환 (ERROR 상태 덮어쓰기 방지)
+        if session and session.get("status") == SessionStatus.IDLE:
+            await self._session_manager.update_status(session_id, SessionStatus.RUNNING)
+            await self._ws_manager.broadcast_event(
+                session_id, {"type": "status", "status": SessionStatus.RUNNING}
+            )
 
         try:
             while True:
@@ -151,7 +152,11 @@ class JsonlWatcher:
                     logger.info("JSONL 파일 삭제됨, 감시 종료: %s", path)
                     break
 
-                current_size = path.stat().st_size
+                try:
+                    current_size = path.stat().st_size
+                except FileNotFoundError:
+                    logger.info("JSONL 파일 삭제됨 (stat 실패), 감시 종료: %s", path)
+                    break
                 if current_size > file_size:
                     # 새 데이터 있음
                     new_lines = await asyncio.to_thread(
@@ -165,8 +170,8 @@ class JsonlWatcher:
                             line, session_id, turn_state
                         )
                 elif current_size < file_size:
-                    # 파일이 줄어듦 (truncate 또는 재생성)
-                    file_size = current_size
+                    # 파일이 줄어듦 (truncate 또는 재생성) → 처음부터 다시 읽기
+                    file_size = 0
                     last_activity = asyncio.get_event_loop().time()
 
                 # idle 타임아웃 체크
@@ -178,19 +183,21 @@ class JsonlWatcher:
                     )
                     break
         finally:
-            # 세션을 idle로 전환
-            await self._session_manager.update_status(
-                session_id, SessionStatus.IDLE
-            )
-            await self._ws_manager.broadcast_event(
-                session_id, {"type": "status", "status": SessionStatus.IDLE}
-            )
+            # RUNNING 상태인 경우에만 IDLE로 전환 (ERROR 상태 보존)
+            current = await self._session_manager.get(session_id)
+            if current and current.get("status") == SessionStatus.RUNNING:
+                await self._session_manager.update_status(
+                    session_id, SessionStatus.IDLE
+                )
+                await self._ws_manager.broadcast_event(
+                    session_id, {"type": "status", "status": SessionStatus.IDLE}
+                )
 
     @staticmethod
     def _read_new_lines(path: Path, offset: int) -> list[str]:
         """파일의 offset 이후 새 줄을 읽어 반환."""
         lines: list[str] = []
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
             f.seek(offset)
             for line in f:
                 stripped = line.strip()
@@ -207,7 +214,8 @@ class JsonlWatcher:
         """JSONL 한 줄을 파싱하고 이벤트 타입에 따라 처리."""
         try:
             event = json.loads(line)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            logger.warning("JSONL 파싱 실패 (session=%s): %s", session_id[:8], e)
             return
 
         event_type = event.get("type", "")
@@ -372,6 +380,12 @@ class JsonlWatcher:
         cache_read_tokens = usage.get("cache_read_input_tokens")
         model = turn_state.get("model")
 
+        # 세션의 현재 mode 조회 (ClaudeRunner와 동일하게 포함)
+        mode = "normal"
+        session = await self._session_manager.get(session_id)
+        if session:
+            mode = session.get("mode", "normal")
+
         if session_id_from_result:
             await self._session_manager.update_claude_session_id(
                 session_id, session_id_from_result
@@ -384,6 +398,7 @@ class JsonlWatcher:
             "cost": cost_info,
             "duration_ms": duration,
             "session_id": session_id_from_result,
+            "mode": mode,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cache_creation_tokens": cache_creation_tokens,
