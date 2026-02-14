@@ -16,6 +16,11 @@ export interface SessionInfo {
   permission_mode?: boolean;
   permission_required_tools?: string[];
   name?: string;
+  model?: string | null;
+  max_turns?: number | null;
+  max_budget_usd?: number | null;
+  system_prompt_mode?: string | null;
+  disallowed_tools?: string | null;
 }
 
 export interface CreateSessionRequest {
@@ -26,6 +31,11 @@ export interface CreateSessionRequest {
   mode?: SessionMode | null;
   permission_mode?: boolean | null;
   permission_required_tools?: string[] | null;
+  model?: string | null;
+  max_turns?: number | null;
+  max_budget_usd?: number | null;
+  system_prompt_mode?: string | null;
+  disallowed_tools?: string | null;
 }
 
 export interface UpdateSessionRequest {
@@ -36,4 +46,9 @@ export interface UpdateSessionRequest {
   permission_mode?: boolean | null;
   permission_required_tools?: string[] | null;
   name?: string | null;
+  model?: string | null;
+  max_turns?: number | null;
+  max_budget_usd?: number | null;
+  system_prompt_mode?: string | null;
+  disallowed_tools?: string | null;
 }

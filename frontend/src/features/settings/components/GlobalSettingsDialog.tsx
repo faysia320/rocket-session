@@ -37,6 +37,11 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
   const [mode, setMode] = useState<'normal' | 'plan'>('normal');
   const [permissionMode, setPermissionMode] = useState(false);
   const [permissionTools, setPermissionTools] = useState<string[]>([]);
+  const [model, setModel] = useState('');
+  const [maxTurns, setMaxTurns] = useState('');
+  const [maxBudget, setMaxBudget] = useState('');
+  const [systemPromptMode, setSystemPromptMode] = useState<'replace' | 'append'>('replace');
+  const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
 
   // 다이얼로그 열릴 때 현재 글로벌 설정값으로 초기화
   useEffect(() => {
@@ -52,6 +57,11 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
       setMode(settings.mode ?? 'normal');
       setPermissionMode(settings.permission_mode ?? false);
       setPermissionTools(settings.permission_required_tools ?? []);
+      setModel(settings.model ?? '');
+      setMaxTurns(settings.max_turns ? String(settings.max_turns) : '');
+      setMaxBudget(settings.max_budget_usd ? String(settings.max_budget_usd) : '');
+      setSystemPromptMode((settings.system_prompt_mode as 'replace' | 'append') ?? 'replace');
+      setDisallowedTools(settings.disallowed_tools ? settings.disallowed_tools.split(',').map((t) => t.trim()) : []);
     }
   }, [open, settings]);
 
@@ -79,6 +89,11 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
         permission_mode: permissionMode,
         permission_required_tools:
           permissionMode && permissionTools.length > 0 ? permissionTools : null,
+        model: model || null,
+        max_turns: maxTurns ? Number(maxTurns) : null,
+        max_budget_usd: maxBudget ? Number(maxBudget) : null,
+        system_prompt_mode: systemPromptMode,
+        disallowed_tools: disallowedTools.length > 0 ? disallowedTools.join(',') : null,
       });
       toast.success('글로벌 설정이 저장되었습니다.');
       setOpen(false);
@@ -113,6 +128,26 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
             <DirectoryPicker value={workDir} onChange={setWorkDir} />
           </div>
 
+          {/* Model */}
+          <div className="space-y-2">
+            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+              MODEL
+            </Label>
+            <p className="font-mono text-[10px] text-muted-foreground/70">
+              Claude CLI에 전달할 기본 모델입니다. 비워두면 전역 설정 또는 기본값을 사용합니다.
+            </p>
+            <select
+              className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              <option value="">Default</option>
+              <option value="opus">Opus</option>
+              <option value="sonnet">Sonnet</option>
+              <option value="haiku">Haiku</option>
+            </select>
+          </div>
+
           {/* Allowed Tools */}
           <div className="space-y-3">
             <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
@@ -134,6 +169,31 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
             </div>
           </div>
 
+          {/* Disallowed Tools */}
+          <div className="space-y-3">
+            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+              DISALLOWED TOOLS
+            </Label>
+            <p className="font-mono text-[10px] text-muted-foreground/70">
+              Claude CLI에서 사용을 금지할 도구입니다. 세션에서 개별 설정 시 이 값이 덮어씌워집니다.
+            </p>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {AVAILABLE_TOOLS.map((tool) => (
+                <label key={`dis-${tool}`} className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={disallowedTools.includes(tool)}
+                    onCheckedChange={(checked) =>
+                      setDisallowedTools((prev) =>
+                        checked === true ? [...prev, tool] : prev.filter((t) => t !== tool)
+                      )
+                    }
+                  />
+                  <span className="font-mono text-xs text-foreground">{tool}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           {/* System Prompt */}
           <div className="space-y-2">
             <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
@@ -148,6 +208,32 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
             />
+          </div>
+
+          {/* System Prompt Mode */}
+          <div className="space-y-2">
+            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+              SYSTEM PROMPT MODE
+            </Label>
+            <p className="font-mono text-[10px] text-muted-foreground/70">
+              시스템 프롬프트 적용 방식입니다. 세션에서 개별 설정 시 이 값이 덮어씌워집니다.
+            </p>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={systemPromptMode === 'replace'}
+                  onCheckedChange={() => setSystemPromptMode('replace')}
+                />
+                <span className="font-mono text-xs text-foreground">전체 대체</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={systemPromptMode === 'append'}
+                  onCheckedChange={() => setSystemPromptMode('append')}
+                />
+                <span className="font-mono text-xs text-foreground">기본에 추가</span>
+              </label>
+            </div>
           </div>
 
           {/* Mode */}
@@ -209,6 +295,45 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
                 ))}
               </div>
             ) : null}
+          </div>
+
+          {/* Max Turns */}
+          <div className="space-y-2">
+            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+              MAX TURNS
+            </Label>
+            <p className="font-mono text-[10px] text-muted-foreground/70">
+              에이전트 턴 최대 횟수입니다. 비워두면 무제한입니다.
+              세션에서 개별 설정 시 이 값이 덮어씌워집니다.
+            </p>
+            <Input
+              className="font-mono text-xs bg-input border-border w-28"
+              type="number"
+              min="1"
+              placeholder="없음"
+              value={maxTurns}
+              onChange={(e) => setMaxTurns(e.target.value)}
+            />
+          </div>
+
+          {/* Max Budget */}
+          <div className="space-y-2">
+            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+              MAX BUDGET (USD)
+            </Label>
+            <p className="font-mono text-[10px] text-muted-foreground/70">
+              세션당 최대 비용 한도입니다. 비워두면 제한 없음.
+              세션에서 개별 설정 시 이 값이 덮어씌워집니다.
+            </p>
+            <Input
+              className="font-mono text-xs bg-input border-border w-28"
+              type="number"
+              min="0.01"
+              step="0.01"
+              placeholder="없음"
+              value={maxBudget}
+              onChange={(e) => setMaxBudget(e.target.value)}
+            />
           </div>
 
           {/* Timeout */}

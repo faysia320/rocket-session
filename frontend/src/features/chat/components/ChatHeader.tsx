@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { FolderOpen, GitBranch, Download, Search, RefreshCw, Menu } from 'lucide-react';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { ModeIndicator } from './ModeIndicator';
+import { ModelSelector } from './ModelSelector';
 import { SessionSettings } from '@/features/session/components/SessionSettings';
 import { FilePanel } from '@/features/files/components/FilePanel';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils';
 import type { FileChange, SessionMode, GitInfo } from '@/types';
 import type { ReconnectState } from '../hooks/useClaudeSocket';
 import { GitActionsBar } from './GitActionsBar';
+import { ContextWindowBar } from './ContextWindowBar';
 
 interface ChatHeaderProps {
   connected: boolean;
@@ -37,6 +39,13 @@ interface ChatHeaderProps {
   onSendPrompt: (prompt: string) => void;
   onRemoveWorktree?: () => void;
   onMenuToggle?: () => void;
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheCreationTokens: number;
+    cacheReadTokens: number;
+  };
+  currentModel?: string | null;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -60,6 +69,8 @@ export const ChatHeader = memo(function ChatHeader({
   onSendPrompt,
   onRemoveWorktree,
   onMenuToggle,
+  tokenUsage,
+  currentModel,
 }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
@@ -133,6 +144,19 @@ export const ChatHeader = memo(function ChatHeader({
       </div>
       <div className="flex items-center gap-2">
         <ModeIndicator mode={mode} onToggle={onToggleMode} />
+        <ModelSelector
+          sessionId={sessionId}
+          currentModel={currentModel}
+          disabled={status === 'running'}
+        />
+        {tokenUsage ? (
+          <ContextWindowBar
+            inputTokens={tokenUsage.inputTokens}
+            outputTokens={tokenUsage.outputTokens}
+            cacheCreationTokens={tokenUsage.cacheCreationTokens}
+            cacheReadTokens={tokenUsage.cacheReadTokens}
+          />
+        ) : null}
         {status === 'running' ? (
           <Badge
             variant="outline"

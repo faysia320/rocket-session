@@ -26,6 +26,7 @@ interface SessionState {
   timeout_seconds?: number;
   permission_mode?: number;
   permission_required_tools?: string;
+  model?: string;
 }
 
 // 히스토리 항목 타입
@@ -64,6 +65,12 @@ export function useClaudeSocket(sessionId: string) {
     attempt: 0,
     maxAttempts: RECONNECT_MAX_ATTEMPTS,
   });
+  const [tokenUsage, setTokenUsage] = useState<{
+    inputTokens: number;
+    outputTokens: number;
+    cacheCreationTokens: number;
+    cacheReadTokens: number;
+  }>({ inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 });
 
   // sessionId 변경 시 모든 상태 초기화 (방어적 코드)
   useEffect(() => {
@@ -82,6 +89,7 @@ export function useClaudeSocket(sessionId: string) {
       attempt: 0,
       maxAttempts: RECONNECT_MAX_ATTEMPTS,
     });
+    setTokenUsage({ inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 });
   }, [sessionId]);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
@@ -125,6 +133,16 @@ export function useClaudeSocket(sessionId: string) {
               model: h.model,
             }))
           );
+          // 히스토리에서 토큰 합산 복원
+          const historyItems = data.history as HistoryItem[];
+          let totalIn = 0, totalOut = 0, totalCacheCreate = 0, totalCacheRead = 0;
+          for (const h of historyItems) {
+            totalIn += h.input_tokens || 0;
+            totalOut += h.output_tokens || 0;
+            totalCacheCreate += h.cache_creation_tokens || 0;
+            totalCacheRead += h.cache_read_tokens || 0;
+          }
+          setTokenUsage({ inputTokens: totalIn, outputTokens: totalOut, cacheCreationTokens: totalCacheCreate, cacheReadTokens: totalCacheRead });
           // 현재 턴 이벤트가 있으면 순차 재생 (새로고침 후 running 세션 복구)
           if (data.current_turn_events) {
             const turnEvents = data.current_turn_events as Record<string, unknown>[];
@@ -245,6 +263,15 @@ export function useClaudeSocket(sessionId: string) {
             mode: (data.mode as 'normal' | 'plan') || lastModeRef.current,
           }];
         });
+        // 토큰 사용량 누적
+        if (typeof data.input_tokens === 'number' || typeof data.output_tokens === 'number') {
+          setTokenUsage((prev) => ({
+            inputTokens: prev.inputTokens + ((data.input_tokens as number) || 0),
+            outputTokens: prev.outputTokens + ((data.output_tokens as number) || 0),
+            cacheCreationTokens: prev.cacheCreationTokens + ((data.cache_creation_tokens as number) || 0),
+            cacheReadTokens: prev.cacheReadTokens + ((data.cache_read_tokens as number) || 0),
+          }));
+        }
         break;
       }
 
@@ -493,6 +520,7 @@ export function useClaudeSocket(sessionId: string) {
     activeTools,
     pendingPermission,
     reconnectState,
+    tokenUsage,
     sendPrompt,
     stopExecution,
     clearMessages,
