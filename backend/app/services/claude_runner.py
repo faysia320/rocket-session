@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.core.config import Settings
+from app.models.event_types import CliEventType, WsEventType
 from app.models.session import SessionStatus
 from app.services.websocket_manager import WebSocketManager
 
@@ -62,6 +63,8 @@ class _AsyncProcessWrapper:
 class ClaudeRunner:
     """Claude Code CLI를 subprocess로 실행하고 출력을 파싱하여 브로드캐스트."""
 
+    _MAX_TOOL_OUTPUT_LENGTH = 5000
+
     def __init__(self, settings: Settings):
         self._settings = settings
 
@@ -104,12 +107,14 @@ class ClaudeRunner:
         system_prompt = session.get("system_prompt")
         mcp_config_path = None
 
-        # Plan 모드: 시스템 프롬프트 주입 + 읽기 전용 도구로 제한
+        # Plan 모드: CLI 네이티브 plan mode + 시스템 프롬프트 + 읽기 전용 도구 제한
         if mode == "plan":
+            cmd.extend(["--permission-mode", "plan"])
             plan_instruction = (
-                "You are in PLAN mode. Analyze the request and create a detailed plan. "
-                "Do NOT make any file changes. Do NOT use Write, Edit, or MultiEdit tools. "
-                "Only explain step by step what changes would be needed and why."
+                "Create a detailed plan for the request. "
+                "Explain step by step what changes would be needed and why. "
+                "Do NOT execute the plan or make any changes. "
+                "Do NOT call ExitPlanMode. Present the plan for user review only."
             )
             if system_prompt:
                 system_prompt = f"{plan_instruction}\n\n{system_prompt}"
@@ -117,8 +122,8 @@ class ClaudeRunner:
                 system_prompt = plan_instruction
             allowed_tools = "Read,Glob,Grep,WebFetch,WebSearch,TodoRead"
 
-        # Permission 모드: MCP config 및 --permission-prompt-tool 설정
-        if session.get("permission_mode"):
+        # Permission 모드: plan mode와 상호 배타 (--permission-mode 하나만 가능)
+        elif session.get("permission_mode"):
             mcp_config_path = self._setup_permission_mcp(session, session_id, cmd)
 
             # permission_required_tools에 해당하는 도구는 allowedTools에서 제외
@@ -259,7 +264,7 @@ class ClaudeRunner:
         """파싱된 JSON 이벤트를 타입별로 처리."""
         event_type = event.get("type", "")
 
-        if event_type == "system":
+        if event_type == CliEventType.SYSTEM:
             # session_id가 있으면 Claude 세션 연결, 없으면 일반 system 이벤트로 전달
             if event.get("session_id"):
                 await session_manager.update_claude_session_id(
@@ -267,27 +272,27 @@ class ClaudeRunner:
                 )
                 await ws_manager.broadcast_event(
                     session_id,
-                    {"type": "session_info", "claude_session_id": event["session_id"]},
+                    {"type": WsEventType.SESSION_INFO, "claude_session_id": event["session_id"]},
                 )
             else:
-                await ws_manager.broadcast_event(session_id, {"type": "event", "event": event})
+                await ws_manager.broadcast_event(session_id, {"type": WsEventType.EVENT, "event": event})
 
-        elif event_type == "assistant":
+        elif event_type == CliEventType.ASSISTANT:
             await self._handle_assistant_event(
                 event, session_id, ws_manager, session_manager, turn_state
             )
 
-        elif event_type == "user":
-            await self._handle_user_event(event, session_id, ws_manager)
+        elif event_type == CliEventType.USER:
+            await self._handle_user_event(event, session_id, ws_manager, turn_state)
 
-        elif event_type == "result":
+        elif event_type == CliEventType.RESULT:
             await self._handle_result_event(
                 event, session_id, mode, ws_manager, session_manager,
                 turn_state,
             )
 
         else:
-            await ws_manager.broadcast_event(session_id, {"type": "event", "event": event})
+            await ws_manager.broadcast_event(session_id, {"type": WsEventType.EVENT, "event": event})
 
     async def _handle_assistant_event(
         self,
@@ -313,7 +318,7 @@ class ClaudeRunner:
                 thinking_text = block.get("thinking", "")
                 if thinking_text:
                     await ws_manager.broadcast_event(session_id, {
-                        "type": "thinking",
+                        "type": WsEventType.THINKING,
                         "text": thinking_text,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     })
@@ -324,8 +329,22 @@ class ClaudeRunner:
                 tool_name = block.get("name", "unknown")
                 tool_input = block.get("input", {})
                 tool_use_id = block.get("id", "")
+
+                # ExitPlanMode 감지: 모드 전환 이벤트로 변환
+                if tool_name == "ExitPlanMode":
+                    turn_state["exit_plan_tool_id"] = tool_use_id
+                    turn_state["mode"] = "normal"
+                    await session_manager.update_settings(session_id, mode="normal")
+                    await ws_manager.broadcast_event(session_id, {
+                        "type": WsEventType.MODE_CHANGE,
+                        "from_mode": "plan",
+                        "to_mode": "normal",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    })
+                    continue
+
                 tool_event = {
-                    "type": "tool_use",
+                    "type": WsEventType.TOOL_USE,
                     "tool": tool_name,
                     "input": tool_input,
                     "tool_use_id": tool_use_id,
@@ -350,7 +369,7 @@ class ClaudeRunner:
                     await ws_manager.broadcast_event(
                         session_id,
                         {
-                            "type": "file_change",
+                            "type": WsEventType.FILE_CHANGE,
                             "change": {
                                 "tool": tool_name,
                                 "file": file_path,
@@ -363,14 +382,15 @@ class ClaudeRunner:
             await ws_manager.broadcast_event(
                 session_id,
                 {
-                    "type": "assistant_text",
+                    "type": WsEventType.ASSISTANT_TEXT,
                     "text": turn_state["text"],
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
 
     async def _handle_user_event(
-        self, event: dict, session_id: str, ws_manager: WebSocketManager
+        self, event: dict, session_id: str, ws_manager: WebSocketManager,
+        turn_state: dict,
     ) -> None:
         """user 타입 이벤트 (tool_result) 처리."""
         msg = event.get("message", {})
@@ -378,6 +398,12 @@ class ClaudeRunner:
         for block in content_blocks:
             if block.get("type") == "tool_result":
                 tool_use_id = block.get("tool_use_id", "")
+
+                # ExitPlanMode의 tool_result는 프론트엔드에 전송하지 않음
+                if tool_use_id == turn_state.get("exit_plan_tool_id"):
+                    turn_state.pop("exit_plan_tool_id", None)
+                    continue
+
                 raw_content = block.get("content", "")
                 if isinstance(raw_content, list):
                     output_text = "\n".join(
@@ -388,13 +414,13 @@ class ClaudeRunner:
                 else:
                     output_text = str(raw_content)
                 full_length = len(output_text)
-                truncated = full_length > 5000
+                truncated = full_length > self._MAX_TOOL_OUTPUT_LENGTH
                 await ws_manager.broadcast_event(
                     session_id,
                     {
-                        "type": "tool_result",
+                        "type": WsEventType.TOOL_RESULT,
                         "tool_use_id": tool_use_id,
-                        "output": output_text[:5000],
+                        "output": output_text[:self._MAX_TOOL_OUTPUT_LENGTH],
                         "is_error": block.get("is_error", False),
                         "is_truncated": truncated,
                         "full_length": full_length if truncated else None,
@@ -435,13 +461,13 @@ class ClaudeRunner:
             )
 
         result_event = {
-            "type": "result",
+            "type": WsEventType.RESULT,
             "text": result_text,
             "is_error": is_error,
             "cost": cost_info,
             "duration_ms": duration,
             "session_id": session_id_from_result,
-            "mode": mode,
+            "mode": turn_state.get("mode", mode),
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cache_creation_tokens": cache_creation_tokens,
@@ -480,7 +506,13 @@ class ClaudeRunner:
         work_dir: str = "",
     ) -> None:
         """subprocess stdout에서 JSON 스트림을 읽고 이벤트별로 처리."""
-        turn_state = {"text": "", "model": None, "work_dir": work_dir}
+        # turn_state: 현재 턴의 공유 상태
+        #   text (str): 누적 응답 텍스트
+        #   model (str|None): 응답 모델명
+        #   work_dir (str): 작업 디렉토리 (파일 경로 정규화용)
+        #   mode (str): 현재 모드 ("normal"|"plan"), ExitPlanMode 시 "normal"로 변경
+        #   exit_plan_tool_id (str, 동적): ExitPlanMode tool_use_id, tool_result 필터링 후 제거
+        turn_state = {"text": "", "model": None, "work_dir": work_dir, "mode": mode}
 
         while True:
             line = await process.stdout.readline()
@@ -495,7 +527,7 @@ class ClaudeRunner:
                 event = json.loads(line_str)
             except json.JSONDecodeError:
                 await ws_manager.broadcast_event(
-                    session_id, {"type": "raw", "text": line_str}
+                    session_id, {"type": WsEventType.RAW, "text": line_str}
                 )
                 continue
 
@@ -531,7 +563,7 @@ class ClaudeRunner:
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
         await session_manager.update_status(session_id, SessionStatus.RUNNING)
         await ws_manager.broadcast_event(
-            session_id, {"type": "status", "status": SessionStatus.RUNNING}
+            session_id, {"type": WsEventType.STATUS, "status": SessionStatus.RUNNING}
         )
 
         cmd, _, mcp_config_path = self._build_command(
@@ -566,7 +598,7 @@ class ClaudeRunner:
                     await ws_manager.broadcast_event(
                         session_id,
                         {
-                            "type": "error",
+                            "type": WsEventType.ERROR,
                             "message": f"프로세스 타임아웃 ({timeout_seconds}초) 초과로 종료되었습니다.",
                         },
                     )
@@ -581,7 +613,7 @@ class ClaudeRunner:
                 stderr_text = stderr.decode("utf-8").strip()
                 if stderr_text:
                     await ws_manager.broadcast_event(
-                        session_id, {"type": "stderr", "text": stderr_text}
+                        session_id, {"type": WsEventType.STDERR, "text": stderr_text}
                     )
 
             await process.wait()
@@ -591,13 +623,15 @@ class ClaudeRunner:
             logger.error("세션 %s 실행 오류: %s", session_id, error_msg, exc_info=True)
             await session_manager.update_status(session_id, SessionStatus.ERROR)
             await ws_manager.broadcast_event(
-                session_id, {"type": "error", "message": error_msg}
+                session_id, {"type": WsEventType.ERROR, "message": error_msg}
             )
 
         finally:
             await session_manager.update_status(session_id, SessionStatus.IDLE)
             session_manager.clear_process(session_id)
             await ws_manager.broadcast_event(
-                session_id, {"type": "status", "status": SessionStatus.IDLE}
+                session_id, {"type": WsEventType.STATUS, "status": SessionStatus.IDLE}
             )
+            # 턴 완료 후 인메모리 이벤트 버퍼 정리
+            ws_manager.clear_buffer(session_id)
             self._cleanup_mcp_config(mcp_config_path)

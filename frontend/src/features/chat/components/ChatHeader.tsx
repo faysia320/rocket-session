@@ -46,6 +46,7 @@ interface ChatHeaderProps {
     cacheReadTokens: number;
   };
   currentModel?: string | null;
+  messageCount?: number;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -71,6 +72,7 @@ export const ChatHeader = memo(function ChatHeader({
   onMenuToggle,
   tokenUsage,
   currentModel,
+  messageCount,
 }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
@@ -155,6 +157,7 @@ export const ChatHeader = memo(function ChatHeader({
             outputTokens={tokenUsage.outputTokens}
             cacheCreationTokens={tokenUsage.cacheCreationTokens}
             cacheReadTokens={tokenUsage.cacheReadTokens}
+            messageCount={messageCount}
           />
         ) : null}
         {status === 'running' ? (

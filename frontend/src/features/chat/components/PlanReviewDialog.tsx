@@ -13,12 +13,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import type { Message } from '@/types';
+import type { ResultMsg } from '@/types';
 
 interface PlanReviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  message: Message | null;
+  message: ResultMsg | null;
   isRunning: boolean;
   onExecute: (messageId: string) => void;
   onDismiss: (messageId: string) => void;
