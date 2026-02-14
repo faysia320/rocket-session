@@ -86,6 +86,7 @@ class Database:
         self._db.row_factory = aiosqlite.Row
         await self._db.execute("PRAGMA journal_mode=WAL")
         await self._db.execute("PRAGMA foreign_keys=ON")
+        await self._db.execute("PRAGMA busy_timeout=5000")
         await self._db.executescript(_SCHEMA)
 
         # 마이그레이션: 기존 DB에 새 컬럼이 없을 수 있음

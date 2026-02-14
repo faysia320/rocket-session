@@ -3,8 +3,10 @@
 import asyncio
 import json
 import logging
+import shutil
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from app.core.database import Database
 from app.models.session import SessionStatus
@@ -16,8 +18,9 @@ logger = logging.getLogger(__name__)
 class SessionManager:
     """SQLite 기반 세션 저장소 및 관리."""
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, upload_dir: str = ""):
         self._db = db
+        self._upload_dir = upload_dir
         # 프로세스 핸들은 인메모리로 관리 (DB에 저장 불가)
         self._processes: dict[str, asyncio.subprocess.Process] = {}
         # runner task (stdout 읽기 코루틴) - WS 연결과 독립적으로 관리
@@ -77,6 +80,17 @@ class SessionManager:
         await self.kill_process(session_id)
         deleted = await self._db.delete_session(session_id)
         if deleted:
+            # 업로드 디렉토리 정리
+            if self._upload_dir:
+                upload_path = Path(self._upload_dir) / session_id
+                if upload_path.exists():
+                    try:
+                        shutil.rmtree(upload_path)
+                        logger.info("업로드 디렉토리 삭제: %s", upload_path)
+                    except OSError as e:
+                        logger.warning(
+                            "업로드 디렉토리 삭제 실패: %s - %s", upload_path, e
+                        )
             logger.info("세션 삭제: %s", session_id)
         return deleted
 
