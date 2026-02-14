@@ -1,7 +1,16 @@
-import { memo, useCallback, useState } from 'react';
-import { GitCommitHorizontal, GitPullRequest, GitMerge, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { memo, useCallback, useState } from "react";
+import {
+  GitCommitHorizontal,
+  GitPullRequest,
+  GitMerge,
+  Trash2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,12 +20,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import type { GitInfo } from '@/types';
+} from "@/components/ui/alert-dialog";
+import type { GitInfo } from "@/types";
 
 interface GitActionsBarProps {
   gitInfo: GitInfo | null;
-  status: 'idle' | 'running';
+  status: "idle" | "running";
   connected: boolean;
   onSendPrompt: (prompt: string) => void;
   onRemoveWorktree?: () => void;
@@ -34,23 +43,23 @@ export const GitActionsBar = memo(function GitActionsBar({
   const hasChanges = gitInfo?.is_dirty || gitInfo?.has_untracked || false;
 
   const handleCommit = useCallback(() => {
-    onSendPrompt('/git-commit --no-history');
+    onSendPrompt("/git-commit --no-history");
   }, [onSendPrompt]);
 
   const handlePR = useCallback(() => {
     if (hasChanges) {
       onSendPrompt(
-        '변경사항을 커밋하고 푸시한 후 GitHub PR을 생성해줘. gh pr create를 사용하고 PR 제목과 본문은 변경사항을 분석해서 작성해줘.'
+        "변경사항을 커밋하고 푸시한 후 GitHub PR을 생성해줘. gh pr create를 사용하고 PR 제목과 본문은 변경사항을 분석해서 작성해줘.",
       );
     } else {
       onSendPrompt(
-        'GitHub PR을 생성해줘. gh pr create를 사용하고 커밋 히스토리를 분석해서 PR 제목과 본문을 작성해줘.'
+        "GitHub PR을 생성해줘. gh pr create를 사용하고 커밋 히스토리를 분석해서 PR 제목과 본문을 작성해줘.",
       );
     }
   }, [hasChanges, onSendPrompt]);
 
   const handleRebase = useCallback(() => {
-    onSendPrompt('/git-merge-rebase');
+    onSendPrompt("/git-merge-rebase");
   }, [onSendPrompt]);
 
   if (!gitInfo?.is_git_repo) return null;
@@ -59,9 +68,10 @@ export const GitActionsBar = memo(function GitActionsBar({
   const showCommit = hasChanges;
   const showPR = hasChanges || hasCommits;
   const showRebase = gitInfo.is_worktree && (hasChanges || hasCommits);
-  const disabled = status === 'running' || !connected;
+  const disabled = status === "running" || !connected;
 
-  if (!showCommit && !showPR && !showRebase && !gitInfo.is_worktree) return null;
+  if (!showCommit && !showPR && !showRebase && !gitInfo.is_worktree)
+    return null;
 
   return (
     <>
@@ -134,18 +144,24 @@ export const GitActionsBar = memo(function GitActionsBar({
             </TooltipTrigger>
             <TooltipContent>워크트리 삭제</TooltipContent>
           </Tooltip>
-          <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialog
+            open={deleteConfirmOpen}
+            onOpenChange={setDeleteConfirmOpen}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="font-mono text-sm">
                   워크트리를 삭제하시겠습니까?
                 </AlertDialogTitle>
                 <AlertDialogDescription className="font-mono text-xs">
-                  이 워크트리 디렉토리가 삭제됩니다. 미커밋 변경사항이 있으면 강제 삭제됩니다.
+                  이 워크트리 디렉토리가 삭제됩니다. 미커밋 변경사항이 있으면
+                  강제 삭제됩니다.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="font-mono text-xs">취소</AlertDialogCancel>
+                <AlertDialogCancel className="font-mono text-xs">
+                  취소
+                </AlertDialogCancel>
                 <AlertDialogAction
                   className="font-mono text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => onRemoveWorktree?.()}

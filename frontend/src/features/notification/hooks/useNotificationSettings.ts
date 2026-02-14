@@ -1,8 +1,12 @@
-import { useState, useCallback, useEffect } from 'react';
-import type { NotificationSettings, NotificationCategory, NotificationChannel } from '@/types';
-import { DEFAULT_NOTIFICATION_SETTINGS } from '@/types';
+import { useState, useCallback, useEffect } from "react";
+import type {
+  NotificationSettings,
+  NotificationCategory,
+  NotificationChannel,
+} from "@/types";
+import { DEFAULT_NOTIFICATION_SETTINGS } from "@/types";
 
-const STORAGE_KEY = 'notification-settings';
+const STORAGE_KEY = "notification-settings";
 
 function loadSettings(): NotificationSettings {
   try {
@@ -17,7 +21,10 @@ function loadSettings(): NotificationSettings {
           categories[key] = {
             ...categories[key],
             ...parsed.categories[key],
-            channels: { ...categories[key].channels, ...parsed.categories[key]?.channels },
+            channels: {
+              ...categories[key].channels,
+              ...parsed.categories[key]?.channels,
+            },
           };
         }
       }
@@ -48,7 +55,10 @@ export function useNotificationSettings() {
   }, []);
 
   const setVolume = useCallback((volume: number) => {
-    setSettings((prev) => ({ ...prev, volume: Math.max(0, Math.min(1, volume)) }));
+    setSettings((prev) => ({
+      ...prev,
+      volume: Math.max(0, Math.min(1, volume)),
+    }));
   }, []);
 
   const setSoundPack = useCallback((soundPack: string) => {
@@ -68,21 +78,31 @@ export function useNotificationSettings() {
     }));
   }, []);
 
-  const toggleChannel = useCallback((category: NotificationCategory, channel: NotificationChannel) => {
-    setSettings((prev) => ({
-      ...prev,
-      categories: {
-        ...prev.categories,
-        [category]: {
-          ...prev.categories[category],
-          channels: {
-            ...prev.categories[category].channels,
-            [channel]: !prev.categories[category].channels[channel],
+  const toggleChannel = useCallback(
+    (category: NotificationCategory, channel: NotificationChannel) => {
+      setSettings((prev) => ({
+        ...prev,
+        categories: {
+          ...prev.categories,
+          [category]: {
+            ...prev.categories[category],
+            channels: {
+              ...prev.categories[category].channels,
+              [channel]: !prev.categories[category].channels[channel],
+            },
           },
         },
-      },
-    }));
-  }, []);
+      }));
+    },
+    [],
+  );
 
-  return { settings, toggleEnabled, setVolume, setSoundPack, toggleCategory, toggleChannel };
+  return {
+    settings,
+    toggleEnabled,
+    setVolume,
+    setSoundPack,
+    toggleCategory,
+    toggleChannel,
+  };
 }

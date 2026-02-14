@@ -1,5 +1,5 @@
 /* Design System Variables */
-@import '../design-system/css/variables.css';
+@import "../design-system/css/variables.css";
 
 @tailwind base;
 @tailwind components;
@@ -58,7 +58,7 @@
     --accent-glow: rgba(136, 57, 239, 0.15);
 
     /* Font Override */
-    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
 
     /* Shadow (light theme) */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -142,7 +142,9 @@
   body {
     @apply bg-background text-foreground overflow-hidden antialiased;
     font-family: var(--font-sans);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
   }
 }
 
@@ -247,7 +249,7 @@
 
 /* Plan Review Dialog - Markdown Styles */
 .prose-plan {
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   font-size: 13px;
   line-height: 1.7;
   color: hsl(var(--foreground));
@@ -348,14 +350,18 @@
    Chat Markdown Styles (prose-chat)
    ============================================================ */
 .prose-chat {
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   font-size: 13px;
   line-height: 1.65;
   color: hsl(var(--foreground));
   word-break: break-word;
 }
-.prose-chat > *:first-child { margin-top: 0; }
-.prose-chat > *:last-child { margin-bottom: 0; }
+.prose-chat > *:first-child {
+  margin-top: 0;
+}
+.prose-chat > *:last-child {
+  margin-bottom: 0;
+}
 .prose-chat h1 {
   font-size: 1.15rem;
   font-weight: 700;
@@ -438,35 +444,85 @@
   --hljs-operator: #22d3ee;
 }
 
-.hljs { color: hsl(var(--foreground)); background: transparent; }
+.hljs {
+  color: hsl(var(--foreground));
+  background: transparent;
+}
 .hljs-keyword,
-.hljs-selector-tag { color: var(--hljs-keyword); font-weight: 500; }
+.hljs-selector-tag {
+  color: var(--hljs-keyword);
+  font-weight: 500;
+}
 .hljs-string,
 .hljs-doctag,
-.hljs-template-tag { color: var(--hljs-string); }
-.hljs-number { color: var(--hljs-number); }
-.hljs-comment { color: var(--hljs-comment); font-style: italic; }
+.hljs-template-tag {
+  color: var(--hljs-string);
+}
+.hljs-number {
+  color: var(--hljs-number);
+}
+.hljs-comment {
+  color: var(--hljs-comment);
+  font-style: italic;
+}
 .hljs-title.function_,
-.hljs-title.class_ { color: var(--hljs-title); }
+.hljs-title.class_ {
+  color: var(--hljs-title);
+}
 .hljs-type,
-.hljs-built_in { color: var(--hljs-builtin); }
+.hljs-built_in {
+  color: var(--hljs-builtin);
+}
 .hljs-variable,
-.hljs-template-variable { color: var(--hljs-variable); }
-.hljs-literal { color: var(--hljs-literal); }
+.hljs-template-variable {
+  color: var(--hljs-variable);
+}
+.hljs-literal {
+  color: var(--hljs-literal);
+}
 .hljs-attr,
-.hljs-attribute { color: var(--hljs-attr); }
+.hljs-attribute {
+  color: var(--hljs-attr);
+}
 .hljs-meta,
-.hljs-meta .hljs-keyword { color: var(--hljs-meta); }
-.hljs-name { color: var(--hljs-keyword); }
-.hljs-params { color: var(--hljs-variable); }
+.hljs-meta .hljs-keyword {
+  color: var(--hljs-meta);
+}
+.hljs-name {
+  color: var(--hljs-keyword);
+}
+.hljs-params {
+  color: var(--hljs-variable);
+}
 .hljs-regexp,
-.hljs-symbol { color: var(--hljs-literal); }
-.hljs-section { color: var(--hljs-keyword); font-weight: 600; }
-.hljs-addition { color: var(--hljs-string); background: transparent; }
-.hljs-deletion { color: var(--hljs-literal); background: transparent; }
-.hljs-operator { color: var(--hljs-operator); }
-.hljs-punctuation { color: hsl(var(--muted-foreground)); }
-.hljs-property { color: var(--hljs-attr); }
+.hljs-symbol {
+  color: var(--hljs-literal);
+}
+.hljs-section {
+  color: var(--hljs-keyword);
+  font-weight: 600;
+}
+.hljs-addition {
+  color: var(--hljs-string);
+  background: transparent;
+}
+.hljs-deletion {
+  color: var(--hljs-literal);
+  background: transparent;
+}
+.hljs-operator {
+  color: var(--hljs-operator);
+}
+.hljs-punctuation {
+  color: hsl(var(--muted-foreground));
+}
+.hljs-property {
+  color: var(--hljs-attr);
+}
 .hljs-selector-class,
-.hljs-selector-id { color: var(--hljs-attr); }
-.hljs-tag { color: var(--hljs-keyword); }
+.hljs-selector-id {
+  color: var(--hljs-attr);
+}
+.hljs-tag {
+  color: var(--hljs-keyword);
+}

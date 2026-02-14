@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 /**
  * WebSocket mock for testing useClaudeSocket hook.
@@ -39,7 +39,7 @@ export class MockWebSocket {
   close() {
     this.readyState = MockWebSocket.CLOSED;
     if (this.onclose) {
-      this.onclose(new CloseEvent('close'));
+      this.onclose(new CloseEvent("close"));
     }
   }
 
@@ -62,28 +62,28 @@ export class MockWebSocket {
 
   simulateOpen() {
     this.readyState = MockWebSocket.OPEN;
-    const ev = new Event('open');
+    const ev = new Event("open");
     if (this.onopen) this.onopen(ev);
-    this.listeners['open']?.forEach((l) => l(ev));
+    this.listeners["open"]?.forEach((l) => l(ev));
   }
 
   simulateMessage(data: Record<string, unknown>) {
-    const ev = new MessageEvent('message', { data: JSON.stringify(data) });
+    const ev = new MessageEvent("message", { data: JSON.stringify(data) });
     if (this.onmessage) this.onmessage(ev);
-    this.listeners['message']?.forEach((l) => l(ev));
+    this.listeners["message"]?.forEach((l) => l(ev));
   }
 
-  simulateClose(code = 1000, reason = '') {
+  simulateClose(code = 1000, reason = "") {
     this.readyState = MockWebSocket.CLOSED;
-    const ev = new CloseEvent('close', { code, reason });
+    const ev = new CloseEvent("close", { code, reason });
     if (this.onclose) this.onclose(ev);
-    this.listeners['close']?.forEach((l) => l(ev));
+    this.listeners["close"]?.forEach((l) => l(ev));
   }
 
   simulateError() {
-    const ev = new Event('error');
+    const ev = new Event("error");
     if (this.onerror) this.onerror(ev);
-    this.listeners['error']?.forEach((l) => l(ev));
+    this.listeners["error"]?.forEach((l) => l(ev));
   }
 
   // --- Static helpers ---
@@ -100,7 +100,7 @@ export class MockWebSocket {
 
   static install() {
     MockWebSocket.reset();
-    vi.stubGlobal('WebSocket', MockWebSocket);
+    vi.stubGlobal("WebSocket", MockWebSocket);
   }
 
   static uninstall() {

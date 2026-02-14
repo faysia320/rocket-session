@@ -1,20 +1,20 @@
-import { useState } from 'react';
-import { Folder, FolderGit2, ArrowUp, Star, X } from 'lucide-react';
+import { useState } from "react";
+import { Folder, FolderGit2, ArrowUp, Star, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
-import { useDirectoryBrowser } from '../hooks/useDirectoryBrowser';
-import { useFavoriteDirectories } from '../hooks/useFavoriteDirectories';
-import type { DirectoryEntry } from '@/types';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import { useDirectoryBrowser } from "../hooks/useDirectoryBrowser";
+import { useFavoriteDirectories } from "../hooks/useFavoriteDirectories";
+import type { DirectoryEntry } from "@/types";
 
 interface DirectoryBrowserProps {
   open: boolean;
@@ -23,16 +23,22 @@ interface DirectoryBrowserProps {
   onSelect: (path: string) => void;
 }
 
-export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: DirectoryBrowserProps) {
-  const { currentPath, entries, parent, isLoading, navigateTo, goUp } = useDirectoryBrowser(initialPath || '~');
+export function DirectoryBrowser({
+  open,
+  onOpenChange,
+  initialPath,
+  onSelect,
+}: DirectoryBrowserProps) {
+  const { currentPath, entries, parent, isLoading, navigateTo, goUp } =
+    useDirectoryBrowser(initialPath || "~");
   const [selected, setSelected] = useState<string | null>(null);
-  const [pathInput, setPathInput] = useState('');
+  const [pathInput, setPathInput] = useState("");
   const { favorites, removeFavorite } = useFavoriteDirectories();
 
   const handleNavigate = () => {
     if (pathInput.trim()) {
       navigateTo(pathInput.trim());
-      setPathInput('');
+      setPathInput("");
     }
   };
 
@@ -60,7 +66,10 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-muted-foreground truncate" title={currentPath}>
+          <div
+            className="font-mono text-[10px] text-muted-foreground truncate"
+            title={currentPath}
+          >
             현재: {currentPath}
           </div>
 
@@ -70,7 +79,7 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
               placeholder="경로 입력…"
               value={pathInput}
               onChange={(e) => setPathInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleNavigate()}
+              onKeyDown={(e) => e.key === "Enter" && handleNavigate()}
             />
             <Button variant="outline" size="sm" onClick={handleNavigate}>
               이동
@@ -90,8 +99,10 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
                     <div
                       key={fav.path}
                       className={cn(
-                        'w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors group',
-                        selected === fav.path ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
+                        "w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors group",
+                        selected === fav.path
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-muted",
                       )}
                     >
                       <button
@@ -104,7 +115,9 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
                         }}
                       >
                         <Star className="h-3.5 w-3.5 text-warning fill-warning shrink-0" />
-                        <span className="font-mono text-xs truncate">{fav.name}</span>
+                        <span className="font-mono text-xs truncate">
+                          {fav.name}
+                        </span>
                         <span className="font-mono text-[9px] text-muted-foreground/60 truncate ml-auto">
                           {fav.path}
                         </span>
@@ -130,7 +143,9 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
                   onClick={goUp}
                 >
                   <ArrowUp className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="font-mono text-xs text-muted-foreground">상위 디렉토리</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    상위 디렉토리
+                  </span>
                 </button>
               ) : null}
 
@@ -148,8 +163,10 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
                     key={entry.path}
                     type="button"
                     className={cn(
-                      'w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors',
-                      selected === entry.path ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
+                      "w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors",
+                      selected === entry.path
+                        ? "bg-accent text-accent-foreground"
+                        : "hover:bg-muted",
                     )}
                     onClick={() => handleEntryClick(entry)}
                     onDoubleClick={() => handleEntryDoubleClick(entry)}
@@ -159,9 +176,13 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
                     ) : (
                       <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     )}
-                    <span className="font-mono text-xs truncate">{entry.name}</span>
+                    <span className="font-mono text-xs truncate">
+                      {entry.name}
+                    </span>
                     {entry.is_git_repo ? (
-                      <span className="font-mono text-[9px] text-info/70 ml-auto shrink-0">(git)</span>
+                      <span className="font-mono text-[9px] text-info/70 ml-auto shrink-0">
+                        (git)
+                      </span>
                     ) : null}
                   </button>
                 ))
@@ -171,7 +192,11 @@ export function DirectoryBrowser({ open, onOpenChange, initialPath, onSelect }: 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+          >
             취소
           </Button>
           <Button size="sm" onClick={handleConfirm}>

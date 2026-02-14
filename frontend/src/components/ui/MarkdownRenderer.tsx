@@ -1,9 +1,9 @@
-import { memo, type ComponentPropsWithoutRef, type ReactNode } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
-import { CodeBlock } from './CodeBlock';
-import { cn } from '@/lib/utils';
+import { memo, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import { CodeBlock } from "./CodeBlock";
+import { cn } from "@/lib/utils";
 
 interface MarkdownRendererProps {
   content: string;
@@ -17,26 +17,29 @@ function extractLanguage(className?: string): string | undefined {
 }
 
 function extractText(node: ReactNode): string {
-  if (typeof node === 'string') return node;
-  if (typeof node === 'number') return String(node);
-  if (!node) return '';
-  if (Array.isArray(node)) return node.map(extractText).join('');
-  if (typeof node === 'object' && 'props' in node) {
-    return extractText((node as { props: { children?: ReactNode } }).props.children);
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (!node) return "";
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (typeof node === "object" && "props" in node) {
+    return extractText(
+      (node as { props: { children?: ReactNode } }).props.children,
+    );
   }
-  return '';
+  return "";
 }
 
-const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<any>>> = {
-  pre({ children, ...props }: ComponentPropsWithoutRef<'pre'>) {
+const components: Record<
+  string,
+  React.ComponentType<ComponentPropsWithoutRef<any>>
+> = {
+  pre({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
     // react-markdown wraps code blocks in <pre><code>...</code></pre>
     // Intercept <pre> to render our CodeBlock with copy button
-    if (
-      children &&
-      typeof children === 'object' &&
-      'props' in children
-    ) {
-      const codeElement = children as { props: { className?: string; children?: ReactNode } };
+    if (children && typeof children === "object" && "props" in children) {
+      const codeElement = children as {
+        props: { className?: string; children?: ReactNode };
+      };
       const lang = extractLanguage(codeElement.props?.className);
       const raw = extractText(codeElement.props?.children);
       return (
@@ -48,11 +51,17 @@ const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<an
     return <pre {...props}>{children}</pre>;
   },
 
-  code({ className, children, ...props }: ComponentPropsWithoutRef<'code'>) {
+  code({ className, children, ...props }: ComponentPropsWithoutRef<"code">) {
     // Block code (inside pre) has hljs/language- classes - render as-is for CodeBlock
-    const isBlock = className && (className.includes('hljs') || className.includes('language-'));
+    const isBlock =
+      className &&
+      (className.includes("hljs") || className.includes("language-"));
     if (isBlock) {
-      return <code className={className} {...props}>{children}</code>;
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
     }
     // Inline code
     return (
@@ -65,7 +74,7 @@ const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<an
     );
   },
 
-  a({ href, children, ...props }: ComponentPropsWithoutRef<'a'>) {
+  a({ href, children, ...props }: ComponentPropsWithoutRef<"a">) {
     return (
       <a
         href={href}
@@ -79,7 +88,7 @@ const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<an
     );
   },
 
-  table({ children, ...props }: ComponentPropsWithoutRef<'table'>) {
+  table({ children, ...props }: ComponentPropsWithoutRef<"table">) {
     return (
       <div className="overflow-x-auto my-2">
         <table className="w-full border-collapse text-[0.85em]" {...props}>
@@ -89,7 +98,7 @@ const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<an
     );
   },
 
-  th({ children, ...props }: ComponentPropsWithoutRef<'th'>) {
+  th({ children, ...props }: ComponentPropsWithoutRef<"th">) {
     return (
       <th
         className="border border-border px-3 py-1.5 text-left font-semibold bg-secondary"
@@ -100,7 +109,7 @@ const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<an
     );
   },
 
-  td({ children, ...props }: ComponentPropsWithoutRef<'td'>) {
+  td({ children, ...props }: ComponentPropsWithoutRef<"td">) {
     return (
       <td className="border border-border px-3 py-1.5 text-left" {...props}>
         {children}
@@ -108,7 +117,7 @@ const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<an
     );
   },
 
-  blockquote({ children, ...props }: ComponentPropsWithoutRef<'blockquote'>) {
+  blockquote({ children, ...props }: ComponentPropsWithoutRef<"blockquote">) {
     return (
       <blockquote
         className="border-l-[3px] border-primary pl-3 my-2 text-muted-foreground"
@@ -119,8 +128,10 @@ const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<an
     );
   },
 
-  hr(props: ComponentPropsWithoutRef<'hr'>) {
-    return <hr className="border-none border-t border-border my-3" {...props} />;
+  hr(props: ComponentPropsWithoutRef<"hr">) {
+    return (
+      <hr className="border-none border-t border-border my-3" {...props} />
+    );
   },
 };
 
@@ -131,7 +142,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   if (!content) return null;
 
   return (
-    <div className={cn('prose-chat', className)}>
+    <div className={cn("prose-chat", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}

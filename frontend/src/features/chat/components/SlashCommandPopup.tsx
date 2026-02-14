@@ -1,8 +1,8 @@
-import { useRef, useEffect } from 'react';
-import { Sparkles, Terminal } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
-import type { SlashCommand } from '../constants/slashCommands';
+import { useRef, useEffect } from "react";
+import { Sparkles, Terminal } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import type { SlashCommand } from "../constants/slashCommands";
 
 interface SlashCommandPopupProps {
   commands: SlashCommand[];
@@ -11,12 +11,17 @@ interface SlashCommandPopupProps {
   onHover: (index: number) => void;
 }
 
-export function SlashCommandPopup({ commands, activeIndex, onSelect, onHover }: SlashCommandPopupProps) {
+export function SlashCommandPopup({
+  commands,
+  activeIndex,
+  onSelect,
+  onHover,
+}: SlashCommandPopupProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const active = listRef.current?.querySelector('[data-active="true"]');
-    active?.scrollIntoView({ block: 'nearest' });
+    active?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
 
   if (commands.length === 0) return null;
@@ -27,7 +32,8 @@ export function SlashCommandPopup({ commands, activeIndex, onSelect, onHover }: 
         <ScrollArea className="max-h-[240px]">
           <div ref={listRef} role="listbox" className="p-1">
             {commands.map((cmd, idx) => {
-              const Icon = cmd.icon ?? (cmd.source === 'skill' ? Sparkles : Terminal);
+              const Icon =
+                cmd.icon ?? (cmd.source === "skill" ? Sparkles : Terminal);
               return (
                 <div
                   key={cmd.id}
@@ -35,8 +41,10 @@ export function SlashCommandPopup({ commands, activeIndex, onSelect, onHover }: 
                   aria-selected={idx === activeIndex}
                   data-active={idx === activeIndex}
                   className={cn(
-                    'flex items-center gap-2.5 px-2.5 py-2 rounded-sm cursor-pointer transition-colors',
-                    idx === activeIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
+                    "flex items-center gap-2.5 px-2.5 py-2 rounded-sm cursor-pointer transition-colors",
+                    idx === activeIndex
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-muted",
                   )}
                   onClick={() => onSelect(cmd)}
                   onMouseEnter={() => onHover(idx)}
@@ -45,8 +53,10 @@ export function SlashCommandPopup({ commands, activeIndex, onSelect, onHover }: 
                   <div className="flex-1 min-w-0">
                     <div className="font-mono text-xs font-semibold inline-flex items-center">
                       {cmd.label}
-                      {cmd.source === 'skill' ? (
-                        <span className="ml-1.5 text-[9px] text-muted-foreground/60 font-normal">skill</span>
+                      {cmd.source === "skill" ? (
+                        <span className="ml-1.5 text-[9px] text-muted-foreground/60 font-normal">
+                          skill
+                        </span>
                       ) : null}
                     </div>
                     <div className="font-mono text-[10px] text-muted-foreground truncate">

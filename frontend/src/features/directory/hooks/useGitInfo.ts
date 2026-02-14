@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
-import { filesystemApi } from '@/lib/api/filesystem.api';
-import type { GitInfo } from '@/types';
+import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { filesystemApi } from "@/lib/api/filesystem.api";
+import type { GitInfo } from "@/types";
 
 export function useGitInfo(path: string) {
   const [debouncedPath, setDebouncedPath] = useState(path);
@@ -12,7 +12,7 @@ export function useGitInfo(path: string) {
   }, [path]);
 
   const { data: gitInfo, isLoading } = useQuery<GitInfo>({
-    queryKey: ['git-info', debouncedPath],
+    queryKey: ["git-info", debouncedPath],
     queryFn: () => filesystemApi.getGitInfo(debouncedPath),
     enabled: debouncedPath.length > 0,
     retry: false,

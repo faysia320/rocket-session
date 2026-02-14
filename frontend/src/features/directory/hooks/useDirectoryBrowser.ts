@@ -1,12 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
-import { useState, useCallback } from 'react';
-import { filesystemApi } from '@/lib/api/filesystem.api';
+import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { filesystemApi } from "@/lib/api/filesystem.api";
 
-export function useDirectoryBrowser(initialPath: string = '~') {
+export function useDirectoryBrowser(initialPath: string = "~") {
   const [currentPath, setCurrentPath] = useState(initialPath);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['directory-list', currentPath],
+    queryKey: ["directory-list", currentPath],
     queryFn: () => filesystemApi.listDirectory(currentPath),
     retry: false,
     staleTime: 10_000,

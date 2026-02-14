@@ -1,15 +1,15 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useCallback } from 'react';
-import { Menu } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { useSessionStore } from '@/store';
-import { useSessions } from '@/features/session/hooks/useSessions';
-import { SessionDashboardCard } from '@/features/session/components/SessionDashboardCard';
-import { sessionsApi } from '@/lib/api/sessions.api';
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useCallback } from "react";
+import { Menu } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useSessionStore } from "@/store";
+import { useSessions } from "@/features/session/hooks/useSessions";
+import { SessionDashboardCard } from "@/features/session/components/SessionDashboardCard";
+import { sessionsApi } from "@/lib/api/sessions.api";
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
   component: IndexPage,
 });
 
@@ -22,9 +22,9 @@ function IndexPage() {
   const handleOpenTerminal = useCallback(async (sessionId: string) => {
     try {
       await sessionsApi.openTerminal(sessionId);
-      toast.success('터미널이 열렸습니다');
+      toast.success("터미널이 열렸습니다");
     } catch {
-      toast.error('터미널 열기에 실패했습니다');
+      toast.error("터미널 열기에 실패했습니다");
     }
   }, []);
 
@@ -42,13 +42,13 @@ function IndexPage() {
         >
           <Menu className="h-4 w-4" />
         </Button>
-        <EmptyState onNew={() => navigate({ to: '/session/new' })} />
+        <EmptyState onNew={() => navigate({ to: "/session/new" })} />
       </div>
     );
   }
 
-  const runningSessions = sessions.filter((s) => s.status === 'running');
-  const otherSessions = sessions.filter((s) => s.status !== 'running');
+  const runningSessions = sessions.filter((s) => s.status === "running");
+  const otherSessions = sessions.filter((s) => s.status !== "running");
   const sortedSessions = [...runningSessions, ...otherSessions];
 
   return (
@@ -66,7 +66,9 @@ function IndexPage() {
       <div className="flex-1 overflow-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="font-mono text-lg font-semibold text-foreground">Dashboard</h1>
+            <h1 className="font-mono text-lg font-semibold text-foreground">
+              Dashboard
+            </h1>
             <p className="font-mono text-xs text-muted-foreground">
               {sessions.length}개 세션 ({runningSessions.length}개 실행 중)
             </p>
@@ -75,7 +77,7 @@ function IndexPage() {
             variant="default"
             size="sm"
             className="font-mono text-xs"
-            onClick={() => navigate({ to: '/session/new' })}
+            onClick={() => navigate({ to: "/session/new" })}
           >
             + New Session
           </Button>

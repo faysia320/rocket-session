@@ -49,7 +49,7 @@ export interface SkillInfo {
   name: string;
   filename: string;
   description: string;
-  scope: 'project' | 'user';
+  scope: "project" | "user";
 }
 
 export interface SkillListResponse {

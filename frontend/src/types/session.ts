@@ -1,5 +1,5 @@
-export type SessionStatus = 'idle' | 'running' | 'error' | 'stopped';
-export type SessionMode = 'normal' | 'plan';
+export type SessionStatus = "idle" | "running" | "error" | "stopped";
+export type SessionMode = "normal" | "plan";
 
 export interface SessionInfo {
   id: string;

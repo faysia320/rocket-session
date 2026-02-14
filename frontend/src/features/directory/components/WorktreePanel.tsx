@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronRight, GitBranch, Star } from 'lucide-react';
-import { useWorktrees } from '../hooks/useWorktrees';
+import { useState } from "react";
+import { ChevronDown, ChevronRight, GitBranch, Star } from "lucide-react";
+import { useWorktrees } from "../hooks/useWorktrees";
 
 interface WorktreePanelProps {
   repoPath: string;
@@ -20,7 +20,11 @@ export function WorktreePanel({ repoPath, onChange }: WorktreePanelProps) {
         className="w-full flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-muted/50 transition-colors text-left"
         onClick={() => setExpanded((p) => !p)}
       >
-        {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {expanded ? (
+          <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronRight className="h-3 w-3" />
+        )}
         <GitBranch className="h-3 w-3 text-info" />
         <span className="font-mono text-[10px] font-semibold text-muted-foreground">
           Worktrees ({worktrees.length})
@@ -46,7 +50,7 @@ export function WorktreePanel({ repoPath, onChange }: WorktreePanelProps) {
                 {wt.path}
               </span>
               <span className="font-mono text-[10px] text-info shrink-0">
-                ({wt.branch ?? 'detached'})
+                ({wt.branch ?? "detached"})
               </span>
             </button>
           ))}

@@ -4,7 +4,7 @@ export interface GlobalSettings {
   allowed_tools?: string | null;
   system_prompt?: string | null;
   timeout_seconds?: number | null;
-  mode?: 'normal' | 'plan';
+  mode?: "normal" | "plan";
   permission_mode?: boolean;
   permission_required_tools?: string[] | null;
   model?: string | null;

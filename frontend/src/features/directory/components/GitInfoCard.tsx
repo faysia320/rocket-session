@@ -1,6 +1,13 @@
-import { GitBranch, Check, AlertCircle, ArrowUp, ArrowDown, FileText } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import type { GitInfo } from '@/types';
+import {
+  GitBranch,
+  Check,
+  AlertCircle,
+  ArrowUp,
+  ArrowDown,
+  FileText,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import type { GitInfo } from "@/types";
 
 interface GitInfoCardProps {
   gitInfo: GitInfo;
@@ -13,8 +20,11 @@ export function GitInfoCard({ gitInfo }: GitInfoCardProps) {
     <div className="flex flex-col gap-1 px-2.5 py-2 bg-card/50 border border-border rounded-md">
       <div className="flex items-center gap-1.5 flex-wrap">
         <GitBranch className="h-3 w-3 text-info shrink-0" />
-        <Badge variant="secondary" className="font-mono text-[10px] px-1.5 py-0">
-          {gitInfo.branch ?? 'detached'}
+        <Badge
+          variant="secondary"
+          className="font-mono text-[10px] px-1.5 py-0"
+        >
+          {gitInfo.branch ?? "detached"}
         </Badge>
         {gitInfo.is_dirty ? (
           <span className="flex items-center gap-0.5 text-warning">
@@ -29,17 +39,22 @@ export function GitInfoCard({ gitInfo }: GitInfoCardProps) {
         )}
         {gitInfo.ahead > 0 ? (
           <span className="flex items-center gap-0.5 font-mono text-[10px] text-info">
-            <ArrowUp className="h-2.5 w-2.5" />{gitInfo.ahead}
+            <ArrowUp className="h-2.5 w-2.5" />
+            {gitInfo.ahead}
           </span>
         ) : null}
         {gitInfo.behind > 0 ? (
           <span className="flex items-center gap-0.5 font-mono text-[10px] text-warning">
-            <ArrowDown className="h-2.5 w-2.5" />{gitInfo.behind}
+            <ArrowDown className="h-2.5 w-2.5" />
+            {gitInfo.behind}
           </span>
         ) : null}
       </div>
       {gitInfo.last_commit_message ? (
-        <div className="font-mono text-[10px] text-muted-foreground truncate flex items-center gap-1" title={gitInfo.last_commit_message}>
+        <div
+          className="font-mono text-[10px] text-muted-foreground truncate flex items-center gap-1"
+          title={gitInfo.last_commit_message}
+        >
           <FileText className="h-2.5 w-2.5 inline shrink-0" />
           {gitInfo.last_commit_message}
         </div>

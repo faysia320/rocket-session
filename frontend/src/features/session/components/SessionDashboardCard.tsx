@@ -1,10 +1,14 @@
-import { memo, useMemo } from 'react';
-import { Terminal, MessageSquare, FileText, Clock } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
-import type { SessionInfo } from '@/types';
+import { memo, useMemo } from "react";
+import { Terminal, MessageSquare, FileText, Clock } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import type { SessionInfo } from "@/types";
 
 interface SessionDashboardCardProps {
   session: SessionInfo;
@@ -15,10 +19,10 @@ interface SessionDashboardCardProps {
 }
 
 function formatRelativeTime(dateStr?: string): string {
-  if (!dateStr) return '';
+  if (!dateStr) return "";
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return '방금 전';
+  if (mins < 1) return "방금 전";
   if (mins < 60) return `${mins}분 전`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}시간 전`;
@@ -27,10 +31,10 @@ function formatRelativeTime(dateStr?: string): string {
 }
 
 function truncatePath(p: string): string {
-  if (!p) return '~';
+  if (!p) return "~";
   const parts = p.split(/[/\\]/);
   if (parts.length <= 3) return p;
-  return '~/' + parts.slice(-2).join('/');
+  return "~/" + parts.slice(-2).join("/");
 }
 
 const STALE_THRESHOLD_MS = 5 * 60 * 1000;
@@ -43,32 +47,40 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
   lastEventTime,
 }: SessionDashboardCardProps) {
   const isStale = useMemo(() => {
-    if (s.status !== 'running') return false;
+    if (s.status !== "running") return false;
     if (!lastEventTime) return false;
     return Date.now() - lastEventTime > STALE_THRESHOLD_MS;
   }, [s.status, lastEventTime]);
 
-  const statusColor = s.status === 'running'
-    ? (isStale ? 'bg-warning' : 'bg-green-500')
-    : s.status === 'error'
-      ? 'bg-red-500'
-      : 'bg-muted-foreground';
+  const statusColor =
+    s.status === "running"
+      ? isStale
+        ? "bg-warning"
+        : "bg-green-500"
+      : s.status === "error"
+        ? "bg-red-500"
+        : "bg-muted-foreground";
 
-  const statusLabel = s.status === 'running'
-    ? (isStale ? 'Stale' : 'Running')
-    : s.status === 'error'
-      ? 'Error'
-      : s.status === 'stopped'
-        ? 'Stopped'
-        : 'Idle';
+  const statusLabel =
+    s.status === "running"
+      ? isStale
+        ? "Stale"
+        : "Running"
+      : s.status === "error"
+        ? "Error"
+        : s.status === "stopped"
+          ? "Stopped"
+          : "Idle";
 
   return (
     <Card
       className={cn(
-        'relative p-4 cursor-pointer transition-all duration-200 hover:border-primary/40 hover:shadow-md group',
-        isActive && 'border-primary/60 shadow-md',
-        s.status === 'running' && !isStale && 'border-green-500/30 shadow-[0_0_12px_rgba(34,197,94,0.1)]',
-        isStale && 'opacity-70',
+        "relative p-4 cursor-pointer transition-all duration-200 hover:border-primary/40 hover:shadow-md group",
+        isActive && "border-primary/60 shadow-md",
+        s.status === "running" &&
+          !isStale &&
+          "border-green-500/30 shadow-[0_0_12px_rgba(34,197,94,0.1)]",
+        isStale && "opacity-70",
       )}
       onClick={() => onSelect(s.id)}
     >
@@ -76,21 +88,33 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
       <div className="flex items-center gap-2 mb-3">
         <span
           className={cn(
-            'w-2 h-2 rounded-full shrink-0',
+            "w-2 h-2 rounded-full shrink-0",
             statusColor,
-            s.status === 'running' && !isStale && 'animate-pulse',
+            s.status === "running" && !isStale && "animate-pulse",
           )}
         />
-        <span className="font-mono text-sm font-semibold text-foreground truncate flex-1" title={s.name || s.id}>
+        <span
+          className="font-mono text-sm font-semibold text-foreground truncate flex-1"
+          title={s.name || s.id}
+        >
           {s.name || s.id}
         </span>
-        <span className={cn(
-          'font-mono text-[10px] px-1.5 py-0.5 rounded-sm border',
-          s.status === 'running' && !isStale && 'bg-green-500/10 text-green-500 border-green-500/20',
-          s.status === 'running' && isStale && 'bg-warning/10 text-warning border-warning/20',
-          s.status === 'error' && 'bg-destructive/10 text-destructive border-destructive/20',
-          s.status !== 'running' && s.status !== 'error' && 'bg-muted text-muted-foreground border-border',
-        )}>
+        <span
+          className={cn(
+            "font-mono text-[10px] px-1.5 py-0.5 rounded-sm border",
+            s.status === "running" &&
+              !isStale &&
+              "bg-green-500/10 text-green-500 border-green-500/20",
+            s.status === "running" &&
+              isStale &&
+              "bg-warning/10 text-warning border-warning/20",
+            s.status === "error" &&
+              "bg-destructive/10 text-destructive border-destructive/20",
+            s.status !== "running" &&
+              s.status !== "error" &&
+              "bg-muted text-muted-foreground border-border",
+          )}
+        >
           {statusLabel}
         </span>
       </div>
@@ -108,21 +132,24 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
         {s.created_at ? (
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            <span className="font-mono text-[10px]">{formatRelativeTime(s.created_at)}</span>
+            <span className="font-mono text-[10px]">
+              {formatRelativeTime(s.created_at)}
+            </span>
           </div>
         ) : null}
       </div>
 
       {/* work_dir */}
-      <div className="font-mono text-[10px] text-muted-foreground/60 truncate mb-2" title={s.work_dir}>
+      <div
+        className="font-mono text-[10px] text-muted-foreground/60 truncate mb-2"
+        title={s.work_dir}
+      >
         {truncatePath(s.work_dir)}
       </div>
 
       {/* 모델 표시 */}
       {s.model ? (
-        <span className="font-mono text-[10px] text-info/70">
-          {s.model}
-        </span>
+        <span className="font-mono text-[10px] text-info/70">{s.model}</span>
       ) : null}
 
       {/* 터미널 열기 버튼 */}

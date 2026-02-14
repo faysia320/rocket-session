@@ -1,14 +1,14 @@
-import { memo, useState, useRef, useCallback, useEffect } from 'react';
-import { Send, Square, Image, X } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { SlashCommandPopup } from './SlashCommandPopup';
-import { cn } from '@/lib/utils';
-import { sessionsApi } from '@/lib/api/sessions.api';
-import type { SessionMode } from '@/types';
-import type { SlashCommand } from '../constants/slashCommands';
-import type { useSlashCommands } from '../hooks/useSlashCommands';
+import { memo, useState, useRef, useCallback, useEffect } from "react";
+import { Send, Square, Image, X } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { SlashCommandPopup } from "./SlashCommandPopup";
+import { cn } from "@/lib/utils";
+import { sessionsApi } from "@/lib/api/sessions.api";
+import type { SessionMode } from "@/types";
+import type { SlashCommand } from "../constants/slashCommands";
+import type { useSlashCommands } from "../hooks/useSlashCommands";
 
 interface PendingImage {
   file: File;
@@ -17,7 +17,7 @@ interface PendingImage {
 
 interface ChatInputProps {
   connected: boolean;
-  status: 'idle' | 'running';
+  status: "idle" | "running";
   mode: SessionMode;
   slashCommands: ReturnType<typeof useSlashCommands>;
   onSubmit: (prompt: string, images?: string[]) => void;
@@ -27,7 +27,13 @@ interface ChatInputProps {
   sessionId?: string;
 }
 
-const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+const ACCEPTED_IMAGE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export const ChatInput = memo(function ChatInput({
@@ -41,7 +47,7 @@ export const ChatInput = memo(function ChatInput({
   onSlashCommand,
   sessionId,
 }: ChatInputProps) {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -49,46 +55,54 @@ export const ChatInput = memo(function ChatInput({
   const pendingImagesRef = useRef<PendingImage[]>([]);
 
   // pendingImages 변경 시 ref 동기화
-  useEffect(() => { pendingImagesRef.current = pendingImages; }, [pendingImages]);
+  useEffect(() => {
+    pendingImagesRef.current = pendingImages;
+  }, [pendingImages]);
   // 언마운트 시 URL.createObjectURL 메모리 해제
   useEffect(() => {
     return () => {
-      pendingImagesRef.current.forEach(img => URL.revokeObjectURL(img.preview));
+      pendingImagesRef.current.forEach((img) =>
+        URL.revokeObjectURL(img.preview),
+      );
     };
   }, []);
 
   const resetTextarea = useCallback(() => {
-    setInput('');
-    setPendingImages(prev => {
-      prev.forEach(img => URL.revokeObjectURL(img.preview));
+    setInput("");
+    setPendingImages((prev) => {
+      prev.forEach((img) => URL.revokeObjectURL(img.preview));
       return [];
     });
     if (textareaRef.current) {
-      textareaRef.current.style.height = '44px';
+      textareaRef.current.style.height = "44px";
     }
   }, []);
 
   const addImages = useCallback((files: File[]) => {
-    const validFiles = files.filter(f => ACCEPTED_IMAGE_TYPES.includes(f.type));
+    const validFiles = files.filter((f) =>
+      ACCEPTED_IMAGE_TYPES.includes(f.type),
+    );
     if (validFiles.length === 0) return;
 
-    const oversized = validFiles.filter(f => f.size > MAX_IMAGE_SIZE);
+    const oversized = validFiles.filter((f) => f.size > MAX_IMAGE_SIZE);
     if (oversized.length > 0) {
-      toast.error(`이미지 크기가 10MB를 초과합니다: ${oversized.map(f => f.name).join(', ')}`);
+      toast.error(
+        `이미지 크기가 10MB를 초과합니다: ${oversized.map((f) => f.name).join(", ")}`,
+      );
     }
 
-    const acceptable = validFiles.filter(f => f.size <= MAX_IMAGE_SIZE);
+    const acceptable = validFiles.filter((f) => f.size <= MAX_IMAGE_SIZE);
     if (acceptable.length === 0) return;
 
-    const newImages: PendingImage[] = acceptable.map(file => ({
+    const newImages: PendingImage[] = acceptable.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
     }));
-    setPendingImages(prev => [...prev, ...newImages]);
+    setPendingImages((prev) => [...prev, ...newImages]);
   }, []);
 
   const removeImage = useCallback((index: number) => {
-    setPendingImages(prev => {
+    setPendingImages((prev) => {
       const updated = [...prev];
       URL.revokeObjectURL(updated[index].preview);
       updated.splice(index, 1);
@@ -98,7 +112,7 @@ export const ChatInput = memo(function ChatInput({
 
   const handleSubmit = useCallback(async () => {
     const prompt = input.trim();
-    if ((!prompt && pendingImages.length === 0) || status === 'running') return;
+    if ((!prompt && pendingImages.length === 0) || status === "running") return;
 
     // 이미지가 있으면 업로드 먼저
     if (pendingImages.length > 0 && sessionId) {
@@ -114,81 +128,109 @@ export const ChatInput = memo(function ChatInput({
       }
 
       if (imagePaths.length === 0 && pendingImages.length > 0) {
-        toast.error('모든 이미지 업로드에 실패했습니다. 메시지를 전송하지 않습니다.');
+        toast.error(
+          "모든 이미지 업로드에 실패했습니다. 메시지를 전송하지 않습니다.",
+        );
         return;
       }
-      onSubmit(prompt || '이 이미지를 분석해주세요.', imagePaths.length > 0 ? imagePaths : undefined);
+      onSubmit(
+        prompt || "이 이미지를 분석해주세요.",
+        imagePaths.length > 0 ? imagePaths : undefined,
+      );
     } else {
       onSubmit(prompt);
     }
     resetTextarea();
   }, [input, pendingImages, status, sessionId, onSubmit, resetTextarea]);
 
-  const executeSlashCommand = useCallback((cmd: SlashCommand) => {
-    resetTextarea();
-    onSlashCommand(cmd);
-  }, [resetTextarea, onSlashCommand]);
+  const executeSlashCommand = useCallback(
+    (cmd: SlashCommand) => {
+      resetTextarea();
+      onSlashCommand(cmd);
+    },
+    [resetTextarea, onSlashCommand],
+  );
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (slashCommands.isOpen) {
-      const selected = slashCommands.handleKeyDown(e);
-      if (selected) {
-        executeSlashCommand(slashCommands.selectCommand(selected));
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (slashCommands.isOpen) {
+        const selected = slashCommands.handleKeyDown(e);
+        if (selected) {
+          executeSlashCommand(slashCommands.selectCommand(selected));
+        }
+        return;
       }
-      return;
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      if (status === 'running') {
-        onStop();
-      } else {
-        resetTextarea();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (status === "running") {
+          onStop();
+        } else {
+          resetTextarea();
+        }
+        return;
       }
-      return;
-    }
-    if (e.key === 'Tab' && e.shiftKey) {
-      e.preventDefault();
-      onModeToggle();
-      return;
-    }
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  }, [slashCommands, status, onStop, resetTextarea, onModeToggle, handleSubmit, executeSlashCommand]);
-
-  const handleTextareaInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setInput(val);
-    slashCommands.handleInputChange(val);
-    e.target.style.height = '44px';
-    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-  }, [slashCommands]);
-
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    const imageFiles: File[] = [];
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.kind === 'file' && ACCEPTED_IMAGE_TYPES.includes(item.type)) {
-        const file = item.getAsFile();
-        if (file) imageFiles.push(file);
+      if (e.key === "Tab" && e.shiftKey) {
+        e.preventDefault();
+        onModeToggle();
+        return;
       }
-    }
-    if (imageFiles.length > 0) {
-      e.preventDefault();
-      addImages(imageFiles);
-    }
-  }, [addImages]);
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [
+      slashCommands,
+      status,
+      onStop,
+      resetTextarea,
+      onModeToggle,
+      handleSubmit,
+      executeSlashCommand,
+    ],
+  );
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    addImages(files);
-  }, [addImages]);
+  const handleTextareaInput = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value;
+      setInput(val);
+      slashCommands.handleInputChange(val);
+      e.target.style.height = "44px";
+      e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
+    },
+    [slashCommands],
+  );
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const imageFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === "file" && ACCEPTED_IMAGE_TYPES.includes(item.type)) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        addImages(imageFiles);
+      }
+    },
+    [addImages],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const files = Array.from(e.dataTransfer.files);
+      addImages(files);
+    },
+    [addImages],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -212,7 +254,9 @@ export const ChatInput = memo(function ChatInput({
           <SlashCommandPopup
             commands={slashCommands.filteredCommands}
             activeIndex={slashCommands.activeIndex}
-            onSelect={(cmd) => executeSlashCommand(slashCommands.selectCommand(cmd))}
+            onSelect={(cmd) =>
+              executeSlashCommand(slashCommands.selectCommand(cmd))
+            }
             onHover={slashCommands.setActiveIndex}
           />
         ) : null}
@@ -253,11 +297,13 @@ export const ChatInput = memo(function ChatInput({
           </div>
         ) : null}
 
-        <div className={cn(
-          'flex items-end gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50',
-          isDragOver && 'border-primary/50'
-        )}>
-          {mode === 'plan' ? (
+        <div
+          className={cn(
+            "flex items-end gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50",
+            isDragOver && "border-primary/50",
+          )}
+        >
+          {mode === "plan" ? (
             <button
               type="button"
               onClick={onModeToggle}
@@ -287,7 +333,7 @@ export const ChatInput = memo(function ChatInput({
             onChange={(e) => {
               const files = Array.from(e.target.files || []);
               addImages(files);
-              e.target.value = '';
+              e.target.value = "";
             }}
           />
 
@@ -303,8 +349,13 @@ export const ChatInput = memo(function ChatInput({
             disabled={!connected}
           />
           <div className="flex items-center pb-1">
-            {status === 'running' ? (
-              <Button variant="destructive" size="sm" onClick={onStop} className="font-mono text-xs font-semibold">
+            {status === "running" ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={onStop}
+                className="font-mono text-xs font-semibold"
+              >
                 <Square className="h-3 w-3 mr-1.5 fill-current" />
                 Stop
               </Button>
@@ -312,7 +363,9 @@ export const ChatInput = memo(function ChatInput({
               <Button
                 size="sm"
                 onClick={handleSubmit}
-                disabled={(!input.trim() && pendingImages.length === 0) || !connected}
+                disabled={
+                  (!input.trim() && pendingImages.length === 0) || !connected
+                }
                 className="font-mono text-xs font-semibold"
               >
                 Send <Send className="h-3 w-3 ml-1.5" />

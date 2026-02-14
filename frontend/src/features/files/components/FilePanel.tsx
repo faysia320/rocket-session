@@ -1,17 +1,17 @@
-import { useState, useCallback } from 'react';
-import { ChevronRight, Maximize2, Loader2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState, useCallback } from "react";
+import { ChevronRight, Maximize2, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { DiffViewer } from './DiffViewer';
-import { sessionsApi } from '@/lib/api/sessions.api';
-import { cn, formatTime } from '@/lib/utils';
-import { getToolBadgeStyle } from '../constants/toolColors';
-import type { FileChange } from '@/types';
+} from "@/components/ui/collapsible";
+import { DiffViewer } from "./DiffViewer";
+import { sessionsApi } from "@/lib/api/sessions.api";
+import { cn, formatTime } from "@/lib/utils";
+import { getToolBadgeStyle } from "../constants/toolColors";
+import type { FileChange } from "@/types";
 
 interface FilePanelProps {
   sessionId: string;
@@ -19,11 +19,15 @@ interface FilePanelProps {
   onFileClick?: (change: FileChange) => void;
 }
 
-export function FilePanel({ sessionId, fileChanges = [], onFileClick }: FilePanelProps) {
+export function FilePanel({
+  sessionId,
+  fileChanges = [],
+  onFileClick,
+}: FilePanelProps) {
   return (
     <div className="flex flex-col overflow-hidden flex-1 min-h-0">
       <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-border">
-        <span className="text-sm">{'\u{1F4C1}'}</span>
+        <span className="text-sm">{"\u{1F4C1}"}</span>
         <span className="font-mono text-xs font-semibold text-foreground flex-1">
           File Changes
         </span>
@@ -35,7 +39,7 @@ export function FilePanel({ sessionId, fileChanges = [], onFileClick }: FilePane
       <ScrollArea className="flex-1 min-h-0 p-2">
         {fileChanges.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-            <div className="text-[28px] mb-2 opacity-40">{'\u{1F4C2}'}</div>
+            <div className="text-[28px] mb-2 opacity-40">{"\u{1F4C2}"}</div>
             <div className="font-mono text-xs text-muted-foreground mb-1">
               No file changes yet
             </div>
@@ -61,11 +65,11 @@ export function FilePanel({ sessionId, fileChanges = [], onFileClick }: FilePane
 /** 절대 경로이면 마지막 3세그먼트로 축약, 상대 경로는 그대로 표시 */
 function shortenFilePath(filePath: string): string {
   // Windows/Unix 절대 경로 감지
-  const isAbsolute = /^[A-Z]:[/\\]/i.test(filePath) || filePath.startsWith('/');
+  const isAbsolute = /^[A-Z]:[/\\]/i.test(filePath) || filePath.startsWith("/");
   if (!isAbsolute) return filePath;
   const parts = filePath.split(/[/\\]/);
   if (parts.length <= 3) return filePath;
-  return '.../' + parts.slice(-3).join('/');
+  return ".../" + parts.slice(-3).join("/");
 }
 
 interface FileChangeItemProps {
@@ -74,30 +78,40 @@ interface FileChangeItemProps {
   onFullView?: (change: FileChange) => void;
 }
 
-function FileChangeItem({ sessionId, change, onFullView }: FileChangeItemProps) {
+function FileChangeItem({
+  sessionId,
+  change,
+  onFullView,
+}: FileChangeItemProps) {
   const [open, setOpen] = useState(false);
   const [diff, setDiff] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleOpenChange = useCallback(async (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (isOpen && diff === null) {
-      setLoading(true);
-      try {
-        const result = await sessionsApi.fileDiff(sessionId, change.file);
-        setDiff(result);
-      } catch {
-        setDiff('');
-      } finally {
-        setLoading(false);
+  const handleOpenChange = useCallback(
+    async (isOpen: boolean) => {
+      setOpen(isOpen);
+      if (isOpen && diff === null) {
+        setLoading(true);
+        try {
+          const result = await sessionsApi.fileDiff(sessionId, change.file);
+          setDiff(result);
+        } catch {
+          setDiff("");
+        } finally {
+          setLoading(false);
+        }
       }
-    }
-  }, [sessionId, change.file, diff]);
+    },
+    [sessionId, change.file, diff],
+  );
 
-  const handleFullView = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onFullView?.(change);
-  }, [onFullView, change]);
+  const handleFullView = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onFullView?.(change);
+    },
+    [onFullView, change],
+  );
 
   return (
     <Collapsible open={open} onOpenChange={handleOpenChange} className="mb-1.5">
@@ -110,8 +124,8 @@ function FileChangeItem({ sessionId, change, onFullView }: FileChangeItemProps) 
           <div className="flex items-center gap-1.5 mb-1">
             <ChevronRight
               className={cn(
-                'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150',
-                open && 'rotate-90',
+                "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150",
+                open && "rotate-90",
               )}
             />
             <Badge
@@ -134,7 +148,10 @@ function FileChangeItem({ sessionId, change, onFullView }: FileChangeItemProps) 
               <Maximize2 className="h-3 w-3 text-muted-foreground" />
             </button>
           </div>
-          <div className="font-mono text-[11px] text-primary break-all pl-5" title={change.file}>
+          <div
+            className="font-mono text-[11px] text-primary break-all pl-5"
+            title={change.file}
+          >
             {shortenFilePath(change.file)}
           </div>
         </button>

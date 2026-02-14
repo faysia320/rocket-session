@@ -1,11 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { settingsApi } from '@/lib/api/settings.api';
-import type { GlobalSettings, UpdateGlobalSettingsRequest } from '@/types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { settingsApi } from "@/lib/api/settings.api";
+import type { GlobalSettings, UpdateGlobalSettingsRequest } from "@/types";
 
 /** 글로벌 설정 쿼리 키 팩토리 */
 export const settingsKeys = {
-  all: ['settings'] as const,
-  global: () => [...settingsKeys.all, 'global'] as const,
+  all: ["settings"] as const,
+  global: () => [...settingsKeys.all, "global"] as const,
 };
 
 /** 글로벌 설정 조회 훅 */

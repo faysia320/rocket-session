@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Play, Pencil, Send } from 'lucide-react';
+import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Play, Pencil, Send } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +9,11 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import type { ResultMsg } from '@/types';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import type { ResultMsg } from "@/types";
 
 interface PlanReviewDialogProps {
   open: boolean;
@@ -35,7 +35,7 @@ export function PlanReviewDialog({
   onRevise,
 }: PlanReviewDialogProps) {
   const [showFeedback, setShowFeedback] = useState(false);
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState("");
 
   if (!message) return null;
 
@@ -43,14 +43,14 @@ export function PlanReviewDialog({
     onExecute(message.id);
     onOpenChange(false);
     setShowFeedback(false);
-    setFeedback('');
+    setFeedback("");
   };
 
   const handleDismiss = () => {
     onDismiss(message.id);
     onOpenChange(false);
     setShowFeedback(false);
-    setFeedback('');
+    setFeedback("");
   };
 
   const handleRevise = () => {
@@ -58,7 +58,7 @@ export function PlanReviewDialog({
     onRevise(feedback.trim());
     onOpenChange(false);
     setShowFeedback(false);
-    setFeedback('');
+    setFeedback("");
   };
 
   return (
@@ -98,7 +98,7 @@ export function PlanReviewDialog({
         <div className="flex-1 overflow-auto px-5 py-4 min-h-0">
           <div className="prose-plan">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.text || ''}
+              {message.text || ""}
             </ReactMarkdown>
           </div>
         </div>

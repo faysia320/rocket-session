@@ -1,20 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Settings, Save } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useState, useEffect, useCallback } from "react";
+import { Settings, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { toast } from 'sonner';
-import { sessionsApi } from '@/lib/api/sessions.api';
-import { AVAILABLE_TOOLS } from '../constants/tools';
+} from "@/components/ui/popover";
+import { toast } from "sonner";
+import { sessionsApi } from "@/lib/api/sessions.api";
+import { AVAILABLE_TOOLS } from "../constants/tools";
 
-const PERMISSION_TOOLS = ['Bash', 'Write', 'Edit', 'MultiEdit'] as const;
+const PERMISSION_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"] as const;
 
 interface SessionSettingsProps {
   sessionId: string;
@@ -22,37 +22,53 @@ interface SessionSettingsProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange: controlledOnOpenChange }: SessionSettingsProps) {
+export function SessionSettings({
+  sessionId,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: SessionSettingsProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
-  const [systemPrompt, setSystemPrompt] = useState('');
-  const [timeoutMinutes, setTimeoutMinutes] = useState('');
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [permissionMode, setPermissionMode] = useState(false);
   const [permissionTools, setPermissionTools] = useState<string[]>([]);
-  const [model, setModel] = useState('');
-  const [maxTurns, setMaxTurns] = useState('');
-  const [maxBudget, setMaxBudget] = useState('');
-  const [systemPromptMode, setSystemPromptMode] = useState<'replace' | 'append'>('replace');
+  const [model, setModel] = useState("");
+  const [maxTurns, setMaxTurns] = useState("");
+  const [maxBudget, setMaxBudget] = useState("");
+  const [systemPromptMode, setSystemPromptMode] = useState<
+    "replace" | "append"
+  >("replace");
   const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const loadSession = useCallback(async () => {
     try {
       const s = await sessionsApi.get(sessionId);
-      setSelectedTools(s.allowed_tools ? s.allowed_tools.split(',').map((t) => t.trim()) : []);
-      setSystemPrompt(s.system_prompt ?? '');
-      setTimeoutMinutes(s.timeout_seconds ? String(Math.round(s.timeout_seconds / 60)) : '');
+      setSelectedTools(
+        s.allowed_tools ? s.allowed_tools.split(",").map((t) => t.trim()) : [],
+      );
+      setSystemPrompt(s.system_prompt ?? "");
+      setTimeoutMinutes(
+        s.timeout_seconds ? String(Math.round(s.timeout_seconds / 60)) : "",
+      );
       setPermissionMode(s.permission_mode ?? false);
       setPermissionTools(s.permission_required_tools ?? []);
-      setModel(s.model ?? '');
-      setMaxTurns(s.max_turns ? String(s.max_turns) : '');
-      setMaxBudget(s.max_budget_usd ? String(s.max_budget_usd) : '');
-      setSystemPromptMode((s.system_prompt_mode as 'replace' | 'append') ?? 'replace');
-      setDisallowedTools(s.disallowed_tools ? s.disallowed_tools.split(',').map((t) => t.trim()) : []);
+      setModel(s.model ?? "");
+      setMaxTurns(s.max_turns ? String(s.max_turns) : "");
+      setMaxBudget(s.max_budget_usd ? String(s.max_budget_usd) : "");
+      setSystemPromptMode(
+        (s.system_prompt_mode as "replace" | "append") ?? "replace",
+      );
+      setDisallowedTools(
+        s.disallowed_tools
+          ? s.disallowed_tools.split(",").map((t) => t.trim())
+          : [],
+      );
     } catch {
-      toast.error('세션 설정을 불러오지 못했습니다.');
+      toast.error("세션 설정을 불러오지 못했습니다.");
     }
   }, [sessionId]);
 
@@ -79,21 +95,24 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
     try {
       const timeoutSec = timeoutMinutes ? Number(timeoutMinutes) * 60 : null;
       await sessionsApi.update(sessionId, {
-        allowed_tools: selectedTools.length > 0 ? selectedTools.join(',') : null,
+        allowed_tools:
+          selectedTools.length > 0 ? selectedTools.join(",") : null,
         system_prompt: systemPrompt || null,
         timeout_seconds: timeoutSec,
         permission_mode: permissionMode,
-        permission_required_tools: permissionMode && permissionTools.length > 0 ? permissionTools : null,
+        permission_required_tools:
+          permissionMode && permissionTools.length > 0 ? permissionTools : null,
         model: model || null,
         max_turns: maxTurns ? Number(maxTurns) : null,
         max_budget_usd: maxBudget ? Number(maxBudget) : null,
         system_prompt_mode: systemPromptMode,
-        disallowed_tools: disallowedTools.length > 0 ? disallowedTools.join(',') : null,
+        disallowed_tools:
+          disallowedTools.length > 0 ? disallowedTools.join(",") : null,
       });
-      toast.success('설정이 저장되었습니다.');
+      toast.success("설정이 저장되었습니다.");
       setOpen(false);
     } catch {
-      toast.error('설정 저장에 실패했습니다.');
+      toast.error("설정 저장에 실패했습니다.");
     } finally {
       setSaving(false);
     }
@@ -111,7 +130,10 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
           <Settings className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[360px] bg-card border-border overflow-y-auto max-h-[80vh]" align="end">
+      <PopoverContent
+        className="w-[360px] bg-card border-border overflow-y-auto max-h-[80vh]"
+        align="end"
+      >
         <div className="font-mono text-sm font-semibold text-foreground mb-4">
           Session Settings
         </div>
@@ -123,7 +145,8 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
               MODEL
             </Label>
             <p className="font-mono text-[10px] text-muted-foreground/70">
-              Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는 기본값을 사용합니다.
+              Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는 기본값을
+              사용합니다.
             </p>
             <select
               className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
@@ -143,7 +166,8 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
               ALLOWED TOOLS
             </Label>
             <p className="font-mono text-[10px] text-muted-foreground/70">
-              Claude CLI에 허용할 도구를 선택하세요. 미선택 시 전역 설정이 적용됩니다.
+              Claude CLI에 허용할 도구를 선택하세요. 미선택 시 전역 설정이
+              적용됩니다.
             </p>
             <div className="grid grid-cols-2 gap-2">
               {AVAILABLE_TOOLS.map((tool) => (
@@ -157,7 +181,9 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
                       handleToolToggle(tool, checked === true)
                     }
                   />
-                  <span className="font-mono text-xs text-foreground">{tool}</span>
+                  <span className="font-mono text-xs text-foreground">
+                    {tool}
+                  </span>
                 </label>
               ))}
             </div>
@@ -181,11 +207,15 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
                     checked={disallowedTools.includes(tool)}
                     onCheckedChange={(checked) =>
                       setDisallowedTools((prev) =>
-                        checked === true ? [...prev, tool] : prev.filter((t) => t !== tool)
+                        checked === true
+                          ? [...prev, tool]
+                          : prev.filter((t) => t !== tool),
                       )
                     }
                   />
-                  <span className="font-mono text-xs text-foreground">{tool}</span>
+                  <span className="font-mono text-xs text-foreground">
+                    {tool}
+                  </span>
                 </label>
               ))}
             </div>
@@ -215,17 +245,21 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
             <div className="flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
-                  checked={systemPromptMode === 'replace'}
-                  onCheckedChange={() => setSystemPromptMode('replace')}
+                  checked={systemPromptMode === "replace"}
+                  onCheckedChange={() => setSystemPromptMode("replace")}
                 />
-                <span className="font-mono text-xs text-foreground">전체 대체</span>
+                <span className="font-mono text-xs text-foreground">
+                  전체 대체
+                </span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
-                  checked={systemPromptMode === 'append'}
-                  onCheckedChange={() => setSystemPromptMode('append')}
+                  checked={systemPromptMode === "append"}
+                  onCheckedChange={() => setSystemPromptMode("append")}
                 />
-                <span className="font-mono text-xs text-foreground">기본에 추가</span>
+                <span className="font-mono text-xs text-foreground">
+                  기본에 추가
+                </span>
               </label>
             </div>
           </div>
@@ -238,7 +272,9 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
             <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox
                 checked={permissionMode}
-                onCheckedChange={(checked) => setPermissionMode(checked === true)}
+                onCheckedChange={(checked) =>
+                  setPermissionMode(checked === true)
+                }
               />
               <span className="font-mono text-xs text-foreground">
                 도구 실행 전 확인 요청 활성화
@@ -260,7 +296,9 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
                         handlePermissionToolToggle(tool, checked === true)
                       }
                     />
-                    <span className="font-mono text-xs text-foreground">{tool}</span>
+                    <span className="font-mono text-xs text-foreground">
+                      {tool}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -329,7 +367,7 @@ export function SessionSettings({ sessionId, open: controlledOpen, onOpenChange:
             disabled={saving}
           >
             <Save className="h-3.5 w-3.5 mr-1.5" />
-            {saving ? 'Saving…' : 'Save Settings'}
+            {saving ? "Saving…" : "Save Settings"}
           </Button>
         </div>
       </PopoverContent>

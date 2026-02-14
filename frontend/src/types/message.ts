@@ -20,24 +20,24 @@ interface BaseMessage {
 // Discriminated Union: individual message types
 // ---------------------------------------------------------------------------
 export interface UserMsg extends BaseMessage {
-  type: 'user_message';
+  type: "user_message";
   message?: Record<string, unknown>;
   content?: string;
   prompt?: string;
 }
 
 export interface AssistantTextMsg extends BaseMessage {
-  type: 'assistant_text';
+  type: "assistant_text";
   text: string;
 }
 
 export interface ResultMsg extends BaseMessage {
-  type: 'result';
+  type: "result";
   text?: string;
   is_error?: boolean;
   cost?: number;
   duration_ms?: number;
-  mode?: 'normal' | 'plan';
+  mode?: "normal" | "plan";
   planExecuted?: boolean;
   input_tokens?: number;
   output_tokens?: number;
@@ -48,11 +48,11 @@ export interface ResultMsg extends BaseMessage {
 }
 
 export interface ToolUseMsg extends BaseMessage {
-  type: 'tool_use';
+  type: "tool_use";
   tool: string;
   input?: Record<string, unknown>;
   tool_use_id: string;
-  status?: 'running' | 'done' | 'error';
+  status?: "running" | "done" | "error";
   output?: string;
   is_error?: boolean;
   is_truncated?: boolean;
@@ -61,7 +61,7 @@ export interface ToolUseMsg extends BaseMessage {
 }
 
 export interface ToolResultMsg extends BaseMessage {
-  type: 'tool_result';
+  type: "tool_result";
   tool_use_id?: string;
   output?: string;
   is_error?: boolean;
@@ -70,38 +70,38 @@ export interface ToolResultMsg extends BaseMessage {
 }
 
 export interface FileChangeMsg extends BaseMessage {
-  type: 'file_change';
+  type: "file_change";
   change: FileChange;
 }
 
 export interface ErrorMsg extends BaseMessage {
-  type: 'error';
+  type: "error";
   message?: string;
   text?: string;
 }
 
 export interface StderrMsg extends BaseMessage {
-  type: 'stderr';
+  type: "stderr";
   text: string;
 }
 
 export interface SystemMsg extends BaseMessage {
-  type: 'system';
+  type: "system";
   text: string;
 }
 
 export interface EventMsg extends BaseMessage {
-  type: 'event';
+  type: "event";
   event: Record<string, unknown>;
 }
 
 export interface ThinkingMsg extends BaseMessage {
-  type: 'thinking';
+  type: "thinking";
   text: string;
 }
 
 export interface PermissionRequestMsg extends BaseMessage {
-  type: 'permission_request';
+  type: "permission_request";
   tool: string;
   input?: Record<string, unknown>;
 }
@@ -124,14 +124,14 @@ export type Message =
   | PermissionRequestMsg;
 
 /** Convenience alias: the discriminant values */
-export type MessageType = Message['type'];
+export type MessageType = Message["type"];
 
 // ---------------------------------------------------------------------------
 // MessageUpdate: fields that can be patched via updateMessage()
 // ---------------------------------------------------------------------------
 export type MessageUpdate = {
   planExecuted?: boolean;
-  status?: 'running' | 'done' | 'error';
+  status?: "running" | "done" | "error";
   completed_at?: string;
   output?: string;
   is_error?: boolean;
@@ -145,19 +145,19 @@ export type MessageUpdate = {
 // ---------------------------------------------------------------------------
 export function getMessageText(msg: Message): string {
   switch (msg.type) {
-    case 'assistant_text':
-    case 'stderr':
-    case 'system':
-    case 'thinking':
-      return msg.text || '';
-    case 'result':
-      return msg.text || '';
-    case 'error':
-      return msg.message || msg.text || '';
-    case 'user_message':
-      return msg.content || msg.prompt || '';
+    case "assistant_text":
+    case "stderr":
+    case "system":
+    case "thinking":
+      return msg.text || "";
+    case "result":
+      return msg.text || "";
+    case "error":
+      return msg.message || msg.text || "";
+    case "user_message":
+      return msg.content || msg.prompt || "";
     default:
-      return '';
+      return "";
   }
 }
 
@@ -165,25 +165,25 @@ export function getMessageText(msg: Message): string {
 // WebSocket event types (backend → frontend)
 // ---------------------------------------------------------------------------
 export type WebSocketEventType =
-  | 'session_state'
-  | 'session_info'
-  | 'status'
-  | 'user_message'
-  | 'assistant_text'
-  | 'tool_use'
-  | 'tool_result'
-  | 'file_change'
-  | 'result'
-  | 'error'
-  | 'stderr'
-  | 'stopped'
-  | 'event'
-  | 'raw'
-  | 'thinking'
-  | 'permission_request'
-  | 'permission_response'
-  | 'missed_events'
-  | 'mode_change';
+  | "session_state"
+  | "session_info"
+  | "status"
+  | "user_message"
+  | "assistant_text"
+  | "tool_use"
+  | "tool_result"
+  | "file_change"
+  | "result"
+  | "error"
+  | "stderr"
+  | "stopped"
+  | "event"
+  | "raw"
+  | "thinking"
+  | "permission_request"
+  | "permission_response"
+  | "missed_events"
+  | "mode_change";
 
 export interface PermissionRequestData {
   permission_id: string;

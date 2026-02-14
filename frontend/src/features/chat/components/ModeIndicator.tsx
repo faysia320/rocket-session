@@ -1,5 +1,5 @@
-import { ClipboardList } from 'lucide-react';
-import type { SessionMode } from '@/types';
+import { ClipboardList } from "lucide-react";
+import type { SessionMode } from "@/types";
 
 interface ModeIndicatorProps {
   mode: SessionMode;
@@ -7,7 +7,7 @@ interface ModeIndicatorProps {
 }
 
 export function ModeIndicator({ mode, onToggle }: ModeIndicatorProps) {
-  if (mode !== 'plan') return null;
+  if (mode !== "plan") return null;
 
   return (
     <button

@@ -1,8 +1,8 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { SessionSetupPanel } from '@/features/session/components/SessionSetupPanel';
-import { useCreateSession } from '@/features/session/hooks/useSessions';
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { SessionSetupPanel } from "@/features/session/components/SessionSetupPanel";
+import { useCreateSession } from "@/features/session/hooks/useSessions";
 
-export const Route = createFileRoute('/session/new')({
+export const Route = createFileRoute("/session/new")({
   component: NewSessionPage,
 });
 
@@ -13,7 +13,7 @@ function NewSessionPage() {
   return (
     <SessionSetupPanel
       onCreate={createSession}
-      onCancel={() => navigate({ to: '/' })}
+      onCancel={() => navigate({ to: "/" })}
     />
   );
 }

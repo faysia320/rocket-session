@@ -1,16 +1,21 @@
-import { createRootRoute, Outlet, useNavigate, useLocation } from '@tanstack/react-router';
-import { useCallback } from 'react';
-import { toast } from 'sonner';
-import { Sidebar } from '@/features/session/components/Sidebar';
-import { ChatPanel } from '@/features/chat/components/ChatPanel';
-import { SessionDashboardCard } from '@/features/session/components/SessionDashboardCard';
-import { useSessions } from '@/features/session/hooks/useSessions';
-import { useSessionStore } from '@/store';
-import { UsageFooter } from '@/features/usage/components/UsageFooter';
-import { useIsMobile } from '@/hooks/useMediaQuery';
-import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
-import { sessionsApi } from '@/lib/api/sessions.api';
-import { Button } from '@/components/ui/button';
+import {
+  createRootRoute,
+  Outlet,
+  useNavigate,
+  useLocation,
+} from "@tanstack/react-router";
+import { useCallback } from "react";
+import { toast } from "sonner";
+import { Sidebar } from "@/features/session/components/Sidebar";
+import { ChatPanel } from "@/features/chat/components/ChatPanel";
+import { SessionDashboardCard } from "@/features/session/components/SessionDashboardCard";
+import { useSessions } from "@/features/session/hooks/useSessions";
+import { useSessionStore } from "@/store";
+import { UsageFooter } from "@/features/usage/components/UsageFooter";
+import { useIsMobile } from "@/hooks/useMediaQuery";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { sessionsApi } from "@/lib/api/sessions.api";
+import { Button } from "@/components/ui/button";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -19,37 +24,51 @@ export const Route = createRootRoute({
 function RootComponent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { sessions, activeSessionId, isLoading, isError, deleteSession, renameSession, selectSession, refreshSessions } =
-    useSessions();
+  const {
+    sessions,
+    activeSessionId,
+    isLoading,
+    isError,
+    deleteSession,
+    renameSession,
+    selectSession,
+    refreshSessions,
+  } = useSessions();
   const splitView = useSessionStore((s) => s.splitView);
   const dashboardView = useSessionStore((s) => s.dashboardView);
   const sidebarMobileOpen = useSessionStore((s) => s.sidebarMobileOpen);
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const isMobile = useIsMobile();
-  const isNewSessionRoute = location.pathname === '/session/new';
+  const isNewSessionRoute = location.pathname === "/session/new";
 
-  const handleSelect = useCallback((id: string) => {
-    selectSession(id);
-    if (isMobile) setSidebarMobileOpen(false);
-  }, [selectSession, isMobile, setSidebarMobileOpen]);
+  const handleSelect = useCallback(
+    (id: string) => {
+      selectSession(id);
+      if (isMobile) setSidebarMobileOpen(false);
+    },
+    [selectSession, isMobile, setSidebarMobileOpen],
+  );
 
   const handleNew = useCallback(() => {
-    navigate({ to: '/session/new' });
+    navigate({ to: "/session/new" });
     if (isMobile) setSidebarMobileOpen(false);
   }, [navigate, isMobile, setSidebarMobileOpen]);
 
-  const handleImported = useCallback((id: string) => {
-    refreshSessions();
-    selectSession(id);
-    if (isMobile) setSidebarMobileOpen(false);
-  }, [refreshSessions, selectSession, isMobile, setSidebarMobileOpen]);
+  const handleImported = useCallback(
+    (id: string) => {
+      refreshSessions();
+      selectSession(id);
+      if (isMobile) setSidebarMobileOpen(false);
+    },
+    [refreshSessions, selectSession, isMobile, setSidebarMobileOpen],
+  );
 
   const handleOpenTerminal = useCallback(async (sessionId: string) => {
     try {
       await sessionsApi.openTerminal(sessionId);
-      toast.success('터미널이 열렸습니다');
+      toast.success("터미널이 열렸습니다");
     } catch {
-      toast.error('터미널 열기에 실패했습니다');
+      toast.error("터미널 열기에 실패했습니다");
     }
   }, []);
 
@@ -73,7 +92,11 @@ function RootComponent() {
       <div className="flex flex-1 overflow-hidden">
         {isMobile ? (
           <Sheet open={sidebarMobileOpen} onOpenChange={setSidebarMobileOpen}>
-            <SheetContent side="left" className="p-0 w-[280px]" aria-describedby={undefined}>
+            <SheetContent
+              side="left"
+              className="p-0 w-[280px]"
+              aria-describedby={undefined}
+            >
               <SheetTitle className="sr-only">Navigation</SheetTitle>
               {sidebarElement}
             </SheetContent>
@@ -82,7 +105,10 @@ function RootComponent() {
           sidebarElement
         )}
         <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
-          {!isMobile && dashboardView && sessions.length > 0 && !isNewSessionRoute ? (
+          {!isMobile &&
+          dashboardView &&
+          sessions.length > 0 &&
+          !isNewSessionRoute ? (
             <DashboardGrid
               sessions={sessions}
               activeSessionId={activeSessionId}
@@ -90,7 +116,10 @@ function RootComponent() {
               onNew={handleNew}
               onOpenTerminal={handleOpenTerminal}
             />
-          ) : !isMobile && splitView && sessions.length > 0 && !isNewSessionRoute ? (
+          ) : !isMobile &&
+            splitView &&
+            sessions.length > 0 &&
+            !isNewSessionRoute ? (
             <>
               {sessions.slice(0, 5).map((s) => (
                 <div
@@ -125,21 +154,23 @@ function DashboardGrid({
   onNew,
   onOpenTerminal,
 }: {
-  sessions: import('@/types').SessionInfo[];
+  sessions: import("@/types").SessionInfo[];
   activeSessionId: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
   onOpenTerminal: (id: string) => void;
 }) {
-  const runningSessions = sessions.filter((s) => s.status === 'running');
-  const otherSessions = sessions.filter((s) => s.status !== 'running');
+  const runningSessions = sessions.filter((s) => s.status === "running");
+  const otherSessions = sessions.filter((s) => s.status !== "running");
   const sortedSessions = [...runningSessions, ...otherSessions];
 
   return (
     <div className="flex-1 overflow-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-mono text-lg font-semibold text-foreground">Dashboard</h1>
+          <h1 className="font-mono text-lg font-semibold text-foreground">
+            Dashboard
+          </h1>
           <p className="font-mono text-xs text-muted-foreground">
             {sessions.length}개 세션 ({runningSessions.length}개 실행 중)
           </p>

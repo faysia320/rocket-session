@@ -6,13 +6,12 @@ export function FormattedText({ text }: { text?: string }) {
   return (
     <>
       {parts.map((part, i) => {
-        if (part.startsWith('```') && part.endsWith('```')) {
+        if (part.startsWith("```") && part.endsWith("```")) {
           const lines = part.slice(3, -3);
-          const firstNewline = lines.indexOf('\n');
+          const firstNewline = lines.indexOf("\n");
           const lang =
-            firstNewline > 0 ? lines.slice(0, firstNewline).trim() : '';
-          const code =
-            firstNewline > 0 ? lines.slice(firstNewline + 1) : lines;
+            firstNewline > 0 ? lines.slice(0, firstNewline).trim() : "";
+          const code = firstNewline > 0 ? lines.slice(firstNewline + 1) : lines;
           return (
             <pre
               key={i}
@@ -31,7 +30,7 @@ export function FormattedText({ text }: { text?: string }) {
         return (
           <span key={i}>
             {inlineParts.map((ip, j) => {
-              if (ip.startsWith('`') && ip.endsWith('`')) {
+              if (ip.startsWith("`") && ip.endsWith("`")) {
                 return (
                   <code
                     key={j}

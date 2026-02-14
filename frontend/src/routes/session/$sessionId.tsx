@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { ChatPanel } from '@/features/chat/components/ChatPanel';
+import { createFileRoute } from "@tanstack/react-router";
+import { ChatPanel } from "@/features/chat/components/ChatPanel";
 
-export const Route = createFileRoute('/session/$sessionId')({
+export const Route = createFileRoute("/session/$sessionId")({
   component: SessionPage,
 });
 

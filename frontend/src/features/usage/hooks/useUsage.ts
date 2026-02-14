@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { usageApi } from '@/lib/api/usage.api';
-import { usageKeys } from './usageKeys';
+import { useQuery } from "@tanstack/react-query";
+import { usageApi } from "@/lib/api/usage.api";
+import { usageKeys } from "./usageKeys";
 
 export function useUsage() {
   return useQuery({

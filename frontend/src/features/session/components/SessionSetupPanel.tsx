@@ -1,34 +1,41 @@
-import { useState, useEffect } from 'react';
-import { Rocket, GitBranch } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { DirectoryPicker } from '@/features/directory/components/DirectoryPicker';
-import { useGitInfo } from '@/features/directory/hooks/useGitInfo';
-import { filesystemApi } from '@/lib/api/filesystem.api';
-import { AVAILABLE_TOOLS } from '../constants/tools';
-import { useGlobalSettings } from '@/features/settings/hooks/useGlobalSettings';
+import { useState, useEffect } from "react";
+import { Rocket, GitBranch } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
+import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
+import { filesystemApi } from "@/lib/api/filesystem.api";
+import { AVAILABLE_TOOLS } from "../constants/tools";
+import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 
 interface SessionSetupPanelProps {
   onCreate: (
     workDir?: string,
-    options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number },
+    options?: {
+      allowed_tools?: string;
+      system_prompt?: string;
+      timeout_seconds?: number;
+    },
   ) => void;
   onCancel: () => void;
 }
 
-export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps) {
-  const [workDir, setWorkDir] = useState('');
+export function SessionSetupPanel({
+  onCreate,
+  onCancel,
+}: SessionSetupPanelProps) {
+  const [workDir, setWorkDir] = useState("");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
-  const [systemPrompt, setSystemPrompt] = useState('');
-  const [timeoutMinutes, setTimeoutMinutes] = useState('');
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [creating, setCreating] = useState(false);
   const [useWorktree, setUseWorktree] = useState(false);
-  const [worktreeBranch, setWorktreeBranch] = useState('');
+  const [worktreeBranch, setWorktreeBranch] = useState("");
   const { data: globalSettings } = useGlobalSettings();
   const { gitInfo } = useGitInfo(workDir);
 
@@ -59,9 +66,13 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         targetDir = worktreeInfo.path;
       }
 
-      const options: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number } = {};
+      const options: {
+        allowed_tools?: string;
+        system_prompt?: string;
+        timeout_seconds?: number;
+      } = {};
       if (selectedTools.length > 0) {
-        options.allowed_tools = selectedTools.join(',');
+        options.allowed_tools = selectedTools.join(",");
       }
       if (systemPrompt.trim()) {
         options.system_prompt = systemPrompt.trim();
@@ -69,7 +80,10 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       if (timeoutMinutes && Number(timeoutMinutes) > 0) {
         options.timeout_seconds = Number(timeoutMinutes) * 60;
       }
-      onCreate(targetDir, Object.keys(options).length > 0 ? options : undefined);
+      onCreate(
+        targetDir,
+        Object.keys(options).length > 0 ? options : undefined,
+      );
     } catch {
       setCreating(false);
     }
@@ -84,7 +98,9 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             <Rocket className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-mono text-lg font-semibold text-foreground">New Session</h2>
+            <h2 className="font-mono text-lg font-semibold text-foreground">
+              New Session
+            </h2>
             <p className="font-mono text-xs text-muted-foreground">
               Configure and launch a new Claude Code session
             </p>
@@ -119,7 +135,9 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             {useWorktree ? (
               <div className="space-y-2 pl-0.5">
                 <p className="font-mono text-[10px] text-muted-foreground/70">
-                  현재 브랜치: <code className="text-info/80">{gitInfo.branch}</code> 기준으로 새 워크트리를 생성합니다
+                  현재 브랜치:{" "}
+                  <code className="text-info/80">{gitInfo.branch}</code>{" "}
+                  기준으로 새 워크트리를 생성합니다
                 </p>
                 <Input
                   className="font-mono text-xs bg-input border-border"
@@ -138,7 +156,8 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             ALLOWED TOOLS
           </Label>
           <p className="font-mono text-[10px] text-muted-foreground/70">
-            Claude CLI에 허용할 도구를 선택하세요. 미선택 시 글로벌 설정이 적용됩니다.
+            Claude CLI에 허용할 도구를 선택하세요. 미선택 시 글로벌 설정이
+            적용됩니다.
             {globalSettings?.allowed_tools ? (
               <span className="block mt-0.5 text-info/70">
                 글로벌: {globalSettings.allowed_tools}
@@ -147,12 +166,19 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {AVAILABLE_TOOLS.map((tool) => (
-              <label key={tool} className="flex items-center gap-2 cursor-pointer">
+              <label
+                key={tool}
+                className="flex items-center gap-2 cursor-pointer"
+              >
                 <Checkbox
                   checked={selectedTools.includes(tool)}
-                  onCheckedChange={(checked) => handleToolToggle(tool, checked === true)}
+                  onCheckedChange={(checked) =>
+                    handleToolToggle(tool, checked === true)
+                  }
                 />
-                <span className="font-mono text-xs text-foreground">{tool}</span>
+                <span className="font-mono text-xs text-foreground">
+                  {tool}
+                </span>
               </label>
             ))}
           </div>
@@ -197,10 +223,14 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           <Button
             className="flex-1 font-mono text-sm font-semibold"
             onClick={handleCreate}
-            disabled={creating || !workDir.trim() || (useWorktree && !worktreeBranch.trim())}
+            disabled={
+              creating ||
+              !workDir.trim() ||
+              (useWorktree && !worktreeBranch.trim())
+            }
           >
             <Rocket className="h-4 w-4 mr-2" />
-            {creating ? 'Creating…' : 'Create Session'}
+            {creating ? "Creating…" : "Create Session"}
           </Button>
           <Button
             variant="outline"

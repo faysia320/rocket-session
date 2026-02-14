@@ -1,10 +1,10 @@
-import { useCallback } from 'react';
-import { useNavigate, useLocation } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { sessionsApi } from '@/lib/api/sessions.api';
-import { sessionKeys } from './sessionKeys';
-import type { SessionInfo } from '@/types';
+import { useCallback } from "react";
+import { useNavigate, useLocation } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { sessionsApi } from "@/lib/api/sessions.api";
+import { sessionKeys } from "./sessionKeys";
+import type { SessionInfo } from "@/types";
 
 /**
  * 세션 생성 전용 훅.
@@ -17,18 +17,29 @@ export function useCreateSession() {
   const mutation = useMutation({
     mutationFn: (params: {
       workDir?: string;
-      options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number };
+      options?: {
+        allowed_tools?: string;
+        system_prompt?: string;
+        timeout_seconds?: number;
+      };
     }) => sessionsApi.create(params.workDir, params.options),
     onSuccess: (session) => {
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
-      navigate({ to: '/session/$sessionId', params: { sessionId: session.id } });
+      navigate({
+        to: "/session/$sessionId",
+        params: { sessionId: session.id },
+      });
     },
   });
 
   const createSession = useCallback(
     async (
       workDir?: string,
-      options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number },
+      options?: {
+        allowed_tools?: string;
+        system_prompt?: string;
+        timeout_seconds?: number;
+      },
     ) => {
       return mutation.mutateAsync({ workDir, options });
     },
@@ -46,7 +57,11 @@ export function useSessions() {
   const location = useLocation();
   const queryClient = useQueryClient();
 
-  const { data: sessions = [], isLoading, isError } = useQuery({
+  const {
+    data: sessions = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: sessionKeys.list(),
     queryFn: () => sessionsApi.list(),
     staleTime: 10_000,
@@ -57,9 +72,12 @@ export function useSessions() {
     mutationFn: (id: string) => sessionsApi.delete(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
-      queryClient.setQueryData<SessionInfo[]>(sessionKeys.list(), (old) =>
-        old?.filter((s) => s.id !== id) ?? [],
+      const previous = queryClient.getQueryData<SessionInfo[]>(
+        sessionKeys.list(),
+      );
+      queryClient.setQueryData<SessionInfo[]>(
+        sessionKeys.list(),
+        (old) => old?.filter((s) => s.id !== id) ?? [],
       );
       return { previous };
     },
@@ -67,7 +85,7 @@ export function useSessions() {
       if (context?.previous) {
         queryClient.setQueryData(sessionKeys.list(), context.previous);
       }
-      toast.error('세션 삭제에 실패했습니다');
+      toast.error("세션 삭제에 실패했습니다");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
@@ -78,7 +96,7 @@ export function useSessions() {
     async (id: string) => {
       await deleteMutation.mutateAsync(id);
       if (location.pathname.includes(id)) {
-        navigate({ to: '/' });
+        navigate({ to: "/" });
       }
     },
     [deleteMutation, navigate, location.pathname],
@@ -86,7 +104,7 @@ export function useSessions() {
 
   const selectSession = useCallback(
     (id: string) => {
-      navigate({ to: '/session/$sessionId', params: { sessionId: id } });
+      navigate({ to: "/session/$sessionId", params: { sessionId: id } });
     },
     [navigate],
   );
@@ -96,9 +114,12 @@ export function useSessions() {
       sessionsApi.update(id, { name }),
     onMutate: async ({ id, name }) => {
       await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
-      queryClient.setQueryData<SessionInfo[]>(sessionKeys.list(), (old) =>
-        old?.map((s) => (s.id === id ? { ...s, name } : s)) ?? [],
+      const previous = queryClient.getQueryData<SessionInfo[]>(
+        sessionKeys.list(),
+      );
+      queryClient.setQueryData<SessionInfo[]>(
+        sessionKeys.list(),
+        (old) => old?.map((s) => (s.id === id ? { ...s, name } : s)) ?? [],
       );
       return { previous };
     },
@@ -106,7 +127,7 @@ export function useSessions() {
       if (context?.previous) {
         queryClient.setQueryData(sessionKeys.list(), context.previous);
       }
-      toast.error('세션 이름 변경에 실패했습니다');
+      toast.error("세션 이름 변경에 실패했습니다");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
@@ -140,6 +161,6 @@ export function useSessions() {
 
 function extractSessionIdFromPath(pathname: string): string | null {
   const match = pathname.match(/\/session\/([^/]+)/);
-  if (!match || match[1] === 'new') return null;
+  if (!match || match[1] === "new") return null;
   return match[1];
 }

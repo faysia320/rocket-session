@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ShieldAlert, Check, X } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { ShieldAlert, Check, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -7,12 +7,12 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import type { PermissionRequestData } from '@/types';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import type { PermissionRequestData } from "@/types";
 
-const DANGEROUS_TOOLS = ['Bash', 'Write', 'Edit', 'MultiEdit'];
+const DANGEROUS_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"];
 const TIMEOUT_SECONDS = 120;
 
 interface PermissionDialogProps {
@@ -21,7 +21,11 @@ interface PermissionDialogProps {
   onDeny: (permissionId: string) => void;
 }
 
-export function PermissionDialog({ request, onAllow, onDeny }: PermissionDialogProps) {
+export function PermissionDialog({
+  request,
+  onAllow,
+  onDeny,
+}: PermissionDialogProps) {
   const [remaining, setRemaining] = useState(TIMEOUT_SECONDS);
 
   useEffect(() => {
@@ -51,7 +55,12 @@ export function PermissionDialog({ request, onAllow, onDeny }: PermissionDialogP
   const inputJson = JSON.stringify(request.tool_input, null, 2);
 
   return (
-    <Dialog open={!!request} onOpenChange={(open) => { if (!open) onDeny(request.permission_id); }}>
+    <Dialog
+      open={!!request}
+      onOpenChange={(open) => {
+        if (!open) onDeny(request.permission_id);
+      }}
+    >
       <DialogContent className="sm:max-w-[480px] bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-mono text-sm">
@@ -65,14 +74,21 @@ export function PermissionDialog({ request, onAllow, onDeny }: PermissionDialogP
 
         <div className="space-y-3 py-2">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] text-muted-foreground/70 uppercase tracking-wider">Tool</span>
-            <Badge variant={isDangerous ? 'destructive' : 'secondary'} className="font-mono text-xs">
+            <span className="font-mono text-[10px] text-muted-foreground/70 uppercase tracking-wider">
+              Tool
+            </span>
+            <Badge
+              variant={isDangerous ? "destructive" : "secondary"}
+              className="font-mono text-xs"
+            >
               {request.tool_name}
             </Badge>
           </div>
 
           <div>
-            <div className="font-mono text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1">Input</div>
+            <div className="font-mono text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1">
+              Input
+            </div>
             <pre className="font-mono text-[11px] text-muted-foreground bg-input p-3 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap border border-border">
               {inputJson}
             </pre>

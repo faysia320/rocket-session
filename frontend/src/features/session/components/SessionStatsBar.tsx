@@ -1,9 +1,13 @@
-import { memo } from 'react';
-import { DollarSign, Zap, Clock } from 'lucide-react';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
-import { useSessionStats } from '../hooks/useSessionStats';
-import { ContextWindowBar } from '@/features/chat/components/ContextWindowBar';
+import { memo } from "react";
+import { DollarSign, Zap, Clock } from "lucide-react";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { useSessionStats } from "../hooks/useSessionStats";
+import { ContextWindowBar } from "@/features/chat/components/ContextWindowBar";
 
 interface SessionStatsBarProps {
   sessionId: string;
@@ -17,7 +21,7 @@ interface SessionStatsBarProps {
 }
 
 function formatCost(cost: number): string {
-  if (cost === 0) return '$0';
+  if (cost === 0) return "$0";
   if (cost < 0.01) return `$${cost.toFixed(4)}`;
   return `$${cost.toFixed(2)}`;
 }
@@ -37,7 +41,11 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainSeconds}s`;
 }
 
-export const SessionStatsBar = memo(function SessionStatsBar({ sessionId, tokenUsage, messageCount }: SessionStatsBarProps) {
+export const SessionStatsBar = memo(function SessionStatsBar({
+  sessionId,
+  tokenUsage,
+  messageCount,
+}: SessionStatsBarProps) {
   const { data: stats } = useSessionStats(sessionId);
 
   if (!stats || stats.total_messages === 0) return null;
@@ -48,10 +56,14 @@ export const SessionStatsBar = memo(function SessionStatsBar({ sessionId, tokenU
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1 cursor-default">
             <DollarSign className="h-3 w-3 text-primary/70" />
-            <span className={cn(
-              'font-mono text-[10px]',
-              stats.total_cost > 1 ? 'text-warning font-semibold' : 'text-muted-foreground',
-            )}>
+            <span
+              className={cn(
+                "font-mono text-[10px]",
+                stats.total_cost > 1
+                  ? "text-warning font-semibold"
+                  : "text-muted-foreground",
+              )}
+            >
               {formatCost(stats.total_cost)}
             </span>
           </div>
@@ -66,7 +78,9 @@ export const SessionStatsBar = memo(function SessionStatsBar({ sessionId, tokenU
           <div className="flex items-center gap-1 cursor-default">
             <Zap className="h-3 w-3 text-info/70" />
             <span className="font-mono text-[10px] text-muted-foreground">
-              {formatTokens(stats.total_input_tokens + stats.total_output_tokens)}
+              {formatTokens(
+                stats.total_input_tokens + stats.total_output_tokens,
+              )}
             </span>
           </div>
         </TooltipTrigger>
@@ -75,10 +89,14 @@ export const SessionStatsBar = memo(function SessionStatsBar({ sessionId, tokenU
             <div>Input: {formatTokens(stats.total_input_tokens)}</div>
             <div>Output: {formatTokens(stats.total_output_tokens)}</div>
             {stats.total_cache_read_tokens > 0 ? (
-              <div>Cache Read: {formatTokens(stats.total_cache_read_tokens)}</div>
+              <div>
+                Cache Read: {formatTokens(stats.total_cache_read_tokens)}
+              </div>
             ) : null}
             {stats.total_cache_creation_tokens > 0 ? (
-              <div>Cache Write: {formatTokens(stats.total_cache_creation_tokens)}</div>
+              <div>
+                Cache Write: {formatTokens(stats.total_cache_creation_tokens)}
+              </div>
             ) : null}
           </div>
         </TooltipContent>

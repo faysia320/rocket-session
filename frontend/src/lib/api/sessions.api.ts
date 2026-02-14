@@ -1,17 +1,24 @@
 /**
  * 세션 도메인 API 함수.
  */
-import { api } from './client';
-import type { SessionInfo, UpdateSessionRequest } from '@/types';
+import { api } from "./client";
+import type { SessionInfo, UpdateSessionRequest } from "@/types";
 
 export const sessionsApi = {
-  create: (workDir?: string, options?: { allowed_tools?: string; system_prompt?: string; timeout_seconds?: number }) =>
-    api.post<SessionInfo>('/api/sessions/', {
+  create: (
+    workDir?: string,
+    options?: {
+      allowed_tools?: string;
+      system_prompt?: string;
+      timeout_seconds?: number;
+    },
+  ) =>
+    api.post<SessionInfo>("/api/sessions/", {
       work_dir: workDir || null,
       ...options,
     }),
 
-  list: () => api.get<SessionInfo[]>('/api/sessions/'),
+  list: () => api.get<SessionInfo[]>("/api/sessions/"),
 
   get: (id: string) => api.get<SessionInfo>(`/api/sessions/${id}`),
 
@@ -27,10 +34,14 @@ export const sessionsApi = {
   files: (id: string) => api.get<unknown[]>(`/api/sessions/${id}/files`),
 
   fileContent: (sessionId: string, filePath: string) =>
-    api.getText(`/api/sessions/${sessionId}/file-content/${encodeURIComponent(filePath)}`),
+    api.getText(
+      `/api/sessions/${sessionId}/file-content/${encodeURIComponent(filePath)}`,
+    ),
 
   fileDiff: (sessionId: string, filePath: string) =>
-    api.getText(`/api/sessions/${sessionId}/file-diff/${encodeURIComponent(filePath)}`),
+    api.getText(
+      `/api/sessions/${sessionId}/file-diff/${encodeURIComponent(filePath)}`,
+    ),
 
   exportMarkdown: async (sessionId: string): Promise<void> => {
     const response = await fetch(`/api/sessions/${sessionId}/export`);
@@ -39,7 +50,7 @@ export const sessionsApi = {
     }
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `session-${sessionId}.md`;
     document.body.appendChild(a);
@@ -51,15 +62,20 @@ export const sessionsApi = {
     }
   },
 
-  uploadImage: async (sessionId: string, file: File): Promise<{ path: string; name: string; size: number }> => {
+  uploadImage: async (
+    sessionId: string,
+    file: File,
+  ): Promise<{ path: string; name: string; size: number }> => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
     const response = await fetch(`/api/sessions/${sessionId}/upload`, {
-      method: 'POST',
+      method: "POST",
       body: formData,
     });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      const error = await response
+        .json()
+        .catch(() => ({ detail: "Upload failed" }));
       throw new Error(error.detail || `HTTP ${response.status}`);
     }
     return response.json();
@@ -77,5 +93,7 @@ export const sessionsApi = {
     }>(`/api/sessions/${id}/stats`),
 
   openTerminal: (id: string) =>
-    api.post<{ status: string; work_dir: string }>(`/api/sessions/${id}/open-terminal`),
+    api.post<{ status: string; work_dir: string }>(
+      `/api/sessions/${id}/open-terminal`,
+    ),
 };

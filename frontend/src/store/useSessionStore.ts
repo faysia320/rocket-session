@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface SessionState {
   activeSessionId: string | null;
@@ -26,14 +26,23 @@ export const useSessionStore = create<SessionState>()(
       sidebarMobileOpen: false,
       setActiveSessionId: (id) => set({ activeSessionId: id }),
       setSplitView: (v) => set({ splitView: v }),
-      toggleSplitView: () => set((state) => ({ splitView: !state.splitView, ...(state.splitView ? {} : { dashboardView: false }) })),
+      toggleSplitView: () =>
+        set((state) => ({
+          splitView: !state.splitView,
+          ...(state.splitView ? {} : { dashboardView: false }),
+        })),
       setDashboardView: (v) => set({ dashboardView: v }),
-      toggleDashboardView: () => set((state) => ({ dashboardView: !state.dashboardView, ...(state.dashboardView ? {} : { splitView: false }) })),
-      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      toggleDashboardView: () =>
+        set((state) => ({
+          dashboardView: !state.dashboardView,
+          ...(state.dashboardView ? {} : { splitView: false }),
+        })),
+      toggleSidebar: () =>
+        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarMobileOpen: (open) => set({ sidebarMobileOpen: open }),
     }),
     {
-      name: 'rocket-session-store',
+      name: "rocket-session-store",
       partialize: (s) => ({
         sidebarCollapsed: s.sidebarCollapsed,
         splitView: s.splitView,

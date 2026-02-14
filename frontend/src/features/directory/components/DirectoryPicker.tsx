@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { FolderOpen, Star, StarOff } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { useGitInfo } from '../hooks/useGitInfo';
-import { useFavoriteDirectories } from '../hooks/useFavoriteDirectories';
-import { GitInfoCard } from './GitInfoCard';
-import { DirectoryBrowser } from './DirectoryBrowser';
-import { WorktreePanel } from './WorktreePanel';
+import { useState } from "react";
+import { FolderOpen, Star, StarOff } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useGitInfo } from "../hooks/useGitInfo";
+import { useFavoriteDirectories } from "../hooks/useFavoriteDirectories";
+import { GitInfoCard } from "./GitInfoCard";
+import { DirectoryBrowser } from "./DirectoryBrowser";
+import { WorktreePanel } from "./WorktreePanel";
 
 interface DirectoryPickerProps {
   value: string;
@@ -36,7 +36,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
           className="h-9 w-9 shrink-0"
           onClick={() => toggleFavorite(value.trim())}
           disabled={!hasTrimmedValue}
-          aria-label={starred ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+          aria-label={starred ? "즐겨찾기 해제" : "즐겨찾기 추가"}
         >
           {starred ? (
             <Star className="h-3.5 w-3.5 text-warning fill-warning" />
@@ -69,7 +69,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
       <DirectoryBrowser
         open={browserOpen}
         onOpenChange={setBrowserOpen}
-        initialPath={value || '~'}
+        initialPath={value || "~"}
         onSelect={onChange}
       />
     </div>

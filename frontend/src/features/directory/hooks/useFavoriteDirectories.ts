@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
-const STORAGE_KEY = 'rocket-session:favorite-dirs';
+const STORAGE_KEY = "rocket-session:favorite-dirs";
 
 interface FavoriteDirectory {
   path: string;
@@ -8,21 +8,22 @@ interface FavoriteDirectory {
 }
 
 function extractName(path: string): string {
-  const normalized = path.replace(/[\\/]+$/, '');
+  const normalized = path.replace(/[\\/]+$/, "");
   const segments = normalized.split(/[\\/]/);
   return segments[segments.length - 1] || path;
 }
 
 function loadFavorites(): FavoriteDirectory[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
   } catch {
     return [];
   }
 }
 
 export function useFavoriteDirectories() {
-  const [favorites, setFavorites] = useState<FavoriteDirectory[]>(loadFavorites);
+  const [favorites, setFavorites] =
+    useState<FavoriteDirectory[]>(loadFavorites);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));

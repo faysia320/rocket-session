@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
-import { SLASH_COMMANDS, type SlashCommand } from '../constants/slashCommands';
-import type { SkillInfo } from '@/types';
+import { useState, useCallback, useMemo } from "react";
+import { SLASH_COMMANDS, type SlashCommand } from "../constants/slashCommands";
+import type { SkillInfo } from "@/types";
 
 interface UseSlashCommandsOptions {
   connected: boolean;
@@ -8,10 +8,14 @@ interface UseSlashCommandsOptions {
   skills?: SkillInfo[];
 }
 
-export function useSlashCommands({ connected, isRunning, skills }: UseSlashCommandsOptions) {
+export function useSlashCommands({
+  connected,
+  isRunning,
+  skills,
+}: UseSlashCommandsOptions) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [filterText, setFilterText] = useState('');
+  const [filterText, setFilterText] = useState("");
 
   const filteredCommands = useMemo(() => {
     const available = SLASH_COMMANDS.filter((cmd) => {
@@ -23,12 +27,12 @@ export function useSlashCommands({ connected, isRunning, skills }: UseSlashComma
     const skillCommands: SlashCommand[] =
       skills?.map((skill) => ({
         id: skill.name,
-        label: '/' + skill.name,
+        label: "/" + skill.name,
         description: skill.description,
-        scope: 'backend' as const,
+        scope: "backend" as const,
         requiresConnection: true,
         availableWhileRunning: false,
-        source: 'skill' as const,
+        source: "skill" as const,
       })) ?? [];
 
     const allCommands = [...available, ...skillCommands];
@@ -45,17 +49,17 @@ export function useSlashCommands({ connected, isRunning, skills }: UseSlashComma
   }, [filterText, connected, isRunning, skills]);
 
   const handleInputChange = useCallback((value: string) => {
-    if (value === '/') {
+    if (value === "/") {
       setIsOpen(true);
-      setFilterText('');
+      setFilterText("");
       setActiveIndex(0);
-    } else if (value.startsWith('/')) {
+    } else if (value.startsWith("/")) {
       setIsOpen(true);
       setFilterText(value.slice(1));
       setActiveIndex(0);
     } else {
       setIsOpen(false);
-      setFilterText('');
+      setFilterText("");
     }
   }, []);
 
@@ -64,38 +68,38 @@ export function useSlashCommands({ connected, isRunning, skills }: UseSlashComma
       if (!isOpen) return null;
 
       switch (e.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
           setActiveIndex((prev) =>
             prev < filteredCommands.length - 1 ? prev + 1 : 0,
           );
           return null;
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
           setActiveIndex((prev) =>
             prev > 0 ? prev - 1 : filteredCommands.length - 1,
           );
           return null;
-        case 'Enter':
+        case "Enter":
           if (filteredCommands.length > 0) {
             e.preventDefault();
             const selected = filteredCommands[activeIndex];
             setIsOpen(false);
-            setFilterText('');
+            setFilterText("");
             return selected;
           }
           return null;
-        case 'Escape':
+        case "Escape":
           e.preventDefault();
           setIsOpen(false);
-          setFilterText('');
+          setFilterText("");
           return null;
-        case 'Tab':
+        case "Tab":
           if (filteredCommands.length > 0) {
             e.preventDefault();
             const selected = filteredCommands[activeIndex];
             setIsOpen(false);
-            setFilterText('');
+            setFilterText("");
             return selected;
           }
           return null;
@@ -108,13 +112,13 @@ export function useSlashCommands({ connected, isRunning, skills }: UseSlashComma
 
   const selectCommand = useCallback((cmd: SlashCommand) => {
     setIsOpen(false);
-    setFilterText('');
+    setFilterText("");
     return cmd;
   }, []);
 
   const close = useCallback(() => {
     setIsOpen(false);
-    setFilterText('');
+    setFilterText("");
   }, []);
 
   return {

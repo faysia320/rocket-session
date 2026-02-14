@@ -1,9 +1,9 @@
-import { useCallback, useRef } from 'react';
-import { toast } from 'sonner';
-import type { NotificationCategory } from '@/types';
-import { CATEGORY_LABELS } from '@/types';
-import { useNotificationSettings } from './useNotificationSettings';
-import { useSoundEngine } from './useSoundEngine';
+import { useCallback, useRef } from "react";
+import { toast } from "sonner";
+import type { NotificationCategory } from "@/types";
+import { CATEGORY_LABELS } from "@/types";
+import { useNotificationSettings } from "./useNotificationSettings";
+import { useSoundEngine } from "./useSoundEngine";
 
 interface NotifyOptions {
   title?: string;
@@ -11,19 +11,27 @@ interface NotifyOptions {
 }
 
 export function useNotificationCenter() {
-  const { settings, toggleEnabled, setVolume, setSoundPack, toggleCategory, toggleChannel } = useNotificationSettings();
+  const {
+    settings,
+    toggleEnabled,
+    setVolume,
+    setSoundPack,
+    toggleCategory,
+    toggleChannel,
+  } = useNotificationSettings();
   const { playSound } = useSoundEngine();
   const permissionRequested = useRef(false);
 
   /** 데스크톱 알림 권한 요청 */
   const requestDesktopPermission = useCallback(async () => {
-    if (!('Notification' in window) || Notification.permission === 'granted') return true;
-    if (Notification.permission === 'denied') return false;
+    if (!("Notification" in window) || Notification.permission === "granted")
+      return true;
+    if (Notification.permission === "denied") return false;
     if (permissionRequested.current) return false;
     permissionRequested.current = true;
     const result = await Notification.requestPermission();
     permissionRequested.current = false;
-    return result === 'granted';
+    return result === "granted";
   }, []);
 
   /** 알림 트리거 */
@@ -45,8 +53,8 @@ export function useNotificationCenter() {
 
       // 데스크톱 알림 (탭이 비활성 상태일 때만)
       if (config.channels.desktop && document.hidden) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-          const n = new Notification(title, { body, icon: '/favicon.ico' });
+        if ("Notification" in window && Notification.permission === "granted") {
+          const n = new Notification(title, { body, icon: "/favicon.ico" });
           n.onclick = () => {
             window.focus();
             n.close();
@@ -56,7 +64,7 @@ export function useNotificationCenter() {
 
       // 토스트
       if (config.channels.toast) {
-        if (category === 'task.error') {
+        if (category === "task.error") {
           toast.error(body);
         } else {
           toast.info(body);

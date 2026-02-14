@@ -1,24 +1,24 @@
-import { Volume2, VolumeX, Bell, BellOff, Play } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import type { NotificationCategory, NotificationChannel } from '@/types';
-import { CATEGORY_LABELS } from '@/types';
-import { useNotificationCenter } from '../hooks/useNotificationCenter';
-import { SOUND_PACKS } from '../hooks/useSoundEngine';
+import { Volume2, VolumeX, Bell, BellOff, Play } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { NotificationCategory, NotificationChannel } from "@/types";
+import { CATEGORY_LABELS } from "@/types";
+import { useNotificationCenter } from "../hooks/useNotificationCenter";
+import { SOUND_PACKS } from "../hooks/useSoundEngine";
 
 const CATEGORIES: NotificationCategory[] = [
-  'task.complete',
-  'task.error',
-  'input.required',
-  'session.start',
+  "task.complete",
+  "task.error",
+  "input.required",
+  "session.start",
 ];
 
 const CHANNELS: { id: NotificationChannel; label: string }[] = [
-  { id: 'sound', label: 'Sound' },
-  { id: 'desktop', label: 'Desktop' },
-  { id: 'toast', label: 'Toast' },
+  { id: "sound", label: "Sound" },
+  { id: "desktop", label: "Desktop" },
+  { id: "toast", label: "Toast" },
 ];
 
 export function NotificationSettingsPanel() {
@@ -53,15 +53,23 @@ export function NotificationSettingsPanel() {
         <Button
           variant="ghost"
           size="sm"
-          className={cn('h-7 px-2 font-mono text-[11px] gap-1.5', settings.enabled && 'text-primary')}
+          className={cn(
+            "h-7 px-2 font-mono text-[11px] gap-1.5",
+            settings.enabled && "text-primary",
+          )}
           onClick={handleToggleEnabled}
         >
-          {settings.enabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
-          {settings.enabled ? 'ON' : 'OFF'}
+          {settings.enabled ? (
+            <Bell className="h-3.5 w-3.5" />
+          ) : (
+            <BellOff className="h-3.5 w-3.5" />
+          )}
+          {settings.enabled ? "ON" : "OFF"}
         </Button>
       </div>
       <p className="font-mono text-[10px] text-muted-foreground/70">
-        CESP 기반 알림 시스템입니다. 카테고리별로 사운드, 데스크톱 알림, 토스트를 개별 제어할 수 있습니다.
+        CESP 기반 알림 시스템입니다. 카테고리별로 사운드, 데스크톱 알림,
+        토스트를 개별 제어할 수 있습니다.
       </p>
 
       {settings.enabled ? (
@@ -118,8 +126,10 @@ export function NotificationSettingsPanel() {
                 <div
                   key={category}
                   className={cn(
-                    'rounded-md border p-3 space-y-2 transition-colors',
-                    config.enabled ? 'border-border bg-card' : 'border-transparent bg-muted/30',
+                    "rounded-md border p-3 space-y-2 transition-colors",
+                    config.enabled
+                      ? "border-border bg-card"
+                      : "border-transparent bg-muted/30",
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -148,10 +158,15 @@ export function NotificationSettingsPanel() {
                   {config.enabled ? (
                     <div className="flex gap-3 pl-6">
                       {CHANNELS.map((ch) => (
-                        <label key={ch.id} className="flex items-center gap-1.5 cursor-pointer">
+                        <label
+                          key={ch.id}
+                          className="flex items-center gap-1.5 cursor-pointer"
+                        >
                           <Checkbox
                             checked={config.channels[ch.id]}
-                            onCheckedChange={() => toggleChannel(category, ch.id)}
+                            onCheckedChange={() =>
+                              toggleChannel(category, ch.id)
+                            }
                           />
                           <span className="font-mono text-[10px] text-muted-foreground">
                             {ch.label}

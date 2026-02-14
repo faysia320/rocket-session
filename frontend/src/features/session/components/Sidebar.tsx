@@ -1,11 +1,29 @@
-import { useState, useRef, useCallback, useMemo, memo } from 'react';
-import { useTheme } from 'next-themes';
-import { Sun, Moon, Columns2, LayoutGrid, Download, PanelLeftClose, PanelLeftOpen, Plus, Settings, Search, X, Bell, BellOff } from 'lucide-react';
-import { useNotificationCenter } from '@/features/notification/hooks/useNotificationCenter';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { useState, useRef, useCallback, useMemo, memo } from "react";
+import { useTheme } from "next-themes";
+import {
+  Sun,
+  Moon,
+  Columns2,
+  LayoutGrid,
+  Download,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Settings,
+  Search,
+  X,
+  Bell,
+  BellOff,
+} from "lucide-react";
+import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,12 +33,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
-import type { SessionInfo } from '@/types';
-import { ImportLocalDialog } from './ImportLocalDialog';
-import { GlobalSettingsDialog } from '@/features/settings/components/GlobalSettingsDialog';
-import { useSessionStore } from '@/store';
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+import type { SessionInfo } from "@/types";
+import { ImportLocalDialog } from "./ImportLocalDialog";
+import { GlobalSettingsDialog } from "@/features/settings/components/GlobalSettingsDialog";
+import { useSessionStore } from "@/store";
 
 interface SidebarProps {
   sessions: SessionInfo[];
@@ -35,7 +53,18 @@ interface SidebarProps {
   isError?: boolean;
 }
 
-export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, onRename, onImported, isMobileOverlay, isLoading, isError }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({
+  sessions,
+  activeSessionId,
+  onSelect,
+  onNew,
+  onDelete,
+  onRename,
+  onImported,
+  isMobileOverlay,
+  isLoading,
+  isError,
+}: SidebarProps) {
   const splitView = useSessionStore((s) => s.splitView);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
   const dashboardView = useSessionStore((s) => s.dashboardView);
@@ -44,19 +73,27 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
   const collapsed = isMobileOverlay ? false : sidebarCollapsed;
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const [importOpen, setImportOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'idle' | 'error'>('all');
-  const { settings: notificationSettings, toggleEnabled: toggleNotifications, requestDesktopPermission } = useNotificationCenter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "running" | "idle" | "error"
+  >("all");
+  const {
+    settings: notificationSettings,
+    toggleEnabled: toggleNotifications,
+    requestDesktopPermission,
+  } = useNotificationCenter();
 
   const filteredSessions = useMemo(() => {
     let filtered = sessions;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter((s) =>
-        (s.name || s.id).toLowerCase().includes(q) || s.work_dir.toLowerCase().includes(q),
+      filtered = filtered.filter(
+        (s) =>
+          (s.name || s.id).toLowerCase().includes(q) ||
+          s.work_dir.toLowerCase().includes(q),
       );
     }
-    if (statusFilter !== 'all') {
+    if (statusFilter !== "all") {
       filtered = filtered.filter((s) => s.status === statusFilter);
     }
     return filtered;
@@ -65,11 +102,12 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
   return (
     <aside
       className={cn(
-        'h-full flex flex-col bg-sidebar overflow-hidden',
+        "h-full flex flex-col bg-sidebar overflow-hidden",
         isMobileOverlay
-          ? 'w-[280px]'
-          : 'border-r border-sidebar-border transition-[width,min-width] duration-200 ease-in-out',
-        !isMobileOverlay && (collapsed ? 'w-16 min-w-16' : 'w-[260px] min-w-[260px]'),
+          ? "w-[280px]"
+          : "border-r border-sidebar-border transition-[width,min-width] duration-200 ease-in-out",
+        !isMobileOverlay &&
+          (collapsed ? "w-16 min-w-16" : "w-[260px] min-w-[260px]"),
       )}
     >
       {/* New Session */}
@@ -119,7 +157,10 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
             SESSIONS
           </span>
           <Badge variant="secondary" className="font-mono text-[10px]">
-            {filteredSessions.length}{filteredSessions.length !== sessions.length ? `/${sessions.length}` : ''}
+            {filteredSessions.length}
+            {filteredSessions.length !== sessions.length
+              ? `/${sessions.length}`
+              : ""}
           </Badge>
         </div>
       )}
@@ -140,7 +181,7 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
               <button
                 type="button"
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground"
-                onClick={() => setSearchQuery('')}
+                onClick={() => setSearchQuery("")}
                 aria-label="검색 초기화"
               >
                 <X className="h-3.5 w-3.5" />
@@ -148,19 +189,19 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
             ) : null}
           </div>
           <div className="flex gap-1">
-            {(['all', 'running', 'idle', 'error'] as const).map((f) => (
+            {(["all", "running", "idle", "error"] as const).map((f) => (
               <button
                 key={f}
                 type="button"
                 className={cn(
-                  'font-mono text-[10px] px-2 py-0.5 rounded-sm border transition-colors',
+                  "font-mono text-[10px] px-2 py-0.5 rounded-sm border transition-colors",
                   statusFilter === f
-                    ? 'bg-primary/15 text-primary border-primary/30'
-                    : 'text-muted-foreground border-transparent hover:bg-muted',
+                    ? "bg-primary/15 text-primary border-primary/30"
+                    : "text-muted-foreground border-transparent hover:bg-muted",
                 )}
                 onClick={() => setStatusFilter(f)}
               >
-                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+                {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
           </div>
@@ -168,7 +209,9 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
       )}
 
       {/* Sessions list */}
-      <ScrollArea className={cn('flex-1 min-h-0', collapsed ? 'px-1 pt-3' : 'px-2')}>
+      <ScrollArea
+        className={cn("flex-1 min-h-0", collapsed ? "px-1 pt-3" : "px-2")}
+      >
         {isLoading ? (
           <div className="px-2 pt-2 space-y-2">
             {[1, 2, 3].map((i) => (
@@ -200,25 +243,30 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
                 <TooltipTrigger asChild>
                   <button
                     className={cn(
-                      'w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-all border border-transparent',
-                      s.id === activeSessionId && 'bg-muted border-[hsl(var(--border-bright))]',
+                      "w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-all border border-transparent",
+                      s.id === activeSessionId &&
+                        "bg-muted border-[hsl(var(--border-bright))]",
                     )}
                     onClick={() => onSelect(s.id)}
                     aria-label={`세션 ${s.id}`}
                   >
                     <span
                       className={cn(
-                        'w-2.5 h-2.5 rounded-full shrink-0',
-                        s.status === 'running' && 'bg-green-500',
-                        s.status === 'error' && 'bg-red-500',
-                        s.status !== 'running' && s.status !== 'error' && 'bg-muted-foreground',
+                        "w-2.5 h-2.5 rounded-full shrink-0",
+                        s.status === "running" && "bg-green-500",
+                        s.status === "error" && "bg-red-500",
+                        s.status !== "running" &&
+                          s.status !== "error" &&
+                          "bg-muted-foreground",
                       )}
                     />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="font-mono text-xs">
                   <p className="font-semibold">{s.id}</p>
-                  <p className="text-muted-foreground">{s.message_count} msgs · {s.file_changes_count} changes</p>
+                  <p className="text-muted-foreground">
+                    {s.message_count} msgs · {s.file_changes_count} changes
+                  </p>
                 </TooltipContent>
               </Tooltip>
             ) : (
@@ -236,31 +284,55 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
       </ScrollArea>
 
       {/* Footer: 설정, 테마, Split View, 접기 */}
-      <div className={cn('py-3 border-t border-border', collapsed ? 'px-2' : 'px-4')}>
-        <div className={cn('flex items-center gap-1', collapsed ? 'flex-col' : 'justify-end')}>
+      <div
+        className={cn(
+          "py-3 border-t border-border",
+          collapsed ? "px-2" : "px-4",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-1",
+            collapsed ? "flex-col" : "justify-end",
+          )}
+        >
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn('h-8 w-8', notificationSettings.enabled && 'text-primary')}
+                className={cn(
+                  "h-8 w-8",
+                  notificationSettings.enabled && "text-primary",
+                )}
                 onClick={async () => {
                   if (!notificationSettings.enabled) {
                     await requestDesktopPermission();
                   }
                   toggleNotifications();
                 }}
-                aria-label={notificationSettings.enabled ? '알림 비활성화' : '알림 활성화'}
+                aria-label={
+                  notificationSettings.enabled ? "알림 비활성화" : "알림 활성화"
+                }
               >
-                {notificationSettings.enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                {notificationSettings.enabled ? (
+                  <Bell className="h-4 w-4" />
+                ) : (
+                  <BellOff className="h-4 w-4" />
+                )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side={collapsed ? 'right' : 'top'}>
-              {notificationSettings.enabled ? '알림 켜짐' : '알림 꺼짐'}
+            <TooltipContent side={collapsed ? "right" : "top"}>
+              {notificationSettings.enabled ? "알림 켜짐" : "알림 꺼짐"}
             </TooltipContent>
           </Tooltip>
           <GlobalSettingsDialog>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="글로벌 설정">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="글로벌 설정"
+            >
               <Settings className="h-4 w-4" />
             </Button>
           </GlobalSettingsDialog>
@@ -272,28 +344,34 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={cn('h-8 w-8', dashboardView && 'bg-muted')}
+                    className={cn("h-8 w-8", dashboardView && "bg-muted")}
                     onClick={toggleDashboardView}
-                    aria-label={dashboardView ? '대시보드 뷰 끄기' : '대시보드 뷰 켜기'}
+                    aria-label={
+                      dashboardView ? "대시보드 뷰 끄기" : "대시보드 뷰 켜기"
+                    }
                   >
                     <LayoutGrid className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side={collapsed ? 'right' : 'top'}>Dashboard</TooltipContent>
+                <TooltipContent side={collapsed ? "right" : "top"}>
+                  Dashboard
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={cn('h-8 w-8', splitView && 'bg-muted')}
+                    className={cn("h-8 w-8", splitView && "bg-muted")}
                     onClick={toggleSplitView}
-                    aria-label={splitView ? '단일 뷰로 전환' : '분할 뷰로 전환'}
+                    aria-label={splitView ? "단일 뷰로 전환" : "분할 뷰로 전환"}
                   >
                     <Columns2 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side={collapsed ? 'right' : 'top'}>Split View</TooltipContent>
+                <TooltipContent side={collapsed ? "right" : "top"}>
+                  Split View
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -302,13 +380,17 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
                     size="icon"
                     className="h-8 w-8"
                     onClick={toggleSidebar}
-                    aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
+                    aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
                   >
-                    {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                    {collapsed ? (
+                      <PanelLeftOpen className="h-4 w-4" />
+                    ) : (
+                      <PanelLeftClose className="h-4 w-4" />
+                    )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side={collapsed ? 'right' : 'top'}>
-                  {collapsed ? '사이드바 펼치기' : '사이드바 접기'}
+                <TooltipContent side={collapsed ? "right" : "top"}>
+                  {collapsed ? "사이드바 펼치기" : "사이드바 접기"}
                 </TooltipContent>
               </Tooltip>
             </>
@@ -329,14 +411,14 @@ export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSele
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = theme === "dark";
 
   return (
     <Button
       variant="ghost"
       size="icon"
       className="h-8 w-8"
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label="테마 변경"
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -358,7 +440,7 @@ const SessionItem = memo(function SessionItem({
   onRename?: (id: string, name: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState('');
+  const [editValue, setEditValue] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -382,18 +464,20 @@ const SessionItem = memo(function SessionItem({
     <button
       type="button"
       className={cn(
-        'w-full text-left px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-all border border-transparent overflow-hidden min-w-0',
-        isActive && 'bg-muted border-[hsl(var(--border-bright))]',
+        "w-full text-left px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-all border border-transparent overflow-hidden min-w-0",
+        isActive && "bg-muted border-[hsl(var(--border-bright))]",
       )}
       onClick={() => onSelect(s.id)}
     >
       <div className="flex items-center gap-2 mb-1">
         <span
           className={cn(
-            'w-1.5 h-1.5 rounded-full shrink-0',
-            s.status === 'running' && 'bg-green-500',
-            s.status === 'error' && 'bg-red-500',
-            s.status !== 'running' && s.status !== 'error' && 'bg-muted-foreground',
+            "w-1.5 h-1.5 rounded-full shrink-0",
+            s.status === "running" && "bg-green-500",
+            s.status === "error" && "bg-red-500",
+            s.status !== "running" &&
+              s.status !== "error" &&
+              "bg-muted-foreground",
           )}
         />
         {editing ? (
@@ -404,8 +488,8 @@ const SessionItem = memo(function SessionItem({
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitEdit();
-              if (e.key === 'Escape') setEditing(false);
+              if (e.key === "Enter") commitEdit();
+              if (e.key === "Escape") setEditing(false);
             }}
             onClick={(e) => e.stopPropagation()}
           />
@@ -431,20 +515,26 @@ const SessionItem = memo(function SessionItem({
           }}
           aria-label="세션 삭제"
         >
-          {'×'}
+          {"×"}
         </Button>
-        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+        >
           <AlertDialogContent onClick={(e) => e.stopPropagation()}>
             <AlertDialogHeader>
               <AlertDialogTitle className="font-mono text-sm">
                 세션을 삭제하시겠습니까?
               </AlertDialogTitle>
               <AlertDialogDescription className="font-mono text-xs">
-                "{s.name || s.id}" 세션의 모든 대화 기록과 파일 변경 이력이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+                "{s.name || s.id}" 세션의 모든 대화 기록과 파일 변경 이력이
+                영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="font-mono text-xs">취소</AlertDialogCancel>
+              <AlertDialogCancel className="font-mono text-xs">
+                취소
+              </AlertDialogCancel>
               <AlertDialogAction
                 className="font-mono text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={() => onDelete(s.id)}
@@ -460,7 +550,7 @@ const SessionItem = memo(function SessionItem({
           {s.message_count} msgs
         </span>
         <span className="font-mono text-[10px] text-muted-foreground/70">
-          {'·'}
+          {"·"}
         </span>
         <span className="font-mono text-[10px] text-muted-foreground">
           {s.file_changes_count} changes
@@ -477,8 +567,8 @@ const SessionItem = memo(function SessionItem({
 });
 
 function truncatePath(p: string): string {
-  if (!p) return '~';
+  if (!p) return "~";
   const parts = p.split(/[/\\]/);
   if (parts.length <= 3) return p;
-  return '~/' + parts.slice(-2).join('/');
+  return "~/" + parts.slice(-2).join("/");
 }

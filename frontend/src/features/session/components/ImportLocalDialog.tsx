@@ -1,14 +1,29 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Download, Loader2, GitBranch, MessageSquare, FolderOpen, ChevronRight, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
-import { localSessionsApi } from '@/lib/api/local-sessions.api';
-import type { LocalSessionMeta } from '@/types';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import {
+  Download,
+  Loader2,
+  GitBranch,
+  MessageSquare,
+  FolderOpen,
+  ChevronRight,
+  ChevronDown,
+  ChevronsUpDown,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { localSessionsApi } from "@/lib/api/local-sessions.api";
+import type { LocalSessionMeta } from "@/types";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface ImportLocalDialogProps {
   open: boolean;
@@ -17,8 +32,8 @@ interface ImportLocalDialogProps {
 }
 
 type FlatItem =
-  | { type: 'group-header'; cwd: string; count: number }
-  | { type: 'session'; meta: LocalSessionMeta };
+  | { type: "group-header"; cwd: string; count: number }
+  | { type: "session"; meta: LocalSessionMeta };
 
 function getYesterdayISO(): string {
   const d = new Date();
@@ -27,13 +42,19 @@ function getYesterdayISO(): string {
   return d.toISOString();
 }
 
-export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLocalDialogProps) {
+export function ImportLocalDialog({
+  open,
+  onOpenChange,
+  onImported,
+}: ImportLocalDialogProps) {
   const [sessions, setSessions] = useState<LocalSessionMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hideImported, setHideImported] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set(),
+  );
   const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,12 +77,14 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
       });
       setSessions((prev) =>
         prev.map((s) =>
-          s.session_id === meta.session_id ? { ...s, already_imported: true } : s,
+          s.session_id === meta.session_id
+            ? { ...s, already_imported: true }
+            : s,
         ),
       );
       onImported(result.dashboard_session_id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Import fail');
+      setError(e instanceof Error ? e.message : "Import fail");
     } finally {
       setImporting(null);
     }
@@ -93,7 +116,9 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
 
   const allGroupKeys = useMemo(() => Object.keys(filtered), [filtered]);
 
-  const allCollapsed = allGroupKeys.length > 0 && allGroupKeys.every((k) => collapsedGroups.has(k));
+  const allCollapsed =
+    allGroupKeys.length > 0 &&
+    allGroupKeys.every((k) => collapsedGroups.has(k));
 
   const toggleAll = useCallback(() => {
     if (allCollapsed) {
@@ -106,10 +131,10 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
   const flatItems = useMemo(() => {
     const result: FlatItem[] = [];
     for (const [cwd, items] of Object.entries(filtered)) {
-      result.push({ type: 'group-header', cwd, count: items.length });
+      result.push({ type: "group-header", cwd, count: items.length });
       if (!collapsedGroups.has(cwd)) {
         for (const s of items) {
-          result.push({ type: 'session', meta: s });
+          result.push({ type: "session", meta: s });
         }
       }
     }
@@ -119,7 +144,7 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
   const virtualizer = useVirtualizer({
     count: flatItems.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: (i) => (flatItems[i].type === 'group-header' ? 36 : 56),
+    estimateSize: (i) => (flatItems[i].type === "group-header" ? 36 : 56),
     overscan: 10,
   });
 
@@ -141,7 +166,9 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="py-8 text-center font-mono text-xs text-destructive">{error}</div>
+          <div className="py-8 text-center font-mono text-xs text-destructive">
+            {error}
+          </div>
         ) : sessions.length === 0 ? (
           <div className="py-8 text-center font-mono text-xs text-muted-foreground">
             No local sessions found
@@ -166,17 +193,14 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
                   size="sm"
                   className="h-6 px-1.5 ml-auto font-mono text-[10px] text-muted-foreground"
                   onClick={toggleAll}
-                  aria-label={allCollapsed ? '모두 펼치기' : '모두 접기'}
+                  aria-label={allCollapsed ? "모두 펼치기" : "모두 접기"}
                 >
                   <ChevronsUpDown className="h-3 w-3 mr-0.5" />
-                  {allCollapsed ? '모두 펼치기' : '모두 접기'}
+                  {allCollapsed ? "모두 펼치기" : "모두 접기"}
                 </Button>
               ) : null}
             </div>
-            <div
-              ref={parentRef}
-              className="flex-1 -mx-6 px-6 overflow-auto"
-            >
+            <div ref={parentRef} className="flex-1 -mx-6 px-6 overflow-auto">
               <div
                 className="relative"
                 style={{ height: `${virtualizer.getTotalSize()}px` }}
@@ -191,13 +215,13 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
                         transform: `translateY(${vItem.start}px)`,
                       }}
                     >
-                      {item.type === 'group-header' ? (
+                      {item.type === "group-header" ? (
                         <button
                           type="button"
                           className="flex items-center gap-1.5 mb-2 h-9 w-full text-left hover:bg-muted/50 rounded-sm px-1 -mx-1 transition-colors"
                           onClick={() => toggleGroup(item.cwd)}
                           aria-expanded={!collapsedGroups.has(item.cwd)}
-                          aria-label={`${truncateCwd(item.cwd)} 그룹 ${collapsedGroups.has(item.cwd) ? '펼치기' : '접기'}`}
+                          aria-label={`${truncateCwd(item.cwd)} 그룹 ${collapsedGroups.has(item.cwd) ? "펼치기" : "접기"}`}
                         >
                           {collapsedGroups.has(item.cwd) ? (
                             <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -211,7 +235,10 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
                           >
                             {truncateCwd(item.cwd)}
                           </span>
-                          <Badge variant="secondary" className="font-mono text-[9px] ml-auto">
+                          <Badge
+                            variant="secondary"
+                            className="font-mono text-[9px] ml-auto"
+                          >
                             {item.count}
                           </Badge>
                         </button>
@@ -247,19 +274,19 @@ function SessionRow({
 }) {
   const displayName = meta.slug || meta.session_id.slice(0, 8);
   const date = meta.last_timestamp
-    ? new Date(meta.last_timestamp).toLocaleDateString('ko-KR', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+    ? new Date(meta.last_timestamp).toLocaleDateString("ko-KR", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       })
     : null;
 
   return (
     <div
       className={cn(
-        'flex items-center gap-2 px-2.5 py-2 rounded-sm border border-border bg-card/50',
-        meta.already_imported && 'opacity-60',
+        "flex items-center gap-2 px-2.5 py-2 rounded-sm border border-border bg-card/50",
+        meta.already_imported && "opacity-60",
       )}
     >
       <div className="flex-1 min-w-0">
@@ -268,7 +295,10 @@ function SessionRow({
             {displayName}
           </span>
           {meta.already_imported ? (
-            <Badge variant="secondary" className="font-mono text-[9px] shrink-0">
+            <Badge
+              variant="secondary"
+              className="font-mono text-[9px] shrink-0"
+            >
               Imported
             </Badge>
           ) : null}
@@ -285,7 +315,9 @@ function SessionRow({
             {meta.message_count}
           </span>
           {date ? (
-            <span className="font-mono text-[9px] text-muted-foreground">{date}</span>
+            <span className="font-mono text-[9px] text-muted-foreground">
+              {date}
+            </span>
           ) : null}
         </div>
       </div>
@@ -300,9 +332,9 @@ function SessionRow({
         {importing ? (
           <Loader2 className="h-3 w-3 animate-spin" />
         ) : meta.already_imported ? (
-          'Done'
+          "Done"
         ) : (
-          'Import'
+          "Import"
         )}
       </Button>
     </div>
@@ -310,8 +342,8 @@ function SessionRow({
 }
 
 function truncateCwd(p: string): string {
-  if (!p) return '~';
+  if (!p) return "~";
   const parts = p.split(/[/\\]/);
   if (parts.length <= 3) return p;
-  return '~/' + parts.slice(-2).join('/');
+  return "~/" + parts.slice(-2).join("/");
 }
