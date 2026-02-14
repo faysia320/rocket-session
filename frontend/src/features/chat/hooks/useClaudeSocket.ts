@@ -770,6 +770,12 @@ export function useClaudeSocket(sessionId: string) {
     connect();
   }, [connect]);
 
+  const updateSessionMode = useCallback((newMode: SessionMode) => {
+    setSessionInfo((prev) =>
+      prev ? { ...prev, mode: newMode } : prev,
+    );
+  }, []);
+
   const respondPermission = useCallback(
     (permissionId: string, behavior: "allow" | "deny") => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -832,5 +838,6 @@ export function useClaudeSocket(sessionId: string) {
     reconnect,
     answerQuestion,
     confirmAnswers,
+    updateSessionMode,
   };
 }

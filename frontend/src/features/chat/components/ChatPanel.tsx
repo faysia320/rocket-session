@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
+import { GitActionsBar } from "./GitActionsBar";
 import {
   computeEstimateSize,
   computeMessageGaps,
@@ -53,6 +54,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     answerQuestion,
     confirmAnswers,
     pendingAnswerCount,
+    updateSessionMode,
   } = useClaudeSocket(sessionId);
   const { notify } = useNotificationCenter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -210,20 +212,22 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     setMode((prev) => {
       const next: SessionMode = prev === "normal" ? "plan" : "normal";
       sessionsApi.update(sessionId, { mode: next }).catch(() => {});
+      updateSessionMode(next);
       return next;
     });
-  }, [sessionId]);
+  }, [sessionId, updateSessionMode]);
 
   const handleExecutePlan = useCallback(
     (messageId: string) => {
       updateMessage(messageId, { planExecuted: true });
       setMode("normal");
+      updateSessionMode("normal");
       sessionsApi.update(sessionId, { mode: "normal" }).catch(() => {});
       sendPrompt("위의 계획대로 단계별로 실행해줘.", { mode: "normal" });
       setPlanReviewOpen(false);
       setPlanReviewMessage(null);
     },
-    [sessionId, sendPrompt, updateMessage],
+    [sessionId, sendPrompt, updateMessage, updateSessionMode],
   );
 
   const handleDismissPlan = useCallback(
@@ -436,22 +440,18 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         connected={connected}
         workDir={workDir}
         gitInfo={gitInfo ?? null}
-        mode={mode}
         status={status}
         sessionId={sessionId}
         fileChanges={fileChanges}
         reconnectState={reconnectState}
         searchOpen={searchOpen}
         onToggleSearch={handleToggleSearch}
-        onToggleMode={cycleMode}
         onFileClick={handleFileClick}
         settingsOpen={settingsOpen}
         onSettingsOpenChange={setSettingsOpen}
         filesOpen={filesOpen}
         onFilesOpenChange={setFilesOpen}
         onRetryConnect={reconnect}
-        onSendPrompt={handleSendPrompt}
-        onRemoveWorktree={handleRemoveWorktree}
         onMenuToggle={() => setSidebarMobileOpen(true)}
         currentModel={sessionInfo?.model as string | undefined}
       />
@@ -618,18 +618,27 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
       <ActivityStatusBar activeTools={activeTools} status={status} />
 
-      <ChatInput
-        connected={connected}
-        status={status}
-        mode={mode}
-        slashCommands={slashCommands}
-        onSubmit={handleSendPrompt}
-        onStop={stopExecution}
-        onModeToggle={cycleMode}
-        onSlashCommand={handleSlashCommand}
-        sessionId={sessionId}
-        pendingAnswerCount={pendingAnswerCount}
-      />
+      <div className="relative">
+        <GitActionsBar
+          gitInfo={gitInfo ?? null}
+          status={status}
+          connected={connected}
+          onSendPrompt={handleSendPrompt}
+          onRemoveWorktree={handleRemoveWorktree}
+        />
+        <ChatInput
+          connected={connected}
+          status={status}
+          mode={mode}
+          slashCommands={slashCommands}
+          onSubmit={handleSendPrompt}
+          onStop={stopExecution}
+          onModeToggle={cycleMode}
+          onSlashCommand={handleSlashCommand}
+          sessionId={sessionId}
+          pendingAnswerCount={pendingAnswerCount}
+        />
+      </div>
 
       {/* Permission Dialog */}
       <PermissionDialog
