@@ -1,4 +1,4 @@
-import { Crown, AlertCircle, Clock, Flame } from "lucide-react";
+import { AlertCircle, Clock, Flame } from "lucide-react";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +38,7 @@ export function UsageFooter() {
     );
   }
 
-  const { plan, account_id, block_5h, weekly } = data;
+  const { block_5h, weekly } = data;
 
   return (
     <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center justify-between px-3 text-xs text-muted-foreground">
@@ -77,27 +77,8 @@ export function UsageFooter() {
         </span>
       </div>
 
-      {/* 우측: 계정 ID + 플랜 + 5h + wk */}
+      {/* 우측: 5h + wk 사용량 */}
       <div className="items-center gap-3 hidden md:flex">
-        {account_id ? (
-          <>
-            <span
-              className="text-muted-foreground/70 truncate max-w-[150px]"
-              title={account_id}
-            >
-              {account_id}
-            </span>
-            <span className="text-border">|</span>
-          </>
-        ) : null}
-
-        <span className="flex items-center gap-1 text-primary font-medium">
-          <Crown className="h-3 w-3" />
-          {plan}
-        </span>
-
-        <span className="text-border">|</span>
-
         <span className="flex items-center gap-1">
           <span className="text-muted-foreground/60">5h:</span>
           <span
