@@ -2,14 +2,14 @@
 
 import asyncio
 import subprocess
-import tempfile
 import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
 
-from app.api.dependencies import get_session_manager
+from app.api.dependencies import get_session_manager, get_settings
+from app.core.config import Settings
 from app.services.session_manager import SessionManager
 
 router = APIRouter(prefix="/sessions", tags=["files"])
@@ -165,6 +165,7 @@ async def upload_file(
     session_id: str,
     file: UploadFile = File(...),
     manager: SessionManager = Depends(get_session_manager),
+    settings: Settings = Depends(get_settings),
 ):
     """세션에 이미지 파일을 업로드합니다."""
     session = await manager.get(session_id)
@@ -191,7 +192,7 @@ async def upload_file(
     ext = Path(safe_name).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         ext = ".png"
-    upload_dir = Path(tempfile.gettempdir()) / "rocket-session-uploads" / session_id
+    upload_dir = Path(settings.resolved_upload_dir) / session_id
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_name = f"{uuid.uuid4().hex[:8]}{ext}"
     file_path = upload_dir / file_name

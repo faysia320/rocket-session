@@ -6,15 +6,18 @@ services:
       - "8101"
     volumes:
       - ./backend/data:/app/data
+      - rocket-uploads:/app/uploads
       - ${CLAUDE_AUTH_DIR}:/root/.claude
       - ${HOST_PROJECTS_DIR}:/projects
     environment:
       - CLAUDE_WORK_DIR=/projects
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=8101
+      - UPLOAD_DIR=/app/uploads
       - GIT_USER_NAME=${GIT_USER_NAME}
       - GIT_USER_EMAIL=${GIT_USER_EMAIL}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - CORS_EXTRA_ORIGINS=${CORS_EXTRA_ORIGINS:-}
     env_file:
       - .env.docker
     healthcheck:
@@ -34,3 +37,6 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  rocket-uploads:

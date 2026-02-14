@@ -1,6 +1,7 @@
 """파일시스템 탐색 및 Git 작업 서비스."""
 
 import asyncio
+import logging
 import os
 import subprocess
 import time
@@ -17,6 +18,8 @@ from app.schemas.filesystem import (
     WorktreeListResponse,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class FilesystemService:
     """파일시스템 탐색 및 Git 워크트리 관리 서비스."""
@@ -31,6 +34,13 @@ class FilesystemService:
             resolved = Path(expanded).resolve()
             if resolved.exists() and resolved.is_dir():
                 self._root_dir = resolved
+            else:
+                logger.warning(
+                    "root_dir '%s' (resolved: '%s') 가 존재하지 않거나 디렉토리가 아닙니다. "
+                    "파일시스템 경계가 설정되지 않아 전체 접근이 허용됩니다.",
+                    root_dir,
+                    resolved,
+                )
 
     @property
     def root_dir(self) -> str:

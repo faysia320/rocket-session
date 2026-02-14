@@ -2,6 +2,7 @@
 
 import logging
 from functools import lru_cache
+from pathlib import Path
 
 from app.core.config import Settings
 from app.core.database import Database
@@ -94,8 +95,15 @@ async def init_dependencies():
         _settings_service, \
         _jsonl_watcher, \
         _filesystem_service
+    logger = logging.getLogger(__name__)
     settings = get_settings()
     _filesystem_service = FilesystemService(root_dir=settings.claude_work_dir)
+
+    # 업로드 디렉토리 보장
+    upload_path = Path(settings.resolved_upload_dir)
+    upload_path.mkdir(parents=True, exist_ok=True)
+    logger.info("업로드 디렉토리: %s", upload_path)
+
     _database = Database(settings.database_path)
     await _database.initialize()
     _ws_manager.set_database(_database)
