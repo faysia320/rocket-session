@@ -1,15 +1,37 @@
-import { AlertCircle, Clock, Flame } from "lucide-react";
+import { AlertCircle, Clock } from "lucide-react";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 
-function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
-  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(0)}K`;
-  return String(tokens);
+function formatTimeRemaining(resetsAt: string | null): string {
+  if (!resetsAt) return "--:--";
+  const now = Date.now();
+  const reset = new Date(resetsAt).getTime();
+  const diffMs = reset - now;
+  if (diffMs <= 0) return "00:00";
+  const hours = Math.floor(diffMs / 3_600_000);
+  const minutes = Math.floor((diffMs % 3_600_000) / 60_000);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function utilizationColor(util: number): string {
+  if (util >= 80) return "text-destructive";
+  if (util >= 50) return "text-warning";
+  return "text-success";
 }
 
 export function UsageFooter() {
   const { data, isLoading, isError } = useUsage();
+
+  const fiveHourCountdown = useMemo(
+    () => formatTimeRemaining(data?.five_hour?.resets_at ?? null),
+    [data?.five_hour?.resets_at],
+  );
+
+  const sevenDayCountdown = useMemo(
+    () => formatTimeRemaining(data?.seven_day?.resets_at ?? null),
+    [data?.seven_day?.resets_at],
+  );
 
   if (isLoading) {
     return (
@@ -38,11 +60,11 @@ export function UsageFooter() {
     );
   }
 
-  const { block_5h, weekly } = data;
+  const { five_hour, seven_day } = data;
 
   return (
     <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center justify-between px-3 text-xs text-muted-foreground">
-      {/* 좌측: 브랜드 + 활성 블록 정보 */}
+      {/* 좌측: 브랜드 + 5h utilization */}
       <div className="flex items-center gap-2">
         <span className="font-mono text-[11px] font-semibold text-primary">
           Rocket Session
@@ -50,57 +72,31 @@ export function UsageFooter() {
 
         <span className="text-border hidden sm:inline">|</span>
 
-        <span
-          className={cn(
-            "items-center gap-1 hidden sm:flex",
-            block_5h.is_active ? "text-info" : "text-muted-foreground/40",
-          )}
-        >
-          <Clock className="h-3 w-3" />
-          {block_5h.is_active && block_5h.time_remaining
-            ? block_5h.time_remaining
-            : "--:--"}
+        <span className="items-center gap-1 hidden sm:flex">
+          <span className="text-muted-foreground/60">5h:</span>
+          <span className={cn("font-medium", utilizationColor(five_hour.utilization))}>
+            {five_hour.utilization.toFixed(0)}%
+          </span>
         </span>
 
-        <span className="text-border hidden sm:inline">|</span>
-
-        <span
-          className={cn(
-            "items-center gap-1 hidden sm:flex",
-            block_5h.is_active ? "text-warning" : "text-muted-foreground/40",
-          )}
-        >
-          <Flame className="h-3 w-3" />
-          {block_5h.is_active && block_5h.burn_rate > 0
-            ? `$${block_5h.burn_rate}/h`
-            : "-"}
+        <span className="items-center gap-1 hidden sm:flex text-muted-foreground/60">
+          <Clock className="h-3 w-3" />
+          {fiveHourCountdown}
         </span>
       </div>
 
-      {/* 우측: 5h + wk 사용량 */}
-      <div className="items-center gap-3 hidden md:flex">
+      {/* 우측: wk utilization */}
+      <div className="items-center gap-2 hidden md:flex">
         <span className="flex items-center gap-1">
-          <span className="text-muted-foreground/60">5h:</span>
-          <span
-            className={cn(
-              block_5h.is_active ? "text-foreground" : "text-muted-foreground",
-            )}
-          >
-            ${block_5h.cost_usd.toFixed(2)}
-          </span>
-          <span className="text-muted-foreground/60">
-            ({formatTokens(block_5h.total_tokens)})
+          <span className="text-muted-foreground/60">wk:</span>
+          <span className={cn("font-medium", utilizationColor(seven_day.utilization))}>
+            {seven_day.utilization.toFixed(0)}%
           </span>
         </span>
 
-        <span className="text-border">|</span>
-
-        <span className="flex items-center gap-1">
-          <span className="text-muted-foreground/60">wk:</span>
-          <span>${weekly.cost_usd.toFixed(2)}</span>
-          <span className="text-muted-foreground/60">
-            ({formatTokens(weekly.total_tokens)})
-          </span>
+        <span className="flex items-center gap-1 text-muted-foreground/60">
+          <Clock className="h-3 w-3" />
+          {sevenDayCountdown}
         </span>
       </div>
     </footer>

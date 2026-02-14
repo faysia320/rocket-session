@@ -6,7 +6,7 @@ export function useUsage() {
   return useQuery({
     queryKey: usageKeys.info(),
     queryFn: () => usageApi.get(),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000, // 60초 (백엔드 캐시 TTL과 동일)
   });
 }
