@@ -12,6 +12,9 @@ services:
       - CLAUDE_WORK_DIR=/projects
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=8101
+      - GIT_USER_NAME=${GIT_USER_NAME}
+      - GIT_USER_EMAIL=${GIT_USER_EMAIL}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
     env_file:
       - .env.docker
     healthcheck:

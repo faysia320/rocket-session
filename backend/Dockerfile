@@ -25,6 +25,11 @@ COPY app/ app/
 # 데이터 디렉토리 생성
 RUN mkdir -p /app/data
 
+# entrypoint 스크립트 복사 (Git 인증 자동 설정)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 8101
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8101"]
