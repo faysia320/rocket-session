@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections import deque
@@ -36,10 +37,71 @@ class WebSocketManager:
         self._event_buffers: dict[str, deque[BufferedEvent]] = {}
         self._seq_counters: dict[str, int] = {}
         self._db: Database | None = None
+        self._event_queue: asyncio.Queue[tuple[str, int, str, str, str]] = asyncio.Queue()
+        self._flush_task: asyncio.Task | None = None
+        self._heartbeat_task: asyncio.Task | None = None
 
     def set_database(self, db: Database):
         """DB 참조 설정 (의존성 주입)."""
         self._db = db
+
+    async def start_background_tasks(self):
+        """배치 writer + heartbeat 백그라운드 태스크 시작."""
+        self._flush_task = asyncio.create_task(self._batch_writer_loop())
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+
+    async def stop_background_tasks(self):
+        """백그라운드 태스크 종료 + 잔여 이벤트 flush."""
+        if self._flush_task:
+            self._flush_task.cancel()
+            try:
+                await self._flush_task
+            except asyncio.CancelledError:
+                pass
+        if self._heartbeat_task:
+            self._heartbeat_task.cancel()
+            try:
+                await self._heartbeat_task
+            except asyncio.CancelledError:
+                pass
+        await self._flush_events()
+
+    async def _batch_writer_loop(self):
+        """0.5초 간격으로 큐에 쌓인 이벤트를 배치 DB 저장."""
+        while True:
+            await asyncio.sleep(0.5)
+            await self._flush_events()
+
+    async def _flush_events(self):
+        """큐의 이벤트를 한번에 executemany로 저장."""
+        batch: list[tuple[str, int, str, str, str]] = []
+        while not self._event_queue.empty():
+            try:
+                batch.append(self._event_queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+        if batch and self._db:
+            try:
+                await self._db.add_events_batch(batch)
+            except Exception as e:
+                logger.warning("이벤트 배치 DB 저장 실패 (%d건): %s", len(batch), e)
+
+    async def _heartbeat_loop(self):
+        """30초 간격 ping으로 dead 연결 감지."""
+        while True:
+            await asyncio.sleep(30)
+            for session_id, ws_list in list(self._connections.items()):
+                dead: list[WebSocket] = []
+                for ws in ws_list:
+                    try:
+                        if ws.client_state != WebSocketState.CONNECTED:
+                            dead.append(ws)
+                            continue
+                        await ws.send_json({"type": "ping"})
+                    except Exception:
+                        dead.append(ws)
+                for ws in dead:
+                    ws_list.remove(ws)
 
     def register(self, session_id: str, ws: WebSocket):
         if session_id not in self._connections:
@@ -81,18 +143,11 @@ class WebSocketManager:
             BufferedEvent(seq=seq, event_type=event_type, payload=message_with_seq, timestamp=ts)
         )
 
-        # DB 저장 (비동기, 실패해도 broadcast는 진행)
+        # DB 저장: 큐에 enqueue (배치 writer가 주기적으로 flush)
         if self._db:
-            try:
-                await self._db.add_event(
-                    session_id=session_id,
-                    seq=seq,
-                    event_type=event_type,
-                    payload=json.dumps(message_with_seq, ensure_ascii=False),
-                    timestamp=ts,
-                )
-            except Exception as e:
-                logger.warning("이벤트 DB 저장 실패 (세션 %s, seq %d): %s", session_id, seq, e)
+            self._event_queue.put_nowait(
+                (session_id, seq, event_type, json.dumps(message_with_seq, ensure_ascii=False), ts)
+            )
 
         # 연결된 클라이언트에 broadcast
         await self.broadcast(session_id, message_with_seq)

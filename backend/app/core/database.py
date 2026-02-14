@@ -213,9 +213,14 @@ class Database:
     async def list_sessions(self) -> list[dict]:
         cursor = await self.conn.execute(
             """SELECT s.*,
-                      (SELECT COUNT(*) FROM messages WHERE session_id = s.id) as message_count,
-                      (SELECT COUNT(*) FROM file_changes WHERE session_id = s.id) as file_changes_count
-               FROM sessions s ORDER BY s.created_at DESC"""
+                      COALESCE(mc.cnt, 0) as message_count,
+                      COALESCE(fc.cnt, 0) as file_changes_count
+               FROM sessions s
+               LEFT JOIN (SELECT session_id, COUNT(*) as cnt FROM messages GROUP BY session_id) mc
+                 ON mc.session_id = s.id
+               LEFT JOIN (SELECT session_id, COUNT(*) as cnt FROM file_changes GROUP BY session_id) fc
+                 ON fc.session_id = s.id
+               ORDER BY s.created_at DESC"""
         )
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
@@ -224,9 +229,33 @@ class Database:
         """단일 세션을 message_count, file_changes_count와 함께 조회."""
         cursor = await self.conn.execute(
             """SELECT s.*,
-                      (SELECT COUNT(*) FROM messages WHERE session_id = s.id) as message_count,
-                      (SELECT COUNT(*) FROM file_changes WHERE session_id = s.id) as file_changes_count
-               FROM sessions s WHERE s.id = ?""",
+                      COALESCE(mc.cnt, 0) as message_count,
+                      COALESCE(fc.cnt, 0) as file_changes_count
+               FROM sessions s
+               LEFT JOIN (SELECT session_id, COUNT(*) as cnt FROM messages WHERE session_id = ?) mc
+                 ON mc.session_id = s.id
+               LEFT JOIN (SELECT session_id, COUNT(*) as cnt FROM file_changes WHERE session_id = ?) fc
+                 ON fc.session_id = s.id
+               WHERE s.id = ?""",
+            (session_id, session_id, session_id),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        return dict(row)
+
+    async def get_session_stats(self, session_id: str) -> dict | None:
+        """세션별 누적 비용, 토큰, 메시지 수 통계."""
+        cursor = await self.conn.execute(
+            """SELECT
+                  COUNT(*) as total_messages,
+                  COALESCE(SUM(cost), 0) as total_cost,
+                  COALESCE(SUM(duration_ms), 0) as total_duration_ms,
+                  COALESCE(SUM(input_tokens), 0) as total_input_tokens,
+                  COALESCE(SUM(output_tokens), 0) as total_output_tokens,
+                  COALESCE(SUM(cache_creation_tokens), 0) as total_cache_creation_tokens,
+                  COALESCE(SUM(cache_read_tokens), 0) as total_cache_read_tokens
+               FROM messages WHERE session_id = ?""",
             (session_id,),
         )
         row = await cursor.fetchone()
@@ -418,6 +447,15 @@ class Database:
             """INSERT INTO events (session_id, seq, event_type, payload, timestamp)
                VALUES (?, ?, ?, ?, ?)""",
             (session_id, seq, event_type, payload, timestamp),
+        )
+        await self.conn.commit()
+
+    async def add_events_batch(self, events: list[tuple[str, int, str, str, str]]):
+        """이벤트 배치 저장. events: [(session_id, seq, event_type, payload, timestamp), ...]"""
+        await self.conn.executemany(
+            """INSERT INTO events (session_id, seq, event_type, payload, timestamp)
+               VALUES (?, ?, ?, ?, ?)""",
+            events,
         )
         await self.conn.commit()
 

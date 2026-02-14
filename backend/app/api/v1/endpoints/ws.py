@@ -16,6 +16,7 @@ from app.api.dependencies import (
     get_ws_manager,
 )
 from app.api.v1.endpoints.permissions import respond_permission
+from app.models.event_types import WsEventType
 from app.services.claude_runner import ClaudeRunner
 from app.services.session_manager import SessionManager
 from app.services.websocket_manager import WebSocketManager
@@ -47,14 +48,14 @@ async def _handle_prompt(
     """prompt 메시지 처리: 유효성 검사, 메시지 저장, runner task 생성."""
     prompt = data.get("prompt", "")
     if not prompt:
-        await ws.send_json({"type": "error", "message": "Empty prompt"})
+        await ws.send_json({"type": WsEventType.ERROR, "message": "Empty prompt"})
         return
 
     # 이미 실행 중인 runner가 있으면 거부
     existing_task = manager.get_runner_task(session_id)
     if existing_task:
         await ws.send_json(
-            {"type": "error", "message": "이미 실행 중인 요청이 있습니다"}
+            {"type": WsEventType.ERROR, "message": "이미 실행 중인 요청이 있습니다"}
         )
         return
 
@@ -104,7 +105,7 @@ async def _handle_prompt(
         "timestamp": ts,
     }
     await ws_manager.broadcast_event(
-        session_id, {"type": "user_message", "message": user_msg}
+        session_id, {"type": WsEventType.USER_MESSAGE, "message": user_msg}
     )
 
     # 글로벌 기본값으로 세션 설정 병합 (세션에 값이 없는 필드만)
@@ -146,7 +147,7 @@ async def _handle_stop(
 ) -> None:
     """stop 메시지 처리: 프로세스 종료 (kill_process가 runner_task도 취소)."""
     await manager.kill_process(session_id)
-    await ws_manager.broadcast_event(session_id, {"type": "stopped"})
+    await ws_manager.broadcast_event(session_id, {"type": WsEventType.STOPPED})
 
 
 async def _handle_permission_respond(data: dict) -> None:
@@ -169,7 +170,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
     session = await manager.get(session_id)
     if not session:
-        await ws.send_json({"type": "error", "message": "Session not found"})
+        await ws.send_json({"type": WsEventType.ERROR, "message": "Session not found"})
         await ws.close()
         return
 
@@ -194,7 +195,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
             # 재연결: 세션 상태만 전송 (히스토리 없음) + 놓친 이벤트 전송
             await ws.send_json(
                 {
-                    "type": "session_state",
+                    "type": WsEventType.SESSION_STATE,
                     "session": manager.to_info_dict(session_with_counts),
                     "latest_seq": latest_seq,
                     "is_reconnect": True,
@@ -206,7 +207,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
             if missed:
                 await ws.send_json(
                     {
-                        "type": "missed_events",
+                        "type": WsEventType.MISSED_EVENTS,
                         "events": missed,
                         "latest_seq": latest_seq,
                     }
@@ -215,7 +216,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
             # 최초 연결: 기존 로직 + latest_seq 필드 추가
             history = await manager.get_history(session_id)
             state_msg: dict = {
-                "type": "session_state",
+                "type": WsEventType.SESSION_STATE,
                 "session": manager.to_info_dict(session_with_counts),
                 "history": history,
                 "latest_seq": latest_seq,
@@ -250,7 +251,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                 await _handle_permission_respond(data)
 
             elif msg_type == "ping":
-                await ws.send_json({"type": "pong"})
+                await ws.send_json({"type": WsEventType.PONG})
 
     except WebSocketDisconnect:
         pass

@@ -141,6 +141,8 @@ async def test_broadcast_event_stores_in_db(ws_manager_with_db, db):
     message = {"type": "tool_use", "tool": "Read", "path": "test.py"}
 
     await ws_manager_with_db.broadcast_event(session_id, message)
+    # 배치 큐 flush (비동기 배치 저장이므로 명시적 flush 필요)
+    await ws_manager_with_db._flush_events()
 
     # DB에서 이벤트 조회
     rows = await db.get_events_after(session_id, 0)
@@ -261,6 +263,8 @@ async def test_get_buffered_events_after_db_fallback(ws_manager_with_db, db):
     # 이벤트 생성
     await ws_manager_with_db.broadcast_event(session_id, {"type": "status", "data": "idle"})
     await ws_manager_with_db.broadcast_event(session_id, {"type": "assistant", "text": "Hello"})
+    # 배치 큐 flush
+    await ws_manager_with_db._flush_events()
 
     # 인메모리 버퍼 정리
     ws_manager_with_db.clear_buffer(session_id)

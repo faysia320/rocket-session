@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.api.dependencies import get_ws_manager
+from app.models.event_types import WsEventType
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ async def request_permission(session_id: str, body: PermissionRequest):
     await ws_manager.broadcast_event(
         session_id,
         {
-            "type": "permission_request",
+            "type": WsEventType.PERMISSION_REQUEST,
             "permission_id": permission_id,
             "tool_name": body.tool_name,
             "tool_input": body.tool_input,
@@ -88,7 +89,7 @@ async def request_permission(session_id: str, body: PermissionRequest):
         await ws_manager.broadcast_event(
             session_id,
             {
-                "type": "permission_response",
+                "type": WsEventType.PERMISSION_RESPONSE,
                 "permission_id": permission_id,
                 "behavior": "deny",
                 "reason": "timeout",
@@ -113,7 +114,7 @@ async def respond_permission(permission_id: str, behavior: str) -> bool:
     await ws_manager.broadcast_event(
         entry["session_id"],
         {
-            "type": "permission_response",
+            "type": WsEventType.PERMISSION_RESPONSE,
             "permission_id": permission_id,
             "behavior": behavior,
         },

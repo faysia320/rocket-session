@@ -95,9 +95,10 @@ class TestExtractMetadata:
         jsonl_path = project_dir / "abc123.jsonl"
         write_jsonl(jsonl_path, sample_jsonl_content)
 
-        meta = scanner._extract_metadata(jsonl_path, "test-project", set())
+        result = scanner._extract_metadata(jsonl_path, "test-project", set())
 
-        assert meta is not None
+        assert result is not None
+        meta, _parent_id = result
         assert meta.session_id == "abc123"
         assert meta.project_dir == "test-project"
         assert meta.cwd == "/home/user/project"
@@ -121,9 +122,10 @@ class TestExtractMetadata:
         jsonl_path = project_dir / "empty123.jsonl"
         jsonl_path.touch()
 
-        meta = scanner._extract_metadata(jsonl_path, "home--user--project", set())
+        result = scanner._extract_metadata(jsonl_path, "home--user--project", set())
 
-        assert meta is not None
+        assert result is not None
+        meta, _parent_id = result
         assert meta.session_id == "empty123"
         assert meta.cwd == "home/user/project"  # -- → /, - → /
         assert meta.message_count == 0
@@ -144,9 +146,10 @@ class TestExtractMetadata:
             f.write("invalid json line\n")
             f.write(json.dumps(sample_jsonl_content[1], separators=(',', ':')) + "\n")
 
-        meta = scanner._extract_metadata(jsonl_path, "test-project", set())
+        result = scanner._extract_metadata(jsonl_path, "test-project", set())
 
-        assert meta is not None
+        assert result is not None
+        meta, _parent_id = result
         assert meta.cwd == "/home/user/project"
         assert meta.message_count == 1  # Only valid user message counted
 
@@ -162,9 +165,10 @@ class TestExtractMetadata:
         write_jsonl(jsonl_path, sample_jsonl_content)
 
         imported_ids = {"abc123"}
-        meta = scanner._extract_metadata(jsonl_path, "test-project", imported_ids)
+        result = scanner._extract_metadata(jsonl_path, "test-project", imported_ids)
 
-        assert meta is not None
+        assert result is not None
+        meta, _parent_id = result
         assert meta.already_imported is True
 
 

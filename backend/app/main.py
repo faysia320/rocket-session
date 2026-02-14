@@ -18,17 +18,37 @@ logging.basicConfig(
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
-from app.api.dependencies import get_settings, init_dependencies, shutdown_dependencies
+from app.api.dependencies import get_database, get_settings, get_ws_manager, init_dependencies, shutdown_dependencies
 from app.api.v1.api import api_router
 from app.api.v1.endpoints import ws
 from app.api.v1.endpoints.permissions import clear_pending
+
+
+async def _periodic_cleanup():
+    """1시간마다 오래된 이벤트 정리."""
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            db = get_database()
+            await db.cleanup_old_events(24)
+        except Exception as e:
+            logging.getLogger(__name__).warning("주기적 이벤트 정리 실패: %s", e)
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """앱 라이프사이클: DB 초기화 및 정리."""
     await init_dependencies()
+    ws_mgr = get_ws_manager()
+    await ws_mgr.start_background_tasks()
+    cleanup_task = asyncio.create_task(_periodic_cleanup())
     yield
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
+    await ws_mgr.stop_background_tasks()
     clear_pending()
     await shutdown_dependencies()
 
