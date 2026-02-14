@@ -75,60 +75,59 @@ export const GitActionsBar = memo(function GitActionsBar({
 
   return (
     <>
-      <span className="text-muted-foreground/70 text-xs">|</span>
-      {showCommit ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-success/70 hover:text-success hover:bg-success/10"
-              disabled={disabled}
-              onClick={handleCommit}
-              aria-label="Git Commit"
-            >
-              <GitCommitHorizontal className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Commit</TooltipContent>
-        </Tooltip>
-      ) : null}
-      {showPR ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-info/70 hover:text-info hover:bg-info/10"
-              disabled={disabled}
-              onClick={handlePR}
-              aria-label="GitHub PR"
-            >
-              <GitPullRequest className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Pull Request</TooltipContent>
-        </Tooltip>
-      ) : null}
-      {showRebase ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-warning/70 hover:text-warning hover:bg-warning/10"
-              disabled={disabled}
-              onClick={handleRebase}
-              aria-label="Git Rebase"
-            >
-              <GitMerge className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Rebase & Merge</TooltipContent>
-        </Tooltip>
-      ) : null}
-      {gitInfo.is_worktree ? (
-        <>
+      <div className="absolute right-4 -top-9 z-10 flex items-center gap-1 px-1.5 py-1 rounded-lg bg-card/90 backdrop-blur border border-border shadow-md">
+        {showCommit ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-success/70 hover:text-success hover:bg-success/10"
+                disabled={disabled}
+                onClick={handleCommit}
+                aria-label="Git Commit"
+              >
+                <GitCommitHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Commit</TooltipContent>
+          </Tooltip>
+        ) : null}
+        {showPR ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-info/70 hover:text-info hover:bg-info/10"
+                disabled={disabled}
+                onClick={handlePR}
+                aria-label="GitHub PR"
+              >
+                <GitPullRequest className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Pull Request</TooltipContent>
+          </Tooltip>
+        ) : null}
+        {showRebase ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-warning/70 hover:text-warning hover:bg-warning/10"
+                disabled={disabled}
+                onClick={handleRebase}
+                aria-label="Git Rebase"
+              >
+                <GitMerge className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Rebase & Merge</TooltipContent>
+          </Tooltip>
+        ) : null}
+        {gitInfo.is_worktree ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -144,34 +143,36 @@ export const GitActionsBar = memo(function GitActionsBar({
             </TooltipTrigger>
             <TooltipContent>워크트리 삭제</TooltipContent>
           </Tooltip>
-          <AlertDialog
-            open={deleteConfirmOpen}
-            onOpenChange={setDeleteConfirmOpen}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="font-mono text-sm">
-                  워크트리를 삭제하시겠습니까?
-                </AlertDialogTitle>
-                <AlertDialogDescription className="font-mono text-xs">
-                  이 워크트리 디렉토리가 삭제됩니다. 미커밋 변경사항이 있으면
-                  강제 삭제됩니다.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="font-mono text-xs">
-                  취소
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  className="font-mono text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => onRemoveWorktree?.()}
-                >
-                  삭제
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
+        ) : null}
+      </div>
+      {gitInfo.is_worktree ? (
+        <AlertDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-mono text-sm">
+                워크트리를 삭제하시겠습니까?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="font-mono text-xs">
+                이 워크트리 디렉토리가 삭제됩니다. 미커밋 변경사항이 있으면
+                강제 삭제됩니다.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="font-mono text-xs">
+                취소
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="font-mono text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => onRemoveWorktree?.()}
+              >
+                삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       ) : null}
     </>
   );

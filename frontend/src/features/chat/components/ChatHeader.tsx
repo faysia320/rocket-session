@@ -8,41 +8,34 @@ import {
   Menu,
 } from "lucide-react";
 import { sessionsApi } from "@/lib/api/sessions.api";
-import { ModeIndicator } from "./ModeIndicator";
 import { ModelSelector } from "./ModelSelector";
 import { SessionSettings } from "@/features/session/components/SessionSettings";
 import { FilePanel } from "@/features/files/components/FilePanel";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import type { FileChange, SessionMode, GitInfo } from "@/types";
+import type { FileChange, GitInfo } from "@/types";
 import type { ReconnectState } from "../hooks/useClaudeSocket";
-import { GitActionsBar } from "./GitActionsBar";
 interface ChatHeaderProps {
   connected: boolean;
   workDir?: string;
   gitInfo: GitInfo | null;
-  mode: SessionMode;
   status: "idle" | "running";
   sessionId: string;
   fileChanges: FileChange[];
   reconnectState?: ReconnectState;
   searchOpen?: boolean;
   onToggleSearch?: () => void;
-  onToggleMode: () => void;
   onFileClick: (change: FileChange) => void;
   settingsOpen: boolean;
   onSettingsOpenChange: (open: boolean) => void;
   filesOpen: boolean;
   onFilesOpenChange: (open: boolean) => void;
   onRetryConnect?: () => void;
-  onSendPrompt: (prompt: string) => void;
-  onRemoveWorktree?: () => void;
   onMenuToggle?: () => void;
   currentModel?: string | null;
 }
@@ -51,22 +44,18 @@ export const ChatHeader = memo(function ChatHeader({
   connected,
   workDir,
   gitInfo,
-  mode,
   status,
   sessionId,
   fileChanges,
   reconnectState,
   searchOpen,
   onToggleSearch,
-  onToggleMode,
   onFileClick,
   settingsOpen,
   onSettingsOpenChange,
   filesOpen,
   onFilesOpenChange,
   onRetryConnect,
-  onSendPrompt,
-  onRemoveWorktree,
   onMenuToggle,
   currentModel,
 }: ChatHeaderProps) {
@@ -87,21 +76,30 @@ export const ChatHeader = memo(function ChatHeader({
         <span
           className={cn(
             "w-[7px] h-[7px] rounded-full transition-all",
-            connected
-              ? "bg-success shadow-[0_0_8px_hsl(var(--success))]"
-              : reconnectState?.status === "reconnecting"
+            !connected
+              ? reconnectState?.status === "reconnecting"
                 ? "bg-warning animate-pulse"
-                : "bg-destructive",
+                : "bg-destructive"
+              : status === "running"
+                ? "bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]"
+                : "bg-success shadow-[0_0_8px_hsl(var(--success))]",
           )}
         />
-        <span className="font-mono text-xs text-muted-foreground">
-          {connected
-            ? "Connected"
-            : reconnectState?.status === "reconnecting"
+        <span className={cn(
+          "font-mono text-xs",
+          status === "running" && connected
+            ? "text-primary font-semibold"
+            : "text-muted-foreground",
+        )}>
+          {!connected
+            ? reconnectState?.status === "reconnecting"
               ? `Reconnecting (${reconnectState.attempt}/${reconnectState.maxAttempts})`
               : reconnectState?.status === "failed"
                 ? "Connection Failed"
-                : "Disconnected"}
+                : "Disconnected"
+            : status === "running"
+              ? "Running"
+              : "Connected"}
         </span>
         {reconnectState?.status === "failed" && onRetryConnect ? (
           <button
@@ -135,30 +133,13 @@ export const ChatHeader = memo(function ChatHeader({
             </span>
           </span>
         ) : null}
-        <GitActionsBar
-          gitInfo={gitInfo}
-          status={status}
-          connected={connected}
-          onSendPrompt={onSendPrompt}
-          onRemoveWorktree={onRemoveWorktree}
-        />
       </div>
       <div className="flex items-center gap-2">
-        <ModeIndicator mode={mode} onToggle={onToggleMode} />
         <ModelSelector
           sessionId={sessionId}
           currentModel={currentModel}
           disabled={status === "running"}
         />
-        {status === "running" ? (
-          <Badge
-            variant="outline"
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 text-primary border-primary/20 font-mono text-[11px]"
-          >
-            <span className="inline-block w-2.5 h-2.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            Running
-          </Badge>
-        ) : null}
         {onToggleSearch ? (
           <Button
             variant="outline"
