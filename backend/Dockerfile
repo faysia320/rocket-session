@@ -25,9 +25,9 @@ COPY app/ app/
 # 데이터 디렉토리 생성
 RUN mkdir -p /app/data
 
-# entrypoint 스크립트 복사 (Git 인증 자동 설정)
+# entrypoint 스크립트 복사 (CRLF→LF 변환 + 실행 권한)
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 EXPOSE 8101
 

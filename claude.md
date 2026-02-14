@@ -539,7 +539,6 @@ get_usage_service()      # UsageService (Settings 의존)
 ```env
 CLAUDE_WORK_DIR=/path/to/your/project    # Claude 작업 디렉토리
 CLAUDE_ALLOWED_TOOLS=Read,Write,Edit,Bash # 허용 도구
-CLAUDE_MODEL=sonnet                       # 모델 (선택사항)
 CLAUDE_PLAN=Max                           # 플랜 (Max/Pro, 사용량 표시용)
 BACKEND_HOST=0.0.0.0                      # 서버 호스트
 BACKEND_PORT=8101                         # 서버 포트

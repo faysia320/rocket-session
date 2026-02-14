@@ -142,8 +142,7 @@ class ClaudeRunner:
         if allowed_tools:
             cmd.extend(["--allowedTools", allowed_tools])
 
-        # model: 세션 > env
-        model = session.get("model") or self._settings.claude_model
+        model = session.get("model")
         if model:
             cmd.extend(["--model", model])
 
