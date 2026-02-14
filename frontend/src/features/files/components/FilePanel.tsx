@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { ChevronRight, Maximize2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,6 +13,44 @@ import { cn, formatTime } from "@/lib/utils";
 import { getToolBadgeStyle } from "../constants/toolColors";
 import type { FileChange } from "@/types";
 
+/** 동일 파일의 변경 이력을 병합한 항목 */
+interface MergedFileChange {
+  file: string;
+  tools: string[];
+  count: number;
+  lastTimestamp?: string;
+  /** onFileClick에 전달할 대표 FileChange (마지막 변경) */
+  latest: FileChange;
+}
+
+/** FileChange 배열을 파일 경로 기준으로 병합 (마지막 변경 기준 정렬) */
+function mergeFileChanges(changes: FileChange[]): MergedFileChange[] {
+  const map = new Map<string, MergedFileChange>();
+
+  for (const change of changes) {
+    const existing = map.get(change.file);
+    if (existing) {
+      existing.count += 1;
+      if (!existing.tools.includes(change.tool)) {
+        existing.tools.push(change.tool);
+      }
+      existing.lastTimestamp = change.timestamp;
+      existing.latest = change;
+    } else {
+      map.set(change.file, {
+        file: change.file,
+        tools: [change.tool],
+        count: 1,
+        lastTimestamp: change.timestamp,
+        latest: change,
+      });
+    }
+  }
+
+  // 마지막 변경 시간 역순 (최근 변경이 위로)
+  return Array.from(map.values()).reverse();
+}
+
 interface FilePanelProps {
   sessionId: string;
   fileChanges?: FileChange[];
@@ -24,6 +62,9 @@ export function FilePanel({
   fileChanges = [],
   onFileClick,
 }: FilePanelProps) {
+  const merged = useMemo(() => mergeFileChanges(fileChanges), [fileChanges]);
+  const uniqueCount = merged.length;
+
   return (
     <div className="flex flex-col overflow-hidden flex-1 min-h-0">
       <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-border">
@@ -32,12 +73,14 @@ export function FilePanel({
           File Changes
         </span>
         <Badge variant="secondary" className="font-mono text-[10px]">
-          {fileChanges.length}
+          {uniqueCount === fileChanges.length
+            ? fileChanges.length
+            : `${uniqueCount} files / ${fileChanges.length} edits`}
         </Badge>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0 p-2">
-        {fileChanges.length === 0 ? (
+      <ScrollArea className="flex-1 min-h-0 h-0 p-2">
+        {merged.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
             <div className="text-[28px] mb-2 opacity-40">{"\u{1F4C2}"}</div>
             <div className="font-mono text-xs text-muted-foreground mb-1">
@@ -48,11 +91,11 @@ export function FilePanel({
             </div>
           </div>
         ) : (
-          fileChanges.map((change, i) => (
-            <FileChangeItem
-              key={i}
+          merged.map((item) => (
+            <MergedFileChangeItem
+              key={item.file}
               sessionId={sessionId}
-              change={change}
+              item={item}
               onFullView={onFileClick}
             />
           ))
@@ -72,17 +115,17 @@ function shortenFilePath(filePath: string): string {
   return ".../" + parts.slice(-3).join("/");
 }
 
-interface FileChangeItemProps {
+interface MergedFileChangeItemProps {
   sessionId: string;
-  change: FileChange;
+  item: MergedFileChange;
   onFullView?: (change: FileChange) => void;
 }
 
-function FileChangeItem({
+function MergedFileChangeItem({
   sessionId,
-  change,
+  item,
   onFullView,
-}: FileChangeItemProps) {
+}: MergedFileChangeItemProps) {
   const [open, setOpen] = useState(false);
   const [diff, setDiff] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -93,7 +136,7 @@ function FileChangeItem({
       if (isOpen && diff === null) {
         setLoading(true);
         try {
-          const result = await sessionsApi.fileDiff(sessionId, change.file);
+          const result = await sessionsApi.fileDiff(sessionId, item.file);
           setDiff(result);
         } catch {
           setDiff("");
@@ -102,15 +145,15 @@ function FileChangeItem({
         }
       }
     },
-    [sessionId, change.file, diff],
+    [sessionId, item.file, diff],
   );
 
   const handleFullView = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      onFullView?.(change);
+      onFullView?.(item.latest);
     },
-    [onFullView, change],
+    [onFullView, item.latest],
   );
 
   return (
@@ -119,7 +162,7 @@ function FileChangeItem({
         <button
           type="button"
           className="w-full text-left p-2 px-2.5 bg-secondary border border-border rounded-sm animate-[fadeIn_0.2s_ease] hover:border-primary/30 hover:bg-secondary/80 transition-colors cursor-pointer"
-          aria-label={`Diff 보기: ${change.file}`}
+          aria-label={`Diff 보기: ${item.file}`}
         >
           <div className="flex items-center gap-1.5 mb-1">
             <ChevronRight
@@ -128,21 +171,29 @@ function FileChangeItem({
                 open && "rotate-90",
               )}
             />
-            <Badge
-              variant="outline"
-              className="font-mono text-[10px]"
-              style={getToolBadgeStyle(change.tool)}
-            >
-              {change.tool}
-            </Badge>
+            {item.tools.map((tool) => (
+              <Badge
+                key={tool}
+                variant="outline"
+                className="font-mono text-[10px]"
+                style={getToolBadgeStyle(tool)}
+              >
+                {tool}
+              </Badge>
+            ))}
+            {item.count > 1 ? (
+              <Badge variant="secondary" className="font-mono text-[10px]">
+                {`\u00D7${item.count}`}
+              </Badge>
+            ) : null}
             <span className="font-mono text-[10px] text-muted-foreground/70 ml-auto shrink-0">
-              {formatTime(change.timestamp)}
+              {item.lastTimestamp ? formatTime(item.lastTimestamp) : null}
             </span>
             <button
               type="button"
               className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0"
               onClick={handleFullView}
-              aria-label={`전체 보기: ${change.file}`}
+              aria-label={`전체 보기: ${item.file}`}
               title="전체 보기"
             >
               <Maximize2 className="h-3 w-3 text-muted-foreground" />
@@ -150,9 +201,9 @@ function FileChangeItem({
           </div>
           <div
             className="font-mono text-[11px] text-primary break-all pl-5"
-            title={change.file}
+            title={item.file}
           >
-            {shortenFilePath(change.file)}
+            {shortenFilePath(item.file)}
           </div>
         </button>
       </CollapsibleTrigger>
