@@ -9,6 +9,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.api.dependencies import (
     get_claude_runner,
+    get_jsonl_watcher,
     get_session_manager,
     get_settings,
     get_settings_service,
@@ -161,6 +162,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
     ws_manager = get_ws_manager()
     settings = get_settings()
     runner = get_claude_runner()
+    jsonl_watcher = get_jsonl_watcher()
 
     session = await manager.get(session_id)
     if not session:
@@ -174,10 +176,16 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
     ws_manager.register(session_id, ws)
 
+    # JSONL 감시 자동 시작 (import된 세션 + 활성 JSONL 파일)
+    await jsonl_watcher.try_auto_start(session_id)
+
     try:
         session_with_counts = await manager.get_with_counts(session_id) or session
         latest_seq = ws_manager.get_latest_seq(session_id)
-        is_running = manager.get_runner_task(session_id) is not None
+        is_running = (
+            manager.get_runner_task(session_id) is not None
+            or jsonl_watcher.is_watching(session_id)
+        )
 
         if last_seq is not None:
             # 재연결: 세션 상태만 전송 (히스토리 없음) + 놓친 이벤트 전송

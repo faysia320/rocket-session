@@ -225,6 +225,21 @@ class Database:
         )
         await self.conn.commit()
 
+    async def update_session_jsonl_path(self, session_id: str, jsonl_path: str):
+        """세션의 JSONL 파일 경로 업데이트."""
+        await self.conn.execute(
+            "UPDATE sessions SET jsonl_path = ? WHERE id = ?", (jsonl_path, session_id)
+        )
+        await self.conn.commit()
+
+    async def get_session_jsonl_path(self, session_id: str) -> str | None:
+        """세션의 JSONL 파일 경로 조회."""
+        cursor = await self.conn.execute(
+            "SELECT jsonl_path FROM sessions WHERE id = ?", (session_id,)
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else None
+
     async def update_claude_session_id(self, session_id: str, claude_session_id: str):
         await self.conn.execute(
             "UPDATE sessions SET claude_session_id = ? WHERE id = ?",

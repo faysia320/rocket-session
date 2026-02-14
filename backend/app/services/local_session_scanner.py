@@ -309,6 +309,11 @@ class LocalSessionScanner:
         # claude_session_id 연결 (--resume에 사용)
         await session_manager.update_claude_session_id(dashboard_id, session_id)
 
+        # JSONL 파일 경로 저장 (실시간 감시용)
+        await self._db.update_session_jsonl_path(
+            dashboard_id, str(jsonl_path)
+        )
+
         # root JSONL + continuation JSONL 순서대로 메시지 파싱
         all_jsonl_paths = [jsonl_path]
         for cont_id in continuation_chain:

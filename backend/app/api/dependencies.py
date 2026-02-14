@@ -6,6 +6,7 @@ from app.core.config import Settings
 from app.core.database import Database
 from app.services.claude_runner import ClaudeRunner
 from app.services.filesystem_service import FilesystemService
+from app.services.jsonl_watcher import JsonlWatcher
 from app.services.local_session_scanner import LocalSessionScanner
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
@@ -21,6 +22,7 @@ _ws_manager = WebSocketManager()
 _filesystem_service = FilesystemService()
 _claude_runner: ClaudeRunner | None = None
 _settings_service: SettingsService | None = None
+_jsonl_watcher: JsonlWatcher | None = None
 
 
 @lru_cache()
@@ -73,9 +75,15 @@ def get_settings_service() -> SettingsService:
     return _settings_service
 
 
+def get_jsonl_watcher() -> JsonlWatcher:
+    if _jsonl_watcher is None:
+        raise RuntimeError("JsonlWatcher가 초기화되지 않았습니다")
+    return _jsonl_watcher
+
+
 async def init_dependencies():
     """앱 시작 시 DB 및 SessionManager 초기화."""
-    global _database, _session_manager, _local_scanner, _usage_service, _settings_service
+    global _database, _session_manager, _local_scanner, _usage_service, _settings_service, _jsonl_watcher
     settings = get_settings()
     _database = Database(settings.database_path)
     await _database.initialize()
@@ -84,6 +92,7 @@ async def init_dependencies():
     _local_scanner = LocalSessionScanner(_database)
     _usage_service = UsageService(settings)
     _settings_service = SettingsService(_database)
+    _jsonl_watcher = JsonlWatcher(_session_manager, _ws_manager)
 
     # 서버 재시작 시 프로세스/task가 없는 stale running 세션을 idle로 복구
     await _database.conn.execute(
@@ -100,7 +109,9 @@ async def init_dependencies():
 
 async def shutdown_dependencies():
     """앱 종료 시 DB 연결 정리."""
-    global _database, _session_manager, _local_scanner, _usage_service, _claude_runner, _settings_service
+    global _database, _session_manager, _local_scanner, _usage_service, _claude_runner, _settings_service, _jsonl_watcher
+    if _jsonl_watcher:
+        _jsonl_watcher.stop_all()
     if _database:
         await _database.close()
     _database = None
@@ -109,3 +120,4 @@ async def shutdown_dependencies():
     _usage_service = None
     _claude_runner = None
     _settings_service = None
+    _jsonl_watcher = None
