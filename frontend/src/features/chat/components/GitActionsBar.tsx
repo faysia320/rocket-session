@@ -43,7 +43,7 @@ export const GitActionsBar = memo(function GitActionsBar({
   const hasChanges = gitInfo?.is_dirty || gitInfo?.has_untracked || false;
 
   const handleCommit = useCallback(() => {
-    onSendPrompt("/git-commit --no-history");
+    onSendPrompt("/git-commit");
   }, [onSendPrompt]);
 
   const handlePR = useCallback(() => {
