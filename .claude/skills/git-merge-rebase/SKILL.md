@@ -51,6 +51,7 @@ git rebase origin/main
 충돌이 발생하면:
 
 1. **충돌 파일 확인**
+
    ```bash
    git status
    git diff --name-only --diff-filter=U
@@ -66,6 +67,7 @@ git rebase origin/main
    - **수동 병합**: 양쪽 변경사항을 조합
 
 4. **충돌 해결 후**
+
    ```bash
    git add <resolved-files>
    git rebase --continue
@@ -98,31 +100,22 @@ git merge <branch-name> --ff-only
 git push origin main
 ```
 
-### 7단계: 정리 작업
-
-`--no-cleanup` 옵션이 없으면 자동 정리:
+### 7단계: worktree 브랜치 이동
 
 ```bash
-# 1. Worktree 삭제
-git worktree remove .worktrees/wt-<branch-name>
-
-# 2. 로컬 브랜치 삭제
-git branch -d <branch-name>
-
-# 3. 원격 브랜치 삭제 (있는 경우)
-git push origin --delete <branch-name>
+cd <worktree-path>
 ```
 
 ## 충돌 해결 가이드
 
 ### 일반적인 충돌 유형
 
-| 유형 | 설명 | 권장 해결 방법 |
-|------|------|----------------|
-| **동일 라인 수정** | 같은 줄을 양쪽에서 수정 | 내용 검토 후 수동 병합 |
-| **파일 삭제 vs 수정** | 한쪽은 삭제, 한쪽은 수정 | 의도 확인 후 선택 |
-| **이름 변경 충돌** | 파일명/변수명 변경 충돌 | 최신 네이밍 컨벤션 따름 |
-| **import 충돌** | 같은 위치에 다른 import 추가 | 모두 포함하고 정렬 |
+| 유형                  | 설명                         | 권장 해결 방법          |
+| --------------------- | ---------------------------- | ----------------------- |
+| **동일 라인 수정**    | 같은 줄을 양쪽에서 수정      | 내용 검토 후 수동 병합  |
+| **파일 삭제 vs 수정** | 한쪽은 삭제, 한쪽은 수정     | 의도 확인 후 선택       |
+| **이름 변경 충돌**    | 파일명/변수명 변경 충돌      | 최신 네이밍 컨벤션 따름 |
+| **import 충돌**       | 같은 위치에 다른 import 추가 | 모두 포함하고 정렬      |
 
 ### 충돌 해결 명령어
 
@@ -140,17 +133,10 @@ git diff --name-only --diff-filter=U
 git diff
 ```
 
-## 옵션
-
-| 옵션 | 설명 |
-|------|------|
-| `--no-cleanup` | 병합 후 worktree 및 브랜치 삭제하지 않음 |
-
 ## 사용 예시
 
 ```
 /git-merge-rebase              # rebase 병합 + 정리
-/git-merge-rebase --no-cleanup # rebase 병합만 (정리 안함)
 ```
 
 ## 전체 워크플로우 요약
@@ -164,7 +150,6 @@ git diff
 6. git checkout main && git pull
 7. git merge <branch> --ff-only
 8. git push origin main
-9. [정리] worktree 삭제, 브랜치 삭제
 ```
 
 ## 주의사항
