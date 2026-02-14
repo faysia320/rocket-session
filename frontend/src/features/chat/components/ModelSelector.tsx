@@ -9,7 +9,7 @@ import {
 import { sessionsApi } from '@/lib/api/sessions.api';
 
 const MODELS = [
-  { value: '', label: 'Default' },
+  { value: 'default', label: 'Default' },
   { value: 'opus', label: 'Opus' },
   { value: 'sonnet', label: 'Sonnet' },
   { value: 'haiku', label: 'Haiku' },
@@ -26,15 +26,15 @@ export const ModelSelector = memo(function ModelSelector({
   currentModel,
   disabled = false,
 }: ModelSelectorProps) {
-  const [value, setValue] = useState(currentModel || '');
+  const [value, setValue] = useState(currentModel || 'default');
 
   useEffect(() => {
-    setValue(currentModel || '');
+    setValue(currentModel || 'default');
   }, [currentModel]);
 
   const handleChange = (newValue: string) => {
     setValue(newValue);
-    sessionsApi.update(sessionId, { model: newValue || null }).catch(() => {});
+    sessionsApi.update(sessionId, { model: newValue === 'default' ? null : newValue }).catch(() => {});
   };
 
   return (
