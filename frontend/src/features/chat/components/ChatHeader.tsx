@@ -190,7 +190,7 @@ export const ChatHeader = memo(function ChatHeader({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[calc(100vw-2rem)] md:w-[560px] max-h-[70vh] p-0 bg-card border-border flex flex-col"
+            className="w-[calc(100vw-2rem)] md:w-[560px] max-h-[70vh] p-0 bg-card border-border flex flex-col overflow-hidden"
             align="end"
           >
             <FilePanel
