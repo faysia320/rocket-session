@@ -58,7 +58,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
             <DollarSign className="h-3 w-3 text-primary/70" />
             <span
               className={cn(
-                "font-mono text-[10px]",
+                "font-mono text-2xs",
                 stats.total_cost > 1
                   ? "text-warning font-semibold"
                   : "text-muted-foreground",
@@ -77,7 +77,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1 cursor-default">
             <Zap className="h-3 w-3 text-info/70" />
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="font-mono text-2xs text-muted-foreground">
               {formatTokens(
                 stats.total_input_tokens + stats.total_output_tokens,
               )}
@@ -106,7 +106,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1 cursor-default">
             <Clock className="h-3 w-3 text-muted-foreground/70" />
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="font-mono text-2xs text-muted-foreground">
               {formatDuration(stats.total_duration_ms)}
             </span>
           </div>
@@ -116,7 +116,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
         </TooltipContent>
       </Tooltip>
 
-      <span className="font-mono text-[10px] text-muted-foreground/50">
+      <span className="font-mono text-2xs text-muted-foreground/50">
         {stats.total_messages} msgs
       </span>
 

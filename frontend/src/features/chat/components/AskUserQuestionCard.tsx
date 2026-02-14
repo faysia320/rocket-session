@@ -64,7 +64,7 @@ export const AskUserQuestionCard = memo(function AskUserQuestionCard({
               disabled={!allAnswered}
               onClick={() => onConfirm(message.id)}
               className={cn(
-                "font-mono text-[11px] font-semibold px-3 py-1.5 rounded transition-colors",
+                "font-mono text-xs font-semibold px-3 py-1.5 rounded transition-colors",
                 allAnswered
                   ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "bg-muted text-muted-foreground cursor-not-allowed",
@@ -134,11 +134,11 @@ function QuestionItem({
   return (
     <div>
       {question.header ? (
-        <div className="font-mono text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+        <div className="font-mono text-2xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
           {question.header}
         </div>
       ) : null}
-      <div className="font-mono text-[12px] text-foreground mb-1.5">
+      <div className="font-mono text-sm text-foreground mb-1.5">
         {question.question}
       </div>
 
@@ -165,11 +165,11 @@ function QuestionItem({
                     className="mt-0.5"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="font-mono text-[11px] font-semibold text-foreground">
+                    <div className="font-mono text-xs font-semibold text-foreground">
                       {opt.label}
                     </div>
                     {opt.description ? (
-                      <div className="font-mono text-[10px] text-muted-foreground leading-tight">
+                      <div className="font-mono text-2xs text-muted-foreground leading-tight">
                         {opt.description}
                       </div>
                     ) : null}
@@ -205,11 +205,11 @@ function QuestionItem({
                   ) : null}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-mono text-[11px] font-semibold text-foreground">
+                  <div className="font-mono text-xs font-semibold text-foreground">
                     {opt.label}
                   </div>
                   {opt.description ? (
-                    <div className="font-mono text-[10px] text-muted-foreground leading-tight">
+                    <div className="font-mono text-2xs text-muted-foreground leading-tight">
                       {opt.description}
                     </div>
                   ) : null}
@@ -252,14 +252,14 @@ function QuestionItem({
                   ) : null}
                 </span>
               )}
-              <span className="font-mono text-[11px] font-semibold text-foreground">
+              <span className="font-mono text-xs font-semibold text-foreground">
                 Other
               </span>
             </button>
             {isCustom ? (
               <div className="flex gap-1.5 mt-1 ml-5">
                 <input
-                  className="flex-1 font-mono text-[11px] bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
+                  className="flex-1 font-mono text-xs bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
                   placeholder="custom answer"
                   value={customText}
                   onChange={(e) => setCustomText(e.target.value)}
@@ -276,7 +276,7 @@ function QuestionItem({
                   type="button"
                   disabled={disabled || !customText.trim()}
                   onClick={handleCustomTextConfirm}
-                  className="font-mono text-[10px] font-semibold px-2 py-1 rounded bg-primary/80 text-primary-foreground hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="font-mono text-2xs font-semibold px-2 py-1 rounded bg-primary/80 text-primary-foreground hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="apply custom answer"
                 >
                   OK
@@ -289,7 +289,7 @@ function QuestionItem({
         /* options가 없는 경우: 자유 입력 */
         <div>
           <textarea
-            className="w-full font-mono text-[11px] bg-input border border-border rounded px-2.5 py-1.5 outline-none focus:border-primary/50 resize-none min-h-[60px]"
+            className="w-full font-mono text-xs bg-input border border-border rounded px-2.5 py-1.5 outline-none focus:border-primary/50 resize-none min-h-[60px]"
             placeholder="answer here"
             value={selected[0] || ""}
             onChange={(e) =>

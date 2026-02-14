@@ -191,7 +191,7 @@ export function ImportLocalDialog({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-1.5 ml-auto font-mono text-[10px] text-muted-foreground"
+                  className="h-6 px-1.5 ml-auto font-mono text-2xs text-muted-foreground"
                   onClick={toggleAll}
                   aria-label={allCollapsed ? "모두 펼치기" : "모두 접기"}
                 >
@@ -230,7 +230,7 @@ export function ImportLocalDialog({
                           )}
                           <FolderOpen className="h-3 w-3 text-muted-foreground shrink-0" />
                           <span
-                            className="font-mono text-[10px] text-muted-foreground truncate"
+                            className="font-mono text-2xs text-muted-foreground truncate"
                             title={item.cwd}
                           >
                             {truncateCwd(item.cwd)}
@@ -291,7 +291,7 @@ function SessionRow({
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-[11px] font-medium text-foreground truncate">
+          <span className="font-mono text-xs font-medium text-foreground truncate">
             {displayName}
           </span>
           {meta.already_imported ? (
@@ -324,7 +324,7 @@ function SessionRow({
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 px-2 font-mono text-[10px] shrink-0"
+        className="h-7 px-2 font-mono text-2xs shrink-0"
         disabled={meta.already_imported || importing}
         onClick={onImport}
         aria-label={`${displayName} import`}

@@ -474,7 +474,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       {searchOpen ? (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-secondary/50">
           <input
-            className="flex-1 font-mono text-[13px] bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
+            className="flex-1 font-mono text-md bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
             placeholder="메시지 검색…"
             aria-label="메시지 검색"
             value={searchQuery}
@@ -495,7 +495,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             autoFocus
           />
           <span
-            className="font-mono text-[11px] text-muted-foreground shrink-0"
+            className="font-mono text-xs text-muted-foreground shrink-0"
             aria-live="polite"
           >
             {searchMatches.length > 0
@@ -506,7 +506,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           </span>
           <button
             type="button"
-            className="font-mono text-[11px] text-muted-foreground hover:text-foreground px-1"
+            className="font-mono text-xs text-muted-foreground hover:text-foreground px-1"
             onClick={() =>
               setSearchMatchIndex((p) =>
                 p > 0 ? p - 1 : searchMatches.length - 1,
@@ -519,7 +519,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           </button>
           <button
             type="button"
-            className="font-mono text-[11px] text-muted-foreground hover:text-foreground px-1"
+            className="font-mono text-xs text-muted-foreground hover:text-foreground px-1"
             onClick={() =>
               setSearchMatchIndex(
                 (p) => (p + 1) % Math.max(searchMatches.length, 1),
@@ -532,7 +532,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           </button>
           <button
             type="button"
-            className="font-mono text-[13px] text-muted-foreground hover:text-foreground px-1 ml-1"
+            className="font-mono text-md text-muted-foreground hover:text-foreground px-1 ml-1"
             onClick={handleToggleSearch}
             aria-label="검색 닫기"
           >
@@ -566,7 +566,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             <div className="font-mono text-[32px] text-primary animate-[blink_1.2s_ease-in-out_infinite]">
               {">"}_
             </div>
-            <div className="font-mono text-[13px] text-muted-foreground">
+            <div className="font-mono text-md text-muted-foreground">
               Claude Code에 프롬프트를 입력하세요
             </div>
           </div>

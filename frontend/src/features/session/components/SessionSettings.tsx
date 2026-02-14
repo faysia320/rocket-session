@@ -144,7 +144,7 @@ export function SessionSettings({
             <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
               MODEL
             </Label>
-            <p className="font-mono text-[10px] text-muted-foreground/70">
+            <p className="font-mono text-2xs text-muted-foreground/70">
               Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는 기본값을
               사용합니다.
             </p>
@@ -165,7 +165,7 @@ export function SessionSettings({
             <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
               ALLOWED TOOLS
             </Label>
-            <p className="font-mono text-[10px] text-muted-foreground/70">
+            <p className="font-mono text-2xs text-muted-foreground/70">
               Claude CLI에 허용할 도구를 선택하세요. 미선택 시 전역 설정이
               적용됩니다.
             </p>
@@ -194,7 +194,7 @@ export function SessionSettings({
             <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
               DISALLOWED TOOLS
             </Label>
-            <p className="font-mono text-[10px] text-muted-foreground/70">
+            <p className="font-mono text-2xs text-muted-foreground/70">
               Claude CLI에서 사용을 금지할 도구입니다.
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -226,7 +226,7 @@ export function SessionSettings({
             <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
               SYSTEM PROMPT
             </Label>
-            <p className="font-mono text-[10px] text-muted-foreground/70">
+            <p className="font-mono text-2xs text-muted-foreground/70">
               세션에 주입할 시스템 지시사항입니다.
             </p>
             <Textarea
@@ -280,7 +280,7 @@ export function SessionSettings({
                 도구 실행 전 확인 요청 활성화
               </span>
             </label>
-            <p className="font-mono text-[10px] text-muted-foreground/70">
+            <p className="font-mono text-2xs text-muted-foreground/70">
               활성화하면 아래 선택한 도구 실행 시 사용자 승인을 요청합니다.
             </p>
             {permissionMode ? (
@@ -310,7 +310,7 @@ export function SessionSettings({
             <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
               MAX TURNS
             </Label>
-            <p className="font-mono text-[10px] text-muted-foreground/70">
+            <p className="font-mono text-2xs text-muted-foreground/70">
               에이전트 턴 최대 횟수입니다. 비워두면 무제한입니다.
             </p>
             <Input
@@ -328,7 +328,7 @@ export function SessionSettings({
             <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
               MAX BUDGET (USD)
             </Label>
-            <p className="font-mono text-[10px] text-muted-foreground/70">
+            <p className="font-mono text-2xs text-muted-foreground/70">
               세션당 최대 비용 한도입니다. 비워두면 제한 없음.
             </p>
             <Input
@@ -347,7 +347,7 @@ export function SessionSettings({
             <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
               TIMEOUT (분)
             </Label>
-            <p className="font-mono text-[10px] text-muted-foreground/70">
+            <p className="font-mono text-2xs text-muted-foreground/70">
               프로세스 최대 실행 시간. 비워두면 무제한입니다.
             </p>
             <Input

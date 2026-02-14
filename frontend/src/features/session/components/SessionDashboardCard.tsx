@@ -101,7 +101,7 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
         </span>
         <span
           className={cn(
-            "font-mono text-[10px] px-1.5 py-0.5 rounded-sm border",
+            "font-mono text-2xs px-1.5 py-0.5 rounded-sm border",
             s.status === "running" &&
               !isStale &&
               "bg-success/10 text-success border-success/20",
@@ -123,16 +123,16 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
       <div className="flex items-center gap-3 mb-2 text-muted-foreground">
         <div className="flex items-center gap-1">
           <MessageSquare className="h-3 w-3" />
-          <span className="font-mono text-[11px]">{s.message_count}</span>
+          <span className="font-mono text-xs">{s.message_count}</span>
         </div>
         <div className="flex items-center gap-1">
           <FileText className="h-3 w-3" />
-          <span className="font-mono text-[11px]">{s.file_changes_count}</span>
+          <span className="font-mono text-xs">{s.file_changes_count}</span>
         </div>
         {s.created_at ? (
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            <span className="font-mono text-[10px]">
+            <span className="font-mono text-2xs">
               {formatRelativeTime(s.created_at)}
             </span>
           </div>
@@ -141,7 +141,7 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
 
       {/* work_dir */}
       <div
-        className="font-mono text-[10px] text-muted-foreground/60 truncate mb-2"
+        className="font-mono text-2xs text-muted-foreground/60 truncate mb-2"
         title={s.work_dir}
       >
         {truncatePath(s.work_dir)}
@@ -149,7 +149,7 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
 
       {/* 모델 표시 */}
       {s.model ? (
-        <span className="font-mono text-[10px] text-info/70">{s.model}</span>
+        <span className="font-mono text-2xs text-info/70">{s.model}</span>
       ) : null}
 
       {/* 터미널 열기 버튼 */}

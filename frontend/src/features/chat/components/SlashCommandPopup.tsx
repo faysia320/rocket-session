@@ -59,7 +59,7 @@ export function SlashCommandPopup({
                         </span>
                       ) : null}
                     </div>
-                    <div className="font-mono text-[10px] text-muted-foreground truncate">
+                    <div className="font-mono text-2xs text-muted-foreground truncate">
                       {cmd.description}
                     </div>
                   </div>

@@ -26,7 +26,7 @@ export function WorktreePanel({ repoPath, onChange }: WorktreePanelProps) {
           <ChevronRight className="h-3 w-3" />
         )}
         <GitBranch className="h-3 w-3 text-info" />
-        <span className="font-mono text-[10px] font-semibold text-muted-foreground">
+        <span className="font-mono text-2xs font-semibold text-muted-foreground">
           Worktrees ({worktrees.length})
         </span>
       </button>
@@ -46,10 +46,10 @@ export function WorktreePanel({ repoPath, onChange }: WorktreePanelProps) {
               ) : (
                 <div className="w-2.5" />
               )}
-              <span className="font-mono text-[10px] text-muted-foreground truncate flex-1">
+              <span className="font-mono text-2xs text-muted-foreground truncate flex-1">
                 {wt.path}
               </span>
-              <span className="font-mono text-[10px] text-info shrink-0">
+              <span className="font-mono text-2xs text-info shrink-0">
                 ({wt.branch ?? "detached"})
               </span>
             </button>

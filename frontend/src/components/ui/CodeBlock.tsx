@@ -34,14 +34,14 @@ export function CodeBlock({
   return (
     <div className={cn("group relative my-2", className)}>
       <div className="flex items-center justify-between bg-secondary/80 border border-border rounded-t-sm px-3 py-1">
-        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+        <span className="font-mono text-2xs text-muted-foreground uppercase tracking-wider">
           {language || "code"}
         </span>
         <button
           type="button"
           onClick={handleCopy}
           className={cn(
-            "flex items-center gap-1 font-mono text-[10px] transition-colors px-1.5 py-0.5 rounded",
+            "flex items-center gap-1 font-mono text-2xs transition-colors px-1.5 py-0.5 rounded",
             copied
               ? "text-success"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary",

@@ -36,7 +36,7 @@ export function UsageFooter() {
   if (isLoading) {
     return (
       <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center justify-between px-3">
-        <span className="font-mono text-[11px] font-semibold text-primary">
+        <span className="font-mono text-xs font-semibold text-primary">
           Rocket Session
         </span>
         <div className="h-3 w-48 animate-pulse rounded bg-muted" />
@@ -47,7 +47,7 @@ export function UsageFooter() {
   if (isError || !data || !data.available) {
     return (
       <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center justify-between px-3 text-xs text-muted-foreground">
-        <span className="font-mono text-[11px] font-semibold text-primary">
+        <span className="font-mono text-xs font-semibold text-primary">
           Rocket Session
         </span>
         <span className="flex items-center gap-1.5">
@@ -65,7 +65,7 @@ export function UsageFooter() {
   return (
     <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center justify-between px-3 text-xs text-muted-foreground">
       {/* 좌측: 브랜드 */}
-      <span className="font-mono text-[11px] font-semibold text-primary">
+      <span className="font-mono text-xs font-semibold text-primary">
         Rocket Session
       </span>
 

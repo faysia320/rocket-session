@@ -277,7 +277,7 @@ export const ChatInput = memo(function ChatInput({
         {pendingAnswerCount > 0 ? (
           <div className="flex items-center gap-1.5 mb-2 px-1">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-info animate-pulse" />
-            <span className="font-mono text-[11px] text-info">
+            <span className="font-mono text-xs text-info">
               {pendingAnswerCount}개 답변이 다음 메시지에 포함됩니다
             </span>
           </div>
@@ -319,7 +319,7 @@ export const ChatInput = memo(function ChatInput({
             <button
               type="button"
               onClick={onModeToggle}
-              className="flex items-center self-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-all duration-200 cursor-pointer shrink-0"
+              className="flex items-center self-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-all duration-200 cursor-pointer shrink-0"
               title="Plan 모드 (Shift+Tab으로 전환)"
             >
               Plan
@@ -351,7 +351,7 @@ export const ChatInput = memo(function ChatInput({
 
           <Textarea
             ref={textareaRef}
-            className="flex-1 font-mono text-[13px] bg-transparent border-0 outline-none resize-none min-h-[44px] leading-[22px] py-[11px] focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="flex-1 font-mono text-md bg-transparent border-0 outline-none resize-none min-h-11 leading-[22px] py-[11px] focus-visible:ring-0 focus-visible:ring-offset-0"
             value={input}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}

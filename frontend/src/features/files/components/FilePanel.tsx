@@ -72,35 +72,39 @@ export function FilePanel({
         <span className="font-mono text-xs font-semibold text-foreground flex-1">
           File Changes
         </span>
-        <Badge variant="secondary" className="font-mono text-[10px]">
+        <Badge variant="secondary" className="font-mono text-2xs">
           {uniqueCount === fileChanges.length
             ? fileChanges.length
             : `${uniqueCount} files / ${fileChanges.length} edits`}
         </Badge>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0 h-0 p-2">
-        {merged.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-            <div className="text-[28px] mb-2 opacity-40">{"\u{1F4C2}"}</div>
-            <div className="font-mono text-xs text-muted-foreground mb-1">
-              No file changes yet
-            </div>
-            <div className="font-mono text-[10px] text-muted-foreground/70 leading-normal">
-              Changes will appear here as Claude modifies files
-            </div>
+      <div className="flex-1 min-h-0">
+        <ScrollArea className="h-full">
+          <div className="p-2">
+            {merged.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                <div className="text-[28px] mb-2 opacity-40">{"\u{1F4C2}"}</div>
+                <div className="font-mono text-xs text-muted-foreground mb-1">
+                  No file changes yet
+                </div>
+                <div className="font-mono text-2xs text-muted-foreground/70 leading-normal">
+                  Changes will appear here as Claude modifies files
+                </div>
+              </div>
+            ) : (
+              merged.map((item) => (
+                <MergedFileChangeItem
+                  key={item.file}
+                  sessionId={sessionId}
+                  item={item}
+                  onFullView={onFileClick}
+                />
+              ))
+            )}
           </div>
-        ) : (
-          merged.map((item) => (
-            <MergedFileChangeItem
-              key={item.file}
-              sessionId={sessionId}
-              item={item}
-              onFullView={onFileClick}
-            />
-          ))
-        )}
-      </ScrollArea>
+        </ScrollArea>
+      </div>
     </div>
   );
 }
@@ -175,18 +179,18 @@ function MergedFileChangeItem({
               <Badge
                 key={tool}
                 variant="outline"
-                className="font-mono text-[10px]"
+                className="font-mono text-2xs"
                 style={getToolBadgeStyle(tool)}
               >
                 {tool}
               </Badge>
             ))}
             {item.count > 1 ? (
-              <Badge variant="secondary" className="font-mono text-[10px]">
+              <Badge variant="secondary" className="font-mono text-2xs">
                 {`\u00D7${item.count}`}
               </Badge>
             ) : null}
-            <span className="font-mono text-[10px] text-muted-foreground/70 ml-auto shrink-0">
+            <span className="font-mono text-2xs text-muted-foreground/70 ml-auto shrink-0">
               {item.lastTimestamp ? formatTime(item.lastTimestamp) : null}
             </span>
             <button
@@ -200,7 +204,7 @@ function MergedFileChangeItem({
             </button>
           </div>
           <div
-            className="font-mono text-[11px] text-primary break-all pl-5"
+            className="font-mono text-xs text-primary break-all pl-5"
             title={item.file}
           >
             {shortenFilePath(item.file)}

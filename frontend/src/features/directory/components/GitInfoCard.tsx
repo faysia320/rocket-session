@@ -22,29 +22,29 @@ export function GitInfoCard({ gitInfo }: GitInfoCardProps) {
         <GitBranch className="h-3 w-3 text-info shrink-0" />
         <Badge
           variant="secondary"
-          className="font-mono text-[10px] px-1.5 py-0"
+          className="font-mono text-2xs px-1.5 py-0"
         >
           {gitInfo.branch ?? "detached"}
         </Badge>
         {gitInfo.is_dirty ? (
           <span className="flex items-center gap-0.5 text-warning">
             <AlertCircle className="h-2.5 w-2.5" />
-            <span className="font-mono text-[10px]">dirty</span>
+            <span className="font-mono text-2xs">dirty</span>
           </span>
         ) : (
           <span className="flex items-center gap-0.5 text-success">
             <Check className="h-2.5 w-2.5" />
-            <span className="font-mono text-[10px]">clean</span>
+            <span className="font-mono text-2xs">clean</span>
           </span>
         )}
         {gitInfo.ahead > 0 ? (
-          <span className="flex items-center gap-0.5 font-mono text-[10px] text-info">
+          <span className="flex items-center gap-0.5 font-mono text-2xs text-info">
             <ArrowUp className="h-2.5 w-2.5" />
             {gitInfo.ahead}
           </span>
         ) : null}
         {gitInfo.behind > 0 ? (
-          <span className="flex items-center gap-0.5 font-mono text-[10px] text-warning">
+          <span className="flex items-center gap-0.5 font-mono text-2xs text-warning">
             <ArrowDown className="h-2.5 w-2.5" />
             {gitInfo.behind}
           </span>
@@ -52,7 +52,7 @@ export function GitInfoCard({ gitInfo }: GitInfoCardProps) {
       </div>
       {gitInfo.last_commit_message ? (
         <div
-          className="font-mono text-[10px] text-muted-foreground truncate flex items-center gap-1"
+          className="font-mono text-2xs text-muted-foreground truncate flex items-center gap-1"
           title={gitInfo.last_commit_message}
         >
           <FileText className="h-2.5 w-2.5 inline shrink-0" />

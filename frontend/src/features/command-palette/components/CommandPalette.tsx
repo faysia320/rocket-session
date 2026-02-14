@@ -110,13 +110,13 @@ function CommandItemRow({
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="flex flex-col flex-1 min-w-0">
         <span className="font-mono text-sm truncate">{cmd.label}</span>
-        <span className="font-mono text-[11px] text-muted-foreground truncate">
+        <span className="font-mono text-xs text-muted-foreground truncate">
           {cmd.description}
         </span>
       </div>
       {cmd.shortcut ? (
         <kbd
-          className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border"
+          className="ml-auto shrink-0 font-mono text-2xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border"
           aria-hidden="true"
         >
           {cmd.shortcut}

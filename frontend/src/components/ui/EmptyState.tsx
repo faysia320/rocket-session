@@ -50,7 +50,7 @@ export function EmptyState({ onNew }: { onNew: () => void }) {
             style={{ animationDelay: feature.delay }}
           >
             <span className="text-2xl block mb-2.5">{feature.icon}</span>
-            <h3 className="font-mono text-[13px] font-semibold text-foreground mb-1.5">
+            <h3 className="font-mono text-md font-semibold text-foreground mb-1.5">
               {feature.title}
             </h3>
             <p className="text-xs text-muted-foreground leading-normal">

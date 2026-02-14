@@ -74,7 +74,7 @@ export function PermissionDialog({
 
         <div className="space-y-3 py-2">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] text-muted-foreground/70 uppercase tracking-wider">
+            <span className="font-mono text-2xs text-muted-foreground/70 uppercase tracking-wider">
               Tool
             </span>
             <Badge
@@ -86,10 +86,10 @@ export function PermissionDialog({
           </div>
 
           <div>
-            <div className="font-mono text-[10px] text-muted-foreground/70 uppercase tracking-wider mb-1">
+            <div className="font-mono text-2xs text-muted-foreground/70 uppercase tracking-wider mb-1">
               Input
             </div>
-            <pre className="font-mono text-[11px] text-muted-foreground bg-input p-3 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap border border-border">
+            <pre className="font-mono text-xs text-muted-foreground bg-input p-3 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap border border-border">
               {inputJson}
             </pre>
           </div>
@@ -101,7 +101,7 @@ export function PermissionDialog({
                 style={{ width: `${(remaining / TIMEOUT_SECONDS) * 100}%` }}
               />
             </div>
-            <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
+            <span className="font-mono text-2xs text-muted-foreground tabular-nums">
               {remaining}s
             </span>
           </div>

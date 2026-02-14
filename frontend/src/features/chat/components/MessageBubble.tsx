@@ -110,7 +110,7 @@ export const MessageBubble = memo(function MessageBubble({
     default:
       return (
         <div className="px-2 py-0.5">
-          <span className="font-mono text-[10px] text-muted-foreground/50">
+          <span className="font-mono text-2xs text-muted-foreground/50">
             [{type}]
           </span>
         </div>
@@ -136,17 +136,17 @@ function UserMessage({
   return (
     <div className="flex justify-end animate-[fadeIn_0.2s_ease]">
       <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-xl rounded-br-sm">
-        <div className="font-mono text-[10px] font-semibold opacity-70 mb-1">
+        <div className="font-mono text-2xs font-semibold opacity-70 mb-1">
           You
         </div>
-        <div className="font-mono text-[13px] leading-normal whitespace-pre-wrap select-text">
+        <div className="font-mono text-md leading-normal whitespace-pre-wrap select-text">
           {searchQuery ? highlightText(text, searchQuery) : text}
         </div>
         {onResend ? (
           <div className="flex justify-end mt-1">
             <button
               type="button"
-              className="font-mono text-[10px] text-primary-foreground/70 hover:text-primary-foreground transition-colors disabled:opacity-50"
+              className="font-mono text-2xs text-primary-foreground/70 hover:text-primary-foreground transition-colors disabled:opacity-50"
               onClick={(e) => {
                 e.stopPropagation();
                 onResend(text);
@@ -167,7 +167,7 @@ function AssistantText({ message }: { message: AssistantTextMsg }) {
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="pl-3 border-l-2 border-primary/40">
-        <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground mb-1.5">
+        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-1.5">
           <span className="text-primary text-xs">{"◆"}</span> Claude
           <span className="text-primary animate-[pulse_1.5s_ease-in-out_infinite] ml-1">
             streaming{"…"}
@@ -227,7 +227,7 @@ function ResultMessage({
           showPlanApproval && !message.planExecuted && "border-l-primary",
         )}
       >
-        <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground mb-1.5">
+        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-1.5">
           <span className="text-primary text-xs">{"◆"}</span> Claude
           {message.is_error ? (
             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
@@ -257,22 +257,22 @@ function ResultMessage({
         {hasMetadata ? (
           <div className="flex flex-wrap gap-2 mt-2.5 pt-2 border-t border-border/30">
             {message.model ? (
-              <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
                 {formatModelName(message.model)}
               </span>
             ) : null}
             {message.cost ? (
-              <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
                 ${Number(message.cost).toFixed(4)}
               </span>
             ) : null}
             {message.duration_ms ? (
-              <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
                 {(message.duration_ms / 1000).toFixed(1)}s
               </span>
             ) : null}
             {message.input_tokens ? (
-              <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
                 in:{formatTokens(message.input_tokens)}
                 {message.cache_read_tokens
                   ? ` (cache:${formatTokens(message.cache_read_tokens)})`
@@ -280,7 +280,7 @@ function ResultMessage({
               </span>
             ) : null}
             {message.output_tokens ? (
-              <span className="font-mono text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
                 out:{formatTokens(message.output_tokens)}
               </span>
             ) : null}
@@ -362,7 +362,7 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
               {toolName}
             </span>
             {input.file_path || input.path || input.command ? (
-              <span className="font-mono text-[11px] text-muted-foreground flex-1 truncate">
+              <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
                 {input.file_path ||
                   input.path ||
                   input.command?.slice(0, 60) +
@@ -370,11 +370,11 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
               </span>
             ) : null}
             {elapsed ? (
-              <span className="font-mono text-[10px] text-muted-foreground/70 shrink-0">
+              <span className="font-mono text-2xs text-muted-foreground/70 shrink-0">
                 {elapsed}
               </span>
             ) : null}
-            <span className="font-mono text-[10px] text-muted-foreground/70">
+            <span className="font-mono text-2xs text-muted-foreground/70">
               {expanded ? "\u25BE" : "\u25B8"}
             </span>
           </div>
@@ -382,21 +382,21 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
         <CollapsibleContent>
           <div className="mt-1.5 space-y-1.5">
             <div>
-              <div className="font-mono text-[10px] text-muted-foreground/70 mb-0.5">
+              <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">
                 Input
               </div>
-              <pre className="font-mono text-[11px] text-muted-foreground bg-input p-2 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
+              <pre className="font-mono text-xs text-muted-foreground bg-input p-2 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
                 {JSON.stringify(input, null, 2)}
               </pre>
             </div>
             {message.output ? (
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-mono text-[10px] text-muted-foreground/70">
+                  <span className="font-mono text-2xs text-muted-foreground/70">
                     Output
                   </span>
                   {message.is_truncated && message.full_length ? (
-                    <span className="font-mono text-[10px] text-warning">
+                    <span className="font-mono text-2xs text-warning">
                       ({message.output.length.toLocaleString()}/
                       {message.full_length.toLocaleString()}자 표시)
                     </span>
@@ -404,7 +404,7 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
                 </div>
                 <pre
                   className={cn(
-                    "font-mono text-[11px] bg-input p-2 rounded-sm overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
+                    "font-mono text-xs bg-input p-2 rounded-sm overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
                     message.is_error
                       ? "text-destructive"
                       : "text-muted-foreground",
@@ -431,10 +431,10 @@ function ThinkingMessage({ message }: { message: ThinkingMsg }) {
     >
       <div className="pl-3 border-l-2 border-muted-foreground/30">
         <CollapsibleTrigger asChild>
-          <div className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-muted-foreground/70">
+          <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground/70">
             <Brain className="h-3 w-3" />
             <span>Thinking{"\u2026"}</span>
-            <span className="text-[10px] text-muted-foreground/50">
+            <span className="text-2xs text-muted-foreground/50">
               {expanded ? "\u25BE" : "\u25B8"}
             </span>
           </div>
@@ -455,9 +455,9 @@ function FileChangeMessage({ message }: { message: FileChangeMsg }) {
   return (
     <div className="flex items-center gap-1.5 px-2 py-1 animate-[fadeIn_0.2s_ease]">
       <span className="text-xs">{"\u{1F4DD}"}</span>
-      <span className="font-mono text-[11px] text-muted-foreground">
+      <span className="font-mono text-xs text-muted-foreground">
         {message.change?.tool}:{" "}
-        <code className="text-primary bg-primary/15 px-1 py-px rounded-[3px]">
+        <code className="text-primary bg-primary/15 px-1 py-px rounded">
           {message.change?.file}
         </code>
       </span>
@@ -488,7 +488,7 @@ function ErrorMessage({
           <button
             type="button"
             onClick={onRetry}
-            className="font-mono text-[10px] text-destructive hover:text-destructive/80 px-2 py-0.5 border border-destructive/30 rounded shrink-0"
+            className="font-mono text-2xs text-destructive hover:text-destructive/80 px-2 py-0.5 border border-destructive/30 rounded shrink-0"
             aria-label="재시도"
           >
             재시도
@@ -502,7 +502,7 @@ function ErrorMessage({
 function StderrMessage({ message }: { message: StderrMsg }) {
   return (
     <div className="px-2 py-1 animate-[fadeIn_0.2s_ease]">
-      <pre className="font-mono text-[11px] text-warning whitespace-pre-wrap opacity-70">
+      <pre className="font-mono text-xs text-warning whitespace-pre-wrap opacity-70">
         {message.text}
       </pre>
     </div>
@@ -518,7 +518,7 @@ function SystemMessage({
 }) {
   return (
     <div className="text-center p-1 animate-[fadeIn_0.2s_ease]">
-      <span className="font-mono text-[11px] text-muted-foreground/70 italic">
+      <span className="font-mono text-xs text-muted-foreground/70 italic">
         {searchQuery
           ? highlightText(message.text || "", searchQuery)
           : message.text}
@@ -536,12 +536,12 @@ function EventMessage({ message }: { message: EventMsg }) {
       className="px-2 py-1 cursor-pointer animate-[fadeIn_0.2s_ease]"
     >
       <CollapsibleTrigger asChild>
-        <span className="font-mono text-[10px] text-muted-foreground/70">
+        <span className="font-mono text-2xs text-muted-foreground/70">
           Event: {String(message.event?.type || "unknown")}
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <pre className="font-mono text-[10px] text-muted-foreground bg-input p-1.5 rounded mt-1 max-h-[120px] overflow-auto whitespace-pre-wrap">
+        <pre className="font-mono text-2xs text-muted-foreground bg-input p-1.5 rounded mt-1 max-h-[120px] overflow-auto whitespace-pre-wrap">
           {JSON.stringify(message.event, null, 2)}
         </pre>
       </CollapsibleContent>
@@ -557,7 +557,7 @@ function PermissionRequestMessage({
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="flex items-center gap-2 px-3 py-2 bg-warning/10 border border-warning/20 rounded-sm border-l-[3px] border-l-warning">
-        <span className="font-mono text-[10px] font-semibold text-warning uppercase tracking-wider">
+        <span className="font-mono text-2xs font-semibold text-warning uppercase tracking-wider">
           Permission Required
         </span>
         <span className="font-mono text-xs text-foreground font-semibold">

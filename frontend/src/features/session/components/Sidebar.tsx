@@ -131,7 +131,7 @@ export const Sidebar = memo(function Sidebar({
           <div className="flex flex-col gap-1.5">
             <Button
               variant="default"
-              className="w-full flex items-center gap-2 px-3 py-2.5 font-mono text-[13px] font-semibold"
+              className="w-full flex items-center gap-2 px-3 py-2.5 font-mono text-md font-semibold"
               onClick={onNew}
             >
               <span className="text-base font-bold">+</span>
@@ -139,7 +139,7 @@ export const Sidebar = memo(function Sidebar({
             </Button>
             <Button
               variant="outline"
-              className="w-full flex items-center gap-2 px-3 py-2 font-mono text-[11px]"
+              className="w-full flex items-center gap-2 px-3 py-2 font-mono text-xs"
               onClick={() => setImportOpen(true)}
               aria-label="로컬 세션 불러오기"
             >
@@ -153,10 +153,10 @@ export const Sidebar = memo(function Sidebar({
       {/* Sessions list header */}
       {collapsed ? null : (
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <span className="font-mono text-[10px] font-semibold text-muted-foreground tracking-widest">
+          <span className="font-mono text-2xs font-semibold text-muted-foreground tracking-widest">
             SESSIONS
           </span>
-          <Badge variant="secondary" className="font-mono text-[10px]">
+          <Badge variant="secondary" className="font-mono text-2xs">
             {filteredSessions.length}
             {filteredSessions.length !== sessions.length
               ? `/${sessions.length}`
@@ -171,7 +171,7 @@ export const Sidebar = memo(function Sidebar({
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
             <input
-              className="w-full font-mono text-[11px] bg-input border border-border rounded pl-7 pr-7 py-1.5 outline-none focus:border-primary/50"
+              className="w-full font-mono text-xs bg-input border border-border rounded pl-7 pr-7 py-1.5 outline-none focus:border-primary/50"
               placeholder="세션 검색…"
               aria-label="세션 검색"
               value={searchQuery}
@@ -194,7 +194,7 @@ export const Sidebar = memo(function Sidebar({
                 key={f}
                 type="button"
                 className={cn(
-                  "font-mono text-[10px] px-2 py-0.5 rounded-sm border transition-colors",
+                  "font-mono text-2xs px-2 py-0.5 rounded-sm border transition-colors",
                   statusFilter === f
                     ? "bg-primary/15 text-primary border-primary/30"
                     : "text-muted-foreground border-transparent hover:bg-muted",
@@ -483,7 +483,7 @@ const SessionItem = memo(function SessionItem({
         {editing ? (
           <input
             ref={inputRef}
-            className="font-mono text-[13px] font-medium text-foreground flex-1 bg-input border border-border rounded px-1 py-0.5 outline-none focus:border-primary/50 min-w-0"
+            className="font-mono text-md font-medium text-foreground flex-1 bg-input border border-border rounded px-1 py-0.5 outline-none focus:border-primary/50 min-w-0"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={commitEdit}
@@ -495,7 +495,7 @@ const SessionItem = memo(function SessionItem({
           />
         ) : (
           <span
-            className="font-mono text-[13px] font-medium text-foreground flex-1 truncate"
+            className="font-mono text-md font-medium text-foreground flex-1 truncate"
             onDoubleClick={(e) => {
               e.stopPropagation();
               startEditing();
@@ -546,18 +546,18 @@ const SessionItem = memo(function SessionItem({
         </AlertDialog>
       </div>
       <div className="flex items-center gap-1 mb-0.5">
-        <span className="font-mono text-[10px] text-muted-foreground">
+        <span className="font-mono text-2xs text-muted-foreground">
           {s.message_count} msgs
         </span>
-        <span className="font-mono text-[10px] text-muted-foreground/70">
+        <span className="font-mono text-2xs text-muted-foreground/70">
           {"·"}
         </span>
-        <span className="font-mono text-[10px] text-muted-foreground">
+        <span className="font-mono text-2xs text-muted-foreground">
           {s.file_changes_count} changes
         </span>
       </div>
       <div
-        className="font-mono text-[10px] text-muted-foreground/70 truncate"
+        className="font-mono text-2xs text-muted-foreground/70 truncate"
         title={s.work_dir}
       >
         {truncatePath(s.work_dir)}

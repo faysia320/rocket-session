@@ -19,7 +19,7 @@ export function PlanApprovalButton({
     return (
       <Badge
         variant="outline"
-        className="mt-2 gap-1.5 px-2.5 py-1 text-success border-success/30 bg-success/10 font-mono text-[11px]"
+        className="mt-2 gap-1.5 px-2.5 py-1 text-success border-success/30 bg-success/10 font-mono text-xs"
       >
         <CheckCircle2 className="h-3 w-3" />
         Executed

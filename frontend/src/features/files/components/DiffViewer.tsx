@@ -77,7 +77,7 @@ export const DiffViewer = memo(function DiffViewer({ diff }: DiffViewerProps) {
   }
 
   return (
-    <div className="font-mono text-[11px] leading-[1.6] select-text">
+    <div className="font-mono text-xs leading-relaxed select-text">
       {lines.map((line, i) => {
         if (line.type === "info") {
           return (

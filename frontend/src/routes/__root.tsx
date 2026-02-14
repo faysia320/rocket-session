@@ -143,7 +143,7 @@ function RootComponent() {
               ))}
               {sessions.length > 5 ? (
                 <div className="absolute top-2 right-2 z-10">
-                  <span className="font-mono text-[10px] bg-warning/15 text-warning px-2 py-0.5 rounded border border-warning/30">
+                  <span className="font-mono text-2xs bg-warning/15 text-warning px-2 py-0.5 rounded border border-warning/30">
                     +{sessions.length - 5} more (max 5)
                   </span>
                 </div>

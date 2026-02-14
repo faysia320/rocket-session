@@ -134,7 +134,7 @@ export function SessionSetupPanel({
             </div>
             {useWorktree ? (
               <div className="space-y-2 pl-0.5">
-                <p className="font-mono text-[10px] text-muted-foreground/70">
+                <p className="font-mono text-2xs text-muted-foreground/70">
                   현재 브랜치:{" "}
                   <code className="text-info/80">{gitInfo.branch}</code>{" "}
                   기준으로 새 워크트리를 생성합니다
@@ -155,7 +155,7 @@ export function SessionSetupPanel({
           <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
             ALLOWED TOOLS
           </Label>
-          <p className="font-mono text-[10px] text-muted-foreground/70">
+          <p className="font-mono text-2xs text-muted-foreground/70">
             Claude CLI에 허용할 도구를 선택하세요. 미선택 시 글로벌 설정이
             적용됩니다.
             {globalSettings?.allowed_tools ? (
@@ -189,7 +189,7 @@ export function SessionSetupPanel({
           <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
             SYSTEM PROMPT
           </Label>
-          <p className="font-mono text-[10px] text-muted-foreground/70">
+          <p className="font-mono text-2xs text-muted-foreground/70">
             세션에 주입할 시스템 지시사항입니다.
           </p>
           <Textarea
@@ -205,7 +205,7 @@ export function SessionSetupPanel({
           <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
             TIMEOUT (분)
           </Label>
-          <p className="font-mono text-[10px] text-muted-foreground/70">
+          <p className="font-mono text-2xs text-muted-foreground/70">
             프로세스 최대 실행 시간. 비워두면 무제한입니다.
           </p>
           <Input

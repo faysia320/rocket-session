@@ -60,7 +60,7 @@ export const ChatHeader = memo(function ChatHeader({
   currentModel,
 }: ChatHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-[44px]">
+    <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-11">
       <div className="flex items-center gap-2 min-w-0">
         {onMenuToggle ? (
           <Button
@@ -111,7 +111,7 @@ export const ChatHeader = memo(function ChatHeader({
           <button
             type="button"
             onClick={onRetryConnect}
-            className="flex items-center gap-1 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
+            className="flex items-center gap-1 px-2 py-0.5 font-mono text-2xs font-semibold text-primary bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
             aria-label="재연결 시도"
           >
             <RefreshCw className="h-3 w-3" />
@@ -123,7 +123,7 @@ export const ChatHeader = memo(function ChatHeader({
             <span className="text-muted-foreground/70 text-xs">|</span>
             <FolderOpen className="h-3 w-3 text-muted-foreground/70 shrink-0" />
             <span
-              className="font-mono text-[11px] text-muted-foreground/70 truncate max-w-[300px] direction-rtl text-left"
+              className="font-mono text-xs text-muted-foreground/70 truncate max-w-[300px] direction-rtl text-left"
               title={workDir}
             >
               {workDir}
@@ -134,7 +134,7 @@ export const ChatHeader = memo(function ChatHeader({
           <span className="hidden md:contents">
             <span className="text-muted-foreground/70 text-xs">|</span>
             <GitBranch className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-            <span className="font-mono text-[11px] text-muted-foreground/70">
+            <span className="font-mono text-xs text-muted-foreground/70">
               {gitInfo.branch}
             </span>
           </span>

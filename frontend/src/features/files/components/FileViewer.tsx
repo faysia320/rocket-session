@@ -98,7 +98,7 @@ export function FileViewer({
               </span>
             ) : null}
             <span
-              className="font-mono text-[10px] text-muted-foreground truncate ml-1"
+              className="font-mono text-2xs text-muted-foreground truncate ml-1"
               title={filePath}
             >
               {filePath}
@@ -112,7 +112,7 @@ export function FileViewer({
             type="button"
             onClick={() => setActiveTab("diff")}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] font-medium border-b-2 transition-colors",
+              "flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs font-medium border-b-2 transition-colors",
               activeTab === "diff"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground",
@@ -126,7 +126,7 @@ export function FileViewer({
             type="button"
             onClick={() => setActiveTab("content")}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] font-medium border-b-2 transition-colors",
+              "flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs font-medium border-b-2 transition-colors",
               activeTab === "content"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground",
@@ -149,7 +149,7 @@ export function FileViewer({
                 <div className="font-mono text-xs text-destructive mb-1">
                   파일을 불러올 수 없습니다
                 </div>
-                <div className="font-mono text-[10px] text-muted-foreground">
+                <div className="font-mono text-2xs text-muted-foreground">
                   {error}
                 </div>
               </div>
@@ -161,13 +161,13 @@ export function FileViewer({
                   <div className="font-mono text-xs text-muted-foreground mb-1">
                     Git diff를 사용할 수 없습니다
                   </div>
-                  <div className="font-mono text-[10px] text-muted-foreground/70">
+                  <div className="font-mono text-2xs text-muted-foreground/70">
                     Git 저장소가 아니거나 커밋된 변경사항이 없습니다
                   </div>
                 </div>
               )
             ) : (
-              <pre className="px-4 py-3 font-mono text-[11px] text-foreground/90 leading-[1.6] whitespace-pre-wrap break-all">
+              <pre className="px-4 py-3 font-mono text-xs text-foreground/90 leading-relaxed whitespace-pre-wrap break-all">
                 {content || "(빈 파일)"}
               </pre>
             )}

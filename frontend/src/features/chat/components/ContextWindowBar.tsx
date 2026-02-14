@@ -61,7 +61,7 @@ export const ContextWindowBar = memo(function ContextWindowBar({
           </div>
           <span
             className={cn(
-              "font-mono text-[10px]",
+              "font-mono text-2xs",
               pct >= 90
                 ? "text-destructive font-semibold"
                 : pct >= 75

@@ -78,7 +78,7 @@ export function ActivityStatusBar({
             className="flex items-center gap-2 min-h-[20px]"
           >
             <span className="inline-block w-3 h-3 border-[1.5px] border-info/40 border-t-info rounded-full animate-spin shrink-0" />
-            <span className="font-mono text-[11px] text-muted-foreground truncate">
+            <span className="font-mono text-xs text-muted-foreground truncate">
               {getActivityLabel(tool)}
             </span>
           </div>

@@ -54,7 +54,7 @@ export function NotificationSettingsPanel() {
           variant="ghost"
           size="sm"
           className={cn(
-            "h-7 px-2 font-mono text-[11px] gap-1.5",
+            "h-7 px-2 font-mono text-xs gap-1.5",
             settings.enabled && "text-primary",
           )}
           onClick={handleToggleEnabled}
@@ -67,7 +67,7 @@ export function NotificationSettingsPanel() {
           {settings.enabled ? "ON" : "OFF"}
         </Button>
       </div>
-      <p className="font-mono text-[10px] text-muted-foreground/70">
+      <p className="font-mono text-2xs text-muted-foreground/70">
         CESP 기반 알림 시스템입니다. 카테고리별로 사운드, 데스크톱 알림,
         토스트를 개별 제어할 수 있습니다.
       </p>
@@ -92,7 +92,7 @@ export function NotificationSettingsPanel() {
                 className="flex-1 h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
                 aria-label="알림 볼륨"
               />
-              <span className="font-mono text-[10px] text-muted-foreground w-8 text-right">
+              <span className="font-mono text-2xs text-muted-foreground w-8 text-right">
                 {Math.round(settings.volume * 100)}%
               </span>
             </div>
@@ -100,7 +100,7 @@ export function NotificationSettingsPanel() {
 
           {/* 사운드 팩 선택 */}
           <div className="space-y-2">
-            <Label className="font-mono text-[10px] font-semibold text-muted-foreground tracking-wider">
+            <Label className="font-mono text-2xs font-semibold text-muted-foreground tracking-wider">
               SOUND PACK
             </Label>
             <select
@@ -152,7 +152,7 @@ export function NotificationSettingsPanel() {
                       <Play className="h-3 w-3" />
                     </Button>
                   </div>
-                  <p className="font-mono text-[10px] text-muted-foreground/70 pl-6">
+                  <p className="font-mono text-2xs text-muted-foreground/70 pl-6">
                     {label.description}
                   </p>
                   {config.enabled ? (
@@ -168,7 +168,7 @@ export function NotificationSettingsPanel() {
                               toggleChannel(category, ch.id)
                             }
                           />
-                          <span className="font-mono text-[10px] text-muted-foreground">
+                          <span className="font-mono text-2xs text-muted-foreground">
                             {ch.label}
                           </span>
                         </label>

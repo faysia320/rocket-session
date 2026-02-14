@@ -67,7 +67,7 @@ export function DirectoryBrowser({
 
         <div className="space-y-3">
           <div
-            className="font-mono text-[10px] text-muted-foreground truncate"
+            className="font-mono text-2xs text-muted-foreground truncate"
             title={currentPath}
           >
             현재: {currentPath}
@@ -91,7 +91,7 @@ export function DirectoryBrowser({
               {favorites.length > 0 ? (
                 <>
                   <div className="px-2 py-1">
-                    <span className="font-mono text-[10px] font-semibold text-warning/80 tracking-wider">
+                    <span className="font-mono text-2xs font-semibold text-warning/80 tracking-wider">
                       FAVORITES
                     </span>
                   </div>

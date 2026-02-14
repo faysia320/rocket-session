@@ -79,7 +79,7 @@ export function PlanReviewDialog({
             </Badge>
           </div>
           <DialogDescription asChild>
-            <div className="flex gap-3 font-mono text-[11px] text-muted-foreground">
+            <div className="flex gap-3 font-mono text-xs text-muted-foreground">
               {message.cost ? (
                 <span className="bg-secondary px-2 py-0.5 rounded-lg">
                   Cost: ${Number(message.cost).toFixed(4)}
@@ -110,7 +110,7 @@ export function PlanReviewDialog({
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Plan modification feedback..."
-              className="font-mono text-[13px] bg-input border-border min-h-[80px] resize-none focus-visible:ring-primary/50"
+              className="font-mono text-md bg-input border-border min-h-[80px] resize-none focus-visible:ring-primary/50"
               autoFocus
             />
             <div className="flex justify-end mt-2">
