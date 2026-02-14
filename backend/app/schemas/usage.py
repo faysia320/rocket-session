@@ -3,28 +3,17 @@
 from pydantic import BaseModel
 
 
-class BlockUsage(BaseModel):
-    """5시간 블록 사용량."""
+class PeriodUsage(BaseModel):
+    """기간별 사용량 (5시간 블록 / 주간)."""
 
-    total_tokens: int = 0
-    cost_usd: float = 0.0
-    is_active: bool = False
-    time_remaining: str = ""
-    burn_rate: float = 0.0
-
-
-class WeeklyUsage(BaseModel):
-    """주간 사용량."""
-
-    total_tokens: int = 0
-    cost_usd: float = 0.0
-    models_used: list[str] = []
+    utilization: float = 0.0
+    resets_at: str | None = None
 
 
 class UsageInfo(BaseModel):
     """전체 사용량 정보."""
 
-    block_5h: BlockUsage = BlockUsage()
-    weekly: WeeklyUsage = WeeklyUsage()
+    five_hour: PeriodUsage = PeriodUsage()
+    seven_day: PeriodUsage = PeriodUsage()
     available: bool = True
     error: str | None = None

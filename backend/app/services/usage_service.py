@@ -1,106 +1,119 @@
-"""ccusage를 통한 사용량 조회 서비스."""
+"""Anthropic OAuth API를 통한 사용량 조회 서비스."""
 
-import asyncio
 import json
+import logging
 import time
+from pathlib import Path
 
-from app.core.config import Settings
-from app.schemas.usage import BlockUsage, UsageInfo, WeeklyUsage
+import httpx
+
+from app.schemas.usage import PeriodUsage, UsageInfo
+
+logger = logging.getLogger(__name__)
+
+_API_URL = "https://api.anthropic.com/api/oauth/usage"
+_TIMEOUT = 10.0
+_CACHE_TTL = 60.0  # 60초 캐시
+
+
+def _find_credentials_path() -> Path | None:
+    """OAuth 자격증명 파일 경로를 찾습니다."""
+    candidates = [
+        Path.home() / ".claude" / ".credentials.json",
+        Path("/root/.claude/.credentials.json"),
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
 
 
 class UsageService:
-    """ccusage CLI를 통해 사용량을 조회합니다."""
+    """Anthropic OAuth API를 통해 사용량을 조회합니다."""
 
-    def __init__(self, settings: Settings) -> None:
-        self._settings = settings
+    def __init__(self, **_kwargs) -> None:
         self._cache: UsageInfo | None = None
         self._cache_time: float = 0
-        self._cache_ttl: float = 60.0  # 60초 캐시
+
+    async def warmup(self) -> None:
+        """서버 시작 시 백그라운드에서 캐시를 워밍업합니다."""
+        logger.info("사용량 캐시 워밍업 시작")
+        try:
+            await self.get_usage()
+            logger.info("사용량 캐시 워밍업 완료")
+        except Exception as e:
+            logger.warning("사용량 캐시 워밍업 실패: %s", e)
 
     async def get_usage(self) -> UsageInfo:
         """캐시된 사용량 정보를 반환합니다."""
         now = time.time()
-        if self._cache and (now - self._cache_time) < self._cache_ttl:
+        if self._cache and (now - self._cache_time) < _CACHE_TTL:
             return self._cache
 
-        try:
-            block_data, weekly_data = await asyncio.gather(
-                self._run_ccusage("blocks"),
-                self._run_ccusage("weekly"),
-                return_exceptions=True,
-            )
-
-            block_5h = BlockUsage()
-            if isinstance(block_data, dict):
-                data_list = block_data.get("blocks", [])
-                if data_list:
-                    # 활성 블록 우선, 없으면 gap이 아닌 마지막 블록
-                    latest = next(
-                        (b for b in reversed(data_list) if b.get("isActive")),
-                        next(
-                            (b for b in reversed(data_list) if not b.get("isGap")),
-                            data_list[-1],
-                        ),
-                    )
-                    burn = latest.get("burnRate") or {}
-                    proj = latest.get("projection") or {}
-                    block_5h = BlockUsage(
-                        total_tokens=latest.get("totalTokens", 0),
-                        cost_usd=latest.get("costUSD", 0.0),
-                        is_active=latest.get("isActive", False),
-                        time_remaining=f"{proj.get('remainingMinutes', 0)}분"
-                        if proj.get("remainingMinutes")
-                        else "",
-                        burn_rate=round(burn.get("costPerHour", 0), 2) if burn else 0,
-                    )
-
-            weekly = WeeklyUsage()
-            if isinstance(weekly_data, dict):
-                weekly_list = weekly_data.get("weekly", [])
-                if weekly_list:
-                    latest = weekly_list[-1]  # 마지막 = 현재 주
-                    weekly = WeeklyUsage(
-                        total_tokens=latest.get("totalTokens", 0),
-                        cost_usd=latest.get("totalCost", 0.0),
-                        models_used=latest.get("modelsUsed", []),
-                    )
-
-            result = UsageInfo(
-                block_5h=block_5h,
-                weekly=weekly,
-                available=True,
-            )
-        except Exception as e:
-            result = UsageInfo(
-                available=False,
-                error=str(e),
-            )
-
+        result = await self._fetch_usage()
         self._cache = result
         self._cache_time = now
         return result
 
-    async def _run_ccusage(self, command: str) -> dict:
-        """npx ccusage 명령을 실행하고 JSON을 파싱합니다."""
-        proc = await asyncio.create_subprocess_exec(
-            "npx",
-            "ccusage",
-            command,
-            "--json",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=15.0)
-        except asyncio.TimeoutError:
-            proc.kill()
-            await proc.communicate()
-            raise TimeoutError(f"ccusage {command} 시간 초과 (15초)")
-
-        if proc.returncode != 0:
-            err_msg = (
-                stderr.decode().strip() if stderr else f"종료 코드: {proc.returncode}"
+    async def _fetch_usage(self) -> UsageInfo:
+        """Anthropic OAuth API에서 사용량을 조회합니다."""
+        token = self._read_access_token()
+        if not token:
+            return UsageInfo(
+                available=False,
+                error="OAuth 자격증명을 찾을 수 없습니다 (~/.claude/.credentials.json)",
             )
-            raise RuntimeError(f"ccusage {command} 실패: {err_msg}")
 
-        return json.loads(stdout.decode())
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+                resp = await client.get(
+                    _API_URL,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "anthropic-beta": "oauth-2025-04-20",
+                        "User-Agent": "claude-code/2.0.32",
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+            five_hour_raw = data.get("five_hour", {})
+            seven_day_raw = data.get("seven_day", {})
+
+            return UsageInfo(
+                five_hour=PeriodUsage(
+                    utilization=five_hour_raw.get("utilization", 0.0),
+                    resets_at=five_hour_raw.get("resets_at"),
+                ),
+                seven_day=PeriodUsage(
+                    utilization=seven_day_raw.get("utilization", 0.0),
+                    resets_at=seven_day_raw.get("resets_at"),
+                ),
+                available=True,
+            )
+        except httpx.HTTPStatusError as e:
+            logger.error("OAuth API HTTP 오류: %d %s", e.response.status_code, e.response.text[:200])
+            return UsageInfo(available=False, error=f"API 오류: {e.response.status_code}")
+        except httpx.TimeoutException:
+            logger.error("OAuth API 타임아웃 (%s초)", _TIMEOUT)
+            return UsageInfo(available=False, error="API 타임아웃")
+        except Exception as e:
+            logger.error("OAuth API 호출 실패: %s", e)
+            return UsageInfo(available=False, error=str(e))
+
+    @staticmethod
+    def _read_access_token() -> str | None:
+        """~/.claude/.credentials.json에서 OAuth accessToken을 읽습니다."""
+        cred_path = _find_credentials_path()
+        if not cred_path:
+            logger.warning("자격증명 파일을 찾을 수 없습니다")
+            return None
+        try:
+            cred = json.loads(cred_path.read_text(encoding="utf-8"))
+            token = cred.get("claudeAiOauth", {}).get("accessToken")
+            if not token:
+                logger.warning("accessToken이 자격증명 파일에 없습니다")
+            return token
+        except Exception as e:
+            logger.error("자격증명 파일 읽기 실패: %s", e)
+            return None

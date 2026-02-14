@@ -21,6 +21,7 @@ if sys.platform == "win32":
 from app.api.dependencies import (  # noqa: E402
     get_database,
     get_settings,
+    get_usage_service,
     get_ws_manager,
     init_dependencies,
     shutdown_dependencies,
@@ -48,6 +49,8 @@ async def lifespan(application: FastAPI):
     ws_mgr = get_ws_manager()
     await ws_mgr.start_background_tasks()
     cleanup_task = asyncio.create_task(_periodic_cleanup())
+    # 사용량 캐시 백그라운드 워밍업 (서버 시작 시 미리 로드)
+    asyncio.create_task(get_usage_service().warmup())
     yield
     cleanup_task.cancel()
     try:

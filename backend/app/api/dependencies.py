@@ -101,7 +101,7 @@ async def init_dependencies():
     _ws_manager.set_database(_database)
     _session_manager = SessionManager(_database)
     _local_scanner = LocalSessionScanner(_database)
-    _usage_service = UsageService(settings)
+    _usage_service = UsageService()
     _settings_service = SettingsService(_database)
     _jsonl_watcher = JsonlWatcher(_session_manager, _ws_manager)
 

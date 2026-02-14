@@ -36,8 +36,6 @@ def settings():
     return Settings(
         claude_work_dir=tempfile.gettempdir(),
         claude_allowed_tools="Read,Write",
-        claude_plan="Max",
-        claude_account_id="test-account",
         database_path=":memory:",
     )
 
@@ -77,9 +75,9 @@ def filesystem_service():
 
 
 @pytest.fixture
-def usage_service(settings):
+def usage_service():
     """UsageService fixture."""
-    return UsageService(settings)
+    return UsageService()
 
 
 @pytest.fixture
