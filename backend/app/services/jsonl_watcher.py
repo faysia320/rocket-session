@@ -284,6 +284,20 @@ class JsonlWatcher:
                 tool_name = block.get("name", "unknown")
                 tool_input = block.get("input", {})
                 tool_use_id = block.get("id", "")
+
+                # AskUserQuestion 감지: 인터랙티브 질문 이벤트로 변환
+                if tool_name == "AskUserQuestion":
+                    await self._ws_manager.broadcast_event(
+                        session_id,
+                        {
+                            "type": "ask_user_question",
+                            "questions": tool_input.get("questions", []),
+                            "tool_use_id": tool_use_id,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
+                    continue
+
                 await self._ws_manager.broadcast_event(
                     session_id,
                     {

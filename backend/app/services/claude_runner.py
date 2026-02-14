@@ -356,6 +356,20 @@ class ClaudeRunner:
                     )
                     continue
 
+                # AskUserQuestion 감지: 인터랙티브 질문 이벤트로 변환
+                if tool_name == "AskUserQuestion":
+                    turn_state["ask_user_question_tool_id"] = tool_use_id
+                    await ws_manager.broadcast_event(
+                        session_id,
+                        {
+                            "type": WsEventType.ASK_USER_QUESTION,
+                            "questions": tool_input.get("questions", []),
+                            "tool_use_id": tool_use_id,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
+                    continue
+
                 tool_event = {
                     "type": WsEventType.TOOL_USE,
                     "tool": tool_name,
@@ -418,6 +432,11 @@ class ClaudeRunner:
                 # ExitPlanMode의 tool_result는 프론트엔드에 전송하지 않음
                 if tool_use_id == turn_state.get("exit_plan_tool_id"):
                     turn_state.pop("exit_plan_tool_id", None)
+                    continue
+
+                # AskUserQuestion의 tool_result는 프론트엔드에 전송하지 않음
+                if tool_use_id == turn_state.get("ask_user_question_tool_id"):
+                    turn_state.pop("ask_user_question_tool_id", None)
                     continue
 
                 raw_content = block.get("content", "")

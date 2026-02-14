@@ -19,8 +19,10 @@ import type {
   StderrMsg,
   SystemMsg,
   EventMsg,
+  AskUserQuestionMsg,
 } from "@/types";
 import { PlanApprovalButton } from "./PlanApprovalButton";
+import { AskUserQuestionCard } from "./AskUserQuestionCard";
 
 interface MessageBubbleProps {
   message: Message;
@@ -31,6 +33,12 @@ interface MessageBubbleProps {
   onExecutePlan?: (messageId: string) => void;
   onDismissPlan?: (messageId: string) => void;
   onOpenReview?: (messageId: string) => void;
+  onAnswerQuestion?: (
+    messageId: string,
+    questionIndex: number,
+    labels: string[],
+  ) => void;
+  onConfirmAnswers?: (messageId: string) => void;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -42,6 +50,8 @@ export const MessageBubble = memo(function MessageBubble({
   onExecutePlan,
   onDismissPlan,
   onOpenReview,
+  onAnswerQuestion,
+  onConfirmAnswers,
 }: MessageBubbleProps) {
   const { type } = message;
 
@@ -89,6 +99,14 @@ export const MessageBubble = memo(function MessageBubble({
       return <EventMessage message={message} />;
     case "permission_request":
       return <PermissionRequestMessage message={message} />;
+    case "ask_user_question":
+      return onAnswerQuestion && onConfirmAnswers ? (
+        <AskUserQuestionCard
+          message={message as AskUserQuestionMsg}
+          onAnswer={onAnswerQuestion}
+          onConfirm={onConfirmAnswers}
+        />
+      ) : null;
     default:
       return (
         <div className="px-2 py-0.5">

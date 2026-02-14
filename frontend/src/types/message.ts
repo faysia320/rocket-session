@@ -107,6 +107,33 @@ export interface PermissionRequestMsg extends BaseMessage {
 }
 
 // ---------------------------------------------------------------------------
+// AskUserQuestion: Claude CLI가 사용자에게 질문할 때 사용
+// ---------------------------------------------------------------------------
+export interface AskUserQuestionOption {
+  label: string;
+  description?: string;
+}
+
+export interface AskUserQuestionItem {
+  question: string;
+  header?: string;
+  options: AskUserQuestionOption[];
+  multiSelect?: boolean;
+}
+
+export interface AskUserQuestionMsg extends BaseMessage {
+  type: "ask_user_question";
+  questions: AskUserQuestionItem[];
+  tool_use_id: string;
+  /** 각 질문에 대한 사용자 답변 (question index → 선택된 label 배열) */
+  answers?: Record<number, string[]>;
+  /** 사용자가 답변을 확인(confirm) 완료했는지 여부 */
+  answered?: boolean;
+  /** 답변이 다음 프롬프트에 포함되어 전송되었는지 여부 */
+  sent?: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Message: discriminated union of all message types
 // ---------------------------------------------------------------------------
 export type Message =
@@ -121,7 +148,8 @@ export type Message =
   | SystemMsg
   | EventMsg
   | ThinkingMsg
-  | PermissionRequestMsg;
+  | PermissionRequestMsg
+  | AskUserQuestionMsg;
 
 /** Convenience alias: the discriminant values */
 export type MessageType = Message["type"];
@@ -183,7 +211,8 @@ export type WebSocketEventType =
   | "permission_request"
   | "permission_response"
   | "missed_events"
-  | "mode_change";
+  | "mode_change"
+  | "ask_user_question";
 
 export interface PermissionRequestData {
   permission_id: string;

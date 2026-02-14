@@ -25,6 +25,9 @@ export type {
   EventMsg,
   ThinkingMsg,
   PermissionRequestMsg,
+  AskUserQuestionOption,
+  AskUserQuestionItem,
+  AskUserQuestionMsg,
 } from "./message";
 export { getMessageText } from "./message";
 export type {

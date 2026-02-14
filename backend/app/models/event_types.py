@@ -39,6 +39,9 @@ class WsEventType:
     PERMISSION_REQUEST = "permission_request"
     PERMISSION_RESPONSE = "permission_response"
 
+    # Interactive
+    ASK_USER_QUESTION = "ask_user_question"
+
     # Error / Debug
     ERROR = "error"
     STDERR = "stderr"

@@ -25,6 +25,7 @@ interface ChatInputProps {
   onModeToggle: () => void;
   onSlashCommand: (cmd: SlashCommand) => void;
   sessionId?: string;
+  pendingAnswerCount?: number;
 }
 
 const ACCEPTED_IMAGE_TYPES = [
@@ -46,6 +47,7 @@ export const ChatInput = memo(function ChatInput({
   onModeToggle,
   onSlashCommand,
   sessionId,
+  pendingAnswerCount = 0,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -268,6 +270,16 @@ export const ChatInput = memo(function ChatInput({
               <Image className="h-5 w-5" />
               이미지를 여기에 놓으세요
             </div>
+          </div>
+        ) : null}
+
+        {/* 답변 인디케이터 */}
+        {pendingAnswerCount > 0 ? (
+          <div className="flex items-center gap-1.5 mb-2 px-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-info animate-pulse" />
+            <span className="font-mono text-[11px] text-info">
+              {pendingAnswerCount}개 답변이 다음 메시지에 포함됩니다
+            </span>
           </div>
         ) : null}
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import type {
   Message,
   FileChange,
@@ -8,6 +8,8 @@ import type {
   ToolUseMsg,
   AssistantTextMsg,
   ResultMsg,
+  AskUserQuestionMsg,
+  AskUserQuestionItem,
 } from "@/types";
 import { getMessageText } from "@/types";
 import {
@@ -448,6 +450,25 @@ export function useClaudeSocket(sessionId: string) {
         ]);
         break;
 
+      case "ask_user_question": {
+        const questions = (data.questions as AskUserQuestionItem[]) || [];
+        const toolUseIdAsk = (data.tool_use_id as string) || "";
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: generateMessageId(),
+            type: "ask_user_question",
+            questions,
+            tool_use_id: toolUseIdAsk,
+            answers: {},
+            answered: false,
+            sent: false,
+            timestamp: (data.timestamp as string) || new Date().toISOString(),
+          } as AskUserQuestionMsg,
+        ]);
+        break;
+      }
+
       case "permission_request": {
         const permData: PermissionRequestData = {
           permission_id: data.permission_id as string,
@@ -612,6 +633,43 @@ export function useClaudeSocket(sessionId: string) {
     };
   }, [connect]);
 
+  /** 특정 질문에 대한 답변 업데이트 */
+  const answerQuestion = useCallback(
+    (messageId: string, questionIndex: number, selectedLabels: string[]) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId || m.type !== "ask_user_question") return m;
+          const msg = m as AskUserQuestionMsg;
+          return {
+            ...msg,
+            answers: { ...msg.answers, [questionIndex]: selectedLabels },
+          } as Message;
+        }),
+      );
+    },
+    [],
+  );
+
+  /** 질문 카드의 답변 확정 */
+  const confirmAnswers = useCallback((messageId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId || m.type !== "ask_user_question") return m;
+        return { ...m, answered: true } as Message;
+      }),
+    );
+  }, []);
+
+  /** 미전송 답변 카운트 */
+  const pendingAnswerCount = useMemo(() => {
+    return messages.filter(
+      (m) =>
+        m.type === "ask_user_question" &&
+        (m as AskUserQuestionMsg).answered &&
+        !(m as AskUserQuestionMsg).sent,
+    ).length;
+  }, [messages]);
+
   const sendPrompt = useCallback(
     (
       prompt: string,
@@ -622,11 +680,51 @@ export function useClaudeSocket(sessionId: string) {
       },
     ) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
+        // 미전송 답변을 prompt에 prefix로 추가
+        let finalPrompt = prompt;
+        const answerCtx = messages
+          .filter(
+            (m) =>
+              m.type === "ask_user_question" &&
+              (m as AskUserQuestionMsg).answered &&
+              !(m as AskUserQuestionMsg).sent,
+          )
+          .map((m) => {
+            const msg = m as AskUserQuestionMsg;
+            const lines: string[] = [];
+            for (const [idxStr, labels] of Object.entries(msg.answers || {})) {
+              const idx = Number(idxStr);
+              const q = msg.questions[idx];
+              if (!q || labels.length === 0) continue;
+              lines.push(`[${q.header || q.question}]: ${labels.join(", ")}`);
+            }
+            return lines.join("\n");
+          })
+          .filter(Boolean)
+          .join("\n");
+
+        if (answerCtx) {
+          finalPrompt = `[이전 질문에 대한 답변]\n${answerCtx}\n\n${prompt}`;
+          // 전송된 답변을 sent로 마킹
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (
+                m.type === "ask_user_question" &&
+                (m as AskUserQuestionMsg).answered &&
+                !(m as AskUserQuestionMsg).sent
+              ) {
+                return { ...m, sent: true } as Message;
+              }
+              return m;
+            }),
+          );
+        }
+
         lastModeRef.current = options?.mode || "normal";
         wsRef.current.send(
           JSON.stringify({
             type: "prompt",
-            prompt,
+            prompt: finalPrompt,
             allowed_tools: options?.allowedTools,
             mode: options?.mode,
             images: options?.images,
@@ -634,7 +732,7 @@ export function useClaudeSocket(sessionId: string) {
         );
       }
     },
-    [],
+    [messages],
   );
 
   const stopExecution = useCallback(() => {
@@ -724,6 +822,7 @@ export function useClaudeSocket(sessionId: string) {
     pendingPermission,
     reconnectState,
     tokenUsage,
+    pendingAnswerCount,
     sendPrompt,
     stopExecution,
     clearMessages,
@@ -731,5 +830,7 @@ export function useClaudeSocket(sessionId: string) {
     updateMessage,
     respondPermission,
     reconnect,
+    answerQuestion,
+    confirmAnswers,
   };
 }

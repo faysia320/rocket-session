@@ -50,6 +50,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     updateMessage,
     respondPermission,
     reconnect,
+    answerQuestion,
+    confirmAnswers,
+    pendingAnswerCount,
   } = useClaudeSocket(sessionId);
   const { notify } = useNotificationCenter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -574,6 +577,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                       onExecutePlan={handleExecutePlan}
                       onDismissPlan={handleDismissPlan}
                       onOpenReview={handleOpenReview}
+                      onAnswerQuestion={answerQuestion}
+                      onConfirmAnswers={confirmAnswers}
                     />
                   </ErrorBoundary>
                 </div>
@@ -595,6 +600,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onModeToggle={cycleMode}
         onSlashCommand={handleSlashCommand}
         sessionId={sessionId}
+        pendingAnswerCount={pendingAnswerCount}
       />
 
       {/* Permission Dialog */}
