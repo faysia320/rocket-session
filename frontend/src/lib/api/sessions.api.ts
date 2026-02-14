@@ -64,4 +64,18 @@ export const sessionsApi = {
     }
     return response.json();
   },
+
+  stats: (id: string) =>
+    api.get<{
+      total_messages: number;
+      total_cost: number;
+      total_duration_ms: number;
+      total_input_tokens: number;
+      total_output_tokens: number;
+      total_cache_creation_tokens: number;
+      total_cache_read_tokens: number;
+    }>(`/api/sessions/${id}/stats`),
+
+  openTerminal: (id: string) =>
+    api.post<{ status: string; work_dir: string }>(`/api/sessions/${id}/open-terminal`),
 };

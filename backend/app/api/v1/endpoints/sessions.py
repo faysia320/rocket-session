@@ -1,5 +1,8 @@
 """세션 CRUD REST 엔드포인트."""
 
+import platform
+import subprocess
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 
@@ -118,6 +121,48 @@ async def stop_session(
         raise HTTPException(404, "Session not found")
     await manager.kill_process(session_id)
     return {"status": "stopped"}
+
+
+@router.get("/{session_id}/stats")
+async def get_session_stats(
+    session_id: str,
+    manager: SessionManager = Depends(get_session_manager),
+):
+    session = await manager.get(session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+    stats = await manager.get_session_stats(session_id)
+    return stats or {
+        "total_messages": 0,
+        "total_cost": 0,
+        "total_duration_ms": 0,
+        "total_input_tokens": 0,
+        "total_output_tokens": 0,
+        "total_cache_creation_tokens": 0,
+        "total_cache_read_tokens": 0,
+    }
+
+
+@router.post("/{session_id}/open-terminal")
+async def open_terminal(
+    session_id: str,
+    manager: SessionManager = Depends(get_session_manager),
+):
+    session = await manager.get(session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+    work_dir = session["work_dir"]
+    system = platform.system()
+    try:
+        if system == "Windows":
+            subprocess.Popen(["wt", "-d", work_dir], shell=True)
+        elif system == "Darwin":
+            subprocess.Popen(["open", "-a", "Terminal", work_dir])
+        else:
+            subprocess.Popen(["xterm", "-e", f"cd {work_dir} && bash"], shell=True)
+        return {"status": "opened", "work_dir": work_dir}
+    except Exception as e:
+        raise HTTPException(500, f"터미널 열기 실패: {str(e)}")
 
 
 @router.get("/{session_id}/export")

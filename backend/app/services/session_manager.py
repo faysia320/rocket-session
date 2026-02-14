@@ -179,6 +179,10 @@ class SessionManager:
     async def get_file_changes(self, session_id: str) -> list[dict]:
         return await self._db.get_file_changes(session_id)
 
+    async def get_session_stats(self, session_id: str) -> dict | None:
+        """세션별 누적 통계."""
+        return await self._db.get_session_stats(session_id)
+
     async def update_settings(
         self,
         session_id: str,
