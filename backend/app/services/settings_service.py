@@ -40,6 +40,11 @@ class SettingsService:
         mode: str | None = None,
         permission_mode: bool | None = None,
         permission_required_tools: list[str] | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        system_prompt_mode: str | None = None,
+        disallowed_tools: str | None = None,
     ) -> dict:
         """글로벌 설정 업데이트 후 최신 상태 반환."""
         kwargs: dict = {}
@@ -57,5 +62,15 @@ class SettingsService:
             kwargs["permission_mode"] = int(permission_mode)
         if permission_required_tools is not None:
             kwargs["permission_required_tools"] = json.dumps(permission_required_tools)
+        if model is not None:
+            kwargs["model"] = model
+        if max_turns is not None:
+            kwargs["max_turns"] = max_turns
+        if max_budget_usd is not None:
+            kwargs["max_budget_usd"] = max_budget_usd
+        if system_prompt_mode is not None:
+            kwargs["system_prompt_mode"] = system_prompt_mode
+        if disallowed_tools is not None:
+            kwargs["disallowed_tools"] = disallowed_tools
         await self._db.update_global_settings(**kwargs)
         return await self.get()

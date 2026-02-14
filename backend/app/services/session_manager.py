@@ -31,6 +31,11 @@ class SessionManager:
         timeout_seconds: int | None = None,
         permission_mode: bool = False,
         permission_required_tools: list[str] | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        system_prompt_mode: str = "replace",
+        disallowed_tools: str | None = None,
     ) -> dict:
         sid = str(uuid.uuid4())[:8]
         created_at = datetime.now(timezone.utc).isoformat()
@@ -46,6 +51,11 @@ class SessionManager:
             timeout_seconds=timeout_seconds,
             permission_mode=permission_mode,
             permission_required_tools=perm_tools_json,
+            model=model,
+            max_turns=max_turns,
+            max_budget_usd=max_budget_usd,
+            system_prompt_mode=system_prompt_mode,
+            disallowed_tools=disallowed_tools,
         )
         logger.info("세션 생성: %s", sid)
         return session
@@ -179,6 +189,11 @@ class SessionManager:
         permission_mode: bool | None = None,
         permission_required_tools: list[str] | None = None,
         name: str | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        system_prompt_mode: str | None = None,
+        disallowed_tools: str | None = None,
     ) -> dict | None:
         perm_tools_json = (
             json.dumps(permission_required_tools)
@@ -194,6 +209,11 @@ class SessionManager:
             permission_mode=permission_mode,
             permission_required_tools=perm_tools_json,
             name=name,
+            model=model,
+            max_turns=max_turns,
+            max_budget_usd=max_budget_usd,
+            system_prompt_mode=system_prompt_mode,
+            disallowed_tools=disallowed_tools,
         )
 
     @staticmethod
@@ -220,6 +240,11 @@ class SessionManager:
             permission_mode=bool(session.get("permission_mode", 0)),
             permission_required_tools=perm_tools,
             name=session.get("name"),
+            model=session.get("model"),
+            max_turns=session.get("max_turns"),
+            max_budget_usd=session.get("max_budget_usd"),
+            system_prompt_mode=session.get("system_prompt_mode", "replace"),
+            disallowed_tools=session.get("disallowed_tools"),
         )
 
     @staticmethod

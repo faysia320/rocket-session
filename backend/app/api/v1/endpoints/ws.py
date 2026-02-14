@@ -109,7 +109,10 @@ async def _handle_prompt(
 
     # 글로벌 기본값으로 세션 설정 병합 (세션에 값이 없는 필드만)
     merged_session = dict(current_session) if current_session else {}
-    for key in ["system_prompt", "timeout_seconds", "permission_mode", "permission_required_tools"]:
+    for key in [
+        "system_prompt", "timeout_seconds", "permission_mode", "permission_required_tools",
+        "model", "max_turns", "max_budget_usd", "system_prompt_mode", "disallowed_tools",
+    ]:
         if not merged_session.get(key) and global_settings.get(key):
             if key == "permission_required_tools":
                 val = global_settings[key]

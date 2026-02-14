@@ -138,10 +138,33 @@ class ClaudeRunner:
 
         if allowed_tools:
             cmd.extend(["--allowedTools", allowed_tools])
-        if self._settings.claude_model:
-            cmd.extend(["--model", self._settings.claude_model])
+
+        # model: 세션 > env
+        model = session.get("model") or self._settings.claude_model
+        if model:
+            cmd.extend(["--model", model])
+
+        # system_prompt: 모드에 따라 플래그 분기
         if system_prompt:
-            cmd.extend(["--system-prompt", system_prompt])
+            if session.get("system_prompt_mode") == "append":
+                cmd.extend(["--append-system-prompt", system_prompt])
+            else:
+                cmd.extend(["--system-prompt", system_prompt])
+
+        # max_turns
+        max_turns = session.get("max_turns")
+        if max_turns and max_turns > 0:
+            cmd.extend(["--max-turns", str(max_turns)])
+
+        # max_budget_usd
+        max_budget = session.get("max_budget_usd")
+        if max_budget and max_budget > 0:
+            cmd.extend(["--max-budget-usd", str(max_budget)])
+
+        # disallowed_tools
+        disallowed_tools = session.get("disallowed_tools")
+        if disallowed_tools:
+            cmd.extend(["--disallowedTools", disallowed_tools])
 
         claude_session_id = session.get("claude_session_id")
         if claude_session_id:

@@ -29,6 +29,11 @@ async def create_session(
         timeout_seconds=req.timeout_seconds,
         permission_mode=req.permission_mode or False,
         permission_required_tools=req.permission_required_tools,
+        model=req.model,
+        max_turns=req.max_turns,
+        max_budget_usd=req.max_budget_usd,
+        system_prompt_mode=req.system_prompt_mode or "replace",
+        disallowed_tools=req.disallowed_tools,
     )
     session_with_counts = await manager.get_with_counts(session["id"]) or session
     return manager.to_info(session_with_counts)
@@ -69,6 +74,11 @@ async def update_session(
         permission_mode=req.permission_mode,
         permission_required_tools=req.permission_required_tools,
         name=req.name,
+        model=req.model,
+        max_turns=req.max_turns,
+        max_budget_usd=req.max_budget_usd,
+        system_prompt_mode=req.system_prompt_mode,
+        disallowed_tools=req.disallowed_tools,
     )
     if not updated:
         raise HTTPException(404, "Session not found")

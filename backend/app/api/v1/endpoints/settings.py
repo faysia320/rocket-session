@@ -31,4 +31,9 @@ async def update_global_settings(
         mode=req.mode,
         permission_mode=req.permission_mode,
         permission_required_tools=req.permission_required_tools,
+        model=req.model,
+        max_turns=req.max_turns,
+        max_budget_usd=req.max_budget_usd,
+        system_prompt_mode=req.system_prompt_mode,
+        disallowed_tools=req.disallowed_tools,
     )

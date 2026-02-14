@@ -104,6 +104,17 @@ class Database:
             "ALTER TABLE messages ADD COLUMN model TEXT",
             # JSONL 실시간 감시용: import된 세션의 JSONL 파일 경로
             "ALTER TABLE sessions ADD COLUMN jsonl_path TEXT",
+            # Phase 3: CLI 기능 이식 (model, max_turns, max_budget_usd, system_prompt_mode, disallowed_tools)
+            "ALTER TABLE sessions ADD COLUMN model TEXT",
+            "ALTER TABLE sessions ADD COLUMN max_turns INTEGER",
+            "ALTER TABLE sessions ADD COLUMN max_budget_usd REAL",
+            "ALTER TABLE sessions ADD COLUMN system_prompt_mode TEXT NOT NULL DEFAULT 'replace'",
+            "ALTER TABLE sessions ADD COLUMN disallowed_tools TEXT",
+            "ALTER TABLE global_settings ADD COLUMN model TEXT",
+            "ALTER TABLE global_settings ADD COLUMN max_turns INTEGER",
+            "ALTER TABLE global_settings ADD COLUMN max_budget_usd REAL",
+            "ALTER TABLE global_settings ADD COLUMN system_prompt_mode TEXT DEFAULT 'replace'",
+            "ALTER TABLE global_settings ADD COLUMN disallowed_tools TEXT",
         ]
         for migration in migrations:
             try:
@@ -160,10 +171,16 @@ class Database:
         mode: str = "normal",
         permission_mode: bool = False,
         permission_required_tools: str | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        system_prompt_mode: str = "replace",
+        disallowed_tools: str | None = None,
     ) -> dict:
         await self.conn.execute(
-            """INSERT INTO sessions (id, work_dir, status, created_at, allowed_tools, system_prompt, timeout_seconds, mode, permission_mode, permission_required_tools)
-               VALUES (?, ?, 'idle', ?, ?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO sessions (id, work_dir, status, created_at, allowed_tools, system_prompt, timeout_seconds, mode, permission_mode, permission_required_tools,
+                                    model, max_turns, max_budget_usd, system_prompt_mode, disallowed_tools)
+               VALUES (?, ?, 'idle', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 session_id,
                 work_dir,
@@ -174,6 +191,11 @@ class Database:
                 mode,
                 int(permission_mode),
                 permission_required_tools,
+                model,
+                max_turns,
+                max_budget_usd,
+                system_prompt_mode,
+                disallowed_tools,
             ),
         )
         await self.conn.commit()
@@ -257,6 +279,11 @@ class Database:
         permission_mode: bool | None = None,
         permission_required_tools: str | None = None,
         name: str | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        system_prompt_mode: str | None = None,
+        disallowed_tools: str | None = None,
     ) -> dict | None:
         fields = []
         values = []
@@ -281,6 +308,21 @@ class Database:
         if name is not None:
             fields.append("name = ?")
             values.append(name)
+        if model is not None:
+            fields.append("model = ?")
+            values.append(model)
+        if max_turns is not None:
+            fields.append("max_turns = ?")
+            values.append(max_turns)
+        if max_budget_usd is not None:
+            fields.append("max_budget_usd = ?")
+            values.append(max_budget_usd)
+        if system_prompt_mode is not None:
+            fields.append("system_prompt_mode = ?")
+            values.append(system_prompt_mode)
+        if disallowed_tools is not None:
+            fields.append("disallowed_tools = ?")
+            values.append(disallowed_tools)
         if not fields:
             return await self.get_session(session_id)
         values.append(session_id)
@@ -449,6 +491,11 @@ class Database:
         mode: str | None = None,
         permission_mode: int | None = None,
         permission_required_tools: str | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        system_prompt_mode: str | None = None,
+        disallowed_tools: str | None = None,
     ) -> dict | None:
         """글로벌 기본 설정 업데이트."""
         fields = []
@@ -474,6 +521,21 @@ class Database:
         if permission_required_tools is not None:
             fields.append("permission_required_tools = ?")
             values.append(permission_required_tools)
+        if model is not None:
+            fields.append("model = ?")
+            values.append(model)
+        if max_turns is not None:
+            fields.append("max_turns = ?")
+            values.append(max_turns)
+        if max_budget_usd is not None:
+            fields.append("max_budget_usd = ?")
+            values.append(max_budget_usd)
+        if system_prompt_mode is not None:
+            fields.append("system_prompt_mode = ?")
+            values.append(system_prompt_mode)
+        if disallowed_tools is not None:
+            fields.append("disallowed_tools = ?")
+            values.append(disallowed_tools)
         if not fields:
             return await self.get_global_settings()
         values.append("default")

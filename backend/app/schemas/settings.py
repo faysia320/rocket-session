@@ -13,6 +13,11 @@ class GlobalSettingsResponse(BaseModel):
     mode: str = "normal"
     permission_mode: bool = False
     permission_required_tools: Optional[list[str]] = None
+    model: Optional[str] = None
+    max_turns: Optional[int] = None
+    max_budget_usd: Optional[float] = None
+    system_prompt_mode: str = "replace"
+    disallowed_tools: Optional[str] = None
 
 
 class UpdateGlobalSettingsRequest(BaseModel):
@@ -23,3 +28,8 @@ class UpdateGlobalSettingsRequest(BaseModel):
     mode: Optional[str] = None
     permission_mode: Optional[bool] = None
     permission_required_tools: Optional[list[str]] = None
+    model: Optional[str] = None
+    max_turns: Optional[int] = None
+    max_budget_usd: Optional[float] = None
+    system_prompt_mode: Optional[str] = None
+    disallowed_tools: Optional[str] = None
