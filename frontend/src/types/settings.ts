@@ -1,5 +1,6 @@
 /** 글로벌 설정 타입 */
 export interface GlobalSettings {
+  root_dir?: string;
   work_dir?: string | null;
   allowed_tools?: string | null;
   system_prompt?: string | null;

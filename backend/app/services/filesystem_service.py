@@ -21,9 +21,21 @@ from app.schemas.filesystem import (
 class FilesystemService:
     """파일시스템 탐색 및 Git 워크트리 관리 서비스."""
 
-    def __init__(self):
+    def __init__(self, root_dir: str = ""):
         self._git_cache: dict[str, tuple[float, GitInfo]] = {}
         self._git_cache_ttl: float = 10.0  # 10초 TTL
+        # 탐색 경계: 이 디렉토리 상위로는 이동 불가
+        self._root_dir: Path | None = None
+        if root_dir:
+            expanded = os.path.expanduser(root_dir)
+            resolved = Path(expanded).resolve()
+            if resolved.exists() and resolved.is_dir():
+                self._root_dir = resolved
+
+    @property
+    def root_dir(self) -> str:
+        """탐색 루트 디렉토리 경로."""
+        return str(self._root_dir) if self._root_dir else ""
 
     def _validate_path(self, path: str) -> Path:
         """경로 유효성 검사 및 확장."""
@@ -33,12 +45,29 @@ class FilesystemService:
             raise ValueError(f"경로가 존재하지 않습니다: {path}")
         return resolved
 
+    def _is_within_root(self, path: Path) -> bool:
+        """경로가 root_dir 경계 안에 있는지 확인."""
+        if not self._root_dir:
+            return True
+        try:
+            path.relative_to(self._root_dir)
+            return True
+        except ValueError:
+            return False
+
     async def list_directory(self, path: str) -> DirectoryListResponse:
         """디렉토리 목록 조회 (하위 디렉토리만, 숨김 제외)."""
         validated_path = self._validate_path(path)
 
         if not validated_path.is_dir():
             raise ValueError(f"디렉토리가 아닙니다: {path}")
+
+        # root_dir 경계 밖이면 root_dir로 리다이렉트
+        if not self._is_within_root(validated_path):
+            if self._root_dir:
+                validated_path = self._root_dir
+            else:
+                raise ValueError(f"접근할 수 없는 경로입니다: {path}")
 
         entries = []
         for item in sorted(validated_path.iterdir()):
@@ -58,12 +87,12 @@ class FilesystemService:
                     )
                 )
 
-        # 상위 디렉토리 계산 (루트면 None)
-        parent = (
-            None
-            if validated_path.parent == validated_path
-            else str(validated_path.parent)
+        # 상위 디렉토리 계산 (루트이거나 root_dir 경계이면 None)
+        at_root_boundary = (
+            validated_path.parent == validated_path
+            or (self._root_dir and validated_path == self._root_dir)
         )
+        parent = None if at_root_boundary else str(validated_path.parent)
 
         return DirectoryListResponse(
             path=str(validated_path),

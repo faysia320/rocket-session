@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 
 class GlobalSettingsResponse(BaseModel):
+    root_dir: str = ""
     work_dir: Optional[str] = None
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None

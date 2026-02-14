@@ -2,8 +2,9 @@
 
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies import get_settings_service
+from app.api.dependencies import get_filesystem_service, get_settings_service
 from app.schemas.settings import GlobalSettingsResponse, UpdateGlobalSettingsRequest
+from app.services.filesystem_service import FilesystemService
 from app.services.settings_service import SettingsService
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -12,9 +13,12 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 @router.get("/", response_model=GlobalSettingsResponse)
 async def get_global_settings(
     service: SettingsService = Depends(get_settings_service),
+    fs: FilesystemService = Depends(get_filesystem_service),
 ):
     """글로벌 기본 설정 조회."""
-    return await service.get()
+    result = await service.get()
+    result["root_dir"] = fs.root_dir
+    return result
 
 
 @router.patch("/", response_model=GlobalSettingsResponse)

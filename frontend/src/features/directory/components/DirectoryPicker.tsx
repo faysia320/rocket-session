@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useGitInfo } from "../hooks/useGitInfo";
 import { useFavoriteDirectories } from "../hooks/useFavoriteDirectories";
+import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 import { GitInfoCard } from "./GitInfoCard";
 import { DirectoryBrowser } from "./DirectoryBrowser";
 import { WorktreePanel } from "./WorktreePanel";
@@ -14,6 +15,7 @@ interface DirectoryPickerProps {
 }
 
 export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
+  const { data: globalSettings } = useGlobalSettings();
   const [browserOpen, setBrowserOpen] = useState(false);
   const { gitInfo, isLoading } = useGitInfo(value);
   const { isFavorite, toggleFavorite } = useFavoriteDirectories();
@@ -69,7 +71,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
       <DirectoryBrowser
         open={browserOpen}
         onOpenChange={setBrowserOpen}
-        initialPath={value || "~"}
+        initialPath={value || globalSettings?.root_dir || "~"}
         onSelect={onChange}
       />
     </div>

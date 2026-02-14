@@ -20,7 +20,7 @@ _session_manager: SessionManager | None = None
 _local_scanner: LocalSessionScanner | None = None
 _usage_service: UsageService | None = None
 _ws_manager = WebSocketManager()
-_filesystem_service = FilesystemService()
+_filesystem_service: FilesystemService | None = None
 _claude_runner: ClaudeRunner | None = None
 _settings_service: SettingsService | None = None
 _jsonl_watcher: JsonlWatcher | None = None
@@ -55,6 +55,8 @@ def get_claude_runner() -> ClaudeRunner:
 
 
 def get_filesystem_service() -> FilesystemService:
+    if _filesystem_service is None:
+        raise RuntimeError("FilesystemService가 초기화되지 않았습니다")
     return _filesystem_service
 
 
@@ -90,8 +92,10 @@ async def init_dependencies():
         _local_scanner, \
         _usage_service, \
         _settings_service, \
-        _jsonl_watcher
+        _jsonl_watcher, \
+        _filesystem_service
     settings = get_settings()
+    _filesystem_service = FilesystemService(root_dir=settings.claude_work_dir)
     _database = Database(settings.database_path)
     await _database.initialize()
     _ws_manager.set_database(_database)
@@ -123,7 +127,8 @@ async def shutdown_dependencies():
         _usage_service, \
         _claude_runner, \
         _settings_service, \
-        _jsonl_watcher
+        _jsonl_watcher, \
+        _filesystem_service
     if _jsonl_watcher:
         try:
             _jsonl_watcher.stop_all()
@@ -138,3 +143,4 @@ async def shutdown_dependencies():
     _claude_runner = None
     _settings_service = None
     _jsonl_watcher = None
+    _filesystem_service = None
