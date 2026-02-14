@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useClaudeSocket } from '../hooks/useClaudeSocket';
+import { useDesktopNotification } from '../hooks/useDesktopNotification';
 import { MessageBubble } from './MessageBubble';
 import { PermissionDialog } from './PermissionDialog';
 import { PlanReviewDialog } from './PlanReviewDialog';
@@ -26,8 +27,9 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ sessionId }: ChatPanelProps) {
-  const { connected, loading, messages, status, sessionInfo, fileChanges, activeTools, pendingPermission, reconnectState, sendPrompt, stopExecution, clearMessages, addSystemMessage, updateMessage, respondPermission, reconnect } =
+  const { connected, loading, messages, status, sessionInfo, fileChanges, activeTools, pendingPermission, reconnectState, tokenUsage, sendPrompt, stopExecution, clearMessages, addSystemMessage, updateMessage, respondPermission, reconnect } =
     useClaudeSocket(sessionId);
+  const { notify } = useDesktopNotification();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
   const isInitialLoad = useRef(true);
@@ -46,17 +48,21 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? '');
 
-  // running → idle 전환 시 gitInfo 자동 갱신
+  // running → idle 전환 시 gitInfo 자동 갱신 + 알림
   const prevStatusRef = useRef(status);
   useEffect(() => {
-    if (prevStatusRef.current === 'running' && status === 'idle' && workDir) {
-      const timer = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['git-info', workDir] });
-      }, 1500);
-      return () => clearTimeout(timer);
+    if (prevStatusRef.current === 'running' && status === 'idle') {
+      notify('Claude Code', '작업이 완료되었습니다.');
+      if (workDir) {
+        const timer = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['git-info', workDir] });
+        }, 1500);
+        prevStatusRef.current = status;
+        return () => clearTimeout(timer);
+      }
     }
     prevStatusRef.current = status;
-  }, [status, workDir, queryClient]);
+  }, [status, workDir, queryClient, notify]);
 
   // 세션 정보에서 mode 동기화
   useEffect(() => {
@@ -256,6 +262,10 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     sendPrompt(prompt, { mode, images });
   }, [sendPrompt, mode]);
 
+  const handleResend = useCallback((content: string) => {
+    sendPrompt(content, { mode });
+  }, [sendPrompt, mode]);
+
   const navigate = useNavigate();
   const handleRemoveWorktree = useCallback(async () => {
     if (!workDir) return;
@@ -293,6 +303,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onSendPrompt={handleSendPrompt}
         onRemoveWorktree={handleRemoveWorktree}
         onMenuToggle={() => setSidebarMobileOpen(true)}
+        tokenUsage={tokenUsage}
+        currentModel={sessionInfo?.model as string | undefined}
       />
 
       {/* 검색 바 */}
@@ -396,6 +408,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                       message={messages[virtualItem.index]}
                       isRunning={status === 'running'}
                       searchQuery={searchQuery || undefined}
+                      onResend={handleResend}
                       onExecutePlan={handleExecutePlan}
                       onDismissPlan={handleDismissPlan}
                       onOpenReview={handleOpenReview}

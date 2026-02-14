@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Columns2, Download, PanelLeftClose, PanelLeftOpen, Plus, Settings } from 'lucide-react';
+import { Sun, Moon, Columns2, Download, PanelLeftClose, PanelLeftOpen, Plus, Settings, Search, X, Bell, BellOff } from 'lucide-react';
+import { useDesktopNotification } from '@/features/chat/hooks/useDesktopNotification';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,6 +41,23 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
   const collapsed = isMobileOverlay ? false : useSessionStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const [importOpen, setImportOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'idle' | 'error'>('all');
+  const { enabled: notificationsEnabled, toggle: toggleNotifications } = useDesktopNotification();
+
+  const filteredSessions = useMemo(() => {
+    let filtered = sessions;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter((s) =>
+        (s.name || s.id).toLowerCase().includes(q) || s.work_dir.toLowerCase().includes(q),
+      );
+    }
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((s) => s.status === statusFilter);
+    }
+    return filtered;
+  }, [sessions, searchQuery, statusFilter]);
 
   return (
     <aside
@@ -98,8 +116,51 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
             SESSIONS
           </span>
           <Badge variant="secondary" className="font-mono text-[10px]">
-            {sessions.length}
+            {filteredSessions.length}{filteredSessions.length !== sessions.length ? `/${sessions.length}` : ''}
           </Badge>
+        </div>
+      )}
+
+      {/* 검색 + 상태 필터 */}
+      {collapsed ? null : (
+        <div className="px-3 space-y-2 pb-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+            <input
+              className="w-full font-mono text-[11px] bg-input border border-border rounded pl-7 pr-7 py-1.5 outline-none focus:border-primary/50"
+              placeholder="세션 검색…"
+              aria-label="세션 검색"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground"
+                onClick={() => setSearchQuery('')}
+                aria-label="검색 초기화"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
+          <div className="flex gap-1">
+            {(['all', 'running', 'idle', 'error'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                className={cn(
+                  'font-mono text-[10px] px-2 py-0.5 rounded-sm border transition-colors',
+                  statusFilter === f
+                    ? 'bg-primary/15 text-primary border-primary/30'
+                    : 'text-muted-foreground border-transparent hover:bg-muted',
+                )}
+                onClick={() => setStatusFilter(f)}
+              >
+                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -123,8 +184,14 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
               No active sessions
             </div>
           )
+        ) : sessions.length > 0 && filteredSessions.length === 0 ? (
+          collapsed ? null : (
+            <div className="py-6 px-3 text-center font-mono text-xs text-muted-foreground/70">
+              검색 결과가 없습니다
+            </div>
+          )
         ) : (
-          sessions.map((s) =>
+          filteredSessions.map((s) =>
             collapsed ? (
               <Tooltip key={s.id}>
                 <TooltipTrigger asChild>
@@ -168,6 +235,22 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
       {/* Footer: 설정, 테마, Split View, 접기 */}
       <div className={cn('py-3 border-t border-border', collapsed ? 'px-2' : 'px-4')}>
         <div className={cn('flex items-center gap-1', collapsed ? 'flex-col' : 'justify-end')}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn('h-8 w-8', notificationsEnabled && 'text-primary')}
+                onClick={toggleNotifications}
+                aria-label={notificationsEnabled ? '알림 비활성화' : '알림 활성화'}
+              >
+                {notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side={collapsed ? 'right' : 'top'}>
+              {notificationsEnabled ? '알림 켜짐' : '알림 꺼짐'}
+            </TooltipContent>
+          </Tooltip>
           <GlobalSettingsDialog>
             <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="글로벌 설정">
               <Settings className="h-4 w-4" />

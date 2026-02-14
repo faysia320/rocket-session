@@ -10,6 +10,7 @@ interface MessageBubbleProps {
   message: Message;
   isRunning?: boolean;
   searchQuery?: string;
+  onResend?: (content: string) => void;
   onExecutePlan?: (messageId: string) => void;
   onDismissPlan?: (messageId: string) => void;
   onOpenReview?: (messageId: string) => void;
@@ -19,6 +20,7 @@ export const MessageBubble = memo(function MessageBubble({
   message,
   isRunning = false,
   searchQuery,
+  onResend,
   onExecutePlan,
   onDismissPlan,
   onOpenReview,
@@ -27,7 +29,7 @@ export const MessageBubble = memo(function MessageBubble({
 
   switch (type) {
     case 'user_message':
-      return <UserMessage message={message} searchQuery={searchQuery} />;
+      return <UserMessage message={message} searchQuery={searchQuery} onResend={onResend} isRunning={isRunning} />;
     case 'assistant_text':
       return <AssistantText message={message} />;
     case 'result':
@@ -67,7 +69,7 @@ export const MessageBubble = memo(function MessageBubble({
   }
 });
 
-function UserMessage({ message, searchQuery }: { message: Message; searchQuery?: string }) {
+function UserMessage({ message, searchQuery, onResend, isRunning }: { message: Message; searchQuery?: string; onResend?: (content: string) => void; isRunning?: boolean }) {
   // user_message의 실제 텍스트: message.message 객체의 content 또는 prompt
   const msg = message.message as unknown as Record<string, string> | undefined;
   const text = msg?.content || msg?.prompt || message.content || message.prompt || '';
@@ -78,6 +80,22 @@ function UserMessage({ message, searchQuery }: { message: Message; searchQuery?:
         <div className="font-mono text-[13px] leading-normal whitespace-pre-wrap select-text">
           {searchQuery ? highlightText(text, searchQuery) : text}
         </div>
+        {onResend ? (
+          <div className="flex justify-end mt-1">
+            <button
+              type="button"
+              className="font-mono text-[10px] text-primary-foreground/70 hover:text-primary-foreground transition-colors disabled:opacity-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                onResend(text);
+              }}
+              disabled={isRunning}
+              aria-label="메시지 재전송"
+            >
+              Re-send
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );
