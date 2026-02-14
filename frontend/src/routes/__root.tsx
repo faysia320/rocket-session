@@ -4,11 +4,20 @@ import {
   useNavigate,
   useLocation,
 } from "@tanstack/react-router";
-import { useCallback } from "react";
+import { useCallback, lazy, Suspense } from "react";
 import { toast } from "sonner";
 import { Sidebar } from "@/features/session/components/Sidebar";
-import { ChatPanel } from "@/features/chat/components/ChatPanel";
-import { SessionDashboardCard } from "@/features/session/components/SessionDashboardCard";
+
+const ChatPanel = lazy(() =>
+  import("@/features/chat/components/ChatPanel").then((m) => ({
+    default: m.ChatPanel,
+  })),
+);
+const SessionDashboardCard = lazy(() =>
+  import("@/features/session/components/SessionDashboardCard").then((m) => ({
+    default: m.SessionDashboardCard,
+  })),
+);
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { useSessionStore } from "@/store";
 import { UsageFooter } from "@/features/usage/components/UsageFooter";
@@ -110,18 +119,20 @@ function RootComponent() {
           dashboardView &&
           sessions.length > 0 &&
           !isNewSessionRoute ? (
-            <DashboardGrid
-              sessions={sessions}
-              activeSessionId={activeSessionId}
-              onSelect={handleSelect}
-              onNew={handleNew}
-              onOpenTerminal={handleOpenTerminal}
-            />
+            <Suspense fallback={<LoadingSkeleton />}>
+              <DashboardGrid
+                sessions={sessions}
+                activeSessionId={activeSessionId}
+                onSelect={handleSelect}
+                onNew={handleNew}
+                onOpenTerminal={handleOpenTerminal}
+              />
+            </Suspense>
           ) : !isMobile &&
             splitView &&
             sessions.length > 0 &&
             !isNewSessionRoute ? (
-            <>
+            <Suspense fallback={<LoadingSkeleton />}>
               {sessions.slice(0, 5).map((s) => (
                 <div
                   key={s.id}
@@ -137,7 +148,7 @@ function RootComponent() {
                   </span>
                 </div>
               ) : null}
-            </>
+            </Suspense>
           ) : (
             <Outlet />
           )}
@@ -198,6 +209,16 @@ function DashboardGrid({
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <span className="font-mono text-sm text-muted-foreground animate-pulse">
+        로딩 중…
+      </span>
     </div>
   );
 }

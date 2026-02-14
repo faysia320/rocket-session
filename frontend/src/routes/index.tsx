@@ -1,13 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback } from "react";
+import { useCallback, lazy, Suspense } from "react";
 import { Menu } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useSessionStore } from "@/store";
 import { useSessions } from "@/features/session/hooks/useSessions";
-import { SessionDashboardCard } from "@/features/session/components/SessionDashboardCard";
 import { sessionsApi } from "@/lib/api/sessions.api";
+
+const SessionDashboardCard = lazy(() =>
+  import("@/features/session/components/SessionDashboardCard").then((m) => ({
+    default: m.SessionDashboardCard,
+  })),
+);
 
 export const Route = createFileRoute("/")({
   component: IndexPage,
@@ -84,15 +89,17 @@ function IndexPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {sortedSessions.map((s) => (
-            <SessionDashboardCard
-              key={s.id}
-              session={s}
-              isActive={false}
-              onSelect={selectSession}
-              onOpenTerminal={handleOpenTerminal}
-            />
-          ))}
+          <Suspense>
+            {sortedSessions.map((s) => (
+              <SessionDashboardCard
+                key={s.id}
+                session={s}
+                isActive={false}
+                onSelect={selectSession}
+                onOpenTerminal={handleOpenTerminal}
+              />
+            ))}
+          </Suspense>
         </div>
       </div>
     </div>
