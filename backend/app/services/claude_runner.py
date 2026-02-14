@@ -69,9 +69,7 @@ class ClaudeRunner:
         self._settings = settings
 
     @staticmethod
-    def _copy_images_to_workdir(
-        images: list[str], work_dir: str
-    ) -> list[str]:
+    def _copy_images_to_workdir(images: list[str], work_dir: str) -> list[str]:
         """이미지 파일을 작업 디렉토리의 .rocket-uploads/에 복사하고 경로 목록 반환."""
         import shutil
 
@@ -181,9 +179,7 @@ class ClaudeRunner:
             copied_paths = self._copy_images_to_workdir(images, work_dir)
             if copied_paths:
                 image_refs = "\n".join(f"- {p}" for p in copied_paths)
-                image_instruction = (
-                    f"\n\n[첨부된 이미지 파일입니다. Read 도구로 확인하세요:\n{image_refs}\n]"
-                )
+                image_instruction = f"\n\n[첨부된 이미지 파일입니다. Read 도구로 확인하세요:\n{image_refs}\n]"
                 # prompt는 cmd[2] (cmd = ["claude", "-p", prompt, ...])
                 cmd[2] = cmd[2] + image_instruction
 
@@ -272,10 +268,15 @@ class ClaudeRunner:
                 )
                 await ws_manager.broadcast_event(
                     session_id,
-                    {"type": WsEventType.SESSION_INFO, "claude_session_id": event["session_id"]},
+                    {
+                        "type": WsEventType.SESSION_INFO,
+                        "claude_session_id": event["session_id"],
+                    },
                 )
             else:
-                await ws_manager.broadcast_event(session_id, {"type": WsEventType.EVENT, "event": event})
+                await ws_manager.broadcast_event(
+                    session_id, {"type": WsEventType.EVENT, "event": event}
+                )
 
         elif event_type == CliEventType.ASSISTANT:
             await self._handle_assistant_event(
@@ -287,12 +288,18 @@ class ClaudeRunner:
 
         elif event_type == CliEventType.RESULT:
             await self._handle_result_event(
-                event, session_id, mode, ws_manager, session_manager,
+                event,
+                session_id,
+                mode,
+                ws_manager,
+                session_manager,
                 turn_state,
             )
 
         else:
-            await ws_manager.broadcast_event(session_id, {"type": WsEventType.EVENT, "event": event})
+            await ws_manager.broadcast_event(
+                session_id, {"type": WsEventType.EVENT, "event": event}
+            )
 
     async def _handle_assistant_event(
         self,
@@ -317,11 +324,14 @@ class ClaudeRunner:
                 # thinking 블록 (extended thinking 모드)
                 thinking_text = block.get("thinking", "")
                 if thinking_text:
-                    await ws_manager.broadcast_event(session_id, {
-                        "type": WsEventType.THINKING,
-                        "text": thinking_text,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    })
+                    await ws_manager.broadcast_event(
+                        session_id,
+                        {
+                            "type": WsEventType.THINKING,
+                            "text": thinking_text,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
             elif block.get("type") == "text":
                 turn_state["text"] = block.get("text", "")
                 has_new_text = True
@@ -335,12 +345,15 @@ class ClaudeRunner:
                     turn_state["exit_plan_tool_id"] = tool_use_id
                     turn_state["mode"] = "normal"
                     await session_manager.update_settings(session_id, mode="normal")
-                    await ws_manager.broadcast_event(session_id, {
-                        "type": WsEventType.MODE_CHANGE,
-                        "from_mode": "plan",
-                        "to_mode": "normal",
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    })
+                    await ws_manager.broadcast_event(
+                        session_id,
+                        {
+                            "type": WsEventType.MODE_CHANGE,
+                            "from_mode": "plan",
+                            "to_mode": "normal",
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
                     continue
 
                 tool_event = {
@@ -389,7 +402,10 @@ class ClaudeRunner:
             )
 
     async def _handle_user_event(
-        self, event: dict, session_id: str, ws_manager: WebSocketManager,
+        self,
+        event: dict,
+        session_id: str,
+        ws_manager: WebSocketManager,
         turn_state: dict,
     ) -> None:
         """user 타입 이벤트 (tool_result) 처리."""
@@ -420,7 +436,7 @@ class ClaudeRunner:
                     {
                         "type": WsEventType.TOOL_RESULT,
                         "tool_use_id": tool_use_id,
-                        "output": output_text[:self._MAX_TOOL_OUTPUT_LENGTH],
+                        "output": output_text[: self._MAX_TOOL_OUTPUT_LENGTH],
                         "is_error": block.get("is_error", False),
                         "is_truncated": truncated,
                         "full_length": full_length if truncated else None,
@@ -581,7 +597,11 @@ class ClaudeRunner:
                 try:
                     await asyncio.wait_for(
                         self._parse_stream(
-                            process, session_id, mode, ws_manager, session_manager,
+                            process,
+                            session_id,
+                            mode,
+                            ws_manager,
+                            session_manager,
                             work_dir=work_dir,
                         ),
                         timeout=timeout_seconds,
@@ -604,7 +624,11 @@ class ClaudeRunner:
                     )
             else:
                 await self._parse_stream(
-                    process, session_id, mode, ws_manager, session_manager,
+                    process,
+                    session_id,
+                    mode,
+                    ws_manager,
+                    session_manager,
                     work_dir=work_dir,
                 )
 

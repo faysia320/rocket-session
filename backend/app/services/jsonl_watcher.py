@@ -118,7 +118,8 @@ class JsonlWatcher:
         if exc:
             logger.error(
                 "JSONL 감시 비정상 종료 (session=%s): %s",
-                session_id[:8], exc,
+                session_id[:8],
+                exc,
             )
 
     async def _watch_loop(self, session_id: str, path: Path) -> None:
@@ -166,9 +167,7 @@ class JsonlWatcher:
                     last_activity = asyncio.get_event_loop().time()
 
                     for line in new_lines:
-                        await self._process_line(
-                            line, session_id, turn_state
-                        )
+                        await self._process_line(line, session_id, turn_state)
                 elif current_size < file_size:
                     # 파일이 줄어듦 (truncate 또는 재생성) → 처음부터 다시 읽기
                     file_size = 0
@@ -179,7 +178,8 @@ class JsonlWatcher:
                 if elapsed >= IDLE_TIMEOUT:
                     logger.info(
                         "JSONL idle 타임아웃 (%ds), 감시 종료: session=%s",
-                        int(elapsed), session_id[:8],
+                        int(elapsed),
+                        session_id[:8],
                     )
                     break
         finally:
@@ -234,9 +234,7 @@ class JsonlWatcher:
                 session_id, {"type": "event", "event": event}
             )
 
-    async def _handle_system_event(
-        self, event: dict, session_id: str
-    ) -> None:
+    async def _handle_system_event(self, event: dict, session_id: str) -> None:
         """system 이벤트 처리."""
         if event.get("session_id"):
             await self._session_manager.update_claude_session_id(
@@ -269,11 +267,14 @@ class JsonlWatcher:
             if block_type == "thinking":
                 thinking_text = block.get("thinking", "")
                 if thinking_text:
-                    await self._ws_manager.broadcast_event(session_id, {
-                        "type": "thinking",
-                        "text": thinking_text,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    })
+                    await self._ws_manager.broadcast_event(
+                        session_id,
+                        {
+                            "type": "thinking",
+                            "text": thinking_text,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
 
             elif block_type == "text":
                 turn_state["text"] = block.get("text", "")
@@ -283,13 +284,16 @@ class JsonlWatcher:
                 tool_name = block.get("name", "unknown")
                 tool_input = block.get("input", {})
                 tool_use_id = block.get("id", "")
-                await self._ws_manager.broadcast_event(session_id, {
-                    "type": "tool_use",
-                    "tool": tool_name,
-                    "input": tool_input,
-                    "tool_use_id": tool_use_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                })
+                await self._ws_manager.broadcast_event(
+                    session_id,
+                    {
+                        "type": "tool_use",
+                        "tool": tool_name,
+                        "input": tool_input,
+                        "tool_use_id": tool_use_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
 
                 # 파일 변경 추적
                 if tool_name in ("Write", "Edit", "MultiEdit"):
@@ -328,9 +332,7 @@ class JsonlWatcher:
                 },
             )
 
-    async def _handle_user_event(
-        self, event: dict, session_id: str
-    ) -> None:
+    async def _handle_user_event(self, event: dict, session_id: str) -> None:
         """user 이벤트 (tool_result) 처리."""
         msg = event.get("message", {})
         content_blocks = msg.get("content", [])
@@ -409,9 +411,7 @@ class JsonlWatcher:
         await self._ws_manager.broadcast_event(session_id, result_event)
 
         if is_error:
-            await self._session_manager.update_status(
-                session_id, SessionStatus.ERROR
-            )
+            await self._session_manager.update_status(session_id, SessionStatus.ERROR)
 
         await self._session_manager.add_message(
             session_id=session_id,

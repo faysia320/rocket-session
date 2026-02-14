@@ -17,7 +17,9 @@ router = APIRouter(prefix="/local-sessions", tags=["local-sessions"])
 @router.get("/", response_model=list[LocalSessionMeta])
 async def scan_local_sessions(
     project_dir: str | None = Query(None, description="특정 프로젝트만 스캔"),
-    since: str | None = Query(None, description="ISO 형식 날짜. 이후 수정된 세션만 조회"),
+    since: str | None = Query(
+        None, description="ISO 형식 날짜. 이후 수정된 세션만 조회"
+    ),
     scanner: LocalSessionScanner = Depends(get_local_scanner),
 ):
     """로컬 Claude Code 세션 목록 스캔."""

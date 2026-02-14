@@ -24,7 +24,9 @@ async def create_session(
 ):
     global_settings = await settings_service.get()
     # work_dir 우선순위: 요청 > 글로벌 > env
-    work_dir = req.work_dir or global_settings.get("work_dir") or settings.claude_work_dir
+    work_dir = (
+        req.work_dir or global_settings.get("work_dir") or settings.claude_work_dir
+    )
     session = await manager.create(
         work_dir=work_dir,
         allowed_tools=req.allowed_tools,
@@ -183,7 +185,7 @@ async def export_session(
             lines.append(f"> **User**: {content}")
             lines.append("")
         elif role == "assistant":
-            lines.append(f"**Claude**:")
+            lines.append("**Claude**:")
             lines.append("")
             lines.append(content)
             lines.append("")

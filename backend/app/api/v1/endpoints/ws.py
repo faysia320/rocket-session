@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _on_runner_task_done(task: asyncio.Task, session_id: str, manager: SessionManager) -> None:
+def _on_runner_task_done(
+    task: asyncio.Task, session_id: str, manager: SessionManager
+) -> None:
     """runner task 완료 시 예외 로깅 + runner_task 참조 정리 콜백."""
     manager.clear_runner_task(session_id)
     if task.cancelled():
@@ -111,8 +113,15 @@ async def _handle_prompt(
     # 글로벌 기본값으로 세션 설정 병합 (세션에 값이 없는 필드만)
     merged_session = dict(current_session) if current_session else {}
     for key in [
-        "system_prompt", "timeout_seconds", "permission_mode", "permission_required_tools",
-        "model", "max_turns", "max_budget_usd", "system_prompt_mode", "disallowed_tools",
+        "system_prompt",
+        "timeout_seconds",
+        "permission_mode",
+        "permission_required_tools",
+        "model",
+        "max_turns",
+        "max_budget_usd",
+        "system_prompt_mode",
+        "disallowed_tools",
     ]:
         if not merged_session.get(key) and global_settings.get(key):
             if key == "permission_required_tools":
@@ -176,7 +185,9 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
     # last_seq 쿼리 파라미터 파싱 (재연결 시)
     last_seq_param = ws.query_params.get("last_seq")
-    last_seq = int(last_seq_param) if last_seq_param and last_seq_param.isdigit() else None
+    last_seq = (
+        int(last_seq_param) if last_seq_param and last_seq_param.isdigit() else None
+    )
 
     ws_manager.register(session_id, ws)
 
@@ -186,10 +197,9 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
     try:
         session_with_counts = await manager.get_with_counts(session_id) or session
         latest_seq = ws_manager.get_latest_seq(session_id)
-        is_running = (
-            manager.get_runner_task(session_id) is not None
-            or jsonl_watcher.is_watching(session_id)
-        )
+        is_running = manager.get_runner_task(
+            session_id
+        ) is not None or jsonl_watcher.is_watching(session_id)
 
         if last_seq is not None:
             # 재연결: 세션 상태만 전송 (히스토리 없음) + 놓친 이벤트 전송

@@ -37,7 +37,9 @@ class WebSocketManager:
         self._event_buffers: dict[str, deque[BufferedEvent]] = {}
         self._seq_counters: dict[str, int] = {}
         self._db: Database | None = None
-        self._event_queue: asyncio.Queue[tuple[str, int, str, str, str]] = asyncio.Queue()
+        self._event_queue: asyncio.Queue[tuple[str, int, str, str, str]] = (
+            asyncio.Queue()
+        )
         self._flush_task: asyncio.Task | None = None
         self._heartbeat_task: asyncio.Task | None = None
 
@@ -140,13 +142,21 @@ class WebSocketManager:
         if session_id not in self._event_buffers:
             self._event_buffers[session_id] = deque(maxlen=MAX_BUFFER_SIZE)
         self._event_buffers[session_id].append(
-            BufferedEvent(seq=seq, event_type=event_type, payload=message_with_seq, timestamp=ts)
+            BufferedEvent(
+                seq=seq, event_type=event_type, payload=message_with_seq, timestamp=ts
+            )
         )
 
         # DB 저장: 큐에 enqueue (배치 writer가 주기적으로 flush)
         if self._db:
             self._event_queue.put_nowait(
-                (session_id, seq, event_type, json.dumps(message_with_seq, ensure_ascii=False), ts)
+                (
+                    session_id,
+                    seq,
+                    event_type,
+                    json.dumps(message_with_seq, ensure_ascii=False),
+                    ts,
+                )
             )
 
         # 연결된 클라이언트에 broadcast
@@ -171,7 +181,9 @@ class WebSocketManager:
         for ws in dead:
             ws_list.remove(ws)
 
-    async def get_buffered_events_after(self, session_id: str, after_seq: int) -> list[dict]:
+    async def get_buffered_events_after(
+        self, session_id: str, after_seq: int
+    ) -> list[dict]:
         """놓친 이벤트 조회. 인메모리 버퍼 우선, 없으면 DB fallback."""
         buffer = self._event_buffers.get(session_id)
 

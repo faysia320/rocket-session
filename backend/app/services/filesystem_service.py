@@ -176,6 +176,7 @@ class FilesystemService:
         )
         if rc_dir == 0 and rc_common == 0 and git_dir and git_common:
             import os
+
             norm_dir = os.path.normpath(os.path.join(cwd, git_dir))
             norm_common = os.path.normpath(os.path.join(cwd, git_common))
             info.is_worktree = norm_dir != norm_common
@@ -299,6 +300,7 @@ class FilesystemService:
             raise ValueError("유효한 Git 저장소가 아닙니다.")
 
         import os
+
         norm_dir = os.path.normpath(os.path.join(cwd, git_dir))
         norm_common = os.path.normpath(os.path.join(cwd, git_common))
         if norm_dir == norm_common:

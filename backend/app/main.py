@@ -18,10 +18,16 @@ logging.basicConfig(
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
-from app.api.dependencies import get_database, get_settings, get_ws_manager, init_dependencies, shutdown_dependencies
-from app.api.v1.api import api_router
-from app.api.v1.endpoints import ws
-from app.api.v1.endpoints.permissions import clear_pending
+from app.api.dependencies import (  # noqa: E402
+    get_database,
+    get_settings,
+    get_ws_manager,
+    init_dependencies,
+    shutdown_dependencies,
+)
+from app.api.v1.api import api_router  # noqa: E402
+from app.api.v1.endpoints import ws  # noqa: E402
+from app.api.v1.endpoints.permissions import clear_pending  # noqa: E402
 
 
 async def _periodic_cleanup():

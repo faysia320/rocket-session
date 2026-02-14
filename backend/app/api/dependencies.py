@@ -84,7 +84,13 @@ def get_jsonl_watcher() -> JsonlWatcher:
 
 async def init_dependencies():
     """앱 시작 시 DB 및 SessionManager 초기화."""
-    global _database, _session_manager, _local_scanner, _usage_service, _settings_service, _jsonl_watcher
+    global \
+        _database, \
+        _session_manager, \
+        _local_scanner, \
+        _usage_service, \
+        _settings_service, \
+        _jsonl_watcher
     settings = get_settings()
     _database = Database(settings.database_path)
     await _database.initialize()
@@ -110,7 +116,14 @@ async def init_dependencies():
 
 async def shutdown_dependencies():
     """앱 종료 시 DB 연결 정리."""
-    global _database, _session_manager, _local_scanner, _usage_service, _claude_runner, _settings_service, _jsonl_watcher
+    global \
+        _database, \
+        _session_manager, \
+        _local_scanner, \
+        _usage_service, \
+        _claude_runner, \
+        _settings_service, \
+        _jsonl_watcher
     if _jsonl_watcher:
         try:
             _jsonl_watcher.stop_all()

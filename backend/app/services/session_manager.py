@@ -97,7 +97,9 @@ class SessionManager:
             except asyncio.TimeoutError:
                 process.kill()
             except Exception:
-                logger.warning("세션 %s 프로세스 종료 중 오류", session_id, exc_info=True)
+                logger.warning(
+                    "세션 %s 프로세스 종료 중 오류", session_id, exc_info=True
+                )
         self._processes.pop(session_id, None)
         await self._db.update_session_status(session_id, SessionStatus.IDLE)
 

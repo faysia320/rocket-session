@@ -51,7 +51,7 @@ class LocalSessionScanner:
         since_mtime: float | None = None
         if since:
             try:
-                from datetime import datetime, timezone
+                from datetime import datetime
 
                 dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
                 since_mtime = dt.timestamp()
@@ -133,9 +133,7 @@ class LocalSessionScanner:
                 continue
 
             # continuation을 시간순 정렬
-            cont_metas = [
-                meta_map[cid] for cid in cont_ids if cid in meta_map
-            ]
+            cont_metas = [meta_map[cid] for cid in cont_ids if cid in meta_map]
             cont_metas.sort(key=lambda m: m.first_timestamp or "")
 
             for cont_meta in cont_metas:
@@ -160,9 +158,7 @@ class LocalSessionScanner:
                 merged_ids.add(cont_meta.session_id)
 
         # continuation이 아닌 세션만 결과에 포함
-        return [
-            meta for sid, meta in meta_map.items() if sid not in merged_ids
-        ]
+        return [meta for sid, meta in meta_map.items() if sid not in merged_ids]
 
     async def _get_imported_session_ids(self) -> set[str]:
         """DB에서 이미 import된 claude_session_id 목록 조회."""
@@ -310,9 +306,7 @@ class LocalSessionScanner:
         await session_manager.update_claude_session_id(dashboard_id, session_id)
 
         # JSONL 파일 경로 저장 (실시간 감시용)
-        await self._db.update_session_jsonl_path(
-            dashboard_id, str(jsonl_path)
-        )
+        await self._db.update_session_jsonl_path(dashboard_id, str(jsonl_path))
 
         # root JSONL + continuation JSONL 순서대로 메시지 파싱
         all_jsonl_paths = [jsonl_path]

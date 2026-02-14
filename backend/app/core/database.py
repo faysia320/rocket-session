@@ -130,7 +130,9 @@ class Database:
         cursor = await self._db.execute("SELECT COUNT(*) FROM global_settings")
         row = await cursor.fetchone()
         if row[0] == 0:
-            await self._db.execute("INSERT INTO global_settings (id) VALUES ('default')")
+            await self._db.execute(
+                "INSERT INTO global_settings (id) VALUES ('default')"
+            )
 
         await self._db.commit()
         logger.info("데이터베이스 초기화 완료: %s", self._db_path)
@@ -382,8 +384,20 @@ class Database:
             """INSERT INTO messages (session_id, role, content, cost, duration_ms, timestamp,
                                     is_error, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, model)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (session_id, role, content, cost, duration_ms, timestamp,
-             int(is_error), input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, model),
+            (
+                session_id,
+                role,
+                content,
+                cost,
+                duration_ms,
+                timestamp,
+                int(is_error),
+                input_tokens,
+                output_tokens,
+                cache_creation_tokens,
+                cache_read_tokens,
+                model,
+            ),
         )
         await self.conn.commit()
 
@@ -497,7 +511,9 @@ class Database:
         )
         await self.conn.commit()
         if cursor.rowcount > 0:
-            logger.info("오래된 이벤트 %d건 삭제 (기준: %d시간)", cursor.rowcount, max_age_hours)
+            logger.info(
+                "오래된 이벤트 %d건 삭제 (기준: %d시간)", cursor.rowcount, max_age_hours
+            )
 
     async def find_session_by_claude_id(self, claude_session_id: str) -> dict | None:
         """claude_session_id로 세션 조회."""

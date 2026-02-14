@@ -48,7 +48,9 @@ class UsageService:
                         total_tokens=latest.get("totalTokens", 0),
                         cost_usd=latest.get("costUSD", 0.0),
                         is_active=latest.get("isActive", False),
-                        time_remaining=f"{proj.get('remainingMinutes', 0)}분" if proj.get("remainingMinutes") else "",
+                        time_remaining=f"{proj.get('remainingMinutes', 0)}분"
+                        if proj.get("remainingMinutes")
+                        else "",
                         burn_rate=round(burn.get("costPerHour", 0), 2) if burn else 0,
                     )
 

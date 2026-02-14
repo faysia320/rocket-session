@@ -72,7 +72,9 @@ async def create_worktree(
 @router.delete("/worktrees")
 async def remove_worktree(
     path: str = Query(..., description="삭제할 워크트리 경로"),
-    force: bool = Query(default=False, description="미커밋 변경사항이 있어도 강제 삭제"),
+    force: bool = Query(
+        default=False, description="미커밋 변경사항이 있어도 강제 삭제"
+    ),
     fs: FilesystemService = Depends(get_filesystem_service),
 ):
     try:

@@ -150,7 +150,13 @@ async def get_file_diff(
 
 
 # 업로드 허용 MIME 타입
-ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"}
+ALLOWED_IMAGE_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+}
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 
 
@@ -171,7 +177,7 @@ async def upload_file(
         raise HTTPException(
             415,
             f"지원하지 않는 파일 형식입니다: {content_type}. "
-            f"허용: {', '.join(ALLOWED_IMAGE_TYPES)}"
+            f"허용: {', '.join(ALLOWED_IMAGE_TYPES)}",
         )
 
     # 파일 크기 검증
