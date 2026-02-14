@@ -48,15 +48,17 @@ function RootComponent() {
   const dashboardView = useSessionStore((s) => s.dashboardView);
   const sidebarMobileOpen = useSessionStore((s) => s.sidebarMobileOpen);
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
+  const setDashboardView = useSessionStore((s) => s.setDashboardView);
   const isMobile = useIsMobile();
   const isNewSessionRoute = location.pathname === "/session/new";
 
   const handleSelect = useCallback(
     (id: string) => {
       selectSession(id);
+      if (dashboardView) setDashboardView(false);
       if (isMobile) setSidebarMobileOpen(false);
     },
-    [selectSession, isMobile, setSidebarMobileOpen],
+    [selectSession, dashboardView, setDashboardView, isMobile, setSidebarMobileOpen],
   );
 
   const handleNew = useCallback(() => {
@@ -98,22 +100,22 @@ function RootComponent() {
   );
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
-      <div className="flex flex-1 overflow-hidden">
-        {isMobile ? (
-          <Sheet open={sidebarMobileOpen} onOpenChange={setSidebarMobileOpen}>
-            <SheetContent
-              side="left"
-              className="p-0 w-[280px]"
-              aria-describedby={undefined}
-            >
-              <SheetTitle className="sr-only">Navigation</SheetTitle>
-              {sidebarElement}
-            </SheetContent>
-          </Sheet>
-        ) : (
-          sidebarElement
-        )}
+    <div className="flex h-screen w-screen overflow-hidden bg-background">
+      {isMobile ? (
+        <Sheet open={sidebarMobileOpen} onOpenChange={setSidebarMobileOpen}>
+          <SheetContent
+            side="left"
+            className="p-0 w-[280px]"
+            aria-describedby={undefined}
+          >
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            {sidebarElement}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        sidebarElement
+      )}
+      <div className="flex flex-col flex-1 overflow-hidden">
         <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
           {!isMobile &&
           dashboardView &&
@@ -153,8 +155,8 @@ function RootComponent() {
             <Outlet />
           )}
         </main>
+        <UsageFooter />
       </div>
-      <UsageFooter />
       <CommandPaletteProvider />
     </div>
   );
