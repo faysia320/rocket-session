@@ -56,9 +56,9 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
     s.status === "running"
       ? isStale
         ? "bg-warning"
-        : "bg-green-500"
+        : "bg-success"
       : s.status === "error"
-        ? "bg-red-500"
+        ? "bg-destructive"
         : "bg-muted-foreground";
 
   const statusLabel =
@@ -79,7 +79,7 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
         isActive && "border-primary/60 shadow-md",
         s.status === "running" &&
           !isStale &&
-          "border-green-500/30 shadow-[0_0_12px_rgba(34,197,94,0.1)]",
+          "border-success/30 shadow-[0_0_12px_hsl(var(--success)/0.1)]",
         isStale && "opacity-70",
       )}
       onClick={() => onSelect(s.id)}
@@ -104,7 +104,7 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
             "font-mono text-[10px] px-1.5 py-0.5 rounded-sm border",
             s.status === "running" &&
               !isStale &&
-              "bg-green-500/10 text-green-500 border-green-500/20",
+              "bg-success/10 text-success border-success/20",
             s.status === "running" &&
               isStale &&
               "bg-warning/10 text-warning border-warning/20",

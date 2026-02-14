@@ -253,8 +253,8 @@ export const Sidebar = memo(function Sidebar({
                     <span
                       className={cn(
                         "w-2.5 h-2.5 rounded-full shrink-0",
-                        s.status === "running" && "bg-green-500",
-                        s.status === "error" && "bg-red-500",
+                        s.status === "running" && "bg-success",
+                        s.status === "error" && "bg-destructive",
                         s.status !== "running" &&
                           s.status !== "error" &&
                           "bg-muted-foreground",
@@ -473,8 +473,8 @@ const SessionItem = memo(function SessionItem({
         <span
           className={cn(
             "w-1.5 h-1.5 rounded-full shrink-0",
-            s.status === "running" && "bg-green-500",
-            s.status === "error" && "bg-red-500",
+            s.status === "running" && "bg-success",
+            s.status === "error" && "bg-destructive",
             s.status !== "running" &&
               s.status !== "error" &&
               "bg-muted-foreground",
