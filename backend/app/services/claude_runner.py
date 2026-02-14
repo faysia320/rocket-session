@@ -502,7 +502,7 @@ class ClaudeRunner:
             "cost": cost_info,
             "duration_ms": duration,
             "session_id": session_id_from_result,
-            "mode": turn_state.get("mode", mode),
+            "mode": mode,  # 원래 요청 mode 사용 (ExitPlanMode가 turn_state를 먼저 변경하므로)
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cache_creation_tokens": cache_creation_tokens,
