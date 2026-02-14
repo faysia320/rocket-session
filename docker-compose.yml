@@ -6,7 +6,7 @@ services:
       - "8101"
     volumes:
       - ./backend/data:/app/data
-      - ${CLAUDE_AUTH_DIR}:/root/.claude:ro
+      - ${CLAUDE_AUTH_DIR}:/root/.claude
       - ${HOST_PROJECTS_DIR}:/projects
     environment:
       - CLAUDE_WORK_DIR=/projects

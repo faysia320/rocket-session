@@ -2,7 +2,7 @@ FROM python:3.11-slim AS base
 
 # Node.js 22 LTS 설치 (Claude Code CLI 필요)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates && \
+    curl ca-certificates git && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
