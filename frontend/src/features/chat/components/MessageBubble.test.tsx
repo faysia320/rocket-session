@@ -18,8 +18,8 @@ vi.mock('./PlanApprovalButton', () => ({
 }));
 
 /** Helper: create a Message with sensible defaults */
-function makeMsg(overrides: Partial<Message> = {}): Message {
-  return { id: 'test-1', type: 'user_message' as const, ...overrides };
+function makeMsg(overrides: Record<string, unknown> = {}): Message {
+  return { id: 'test-1', type: 'user_message' as const, ...overrides } as Message;
 }
 
 // ---------------------------------------------------------------------------

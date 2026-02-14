@@ -193,9 +193,9 @@ describe('handleMessage: session_state', () => {
 
     expect(result.current.messages).toHaveLength(2);
     expect(result.current.messages[0].type).toBe('user_message');
-    expect(result.current.messages[0].text).toBe('Hello');
+    expect((result.current.messages[0] as any).text).toBe('Hello');
     expect(result.current.messages[1].type).toBe('result');
-    expect(result.current.messages[1].text).toBe('Hi there');
+    expect((result.current.messages[1] as any).text).toBe('Hi there');
   });
 
   it('skips history on is_reconnect=true', () => {
@@ -231,7 +231,7 @@ describe('handleMessage: session_state', () => {
 
     // 기존 메시지 유지
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0].text).toBe('original');
+    expect((result.current.messages[0] as any).text).toBe('original');
   });
 });
 
@@ -255,8 +255,8 @@ describe('handleMessage: missed_events', () => {
     });
 
     expect(result.current.messages).toHaveLength(2);
-    expect(result.current.messages[0].text).toBe('msg1');
-    expect(result.current.messages[1].text).toBe('msg2');
+    expect((result.current.messages[0] as any).text).toBe('msg1');
+    expect((result.current.messages[1] as any).text).toBe('msg2');
   });
 
   it('handles empty events array', () => {
@@ -337,7 +337,7 @@ describe('handleMessage: user_message', () => {
 
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].type).toBe('user_message');
-    expect(result.current.messages[0].text).toBe('Hello Claude');
+    expect((result.current.messages[0] as any).text).toBe('Hello Claude');
     expect(result.current.messages[0].id).toMatch(/^msg-/);
   });
 });
@@ -357,7 +357,7 @@ describe('handleMessage: assistant_text', () => {
 
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].type).toBe('assistant_text');
-    expect(result.current.messages[0].text).toBe('Hello!');
+    expect((result.current.messages[0] as any).text).toBe('Hello!');
   });
 
   it('subsequent assistant_text in same block OVERWRITES (keeps same ID)', () => {
@@ -377,7 +377,7 @@ describe('handleMessage: assistant_text', () => {
 
     // 메시지 개수는 여전히 1개 (덮어쓰기)
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0].text).toBe('Hello World!');
+    expect((result.current.messages[0] as any).text).toBe('Hello World!');
     // ID가 유지됨
     expect(result.current.messages[0].id).toBe(firstId);
   });
@@ -396,10 +396,10 @@ describe('handleMessage: assistant_text', () => {
     // assistant_text + tool_use + assistant_text = 3 messages
     expect(result.current.messages).toHaveLength(3);
     expect(result.current.messages[0].type).toBe('assistant_text');
-    expect(result.current.messages[0].text).toBe('First text');
+    expect((result.current.messages[0] as any).text).toBe('First text');
     expect(result.current.messages[1].type).toBe('tool_use');
     expect(result.current.messages[2].type).toBe('assistant_text');
-    expect(result.current.messages[2].text).toBe('After tool');
+    expect((result.current.messages[2] as any).text).toBe('After tool');
     // 서로 다른 ID
     expect(result.current.messages[0].id).not.toBe(result.current.messages[2].id);
   });
@@ -420,7 +420,7 @@ describe('handleMessage: assistant_text', () => {
     // assistant_text(Before) + tool_use + assistant_text(After result) = 3
     expect(result.current.messages).toHaveLength(3);
     expect(result.current.messages[2].type).toBe('assistant_text');
-    expect(result.current.messages[2].text).toBe('After result');
+    expect((result.current.messages[2] as any).text).toBe('After result');
   });
 });
 
@@ -438,7 +438,7 @@ describe('handleMessage: tool_use / tool_result', () => {
     });
 
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0].status).toBe('running');
+    expect((result.current.messages[0] as any).status).toBe('running');
     expect(result.current.messages[0].type).toBe('tool_use');
     expect(result.current.activeTools).toHaveLength(1);
   });
@@ -525,7 +525,7 @@ describe('handleMessage: result', () => {
     // assistant_text 제거되고 result만 남음
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].type).toBe('result');
-    expect(result.current.messages[0].text).toBe('final result');
+    expect((result.current.messages[0] as any).text).toBe('final result');
   });
 
   it('uses assistant_text text as fallback when result has no text', () => {
@@ -539,7 +539,7 @@ describe('handleMessage: result', () => {
     });
 
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0].text).toBe('fallback text');
+    expect((result.current.messages[0] as any).text).toBe('fallback text');
   });
 
   it('sets mode from data.mode', () => {
@@ -551,7 +551,7 @@ describe('handleMessage: result', () => {
       ws.simulateMessage({ type: 'result', text: 'plan result', mode: 'plan', seq: 1 });
     });
 
-    expect(result.current.messages[0].mode).toBe('plan');
+    expect((result.current.messages[0] as any).mode).toBe('plan');
   });
 
   it('assigns new ID to result message', () => {
@@ -589,7 +589,7 @@ describe('handleMessage: result', () => {
     expect(result.current.messages).toHaveLength(2);
     expect(result.current.messages[0].type).toBe('tool_use');
     expect(result.current.messages[1].type).toBe('result');
-    expect(result.current.messages[1].text).toBe('completed');
+    expect((result.current.messages[1] as any).text).toBe('completed');
   });
 });
 
@@ -666,7 +666,7 @@ describe('handleMessage: stopped', () => {
       ws.simulateMessage({ type: 'tool_use', tool: 'Write', tool_use_id: 'tu-2', seq: 2 });
     });
     // 두 tool_use 모두 running
-    expect(result.current.messages.filter((m) => m.status === 'running')).toHaveLength(2);
+    expect(result.current.messages.filter((m) => (m as any).status === 'running')).toHaveLength(2);
 
     act(() => {
       MockWebSocket.latest.simulateMessage({ type: 'stopped', seq: 3 });
@@ -698,7 +698,7 @@ describe('handleMessage: raw / stderr', () => {
 
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].type).toBe('stderr');
-    expect(result.current.messages[0].text).toBe('raw output');
+    expect((result.current.messages[0] as any).text).toBe('raw output');
   });
 
   it('stderr event creates stderr message', () => {
@@ -712,7 +712,7 @@ describe('handleMessage: raw / stderr', () => {
 
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].type).toBe('stderr');
-    expect(result.current.messages[0].text).toBe('error output');
+    expect((result.current.messages[0] as any).text).toBe('error output');
   });
 });
 
@@ -757,7 +757,7 @@ describe('handleMessage: permission_request / permission_response', () => {
 
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].type).toBe('permission_request');
-    expect(result.current.messages[0].tool).toBe('Write');
+    expect((result.current.messages[0] as any).tool).toBe('Write');
   });
 
   it('permission_response clears pendingPermission', () => {
@@ -811,7 +811,7 @@ describe('Seq dedup', () => {
 
     // 중복 seq는 스킵됨
     expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0].text).toBe('first');
+    expect((result.current.messages[0] as any).text).toBe('first');
   });
 
   it('events without seq are always processed', () => {

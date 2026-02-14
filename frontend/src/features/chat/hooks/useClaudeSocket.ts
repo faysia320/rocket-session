@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { Message, FileChange, SessionMode, PermissionRequestData } from '@/types';
+import type { Message, FileChange, SessionMode, PermissionRequestData, MessageUpdate, ToolUseMsg, AssistantTextMsg, ResultMsg } from '@/types';
+import { getMessageText } from '@/types';
 import {
   getWsUrl,
   getBackoffDelay,
@@ -55,10 +56,10 @@ export function useClaudeSocket(sessionId: string) {
   const [status, setStatus] = useState<'idle' | 'running'>('idle');
   const [sessionInfo, setSessionInfo] = useState<SessionState | null>(null);
   const [fileChanges, setFileChanges] = useState<FileChange[]>([]);
-  const [activeTools, setActiveTools] = useState<Message[]>([]);
+  const [activeTools, setActiveTools] = useState<ToolUseMsg[]>([]);
   const [pendingPermission, setPendingPermission] = useState<PermissionRequestData | null>(null);
   const [loading, setLoading] = useState(true);
-  const processedSeqs = useRef(new Set<number>());
+  // processedSeqs Set 제거: lastSeqRef 단조 증가 비교로 중복 방지 (메모리 누수 수정)
   const reconnectAttempt = useRef(0);
   const [reconnectState, setReconnectState] = useState<ReconnectState>({
     status: 'reconnecting',
@@ -82,7 +83,6 @@ export function useClaudeSocket(sessionId: string) {
     setLoading(true);
     setPendingPermission(null);
     lastSeqRef.current = 0;
-    processedSeqs.current.clear();
     reconnectAttempt.current = 0;
     setReconnectState({
       status: 'reconnecting',
@@ -93,13 +93,10 @@ export function useClaudeSocket(sessionId: string) {
   }, [sessionId]);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
-    // seq 기반 중복 방지 + 추적
+    // seq 기반 중복 방지: lastSeqRef 단조 증가 비교 (Set 대신 O(1) 메모리)
     if (typeof data.seq === 'number') {
-      if (processedSeqs.current.has(data.seq)) return; // 중복 이벤트 스킵
-      processedSeqs.current.add(data.seq);
-      if (data.seq > lastSeqRef.current) {
-        lastSeqRef.current = data.seq;
-      }
+      if (data.seq <= lastSeqRef.current) return; // 중복 이벤트 스킵
+      lastSeqRef.current = data.seq;
     }
 
     switch (data.type) {
@@ -131,7 +128,7 @@ export function useClaudeSocket(sessionId: string) {
               cache_creation_tokens: h.cache_creation_tokens,
               cache_read_tokens: h.cache_read_tokens,
               model: h.model,
-            }))
+            }) as Message)
           );
           // 히스토리에서 토큰 합산 복원
           const historyItems = data.history as HistoryItem[];
@@ -181,7 +178,7 @@ export function useClaudeSocket(sessionId: string) {
           // running 상태로 남아있는 모든 tool_use를 정리 (강제 중지 등)
           setMessages((prev) => prev.map((msg) =>
             msg.type === 'tool_use' && msg.status === 'running'
-              ? { ...msg, status: 'done' as const }
+              ? { ...msg, status: 'done' as const } as Message
               : msg
           ));
         }
@@ -204,7 +201,7 @@ export function useClaudeSocket(sessionId: string) {
           if (lastIdx >= 0) {
             // 기존 assistant_text를 덮어쓰기 (ID 유지로 virtualizer key 안정성)
             const updated = [...prev];
-            updated[lastIdx] = { ...(data as unknown as Message), id: prev[lastIdx].id };
+            updated[lastIdx] = { ...(data as unknown as AssistantTextMsg), id: prev[lastIdx].id };
             return updated;
           }
           return [...prev, { ...(data as unknown as Message), id: generateMessageId() }];
@@ -212,8 +209,8 @@ export function useClaudeSocket(sessionId: string) {
         break;
 
       case 'tool_use':
-        setMessages((prev) => [...prev, { ...(data as unknown as Message), id: generateMessageId(), status: 'running' }]);
-        setActiveTools((prev) => [...prev, data as unknown as Message]);
+        setMessages((prev) => [...prev, { ...(data as unknown as ToolUseMsg), id: generateMessageId(), status: 'running' as const }]);
+        setActiveTools((prev) => [...prev, data as unknown as ToolUseMsg]);
         break;
 
       case 'tool_result': {
@@ -229,7 +226,7 @@ export function useClaudeSocket(sessionId: string) {
                   is_truncated: data.is_truncated as boolean | undefined,
                   full_length: data.full_length as number | undefined,
                   completed_at: data.timestamp as string,
-                }
+                } as Message
               : msg
           )
         );
@@ -243,14 +240,14 @@ export function useClaudeSocket(sessionId: string) {
 
       case 'result': {
         setMessages((prev) => {
-          const resultData = data as unknown as Message;
+          const resultData = data as unknown as ResultMsg;
           // 현재 턴에서 마지막 assistant_text 찾기 (역순 탐색, user_message/result 경계까지)
           let lastAssistantIdx = -1;
           for (let i = prev.length - 1; i >= 0; i--) {
             if (prev[i].type === 'user_message' || prev[i].type === 'result') break;
             if (prev[i].type === 'assistant_text') { lastAssistantIdx = i; break; }
           }
-          const assistantText = lastAssistantIdx >= 0 ? prev[lastAssistantIdx].text : undefined;
+          const assistantText = lastAssistantIdx >= 0 ? (prev[lastAssistantIdx] as AssistantTextMsg).text : undefined;
           const cleaned = lastAssistantIdx >= 0
             ? [...prev.slice(0, lastAssistantIdx), ...prev.slice(lastAssistantIdx + 1)]
             : prev;
@@ -261,7 +258,7 @@ export function useClaudeSocket(sessionId: string) {
             text,
             id: generateMessageId(),
             mode: (data.mode as 'normal' | 'plan') || lastModeRef.current,
-          }];
+          } as Message];
         });
         // 토큰 사용량 누적
         if (typeof data.input_tokens === 'number' || typeof data.output_tokens === 'number') {
@@ -296,10 +293,10 @@ export function useClaudeSocket(sessionId: string) {
           // running 상태 tool_use를 모두 done으로 전환
           const cleaned = prev.map((msg) =>
             msg.type === 'tool_use' && msg.status === 'running'
-              ? { ...msg, status: 'done' as const }
+              ? { ...msg, status: 'done' as const } as Message
               : msg
           );
-          return [...cleaned, { id: generateMessageId(), type: 'system', text: 'Session stopped by user.' }];
+          return [...cleaned, { id: generateMessageId(), type: 'system' as const, text: 'Session stopped by user.' }];
         });
         break;
 
@@ -359,6 +356,20 @@ export function useClaudeSocket(sessionId: string) {
         }
         break;
 
+      case 'mode_change':
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: generateMessageId(),
+            type: 'system',
+            text: `Mode: ${data.from_mode as string} → ${data.to_mode as string}`,
+          },
+        ]);
+        setSessionInfo((prev) =>
+          prev ? { ...prev, mode: data.to_mode as 'normal' | 'plan' } : prev
+        );
+        break;
+
       case 'raw':
         setMessages((prev) => [
           ...prev,
@@ -397,6 +408,8 @@ export function useClaudeSocket(sessionId: string) {
       setConnected(true);
       reconnectAttempt.current = 0;
       setReconnectState({ status: 'connected', attempt: 0, maxAttempts: RECONNECT_MAX_ATTEMPTS });
+      // 재연결 시 stale 도구 표시 방지
+      if (seq) setActiveTools([]);
       console.log('[WS]', seq ? `Reconnected (last_seq=${seq})` : 'Connected', 'to session', sessionId);
     };
 
@@ -477,15 +490,14 @@ export function useClaudeSocket(sessionId: string) {
     setMessages([]);
     setFileChanges([]);
     lastSeqRef.current = 0;
-    processedSeqs.current.clear();
   }, []);
 
   const addSystemMessage = useCallback((text: string) => {
-    setMessages((prev) => [...prev, { id: generateMessageId(), type: 'system', text }]);
+    setMessages((prev) => [...prev, { id: generateMessageId(), type: 'system' as const, text }]);
   }, []);
 
-  const updateMessage = useCallback((id: string, patch: Partial<Message>) => {
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+  const updateMessage = useCallback((id: string, patch: MessageUpdate) => {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } as Message : m)));
   }, []);
 
   const reconnect = useCallback(() => {
@@ -509,6 +521,25 @@ export function useClaudeSocket(sessionId: string) {
     },
     []
   );
+
+  // 대규모 대화(300+ 메시지) 시 오래된 메시지 텍스트 압축 (idle 시에만)
+  const MAX_FULL_MESSAGES = 300;
+  useEffect(() => {
+    if (status !== 'idle' || messages.length <= MAX_FULL_MESSAGES) return;
+    setMessages((prev) => {
+      const cutoff = prev.length - MAX_FULL_MESSAGES;
+      let changed = false;
+      const updated = prev.map((m, i) => {
+        const mText = getMessageText(m);
+        if (i < cutoff && mText.length > 500 && !(m as any)._truncated) {
+          changed = true;
+          return { ...m, text: mText.slice(0, 200) + '\n\n\u2026 (이전 메시지, 전체 내용은 내보내기를 사용하세요)', _truncated: true } as any as Message;
+        }
+        return m;
+      });
+      return changed ? updated : prev;
+    });
+  }, [status, messages.length]);
 
   return {
     connected,

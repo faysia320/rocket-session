@@ -12,7 +12,7 @@ import { ChatInput } from './ChatInput';
 import { ActivityStatusBar } from './ActivityStatusBar';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { FileViewer } from '@/features/files/components/FileViewer';
-import type { FileChange, SessionMode, Message } from '@/types';
+import type { FileChange, SessionMode, ResultMsg, UserMsg } from '@/types';
 import { useSessionStore } from '@/store';
 import { sessionsApi } from '@/lib/api/sessions.api';
 import { useSlashCommands } from '../hooks/useSlashCommands';
@@ -20,6 +20,7 @@ import type { SlashCommand } from '../constants/slashCommands';
 import { toast } from 'sonner';
 import { filesystemApi } from '@/lib/api/filesystem.api';
 import { useGitInfo } from '@/features/directory/hooks/useGitInfo';
+import { SessionStatsBar } from '@/features/session/components/SessionStatsBar';
 import { computeEstimateSize, computeMessageGaps, computeSearchMatches } from '../utils/chatComputations';
 
 interface ChatPanelProps {
@@ -38,7 +39,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [mode, setMode] = useState<SessionMode>('normal');
   const [planReviewOpen, setPlanReviewOpen] = useState(false);
-  const [planReviewMessage, setPlanReviewMessage] = useState<Message | null>(null);
+  const [planReviewMessage, setPlanReviewMessage] = useState<ResultMsg | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
@@ -97,39 +98,40 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     isNearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
   }, []);
 
+  const messagesLength = messages.length;
   useEffect(() => {
-    if (messages.length === 0) {
+    if (messagesLength === 0) {
       isInitialLoad.current = true;
       return;
     }
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
       requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
+        virtualizer.scrollToIndex(messagesLength - 1, { align: 'end' });
       });
       return;
     }
     if (isNearBottom.current) {
       requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
+        virtualizer.scrollToIndex(messagesLength - 1, { align: 'end' });
       });
     }
-  }, [messages, virtualizer]);
+  }, [messagesLength, virtualizer]);
 
   // Plan result 자동 감지 → Dialog 오픈
   useEffect(() => {
-    if (messages.length === 0) return;
-    const lastMsg = messages[messages.length - 1];
+    if (messagesLength === 0) return;
+    const lastMsg = messages[messagesLength - 1];
     if (
       lastMsg.type === 'result' &&
       lastMsg.mode === 'plan' &&
       !lastMsg.planExecuted &&
       !planReviewOpen
     ) {
-      setPlanReviewMessage(lastMsg);
+      setPlanReviewMessage(lastMsg as ResultMsg);
       setPlanReviewOpen(true);
     }
-  }, [messages, planReviewOpen]);
+  }, [messagesLength, messages, planReviewOpen]);
 
   const cycleMode = useCallback(() => {
     setMode((prev) => {
@@ -175,8 +177,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const handleOpenReview = useCallback(
     (messageId: string) => {
       const msg = messages.find((m) => m.id === messageId);
-      if (msg) {
-        setPlanReviewMessage(msg);
+      if (msg && msg.type === 'result') {
+        setPlanReviewMessage(msg as ResultMsg);
         setPlanReviewOpen(true);
       }
     },
@@ -186,8 +188,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   // 검색: 매칭된 메시지 인덱스 목록
   const searchMatches = useMemo(() => computeSearchMatches(messages, searchQuery), [messages, searchQuery]);
 
-  // 같은 턴 내 연속 메시지 간격 계산 (assistant 턴 그룹핑)
-  const messageGaps = useMemo(() => computeMessageGaps(messages), [messages]);
+  // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
+  const prevGapsRef = useRef<Record<number, 'tight' | 'normal'>>({});
+  const messageGaps = useMemo(() => {
+    if (status === 'running') return prevGapsRef.current;
+    return computeMessageGaps(messages);
+  }, [messages, status]);
+  useEffect(() => { prevGapsRef.current = messageGaps; }, [messageGaps]);
 
   // 검색 결과 이동 시 스크롤
   useEffect(() => {
@@ -266,6 +273,22 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     sendPrompt(content, { mode });
   }, [sendPrompt, mode]);
 
+  // 에러 메시지에서 직전 user 메시지를 찾아 재전송
+  const handleRetryFromError = useCallback((errorMsgId: string) => {
+    const idx = messages.findIndex((m) => m.id === errorMsgId);
+    if (idx < 0) return;
+    // 에러 직전 user_message 역탐색
+    for (let i = idx - 1; i >= 0; i--) {
+      if (messages[i].type === 'user_message') {
+        const userMsg = messages[i] as UserMsg;
+        const msg = userMsg.message as Record<string, string> | undefined;
+        const text = msg?.content || msg?.prompt || userMsg.content || userMsg.prompt || '';
+        if (text) sendPrompt(text, { mode });
+        break;
+      }
+    }
+  }, [messages, sendPrompt, mode]);
+
   const navigate = useNavigate();
   const handleRemoveWorktree = useCallback(async () => {
     if (!workDir) return;
@@ -305,7 +328,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onMenuToggle={() => setSidebarMobileOpen(true)}
         tokenUsage={tokenUsage}
         currentModel={sessionInfo?.model as string | undefined}
+        messageCount={messages.length}
       />
+      <SessionStatsBar sessionId={sessionId} />
 
       {/* 검색 바 */}
       {searchOpen ? (
@@ -362,7 +387,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto select-text pt-3">
         {loading ? (
           <div className="px-4 space-y-4 animate-pulse">
-            {[1, 2, 3].map((i) => (
+            {Array.from({ length: Math.min(Math.max(3, 1), 5) }, (_, i) => (
               <div key={i} className="space-y-2">
                 <div className="flex justify-end">
                   <div className="h-10 w-48 bg-muted rounded-xl" />
@@ -375,12 +400,12 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             ))}
           </div>
         ) : messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50">
+          <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50 animate-[fadeIn_0.3s_ease]">
             <div className="font-mono text-[32px] text-primary animate-[blink_1.2s_ease-in-out_infinite]">
               {'>'}_
             </div>
             <div className="font-mono text-[13px] text-muted-foreground">
-              Send a prompt to start working with Claude Code
+              Claude Code에 프롬프트를 입력하세요
             </div>
           </div>
         ) : (
@@ -409,6 +434,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                       isRunning={status === 'running'}
                       searchQuery={searchQuery || undefined}
                       onResend={handleResend}
+                      onRetryError={handleRetryFromError}
                       onExecutePlan={handleExecutePlan}
                       onDismissPlan={handleDismissPlan}
                       onOpenReview={handleOpenReview}

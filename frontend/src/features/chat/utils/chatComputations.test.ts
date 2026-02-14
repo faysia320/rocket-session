@@ -6,13 +6,8 @@ import {
 } from './chatComputations';
 
 // 테스트용 Message 생성 헬퍼
-function makeMsg(overrides: Partial<Message> = {}): Message {
-  return {
-    id: 'msg-1',
-    type: 'user_message',
-    text: '',
-    ...overrides,
-  };
+function makeMsg(overrides: Record<string, unknown> = {}): Message {
+  return { id: 'msg-1', type: 'user_message', ...overrides } as Message;
 }
 
 describe('computeEstimateSize', () => {

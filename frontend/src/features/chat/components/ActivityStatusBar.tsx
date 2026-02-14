@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils';
-import type { Message } from '@/types';
+import type { ToolUseMsg } from '@/types';
 
 interface ActivityStatusBarProps {
-  activeTools: Message[];
+  activeTools: ToolUseMsg[];
   status: 'idle' | 'running';
 }
 
@@ -21,7 +21,7 @@ const TOOL_LABELS: Record<string, string> = {
   Task: 'Running task',
 };
 
-function getActivityLabel(tool: Message): string {
+function getActivityLabel(tool: ToolUseMsg): string {
   const toolName = tool.tool || 'Tool';
   const label = TOOL_LABELS[toolName] || toolName;
   const input = tool.input || {};
@@ -60,10 +60,14 @@ export function ActivityStatusBar({ activeTools, status }: ActivityStatusBarProp
   if (status !== 'running' || activeTools.length === 0) return null;
 
   return (
-    <div className={cn(
-      'px-4 py-1.5 border-t border-border bg-secondary/50',
-      'animate-[fadeIn_0.15s_ease]'
-    )}>
+    <div
+      role="status"
+      aria-live="polite"
+      className={cn(
+        'px-4 py-1.5 border-t border-border bg-secondary/50',
+        'animate-[fadeIn_0.15s_ease]',
+      )}
+    >
       <div className="flex flex-col gap-0.5">
         {activeTools.map((tool, i) => (
           <div key={tool.tool_use_id || i} className="flex items-center gap-2 min-h-[20px]">

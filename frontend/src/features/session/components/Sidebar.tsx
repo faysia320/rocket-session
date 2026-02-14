@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, memo } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Columns2, Download, PanelLeftClose, PanelLeftOpen, Plus, Settings, Search, X, Bell, BellOff } from 'lucide-react';
+import { Sun, Moon, Columns2, LayoutGrid, Download, PanelLeftClose, PanelLeftOpen, Plus, Settings, Search, X, Bell, BellOff } from 'lucide-react';
 import { useDesktopNotification } from '@/features/chat/hooks/useDesktopNotification';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,10 +35,13 @@ interface SidebarProps {
   isError?: boolean;
 }
 
-export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, onRename, onImported, isMobileOverlay, isLoading, isError }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, onRename, onImported, isMobileOverlay, isLoading, isError }: SidebarProps) {
   const splitView = useSessionStore((s) => s.splitView);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
-  const collapsed = isMobileOverlay ? false : useSessionStore((s) => s.sidebarCollapsed);
+  const dashboardView = useSessionStore((s) => s.dashboardView);
+  const toggleDashboardView = useSessionStore((s) => s.toggleDashboardView);
+  const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
+  const collapsed = isMobileOverlay ? false : sidebarCollapsed;
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const [importOpen, setImportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -264,6 +267,20 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
                   <Button
                     variant="ghost"
                     size="icon"
+                    className={cn('h-8 w-8', dashboardView && 'bg-muted')}
+                    onClick={toggleDashboardView}
+                    aria-label={dashboardView ? '대시보드 뷰 끄기' : '대시보드 뷰 켜기'}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side={collapsed ? 'right' : 'top'}>Dashboard</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className={cn('h-8 w-8', splitView && 'bg-muted')}
                     onClick={toggleSplitView}
                     aria-label={splitView ? '단일 뷰로 전환' : '분할 뷰로 전환'}
@@ -303,7 +320,7 @@ export function Sidebar({ sessions, activeSessionId, onSelect, onNew, onDelete, 
       />
     </aside>
   );
-}
+});
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -322,7 +339,7 @@ function ThemeToggle() {
   );
 }
 
-function SessionItem({
+const SessionItem = memo(function SessionItem({
   session: s,
   isActive,
   onSelect,
@@ -357,9 +374,10 @@ function SessionItem({
   const displayName = s.name || s.id;
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        'px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-all border border-transparent overflow-hidden min-w-0',
+        'w-full text-left px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-all border border-transparent overflow-hidden min-w-0',
         isActive && 'bg-muted border-[hsl(var(--border-bright))]',
       )}
       onClick={() => onSelect(s.id)}
@@ -449,9 +467,9 @@ function SessionItem({
       >
         {truncatePath(s.work_dir)}
       </div>
-    </div>
+    </button>
   );
-}
+});
 
 function truncatePath(p: string): string {
   if (!p) return '~';

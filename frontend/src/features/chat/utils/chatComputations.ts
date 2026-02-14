@@ -1,4 +1,5 @@
 import type { Message } from '@/types';
+import { getMessageText } from '@/types';
 
 /**
  * virtualizer의 estimateSize 콜백에 사용되는 메시지 높이 추정.
@@ -36,7 +37,7 @@ export function computeSearchMatches(messages: Message[], query: string): number
   if (!query.trim()) return [];
   const q = query.toLowerCase();
   return messages
-    .map((m, i) => ({ index: i, match: (m.text || m.content || '').toLowerCase().includes(q) }))
+    .map((m, i) => ({ index: i, match: getMessageText(m).toLowerCase().includes(q) }))
     .filter((r) => r.match)
     .map((r) => r.index);
 }

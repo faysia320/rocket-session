@@ -6,7 +6,21 @@ export type {
   PermissionRequestData,
   WebSocketEventType,
   WebSocketEvent,
+  MessageUpdate,
+  UserMsg,
+  AssistantTextMsg,
+  ResultMsg,
+  ToolUseMsg,
+  ToolResultMsg,
+  FileChangeMsg,
+  ErrorMsg,
+  StderrMsg,
+  SystemMsg,
+  EventMsg,
+  ThinkingMsg,
+  PermissionRequestMsg,
 } from './message';
+export { getMessageText } from './message';
 export type {
   DirectoryEntry,
   DirectoryListResponse,

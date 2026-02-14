@@ -3,7 +3,7 @@ import { Maximize2, Brain } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn, highlightText } from '@/lib/utils';
-import type { Message } from '@/types';
+import type { Message, UserMsg, AssistantTextMsg, ResultMsg, ToolUseMsg, ThinkingMsg, FileChangeMsg, ErrorMsg, StderrMsg, SystemMsg, EventMsg } from '@/types';
 import { PlanApprovalButton } from './PlanApprovalButton';
 
 interface MessageBubbleProps {
@@ -11,6 +11,7 @@ interface MessageBubbleProps {
   isRunning?: boolean;
   searchQuery?: string;
   onResend?: (content: string) => void;
+  onRetryError?: (messageId: string) => void;
   onExecutePlan?: (messageId: string) => void;
   onDismissPlan?: (messageId: string) => void;
   onOpenReview?: (messageId: string) => void;
@@ -21,6 +22,7 @@ export const MessageBubble = memo(function MessageBubble({
   isRunning = false,
   searchQuery,
   onResend,
+  onRetryError,
   onExecutePlan,
   onDismissPlan,
   onOpenReview,
@@ -49,7 +51,7 @@ export const MessageBubble = memo(function MessageBubble({
     case 'file_change':
       return <FileChangeMessage message={message} />;
     case 'error':
-      return <ErrorMessage message={message} searchQuery={searchQuery} />;
+      return <ErrorMessage message={message} searchQuery={searchQuery} onRetry={onRetryError ? () => onRetryError(message.id) : undefined} />;
     case 'stderr':
       return <StderrMessage message={message} />;
     case 'system':
@@ -69,9 +71,9 @@ export const MessageBubble = memo(function MessageBubble({
   }
 });
 
-function UserMessage({ message, searchQuery, onResend, isRunning }: { message: Message; searchQuery?: string; onResend?: (content: string) => void; isRunning?: boolean }) {
+function UserMessage({ message, searchQuery, onResend, isRunning }: { message: UserMsg; searchQuery?: string; onResend?: (content: string) => void; isRunning?: boolean }) {
   // user_message의 실제 텍스트: message.message 객체의 content 또는 prompt
-  const msg = message.message as unknown as Record<string, string> | undefined;
+  const msg = message.message as Record<string, string> | undefined;
   const text = msg?.content || msg?.prompt || message.content || message.prompt || '';
   return (
     <div className="flex justify-end animate-[fadeIn_0.2s_ease]">
@@ -101,7 +103,7 @@ function UserMessage({ message, searchQuery, onResend, isRunning }: { message: M
   );
 }
 
-function AssistantText({ message }: { message: Message }) {
+function AssistantText({ message }: { message: AssistantTextMsg }) {
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="pl-3 border-l-2 border-primary/40">
@@ -112,7 +114,8 @@ function AssistantText({ message }: { message: Message }) {
           </span>
         </div>
         <div className="text-foreground select-text">
-          <MarkdownRenderer content={message.text || ''} />
+          {/* 스트리밍 중 plain text 렌더링으로 성능 최적화 */}
+          <pre className="font-sans text-sm whitespace-pre-wrap break-words">{message.text || ''}</pre>
         </div>
       </div>
     </div>
@@ -140,7 +143,7 @@ function ResultMessage({
   onDismissPlan,
   onOpenReview,
 }: {
-  message: Message;
+  message: ResultMsg;
   isRunning?: boolean;
   onExecutePlan?: (messageId: string) => void;
   onDismissPlan?: (messageId: string) => void;
@@ -238,7 +241,7 @@ function ToolStatusIcon({ status }: { status?: 'running' | 'done' | 'error' }) {
   );
 }
 
-function ToolUseMessage({ message }: { message: Message }) {
+function ToolUseMessage({ message }: { message: ToolUseMsg }) {
   const [expanded, setExpanded] = useState(false);
   const toolName = message.tool || 'Tool';
   const input = (message.input || {}) as Record<string, string>;
@@ -325,7 +328,7 @@ function ToolUseMessage({ message }: { message: Message }) {
   );
 }
 
-function ThinkingMessage({ message }: { message: Message }) {
+function ThinkingMessage({ message }: { message: ThinkingMsg }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <Collapsible
@@ -355,7 +358,7 @@ function ThinkingMessage({ message }: { message: Message }) {
 
 // FileChangeMessage: 현재 tool_use + file_change 이벤트에서 tool_use 경로로 표시되므로
 // 이 컴포넌트가 직접 사용되는 경우는 드물지만, 향후 활용을 위해 유지
-function FileChangeMessage({ message }: { message: Message }) {
+function FileChangeMessage({ message }: { message: FileChangeMsg }) {
   return (
     <div className="flex items-center gap-1.5 px-2 py-1 animate-[fadeIn_0.2s_ease]">
       <span className="text-xs">{'\u{1F4DD}'}</span>
@@ -369,21 +372,31 @@ function FileChangeMessage({ message }: { message: Message }) {
   );
 }
 
-function ErrorMessage({ message, searchQuery }: { message: Message; searchQuery?: string }) {
+function ErrorMessage({ message, searchQuery, onRetry }: { message: ErrorMsg; searchQuery?: string; onRetry?: () => void }) {
   const errorText = message.message || message.text || 'Unknown error';
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-sm">
         <span className="text-sm">{'⚠'}</span>
-        <span className="font-mono text-xs text-destructive">
+        <span className="font-mono text-xs text-destructive flex-1">
           {searchQuery ? highlightText(String(errorText), searchQuery) : errorText}
         </span>
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="font-mono text-[10px] text-destructive hover:text-destructive/80 px-2 py-0.5 border border-destructive/30 rounded shrink-0"
+            aria-label="재시도"
+          >
+            재시도
+          </button>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function StderrMessage({ message }: { message: Message }) {
+function StderrMessage({ message }: { message: StderrMsg }) {
   return (
     <div className="px-2 py-1 animate-[fadeIn_0.2s_ease]">
       <pre className="font-mono text-[11px] text-warning whitespace-pre-wrap opacity-70">
@@ -393,7 +406,7 @@ function StderrMessage({ message }: { message: Message }) {
   );
 }
 
-function SystemMessage({ message, searchQuery }: { message: Message; searchQuery?: string }) {
+function SystemMessage({ message, searchQuery }: { message: SystemMsg; searchQuery?: string }) {
   return (
     <div className="text-center p-1 animate-[fadeIn_0.2s_ease]">
       <span className="font-mono text-[11px] text-muted-foreground/70 italic">
@@ -403,7 +416,7 @@ function SystemMessage({ message, searchQuery }: { message: Message; searchQuery
   );
 }
 
-function EventMessage({ message }: { message: Message }) {
+function EventMessage({ message }: { message: EventMsg }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <Collapsible
@@ -425,7 +438,7 @@ function EventMessage({ message }: { message: Message }) {
   );
 }
 
-function PermissionRequestMessage({ message }: { message: Message }) {
+function PermissionRequestMessage({ message }: { message: Extract<Message, { type: 'permission_request' }> }) {
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="flex items-center gap-2 px-3 py-2 bg-warning/10 border border-warning/20 rounded-sm border-l-[3px] border-l-warning">

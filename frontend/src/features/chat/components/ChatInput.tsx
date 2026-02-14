@@ -298,7 +298,7 @@ export const ChatInput = memo(function ChatInput({
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder="Enter a prompt for Claude Code…"
+            placeholder="프롬프트를 입력하세요…"
             rows={1}
             disabled={!connected}
           />
