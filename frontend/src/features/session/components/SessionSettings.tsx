@@ -30,14 +30,11 @@ export function SessionSettings({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
-  const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [permissionMode, setPermissionMode] = useState(false);
   const [permissionTools, setPermissionTools] = useState<string[]>([]);
   const [model, setModel] = useState("");
-  const [maxTurns, setMaxTurns] = useState("");
-  const [maxBudget, setMaxBudget] = useState("");
   const [systemPromptMode, setSystemPromptMode] = useState<
     "replace" | "append"
   >("replace");
@@ -47,9 +44,6 @@ export function SessionSettings({
   const loadSession = useCallback(async () => {
     try {
       const s = await sessionsApi.get(sessionId);
-      setSelectedTools(
-        s.allowed_tools ? s.allowed_tools.split(",").map((t) => t.trim()) : [],
-      );
       setSystemPrompt(s.system_prompt ?? "");
       setTimeoutMinutes(
         s.timeout_seconds ? String(Math.round(s.timeout_seconds / 60)) : "",
@@ -57,8 +51,6 @@ export function SessionSettings({
       setPermissionMode(s.permission_mode ?? false);
       setPermissionTools(s.permission_required_tools ?? []);
       setModel(s.model ?? "");
-      setMaxTurns(s.max_turns ? String(s.max_turns) : "");
-      setMaxBudget(s.max_budget_usd ? String(s.max_budget_usd) : "");
       setSystemPromptMode(
         (s.system_prompt_mode as "replace" | "append") ?? "replace",
       );
@@ -78,12 +70,6 @@ export function SessionSettings({
     }
   }, [open, loadSession]);
 
-  const handleToolToggle = (tool: string, checked: boolean) => {
-    setSelectedTools((prev) =>
-      checked ? [...prev, tool] : prev.filter((t) => t !== tool),
-    );
-  };
-
   const handlePermissionToolToggle = (tool: string, checked: boolean) => {
     setPermissionTools((prev) =>
       checked ? [...prev, tool] : prev.filter((t) => t !== tool),
@@ -95,16 +81,12 @@ export function SessionSettings({
     try {
       const timeoutSec = timeoutMinutes ? Number(timeoutMinutes) * 60 : null;
       await sessionsApi.update(sessionId, {
-        allowed_tools:
-          selectedTools.length > 0 ? selectedTools.join(",") : null,
         system_prompt: systemPrompt || null,
         timeout_seconds: timeoutSec,
         permission_mode: permissionMode,
         permission_required_tools:
           permissionMode && permissionTools.length > 0 ? permissionTools : null,
         model: model || null,
-        max_turns: maxTurns ? Number(maxTurns) : null,
-        max_budget_usd: maxBudget ? Number(maxBudget) : null,
         system_prompt_mode: systemPromptMode,
         disallowed_tools:
           disallowedTools.length > 0 ? disallowedTools.join(",") : null,
@@ -158,35 +140,6 @@ export function SessionSettings({
               <option value="sonnet">Sonnet</option>
               <option value="haiku">Haiku</option>
             </select>
-          </div>
-
-          {/* 허용 도구 */}
-          <div className="space-y-3">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              ALLOWED TOOLS
-            </Label>
-            <p className="font-mono text-2xs text-muted-foreground/70">
-              Claude CLI에 허용할 도구를 선택하세요. 미선택 시 전역 설정이
-              적용됩니다.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {AVAILABLE_TOOLS.map((tool) => (
-                <label
-                  key={tool}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  <Checkbox
-                    checked={selectedTools.includes(tool)}
-                    onCheckedChange={(checked) =>
-                      handleToolToggle(tool, checked === true)
-                    }
-                  />
-                  <span className="font-mono text-xs text-foreground">
-                    {tool}
-                  </span>
-                </label>
-              ))}
-            </div>
           </div>
 
           {/* 비허용 도구 */}
@@ -303,43 +256,6 @@ export function SessionSettings({
                 ))}
               </div>
             ) : null}
-          </div>
-
-          {/* Max Turns */}
-          <div className="space-y-2">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              MAX TURNS
-            </Label>
-            <p className="font-mono text-2xs text-muted-foreground/70">
-              에이전트 턴 최대 횟수입니다. 비워두면 무제한입니다.
-            </p>
-            <Input
-              className="font-mono text-xs bg-input border-border w-24"
-              type="number"
-              min="1"
-              placeholder="없음"
-              value={maxTurns}
-              onChange={(e) => setMaxTurns(e.target.value)}
-            />
-          </div>
-
-          {/* Max Budget */}
-          <div className="space-y-2">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              MAX BUDGET (USD)
-            </Label>
-            <p className="font-mono text-2xs text-muted-foreground/70">
-              세션당 최대 비용 한도입니다. 비워두면 제한 없음.
-            </p>
-            <Input
-              className="font-mono text-xs bg-input border-border w-28"
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="없음"
-              value={maxBudget}
-              onChange={(e) => setMaxBudget(e.target.value)}
-            />
           </div>
 
           {/* 타임아웃 */}

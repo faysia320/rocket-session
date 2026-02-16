@@ -18,7 +18,6 @@ export function useCreateSession() {
     mutationFn: (params: {
       workDir?: string;
       options?: {
-        allowed_tools?: string;
         system_prompt?: string;
         timeout_seconds?: number;
       };
@@ -36,7 +35,6 @@ export function useCreateSession() {
     async (
       workDir?: string,
       options?: {
-        allowed_tools?: string;
         system_prompt?: string;
         timeout_seconds?: number;
       },

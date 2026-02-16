@@ -8,7 +8,6 @@ export const sessionsApi = {
   create: (
     workDir?: string,
     options?: {
-      allowed_tools?: string;
       system_prompt?: string;
       timeout_seconds?: number;
     },

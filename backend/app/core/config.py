@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """환경 변수 기반 설정."""
 
     claude_work_dir: str = os.path.expanduser("~")
-    claude_allowed_tools: str = "Read,Write,Edit,Bash"
+    claude_allowed_tools: str = "Read,Write,Edit,MultiEdit,Bash,Glob,Grep,WebFetch,WebSearch,TodoRead,TodoWrite"
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8101

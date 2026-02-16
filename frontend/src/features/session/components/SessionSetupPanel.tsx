@@ -4,20 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { filesystemApi } from "@/lib/api/filesystem.api";
-import { AVAILABLE_TOOLS } from "../constants/tools";
 import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 
 interface SessionSetupPanelProps {
   onCreate: (
     workDir?: string,
     options?: {
-      allowed_tools?: string;
       system_prompt?: string;
       timeout_seconds?: number;
     },
@@ -30,7 +27,6 @@ export function SessionSetupPanel({
   onCancel,
 }: SessionSetupPanelProps) {
   const [workDir, setWorkDir] = useState("");
-  const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [creating, setCreating] = useState(false);
@@ -45,12 +41,6 @@ export function SessionSetupPanel({
       setWorkDir(globalSettings.work_dir);
     }
   }, [globalSettings?.work_dir]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleToolToggle = (tool: string, checked: boolean) => {
-    setSelectedTools((prev) =>
-      checked ? [...prev, tool] : prev.filter((t) => t !== tool),
-    );
-  };
 
   const handleCreate = async () => {
     setCreating(true);
@@ -67,13 +57,9 @@ export function SessionSetupPanel({
       }
 
       const options: {
-        allowed_tools?: string;
         system_prompt?: string;
         timeout_seconds?: number;
       } = {};
-      if (selectedTools.length > 0) {
-        options.allowed_tools = selectedTools.join(",");
-      }
       if (systemPrompt.trim()) {
         options.system_prompt = systemPrompt.trim();
       }
@@ -149,40 +135,6 @@ export function SessionSetupPanel({
             ) : null}
           </div>
         ) : null}
-
-        {/* Allowed Tools */}
-        <div className="space-y-3">
-          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-            ALLOWED TOOLS
-          </Label>
-          <p className="font-mono text-2xs text-muted-foreground/70">
-            Claude CLI에 허용할 도구를 선택하세요. 미선택 시 글로벌 설정이
-            적용됩니다.
-            {globalSettings?.allowed_tools ? (
-              <span className="block mt-0.5 text-info/70">
-                글로벌: {globalSettings.allowed_tools}
-              </span>
-            ) : null}
-          </p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {AVAILABLE_TOOLS.map((tool) => (
-              <label
-                key={tool}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <Checkbox
-                  checked={selectedTools.includes(tool)}
-                  onCheckedChange={(checked) =>
-                    handleToolToggle(tool, checked === true)
-                  }
-                />
-                <span className="font-mono text-xs text-foreground">
-                  {tool}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
 
         {/* System Prompt */}
         <div className="space-y-2">

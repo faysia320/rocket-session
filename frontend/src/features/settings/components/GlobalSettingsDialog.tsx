@@ -35,15 +35,12 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
   const updateMutation = useUpdateGlobalSettings();
 
   const [workDir, setWorkDir] = useState("");
-  const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [mode, setMode] = useState<"normal" | "plan">("normal");
   const [permissionMode, setPermissionMode] = useState(false);
   const [permissionTools, setPermissionTools] = useState<string[]>([]);
   const [model, setModel] = useState("");
-  const [maxTurns, setMaxTurns] = useState("");
-  const [maxBudget, setMaxBudget] = useState("");
   const [systemPromptMode, setSystemPromptMode] = useState<
     "replace" | "append"
   >("replace");
@@ -53,11 +50,6 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
   useEffect(() => {
     if (open && settings) {
       setWorkDir(settings.work_dir ?? "");
-      setSelectedTools(
-        settings.allowed_tools
-          ? settings.allowed_tools.split(",").map((t) => t.trim())
-          : [],
-      );
       setSystemPrompt(settings.system_prompt ?? "");
       setTimeoutMinutes(
         settings.timeout_seconds
@@ -68,10 +60,6 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
       setPermissionMode(settings.permission_mode ?? false);
       setPermissionTools(settings.permission_required_tools ?? []);
       setModel(settings.model ?? "");
-      setMaxTurns(settings.max_turns ? String(settings.max_turns) : "");
-      setMaxBudget(
-        settings.max_budget_usd ? String(settings.max_budget_usd) : "",
-      );
       setSystemPromptMode(
         (settings.system_prompt_mode as "replace" | "append") ?? "replace",
       );
@@ -82,12 +70,6 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
       );
     }
   }, [open, settings]);
-
-  const handleToolToggle = (tool: string, checked: boolean) => {
-    setSelectedTools((prev) =>
-      checked ? [...prev, tool] : prev.filter((t) => t !== tool),
-    );
-  };
 
   const handlePermissionToolToggle = (tool: string, checked: boolean) => {
     setPermissionTools((prev) =>
@@ -100,8 +82,7 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
       const timeoutSec = timeoutMinutes ? Number(timeoutMinutes) * 60 : null;
       await updateMutation.mutateAsync({
         work_dir: workDir || null,
-        allowed_tools:
-          selectedTools.length > 0 ? selectedTools.join(",") : null,
+        allowed_tools: AVAILABLE_TOOLS.join(","),
         system_prompt: systemPrompt || null,
         timeout_seconds: timeoutSec,
         mode,
@@ -109,8 +90,8 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
         permission_required_tools:
           permissionMode && permissionTools.length > 0 ? permissionTools : null,
         model: model || null,
-        max_turns: maxTurns ? Number(maxTurns) : null,
-        max_budget_usd: maxBudget ? Number(maxBudget) : null,
+        max_turns: null,
+        max_budget_usd: null,
         system_prompt_mode: systemPromptMode,
         disallowed_tools:
           disallowedTools.length > 0 ? disallowedTools.join(",") : null,
@@ -170,28 +151,23 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
               </select>
             </div>
 
-            {/* Allowed Tools */}
+            {/* Allowed Tools (읽기 전용) */}
             <div className="space-y-3">
               <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
                 ALLOWED TOOLS
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                Claude CLI에 허용할 기본 도구입니다. 세션에서 개별 설정 시 이
-                값이 덮어씌워집니다.
+                모든 도구가 기본적으로 허용됩니다. 특정 도구를 금지하려면 아래
+                DISALLOWED TOOLS에서 선택하세요.
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {AVAILABLE_TOOLS.map((tool) => (
                   <label
                     key={tool}
-                    className="flex items-center gap-2 cursor-pointer"
+                    className="flex items-center gap-2 opacity-60 cursor-not-allowed"
                   >
-                    <Checkbox
-                      checked={selectedTools.includes(tool)}
-                      onCheckedChange={(checked) =>
-                        handleToolToggle(tool, checked === true)
-                      }
-                    />
-                    <span className="font-mono text-xs text-foreground">
+                    <Checkbox checked={true} disabled />
+                    <span className="font-mono text-xs text-muted-foreground">
                       {tool}
                     </span>
                   </label>
@@ -351,45 +327,6 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
                   ))}
                 </div>
               ) : null}
-            </div>
-
-            {/* Max Turns */}
-            <div className="space-y-2">
-              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                MAX TURNS
-              </Label>
-              <p className="font-mono text-2xs text-muted-foreground/70">
-                에이전트 턴 최대 횟수입니다. 비워두면 무제한입니다. 세션에서
-                개별 설정 시 이 값이 덮어씌워집니다.
-              </p>
-              <Input
-                className="font-mono text-xs bg-input border-border w-28"
-                type="number"
-                min="1"
-                placeholder="없음"
-                value={maxTurns}
-                onChange={(e) => setMaxTurns(e.target.value)}
-              />
-            </div>
-
-            {/* Max Budget */}
-            <div className="space-y-2">
-              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                MAX BUDGET (USD)
-              </Label>
-              <p className="font-mono text-2xs text-muted-foreground/70">
-                세션당 최대 비용 한도입니다. 비워두면 제한 없음. 세션에서 개별
-                설정 시 이 값이 덮어씌워집니다.
-              </p>
-              <Input
-                className="font-mono text-xs bg-input border-border w-28"
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="없음"
-                value={maxBudget}
-                onChange={(e) => setMaxBudget(e.target.value)}
-              />
             </div>
 
             {/* Timeout */}
