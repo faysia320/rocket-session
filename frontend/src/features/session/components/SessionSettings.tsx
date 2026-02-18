@@ -6,10 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { AVAILABLE_TOOLS } from "../constants/tools";
@@ -101,8 +105,8 @@ export function SessionSettings({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
         <Button
           variant="outline"
           size="icon"
@@ -111,142 +115,65 @@ export function SessionSettings({
         >
           <Settings className="h-4 w-4" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[360px] bg-card border-border overflow-y-auto max-h-[80vh]"
-        align="end"
+      </SheetTrigger>
+      <SheetContent
+        side="right"
+        className="w-full sm:w-[400px] sm:max-w-[400px] bg-card border-border flex flex-col p-0"
       >
-        <div className="font-mono text-sm font-semibold text-foreground mb-4">
-          Session Settings
-        </div>
+        <SheetHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
+          <SheetTitle className="font-mono text-sm font-semibold text-foreground">
+            Session Settings
+          </SheetTitle>
+          <SheetDescription className="font-mono text-2xs text-muted-foreground">
+            현재 세션에 적용되는 설정입니다.
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-5">
-          {/* 모델 선택 */}
-          <div className="space-y-2">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              MODEL
-            </Label>
-            <p className="font-mono text-2xs text-muted-foreground/70">
-              Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는 기본값을
-              사용합니다.
-            </p>
-            <select
-              className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            >
-              <option value="">Default</option>
-              <option value="opus">Opus</option>
-              <option value="sonnet">Sonnet</option>
-              <option value="haiku">Haiku</option>
-            </select>
-          </div>
-
-          {/* 비허용 도구 */}
-          <div className="space-y-3">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              DISALLOWED TOOLS
-            </Label>
-            <p className="font-mono text-2xs text-muted-foreground/70">
-              Claude CLI에서 사용을 금지할 도구입니다.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {AVAILABLE_TOOLS.map((tool) => (
-                <label
-                  key={`dis-${tool}`}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  <Checkbox
-                    checked={disallowedTools.includes(tool)}
-                    onCheckedChange={(checked) =>
-                      setDisallowedTools((prev) =>
-                        checked === true
-                          ? [...prev, tool]
-                          : prev.filter((t) => t !== tool),
-                      )
-                    }
-                  />
-                  <span className="font-mono text-xs text-foreground">
-                    {tool}
-                  </span>
-                </label>
-              ))}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="space-y-5">
+            {/* 모델 선택 */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                MODEL
+              </Label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는 기본값을
+                사용합니다.
+              </p>
+              <select
+                className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              >
+                <option value="">Default</option>
+                <option value="opus">Opus</option>
+                <option value="sonnet">Sonnet</option>
+                <option value="haiku">Haiku</option>
+              </select>
             </div>
-          </div>
 
-          {/* 시스템 프롬프트 */}
-          <div className="space-y-2">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              SYSTEM PROMPT
-            </Label>
-            <p className="font-mono text-2xs text-muted-foreground/70">
-              세션에 주입할 시스템 지시사항입니다.
-            </p>
-            <Textarea
-              className="font-mono text-xs min-h-[100px] bg-input border-border"
-              placeholder="예: 모든 코드에 한국어 주석을 달아주세요."
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-            />
-          </div>
-
-          {/* System Prompt Mode */}
-          <div className="space-y-2">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              SYSTEM PROMPT MODE
-            </Label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <Checkbox
-                  checked={systemPromptMode === "replace"}
-                  onCheckedChange={() => setSystemPromptMode("replace")}
-                />
-                <span className="font-mono text-xs text-foreground">
-                  전체 대체
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <Checkbox
-                  checked={systemPromptMode === "append"}
-                  onCheckedChange={() => setSystemPromptMode("append")}
-                />
-                <span className="font-mono text-xs text-foreground">
-                  기본에 추가
-                </span>
-              </label>
-            </div>
-          </div>
-
-          {/* Permission Mode */}
-          <div className="space-y-3">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              PERMISSION MODE
-            </Label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={permissionMode}
-                onCheckedChange={(checked) =>
-                  setPermissionMode(checked === true)
-                }
-              />
-              <span className="font-mono text-xs text-foreground">
-                도구 실행 전 확인 요청 활성화
-              </span>
-            </label>
-            <p className="font-mono text-2xs text-muted-foreground/70">
-              활성화하면 아래 선택한 도구 실행 시 사용자 승인을 요청합니다.
-            </p>
-            {permissionMode ? (
-              <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-warning/30">
-                {PERMISSION_TOOLS.map((tool) => (
+            {/* 비허용 도구 */}
+            <div className="space-y-3">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                DISALLOWED TOOLS
+              </Label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                Claude CLI에서 사용을 금지할 도구입니다.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {AVAILABLE_TOOLS.map((tool) => (
                   <label
-                    key={tool}
+                    key={`dis-${tool}`}
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     <Checkbox
-                      checked={permissionTools.includes(tool)}
+                      checked={disallowedTools.includes(tool)}
                       onCheckedChange={(checked) =>
-                        handlePermissionToolToggle(tool, checked === true)
+                        setDisallowedTools((prev) =>
+                          checked === true
+                            ? [...prev, tool]
+                            : prev.filter((t) => t !== tool),
+                        )
                       }
                     />
                     <span className="font-mono text-xs text-foreground">
@@ -255,28 +182,113 @@ export function SessionSettings({
                   </label>
                 ))}
               </div>
-            ) : null}
-          </div>
+            </div>
 
-          {/* 타임아웃 */}
-          <div className="space-y-2">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              TIMEOUT (분)
-            </Label>
-            <p className="font-mono text-2xs text-muted-foreground/70">
-              프로세스 최대 실행 시간. 비워두면 무제한입니다.
-            </p>
-            <Input
-              className="font-mono text-xs bg-input border-border w-24"
-              type="number"
-              min="1"
-              placeholder="없음"
-              value={timeoutMinutes}
-              onChange={(e) => setTimeoutMinutes(e.target.value)}
-            />
-          </div>
+            {/* 시스템 프롬프트 */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                SYSTEM PROMPT
+              </Label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                세션에 주입할 시스템 지시사항입니다.
+              </p>
+              <Textarea
+                className="font-mono text-xs min-h-[100px] bg-input border-border"
+                placeholder="예: 모든 코드에 한국어 주석을 달아주세요."
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+              />
+            </div>
 
-          {/* 저장 버튼 */}
+            {/* System Prompt Mode */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                SYSTEM PROMPT MODE
+              </Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={systemPromptMode === "replace"}
+                    onCheckedChange={() => setSystemPromptMode("replace")}
+                  />
+                  <span className="font-mono text-xs text-foreground">
+                    전체 대체
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={systemPromptMode === "append"}
+                    onCheckedChange={() => setSystemPromptMode("append")}
+                  />
+                  <span className="font-mono text-xs text-foreground">
+                    기본에 추가
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Permission Mode */}
+            <div className="space-y-3">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                PERMISSION MODE
+              </Label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={permissionMode}
+                  onCheckedChange={(checked) =>
+                    setPermissionMode(checked === true)
+                  }
+                />
+                <span className="font-mono text-xs text-foreground">
+                  도구 실행 전 확인 요청 활성화
+                </span>
+              </label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                활성화하면 아래 선택한 도구 실행 시 사용자 승인을 요청합니다.
+              </p>
+              {permissionMode ? (
+                <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-warning/30">
+                  {PERMISSION_TOOLS.map((tool) => (
+                    <label
+                      key={tool}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={permissionTools.includes(tool)}
+                        onCheckedChange={(checked) =>
+                          handlePermissionToolToggle(tool, checked === true)
+                        }
+                      />
+                      <span className="font-mono text-xs text-foreground">
+                        {tool}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            {/* 타임아웃 */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                TIMEOUT (분)
+              </Label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                프로세스 최대 실행 시간. 비워두면 무제한입니다.
+              </p>
+              <Input
+                className="font-mono text-xs bg-input border-border w-24"
+                type="number"
+                min="1"
+                placeholder="없음"
+                value={timeoutMinutes}
+                onChange={(e) => setTimeoutMinutes(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <SheetFooter className="px-6 py-4 border-t border-border shrink-0">
           <Button
             className="w-full font-mono text-xs font-semibold"
             onClick={handleSave}
@@ -285,8 +297,8 @@ export function SessionSettings({
             <Save className="h-3.5 w-3.5 mr-1.5" />
             {saving ? "Saving…" : "Save Settings"}
           </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -13,10 +13,13 @@ import { SessionSettings } from "@/features/session/components/SessionSettings";
 import { FilePanel } from "@/features/files/components/FilePanel";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { FileChange, GitInfo } from "@/types";
 import type { ReconnectState } from "../hooks/useClaudeSocket";
@@ -172,8 +175,8 @@ export const ChatHeader = memo(function ChatHeader({
           open={settingsOpen}
           onOpenChange={onSettingsOpenChange}
         />
-        <Popover open={filesOpen} onOpenChange={onFilesOpenChange}>
-          <PopoverTrigger asChild>
+        <Sheet open={filesOpen} onOpenChange={onFilesOpenChange}>
+          <SheetTrigger asChild>
             <Button
               variant="outline"
               size="icon"
@@ -188,18 +191,22 @@ export const ChatHeader = memo(function ChatHeader({
                 </span>
               ) : null}
             </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-[calc(100vw-2rem)] md:w-[560px] max-h-[70vh] p-0 bg-card border-border flex flex-col overflow-hidden"
-            align="end"
+          </SheetTrigger>
+          <SheetContent
+            side="right"
+            className="w-full sm:w-[480px] sm:max-w-[480px] bg-card border-border flex flex-col p-0"
           >
+            <SheetHeader className="sr-only">
+              <SheetTitle>File Changes</SheetTitle>
+              <SheetDescription>세션에서 변경된 파일 목록</SheetDescription>
+            </SheetHeader>
             <FilePanel
               sessionId={sessionId}
               fileChanges={fileChanges}
               onFileClick={onFileClick}
             />
-          </PopoverContent>
-        </Popover>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );
