@@ -293,7 +293,7 @@ export const Sidebar = memo(function Sidebar({
         <div
           className={cn(
             "flex items-center gap-1",
-            collapsed ? "flex-col" : "justify-end",
+            collapsed ? "flex-col" : "justify-center",
           )}
         >
           <Tooltip>
