@@ -320,20 +320,32 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
   // 커맨드 팔레트 이벤트 리스너
   useEffect(() => {
+    const forThis = (e: Event, fn: () => void) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.sessionId && detail.sessionId !== sessionId) return;
+      fn();
+    };
+
     const handlers: Record<string, (e: Event) => void> = {
-      "command-palette:clear-messages": () => clearMessages(),
-      "command-palette:toggle-search": () => handleToggleSearch(),
-      "command-palette:toggle-mode": () => cycleMode(),
-      "command-palette:open-settings": () => setSettingsOpen(true),
-      "command-palette:toggle-files": () => setFilesOpen((p) => !p),
-      "command-palette:send-slash": (e: Event) => {
-        const cmd = (e as CustomEvent).detail;
-        if (cmd) sendPrompt(cmd, { mode });
-      },
-      "command-palette:send-prompt": (e: Event) => {
-        const prompt = (e as CustomEvent).detail;
-        if (prompt) sendPrompt(prompt, { mode });
-      },
+      "command-palette:clear-messages": (e) =>
+        forThis(e, () => clearMessages()),
+      "command-palette:toggle-search": (e) =>
+        forThis(e, () => handleToggleSearch()),
+      "command-palette:toggle-mode": (e) => forThis(e, () => cycleMode()),
+      "command-palette:open-settings": (e) =>
+        forThis(e, () => setSettingsOpen(true)),
+      "command-palette:toggle-files": (e) =>
+        forThis(e, () => setFilesOpen((p) => !p)),
+      "command-palette:send-slash": (e) =>
+        forThis(e, () => {
+          const data = (e as CustomEvent).detail?.data;
+          if (data) sendPrompt(data, { mode });
+        }),
+      "command-palette:send-prompt": (e) =>
+        forThis(e, () => {
+          const data = (e as CustomEvent).detail?.data;
+          if (data) sendPrompt(data, { mode });
+        }),
     };
 
     for (const [event, handler] of Object.entries(handlers)) {
@@ -344,7 +356,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         window.removeEventListener(event, handler);
       }
     };
-  }, [clearMessages, handleToggleSearch, cycleMode, sendPrompt, mode]);
+  }, [clearMessages, handleToggleSearch, cycleMode, sendPrompt, mode, sessionId]);
 
   const handleFileClick = useCallback((change: FileChange) => {
     setSelectedFile(change);

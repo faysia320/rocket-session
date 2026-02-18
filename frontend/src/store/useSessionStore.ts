@@ -3,11 +3,13 @@ import { persist } from "zustand/middleware";
 
 interface SessionState {
   activeSessionId: string | null;
+  focusedSessionId: string | null;
   splitView: boolean;
   dashboardView: boolean;
   sidebarCollapsed: boolean;
   sidebarMobileOpen: boolean;
   setActiveSessionId: (id: string | null) => void;
+  setFocusedSessionId: (id: string | null) => void;
   setSplitView: (v: boolean) => void;
   toggleSplitView: () => void;
   setDashboardView: (v: boolean) => void;
@@ -20,11 +22,13 @@ export const useSessionStore = create<SessionState>()(
   persist(
     (set) => ({
       activeSessionId: null,
+      focusedSessionId: null,
       splitView: false,
       dashboardView: false,
       sidebarCollapsed: false,
       sidebarMobileOpen: false,
       setActiveSessionId: (id) => set({ activeSessionId: id }),
+      setFocusedSessionId: (id) => set({ focusedSessionId: id }),
       setSplitView: (v) => set({ splitView: v }),
       toggleSplitView: () =>
         set((state) => ({

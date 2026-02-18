@@ -9,15 +9,21 @@ import {
 } from "lucide-react";
 import type { PaletteCommand } from "../types";
 
-function dispatch(event: string, detail?: string) {
+function dispatch(
+  event: string,
+  sessionId: string | null,
+  data?: string,
+) {
   window.dispatchEvent(
-    detail
-      ? new CustomEvent(event, { detail })
-      : new CustomEvent(event),
+    new CustomEvent(event, { detail: { sessionId, data } }),
   );
 }
 
-export function createChatCommands(): PaletteCommand[] {
+export function createChatCommands(deps: {
+  activeSessionId: string | null;
+}): PaletteCommand[] {
+  const { activeSessionId } = deps;
+
   return [
     {
       id: "chat:clear",
@@ -25,7 +31,7 @@ export function createChatCommands(): PaletteCommand[] {
       description: "현재 대화 내역 모두 삭제 (/clear)",
       category: "chat",
       icon: Trash2,
-      action: () => dispatch("command-palette:clear-messages"),
+      action: () => dispatch("command-palette:clear-messages", activeSessionId),
       context: { requiresActiveSession: true },
       keywords: ["clear", "초기화", "삭제"],
     },
@@ -36,7 +42,7 @@ export function createChatCommands(): PaletteCommand[] {
       category: "chat",
       icon: Search,
       shortcut: "⌘F",
-      action: () => dispatch("command-palette:toggle-search"),
+      action: () => dispatch("command-palette:toggle-search", activeSessionId),
       context: { requiresActiveSession: true },
       keywords: ["search", "find", "검색", "찾기"],
     },
@@ -47,7 +53,7 @@ export function createChatCommands(): PaletteCommand[] {
       category: "chat",
       icon: ToggleLeft,
       shortcut: "⇧Tab",
-      action: () => dispatch("command-palette:toggle-mode"),
+      action: () => dispatch("command-palette:toggle-mode", activeSessionId),
       context: { requiresActiveSession: true },
       keywords: ["mode", "plan", "normal", "모드", "계획"],
     },
@@ -57,7 +63,8 @@ export function createChatCommands(): PaletteCommand[] {
       description: "대화를 요약하여 컨텍스트 절약",
       category: "chat",
       icon: Minimize2,
-      action: () => dispatch("command-palette:send-slash", "/compact"),
+      action: () =>
+        dispatch("command-palette:send-slash", activeSessionId, "/compact"),
       context: { requiresActiveSession: true, requiresRunning: false },
       keywords: ["compact", "압축", "요약"],
     },
@@ -67,7 +74,8 @@ export function createChatCommands(): PaletteCommand[] {
       description: "사용할 Claude 모델 선택",
       category: "chat",
       icon: Cpu,
-      action: () => dispatch("command-palette:send-slash", "/model"),
+      action: () =>
+        dispatch("command-palette:send-slash", activeSessionId, "/model"),
       context: { requiresActiveSession: true, requiresRunning: false },
       keywords: ["model", "모델", "변경"],
     },
@@ -77,7 +85,8 @@ export function createChatCommands(): PaletteCommand[] {
       description: "현재 세션의 설정 패널 표시",
       category: "chat",
       icon: Settings,
-      action: () => dispatch("command-palette:open-settings"),
+      action: () =>
+        dispatch("command-palette:open-settings", activeSessionId),
       context: { requiresActiveSession: true },
       keywords: ["settings", "설정", "config"],
     },
@@ -87,7 +96,7 @@ export function createChatCommands(): PaletteCommand[] {
       description: "파일 변경 패널 표시/숨김",
       category: "chat",
       icon: FolderOpen,
-      action: () => dispatch("command-palette:toggle-files"),
+      action: () => dispatch("command-palette:toggle-files", activeSessionId),
       context: { requiresActiveSession: true },
       keywords: ["files", "파일", "변경"],
     },

@@ -26,6 +26,7 @@ import { useIsMobile } from "@/hooks/useMediaQuery";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -46,6 +47,8 @@ function RootComponent() {
   } = useSessions();
   const splitView = useSessionStore((s) => s.splitView);
   const dashboardView = useSessionStore((s) => s.dashboardView);
+  const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
+  const setFocusedSessionId = useSessionStore((s) => s.setFocusedSessionId);
   const sidebarMobileOpen = useSessionStore((s) => s.sidebarMobileOpen);
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const setDashboardView = useSessionStore((s) => s.setDashboardView);
@@ -138,7 +141,11 @@ function RootComponent() {
               {sessions.slice(0, 5).map((s) => (
                 <div
                   key={s.id}
-                  className="flex-1 min-w-0 h-full flex flex-col border-r border-border last:border-r-0"
+                  onPointerDown={() => setFocusedSessionId(s.id)}
+                  className={cn(
+                    "flex-1 min-w-0 h-full flex flex-col border-r border-border last:border-r-0",
+                    focusedSessionId === s.id && "ring-1 ring-inset ring-primary/30",
+                  )}
                 >
                   <ChatPanel sessionId={s.id} />
                 </div>

@@ -38,6 +38,8 @@ export function useCommandPalette() {
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
   const toggleDashboardView = useSessionStore((s) => s.toggleDashboardView);
+  const splitView = useSessionStore((s) => s.splitView);
+  const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
 
   const recentCommandIds = useCommandPaletteStore((s) => s.recentCommandIds);
 
@@ -47,7 +49,8 @@ export function useCommandPalette() {
     staleTime: 10_000,
   });
 
-  const activeSessionId = extractSessionIdFromPath(location.pathname);
+  const urlSessionId = extractSessionIdFromPath(location.pathname);
+  const activeSessionId = splitView ? focusedSessionId : urlSessionId;
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
   const workDir = activeSession?.work_dir ?? "";
@@ -120,7 +123,7 @@ export function useCommandPalette() {
       exportSession,
       openTerminal,
     });
-    const chatCmds = createChatCommands();
+    const chatCmds = createChatCommands({ activeSessionId });
     const uiCmds = createUICommands({
       toggleSidebar,
       toggleSplitView,
