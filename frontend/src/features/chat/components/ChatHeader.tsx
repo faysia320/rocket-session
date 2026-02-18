@@ -3,7 +3,6 @@ import {
   FolderOpen,
   GitBranch,
   Download,
-  Search,
   RefreshCw,
   Menu,
 } from "lucide-react";
@@ -31,8 +30,6 @@ interface ChatHeaderProps {
   sessionId: string;
   fileChanges: FileChange[];
   reconnectState?: ReconnectState;
-  searchOpen?: boolean;
-  onToggleSearch?: () => void;
   onFileClick: (change: FileChange) => void;
   settingsOpen: boolean;
   onSettingsOpenChange: (open: boolean) => void;
@@ -51,8 +48,6 @@ export const ChatHeader = memo(function ChatHeader({
   sessionId,
   fileChanges,
   reconnectState,
-  searchOpen,
-  onToggleSearch,
   onFileClick,
   settingsOpen,
   onSettingsOpenChange,
@@ -149,18 +144,6 @@ export const ChatHeader = memo(function ChatHeader({
           currentModel={currentModel}
           disabled={status === "running"}
         />
-        {onToggleSearch ? (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onToggleSearch}
-            className={cn(searchOpen && "bg-muted")}
-            aria-label="메시지 검색"
-            title="메시지 검색"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-        ) : null}
         <Button
           variant="outline"
           size="icon"

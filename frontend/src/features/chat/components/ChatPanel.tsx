@@ -74,6 +74,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
 
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
+  const splitView = useSessionStore((s) => s.splitView);
+  const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
   const queryClient = useQueryClient();
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? "");
@@ -306,17 +308,18 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     });
   }, []);
 
-  // Ctrl+F / Cmd+F 검색 단축키
+  // Ctrl+F / Cmd+F 검색 단축키 (split view에서는 포커스된 세션에서만 동작)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        if (splitView && focusedSessionId !== sessionId) return;
         e.preventDefault();
         handleToggleSearch();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleToggleSearch]);
+  }, [handleToggleSearch, splitView, focusedSessionId, sessionId]);
 
   // 커맨드 팔레트 이벤트 리스너
   useEffect(() => {
@@ -465,8 +468,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         sessionId={sessionId}
         fileChanges={fileChanges}
         reconnectState={reconnectState}
-        searchOpen={searchOpen}
-        onToggleSearch={handleToggleSearch}
         onFileClick={handleFileClick}
         settingsOpen={settingsOpen}
         onSettingsOpenChange={setSettingsOpen}
