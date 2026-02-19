@@ -50,7 +50,16 @@ async def lifespan(application: FastAPI):
     await ws_mgr.start_background_tasks()
     cleanup_task = asyncio.create_task(_periodic_cleanup())
     # 사용량 캐시 백그라운드 워밍업 (서버 시작 시 미리 로드)
-    asyncio.create_task(get_usage_service().warmup())
+    warmup_task = asyncio.create_task(get_usage_service().warmup())
+    warmup_task.add_done_callback(
+        lambda t: (
+            logging.getLogger(__name__).error(
+                "사용량 캐시 워밍업 실패: %s", t.exception()
+            )
+            if not t.cancelled() and t.exception()
+            else None
+        )
+    )
     yield
     cleanup_task.cancel()
     try:

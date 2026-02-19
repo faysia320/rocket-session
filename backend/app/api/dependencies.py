@@ -20,14 +20,14 @@ _database: Database | None = None
 _session_manager: SessionManager | None = None
 _local_scanner: LocalSessionScanner | None = None
 _usage_service: UsageService | None = None
-_ws_manager = WebSocketManager()
+_ws_manager: WebSocketManager | None = None
 _filesystem_service: FilesystemService | None = None
 _claude_runner: ClaudeRunner | None = None
 _settings_service: SettingsService | None = None
 _jsonl_watcher: JsonlWatcher | None = None
 
 
-@lru_cache()
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
 
@@ -45,13 +45,14 @@ def get_session_manager() -> SessionManager:
 
 
 def get_ws_manager() -> WebSocketManager:
+    if _ws_manager is None:
+        raise RuntimeError("WebSocketManager가 초기화되지 않았습니다")
     return _ws_manager
 
 
 def get_claude_runner() -> ClaudeRunner:
-    global _claude_runner
     if _claude_runner is None:
-        _claude_runner = ClaudeRunner(get_settings())
+        raise RuntimeError("ClaudeRunner가 초기화되지 않았습니다")
     return _claude_runner
 
 
@@ -94,7 +95,9 @@ async def init_dependencies():
         _usage_service, \
         _settings_service, \
         _jsonl_watcher, \
-        _filesystem_service
+        _filesystem_service, \
+        _ws_manager, \
+        _claude_runner
     logger = logging.getLogger(__name__)
     settings = get_settings()
     _filesystem_service = FilesystemService(root_dir=settings.claude_work_dir)
@@ -104,12 +107,17 @@ async def init_dependencies():
     upload_path.mkdir(parents=True, exist_ok=True)
     logger.info("업로드 디렉토리: %s", upload_path)
 
+    # WebSocketManager를 DB 초기화 전에 인스턴스 생성
+    _ws_manager = WebSocketManager()
     _database = Database(settings.database_path)
     await _database.initialize()
     _ws_manager.set_database(_database)
-    _session_manager = SessionManager(_database, upload_dir=settings.resolved_upload_dir)
+    _session_manager = SessionManager(
+        _database, upload_dir=settings.resolved_upload_dir
+    )
     _local_scanner = LocalSessionScanner(_database)
     _usage_service = UsageService()
+    _claude_runner = ClaudeRunner(settings)
     _settings_service = SettingsService(_database)
     _jsonl_watcher = JsonlWatcher(_session_manager, _ws_manager)
 
@@ -127,7 +135,7 @@ async def init_dependencies():
 
 
 async def shutdown_dependencies():
-    """앱 종료 시 DB 연결 정리."""
+    """앱 종료 시 활성 세션 정리 및 DB 연결 종료."""
     global \
         _database, \
         _session_manager, \
@@ -136,12 +144,29 @@ async def shutdown_dependencies():
         _claude_runner, \
         _settings_service, \
         _jsonl_watcher, \
-        _filesystem_service
+        _filesystem_service, \
+        _ws_manager
+    logger = logging.getLogger(__name__)
+    # 1. 실행 중인 세션 프로세스 종료
+    if _session_manager:
+        for session_id in list(_session_manager._processes.keys()):
+            try:
+                await _session_manager.kill_process(session_id)
+            except Exception as e:
+                logger.error("세션 %s 프로세스 종료 실패: %s", session_id, e)
+    # 2. JSONL Watcher 종료
     if _jsonl_watcher:
         try:
             _jsonl_watcher.stop_all()
         except Exception as e:
-            logging.getLogger(__name__).error("JsonlWatcher 종료 실패: %s", e)
+            logger.error("JsonlWatcher 종료 실패: %s", e)
+    # 3. Usage HTTP 클라이언트 정리
+    if _usage_service and hasattr(_usage_service, "close"):
+        try:
+            await _usage_service.close()
+        except Exception as e:
+            logger.error("UsageService 종료 실패: %s", e)
+    # 4. DB 연결 종료
     if _database:
         await _database.close()
     _database = None
@@ -152,3 +177,4 @@ async def shutdown_dependencies():
     _settings_service = None
     _jsonl_watcher = None
     _filesystem_service = None
+    _ws_manager = None
