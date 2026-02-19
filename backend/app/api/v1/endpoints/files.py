@@ -34,7 +34,9 @@ def _resolve_safe_path(file_path: str, work_dir: Path) -> Path:
         try:
             rel = resolved.relative_to(resolved_work_dir)
         except ValueError:
-            raise HTTPException(status_code=403, detail="접근 금지: 작업 디렉토리 외부 경로입니다")
+            raise HTTPException(
+                status_code=403, detail="접근 금지: 작업 디렉토리 외부 경로입니다"
+            )
         return resolved_work_dir / rel
     else:
         # 상대 경로: work_dir과 결합 후 검증
@@ -42,7 +44,9 @@ def _resolve_safe_path(file_path: str, work_dir: Path) -> Path:
         try:
             resolved.relative_to(resolved_work_dir)
         except ValueError:
-            raise HTTPException(status_code=403, detail="접근 금지: 작업 디렉토리 외부 경로입니다")
+            raise HTTPException(
+                status_code=403, detail="접근 금지: 작업 디렉토리 외부 경로입니다"
+            )
         return resolved
 
 
@@ -69,9 +73,12 @@ async def get_file_content(
         raise HTTPException(status_code=413, detail="파일이 너무 큽니다 (최대 1MB)")
 
     try:
-        content = target.read_text(encoding="utf-8")
+        # 블로킹 파일 I/O를 이벤트 루프 외부에서 실행
+        content = await asyncio.to_thread(target.read_text, "utf-8")
     except UnicodeDecodeError:
-        raise HTTPException(status_code=415, detail="바이너리 파일은 표시할 수 없습니다")
+        raise HTTPException(
+            status_code=415, detail="바이너리 파일은 표시할 수 없습니다"
+        )
 
     return PlainTextResponse(content)
 
@@ -181,10 +188,17 @@ async def upload_file(
             f"허용: {', '.join(ALLOWED_IMAGE_TYPES)}",
         )
 
-    # 파일 크기 검증
-    content = await file.read()
-    if len(content) > MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=413, detail="파일이 너무 큽니다 (최대 10MB)")
+    # 청크 단위로 읽으면서 크기 제한 확인 (대용량 파일 메모리 보호)
+    chunks: list[bytes] = []
+    total_size = 0
+    while chunk := await file.read(8192):
+        total_size += len(chunk)
+        if total_size > MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413, detail="파일이 너무 큽니다 (최대 10MB)"
+            )
+        chunks.append(chunk)
+    content = b"".join(chunks)
 
     # 확장자 화이트리스트 검증 (경로 조작 방지)
     ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
@@ -196,6 +210,7 @@ async def upload_file(
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_name = f"{uuid.uuid4().hex[:8]}{ext}"
     file_path = upload_dir / file_name
-    file_path.write_bytes(content)
+    # 블로킹 파일 쓰기를 이벤트 루프 외부에서 실행
+    await asyncio.to_thread(file_path.write_bytes, content)
 
     return {"path": str(file_path), "name": file.filename, "size": len(content)}
