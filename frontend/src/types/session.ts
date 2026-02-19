@@ -1,6 +1,11 @@
 export type SessionStatus = "idle" | "running" | "error" | "stopped";
 export type SessionMode = "normal" | "plan";
 
+export interface CurrentActivity {
+  tool: string;
+  input?: Record<string, unknown>;
+}
+
 export interface SessionInfo {
   id: string;
   status: SessionStatus;
@@ -21,6 +26,7 @@ export interface SessionInfo {
   max_budget_usd?: number | null;
   system_prompt_mode?: string | null;
   disallowed_tools?: string | null;
+  current_activity?: CurrentActivity | null;
 }
 
 export interface CreateSessionRequest {

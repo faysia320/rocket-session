@@ -35,6 +35,13 @@ class UpdateSessionRequest(BaseModel):
     disallowed_tools: Optional[str] = None
 
 
+class CurrentActivity(BaseModel):
+    """세션의 현재 활동 정보."""
+
+    tool: str  # "Read", "Write", "Bash", "__thinking__" 등
+    input: dict = {}  # {"file_path": "...", "command": "..."} 등
+
+
 class SessionInfo(BaseModel):
     id: str
     claude_session_id: Optional[str] = None
@@ -55,3 +62,4 @@ class SessionInfo(BaseModel):
     max_budget_usd: Optional[float] = None
     system_prompt_mode: str = "replace"
     disallowed_tools: Optional[str] = None
+    current_activity: Optional[CurrentActivity] = None

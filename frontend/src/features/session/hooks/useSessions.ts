@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -65,6 +65,16 @@ export function useSessions() {
     staleTime: 10_000,
     refetchOnWindowFocus: true,
   });
+
+  // Running 세션이 있을 때 5초 간격 자동 갱신 (활동 내용 반영)
+  const hasRunning = sessions.some((s) => s.status === "running");
+  useEffect(() => {
+    if (!hasRunning) return;
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
+    }, 5_000);
+    return () => clearInterval(interval);
+  }, [hasRunning, queryClient]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => sessionsApi.delete(id),

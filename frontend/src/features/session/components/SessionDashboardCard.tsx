@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
+import { getActivityLabel } from "@/features/chat/utils/activityLabel";
 
 interface SessionDashboardCardProps {
   session: SessionInfo;
@@ -138,6 +139,25 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
           </div>
         ) : null}
       </div>
+
+      {/* 현재 활동 내용 */}
+      {s.status === "running" && s.current_activity ? (
+        <div className="flex items-center gap-1.5 mb-2 min-h-[20px]">
+          <span className="inline-block w-3 h-3 border-[1.5px] border-info/40 border-t-info rounded-full animate-spin shrink-0" />
+          <span
+            className="font-mono text-2xs text-info/80 truncate"
+            title={getActivityLabel(
+              s.current_activity.tool,
+              s.current_activity.input,
+            )}
+          >
+            {getActivityLabel(
+              s.current_activity.tool,
+              s.current_activity.input,
+            )}
+          </span>
+        </div>
+      ) : null}
 
       {/* work_dir */}
       <div

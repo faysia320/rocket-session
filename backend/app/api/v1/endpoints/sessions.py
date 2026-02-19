@@ -6,11 +6,12 @@ import subprocess
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 
-from app.api.dependencies import get_session_manager, get_settings, get_settings_service
+from app.api.dependencies import get_session_manager, get_settings, get_settings_service, get_ws_manager
 from app.core.config import Settings
-from app.schemas.session import CreateSessionRequest, SessionInfo, UpdateSessionRequest
+from app.schemas.session import CreateSessionRequest, CurrentActivity, SessionInfo, UpdateSessionRequest
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
+from app.services.websocket_manager import WebSocketManager
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -45,20 +46,37 @@ async def create_session(
 
 
 @router.get("/")
-async def list_sessions(manager: SessionManager = Depends(get_session_manager)):
+async def list_sessions(
+    manager: SessionManager = Depends(get_session_manager),
+    ws_manager: WebSocketManager = Depends(get_ws_manager),
+):
     sessions = await manager.list_all()
-    return [manager.to_info(s) for s in sessions]
+    result = []
+    for s in sessions:
+        info = manager.to_info(s)
+        if s.get("status") == "running":
+            activity = ws_manager.get_current_activity(s["id"])
+            if activity:
+                info.current_activity = CurrentActivity(**activity)
+        result.append(info)
+    return result
 
 
 @router.get("/{session_id}")
 async def get_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
+    ws_manager: WebSocketManager = Depends(get_ws_manager),
 ):
     session = await manager.get_with_counts(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-    return manager.to_info(session)
+    info = manager.to_info(session)
+    if session.get("status") == "running":
+        activity = ws_manager.get_current_activity(session_id)
+        if activity:
+            info.current_activity = CurrentActivity(**activity)
+    return info
 
 
 @router.patch("/{session_id}", response_model=SessionInfo)

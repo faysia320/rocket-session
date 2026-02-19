@@ -259,6 +259,46 @@ class WebSocketManager:
 
         return []
 
+    def get_current_activity(self, session_id: str) -> dict | None:
+        """세션의 현재 활동 요약 반환.
+
+        인메모리 버퍼에서 마지막 tool_use 이벤트 중 아직 tool_result가
+        오지 않은 것(= 현재 실행 중인 도구)을 추출.
+
+        Returns:
+            {"tool": "Write", "input": {"file_path": "src/App.tsx"}} 또는 None
+        """
+        buffer = self._event_buffers.get(session_id)
+        if not buffer:
+            return None
+
+        # 완료된 tool_use_id 수집
+        completed_ids: set[str] = set()
+        for evt in buffer:
+            if evt.event_type == "tool_result":
+                tid = evt.payload.get("tool_use_id")
+                if tid:
+                    completed_ids.add(tid)
+
+        # 역순으로 미완료 tool_use 찾기
+        for evt in reversed(buffer):
+            if evt.event_type == "tool_use":
+                tid = evt.payload.get("tool_use_id", "")
+                if tid not in completed_ids:
+                    return {
+                        "tool": evt.payload.get("tool", ""),
+                        "input": evt.payload.get("input", {}),
+                    }
+
+        # 활성 도구 없으면 텍스트 생성 중인지 확인
+        for evt in reversed(buffer):
+            if evt.event_type == "assistant_text":
+                return {"tool": "__thinking__", "input": {}}
+            if evt.event_type in ("result", "user_message"):
+                break
+
+        return None
+
     def clear_buffer(self, session_id: str):
         """세션의 인메모리 버퍼 정리."""
         self._event_buffers.pop(session_id, None)

@@ -1,6 +1,7 @@
 export type {
   SessionStatus,
   SessionMode,
+  CurrentActivity,
   SessionInfo,
   CreateSessionRequest,
   UpdateSessionRequest,
