@@ -58,6 +58,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     updateSessionMode,
   } = useClaudeSocket(sessionId);
   const { notify } = useNotificationCenter();
+  const panelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
   const isInitialLoad = useRef(true);
@@ -459,7 +460,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   }, [workDir, sessionId, queryClient, navigate]);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div ref={panelRef} className="relative flex-1 flex flex-col overflow-hidden">
       <ChatHeader
         connected={connected}
         workDir={workDir}
@@ -476,6 +477,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onRetryConnect={reconnect}
         onMenuToggle={() => setSidebarMobileOpen(true)}
         currentModel={sessionInfo?.model as string | undefined}
+        portalContainer={panelRef.current}
       />
       <SessionStatsBar
         sessionId={sessionId}

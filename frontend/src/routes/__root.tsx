@@ -144,7 +144,7 @@ function RootComponent() {
                   onPointerDown={() => setFocusedSessionId(s.id)}
                   className={cn(
                     "flex-1 min-w-0 h-full flex flex-col border-r border-border last:border-r-0",
-                    focusedSessionId === s.id && "ring-1 ring-inset ring-primary/30",
+                    focusedSessionId === s.id && "outline outline-1 -outline-offset-1 outline-primary/40",
                   )}
                 >
                   <ChatPanel sessionId={s.id} />

@@ -24,12 +24,14 @@ interface SessionSettingsProps {
   sessionId: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  portalContainer?: HTMLElement | null;
 }
 
 export function SessionSettings({
   sessionId,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
+  portalContainer,
 }: SessionSettingsProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -118,6 +120,7 @@ export function SessionSettings({
       </SheetTrigger>
       <SheetContent
         side="right"
+        container={portalContainer}
         className="w-full sm:w-[400px] sm:max-w-[400px] bg-card border-border flex flex-col p-0"
       >
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">

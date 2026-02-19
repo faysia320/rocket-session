@@ -38,6 +38,7 @@ interface ChatHeaderProps {
   onRetryConnect?: () => void;
   onMenuToggle?: () => void;
   currentModel?: string | null;
+  portalContainer?: HTMLElement | null;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -56,6 +57,7 @@ export const ChatHeader = memo(function ChatHeader({
   onRetryConnect,
   onMenuToggle,
   currentModel,
+  portalContainer,
 }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-11">
@@ -157,6 +159,7 @@ export const ChatHeader = memo(function ChatHeader({
           sessionId={sessionId}
           open={settingsOpen}
           onOpenChange={onSettingsOpenChange}
+          portalContainer={portalContainer}
         />
         <Sheet open={filesOpen} onOpenChange={onFilesOpenChange}>
           <SheetTrigger asChild>
@@ -177,6 +180,7 @@ export const ChatHeader = memo(function ChatHeader({
           </SheetTrigger>
           <SheetContent
             side="right"
+            container={portalContainer}
             className="w-full sm:w-[480px] sm:max-w-[480px] bg-card border-border flex flex-col p-0"
           >
             <SheetHeader className="sr-only">

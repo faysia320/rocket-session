@@ -67,7 +67,7 @@ export function FilePanel({
 
   return (
     <div className="flex flex-col overflow-hidden flex-1 min-h-0">
-      <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-border">
+      <div className="flex items-center gap-2 px-3.5 pr-12 py-2.5 border-b border-border">
         <span className="text-sm">{"\u{1F4C1}"}</span>
         <span className="font-mono text-xs font-semibold text-foreground flex-1">
           File Changes
