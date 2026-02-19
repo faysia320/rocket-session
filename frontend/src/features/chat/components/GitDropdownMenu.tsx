@@ -114,9 +114,9 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
             <DropdownMenuItem
               onClick={handleRebase}
               disabled={disabled}
-              className="font-mono text-xs gap-2"
+              className="group font-mono text-xs gap-2"
             >
-              <GitMerge className="h-3.5 w-3.5 text-warning" />
+              <GitMerge className="h-3.5 w-3.5 text-warning group-focus:text-accent-foreground" />
               Rebase & Merge
             </DropdownMenuItem>
           ) : null}
@@ -126,7 +126,7 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
               <DropdownMenuItem
                 onClick={() => setDeleteConfirmOpen(true)}
                 disabled={disabled}
-                className="font-mono text-xs gap-2 text-destructive focus:text-destructive"
+                className="font-mono text-xs gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 워크트리 삭제
@@ -146,8 +146,9 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
                 워크트리를 삭제하시겠습니까?
               </AlertDialogTitle>
               <AlertDialogDescription className="font-mono text-xs">
-                이 워크트리 디렉토리가 삭제됩니다. 미커밋 변경사항이 있으면
-                강제 삭제됩니다.
+                이 워크트리 디렉토리와 연결된 브랜치가 삭제됩니다. 미커밋
+                변경사항이 있으면 강제 삭제됩니다. 원격 브랜치(origin)도 함께
+                삭제됩니다.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

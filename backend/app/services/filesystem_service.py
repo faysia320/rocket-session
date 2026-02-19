@@ -387,6 +387,37 @@ class FilesystemService:
                 "branch", delete_flag, worktree_branch, cwd=main_repo
             )
 
+            # 원격 브랜치 삭제 (보호 브랜치 제외, 실패 시 경고만)
+            protected = {"main", "master", "develop", "dev"}
+            if worktree_branch not in protected:
+                rc_ls, ls_out, _ = await self._run_git_command(
+                    "ls-remote",
+                    "--heads",
+                    "origin",
+                    worktree_branch,
+                    cwd=main_repo,
+                    timeout=15.0,
+                )
+                if rc_ls == 0 and ls_out.strip():
+                    rc_push, _, push_err = await self._run_git_command(
+                        "push",
+                        "origin",
+                        "--delete",
+                        worktree_branch,
+                        cwd=main_repo,
+                        timeout=30.0,
+                    )
+                    if rc_push != 0:
+                        logger.warning(
+                            "원격 브랜치 삭제 실패 (무시): branch=%s, err=%s",
+                            worktree_branch,
+                            push_err,
+                        )
+                    else:
+                        logger.info(
+                            "원격 브랜치 삭제 완료: origin/%s", worktree_branch
+                        )
+
     async def list_skills(self, path: str) -> SkillListResponse:
         """Skills 목록 조회 (.claude/commands/*.md)."""
         skills = []

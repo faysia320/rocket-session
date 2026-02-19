@@ -14,6 +14,8 @@ if [ -n "$GITHUB_TOKEN" ]; then
   git config --global credential.helper store
   echo "https://x-access-token:${GITHUB_TOKEN}@github.com" > /root/.git-credentials
   chmod 600 /root/.git-credentials
+  # gh CLI 인증 (GH_TOKEN은 gh CLI 공식 환경변수)
+  export GH_TOKEN="${GITHUB_TOKEN}"
 fi
 
 # safe directory 설정 (/projects 하위 모든 디렉토리)
