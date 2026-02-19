@@ -151,7 +151,7 @@ function RootComponent() {
                   <div
                     className={cn(
                       "h-0.5 shrink-0 transition-colors duration-200",
-                      focusedSessionId === s.id ? "bg-primary" : "bg-transparent",
+                      focusedSessionId === s.id ? "bg-primary" : "bg-secondary",
                     )}
                   />
                   <ChatPanel sessionId={s.id} />

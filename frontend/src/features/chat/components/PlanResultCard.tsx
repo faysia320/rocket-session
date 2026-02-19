@@ -1,5 +1,5 @@
 import { useState, memo } from "react";
-import { Play, Pencil, X, Send, CheckCircle2 } from "lucide-react";
+import { Play, Pencil, X, Send, CheckCircle2, Zap } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { cn } from "@/lib/utils";
 import type { ResultMsg } from "@/types";
@@ -8,6 +8,7 @@ interface PlanResultCardProps {
   message: ResultMsg;
   isRunning: boolean;
   onExecute: (messageId: string) => void;
+  onContinue: (messageId: string) => void;
   onDismiss: (messageId: string) => void;
   onRevise: (messageId: string, feedback: string) => void;
 }
@@ -30,6 +31,7 @@ export const PlanResultCard = memo(function PlanResultCard({
   message,
   isRunning,
   onExecute,
+  onContinue,
   onDismiss,
   onRevise,
 }: PlanResultCardProps) {
@@ -39,6 +41,12 @@ export const PlanResultCard = memo(function PlanResultCard({
 
   const handleExecute = () => {
     onExecute(message.id);
+    setShowFeedback(false);
+    setFeedback("");
+  };
+
+  const handleContinue = () => {
+    onContinue(message.id);
     setShowFeedback(false);
     setFeedback("");
   };
@@ -171,7 +179,7 @@ export const PlanResultCard = memo(function PlanResultCard({
           <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/30">
             <button
               type="button"
-              onClick={handleExecute}
+              onClick={handleContinue}
               disabled={isRunning}
               className={cn(
                 "flex items-center gap-1.5 font-mono text-xs font-semibold px-3 py-1.5 rounded transition-colors",
@@ -179,9 +187,19 @@ export const PlanResultCard = memo(function PlanResultCard({
                   ? "bg-muted text-muted-foreground cursor-not-allowed"
                   : "bg-primary text-primary-foreground hover:bg-primary/90",
               )}
-              aria-label="계획 실행"
+              aria-label="계획 계속 작성"
             >
               <Play className="h-3 w-3" />
+              Continue
+            </button>
+            <button
+              type="button"
+              onClick={handleExecute}
+              disabled={isRunning}
+              className="flex items-center gap-1.5 font-mono text-xs px-3 py-1.5 rounded border border-border text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="계획 실행"
+            >
+              <Zap className="h-3 w-3" />
               Execute Plan
             </button>
             <button

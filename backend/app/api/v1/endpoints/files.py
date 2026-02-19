@@ -144,6 +144,23 @@ async def get_file_diff(
             except (subprocess.TimeoutExpired, FileNotFoundError):
                 pass
 
+            # 새로 생성된 파일(untracked): /dev/null과 비교하여 diff 생성
+            abs_path = (Path(work_dir) / rel_path).resolve()
+            if abs_path.is_file():
+                try:
+                    result = subprocess.run(
+                        ["git", "diff", "--no-index", "--", "/dev/null", rel_path],
+                        cwd=str(work_dir),
+                        capture_output=True,
+                        text=True,
+                        timeout=10.0,
+                    )
+                    # --no-index는 차이가 있으면 returncode=1을 반환
+                    if result.stdout.strip():
+                        return result.stdout
+                except (subprocess.TimeoutExpired, FileNotFoundError):
+                    pass
+
             return ""
 
         return await asyncio.to_thread(_run)

@@ -45,6 +45,7 @@ interface MessageBubbleProps {
   onResend?: (content: string) => void;
   onRetryError?: (messageId: string) => void;
   onExecutePlan?: (messageId: string) => void;
+  onContinuePlan?: (messageId: string) => void;
   onDismissPlan?: (messageId: string) => void;
   onRevisePlan?: (messageId: string, feedback: string) => void;
   onAnswerQuestion?: (
@@ -62,6 +63,7 @@ export const MessageBubble = memo(function MessageBubble({
   onResend,
   onRetryError,
   onExecutePlan,
+  onContinuePlan,
   onDismissPlan,
   onRevisePlan,
   onAnswerQuestion,
@@ -88,6 +90,7 @@ export const MessageBubble = memo(function MessageBubble({
             message={message}
             isRunning={isRunning}
             onExecute={onExecutePlan!}
+            onContinue={onContinuePlan!}
             onDismiss={onDismissPlan!}
             onRevise={onRevisePlan!}
           />

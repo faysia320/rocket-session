@@ -201,7 +201,7 @@ export const ChatHeader = memo(function ChatHeader({
             <SheetContent
               side="right"
               container={portalContainer}
-              className="w-full sm:w-[480px] sm:max-w-[480px] bg-card border-border flex flex-col p-0"
+              className="w-full sm:w-[480px] sm:max-w-[calc(100%-2rem)] bg-card border-border flex flex-col p-0"
             >
               <SheetHeader className="sr-only">
                 <SheetTitle>File Changes</SheetTitle>

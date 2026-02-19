@@ -10,6 +10,7 @@ import { ChatHeader } from "./ChatHeader";
 import { ChatInput } from "./ChatInput";
 import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileViewer } from "@/features/files/components/FileViewer";
 import type { FileChange, SessionMode, SessionInfo, UserMsg } from "@/types";
 import { useSessionStore } from "@/store";
@@ -232,6 +233,14 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       sendPrompt("위의 계획대로 단계별로 실행해줘.", { mode: "normal" });
     },
     [sessionId, sendPrompt, updateMessage, updateSessionMode],
+  );
+
+  const handleContinuePlan = useCallback(
+    (messageId: string) => {
+      updateMessage(messageId, { planExecuted: true });
+      sendPrompt("위의 계획을 승인합니다. 계속 진행해주세요.", { mode: "plan" });
+    },
+    [sendPrompt, updateMessage],
   );
 
   const handleDismissPlan = useCallback(
@@ -534,10 +543,11 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       ) : null}
 
       {/* 메시지 영역 */}
-      <div
-        ref={scrollContainerRef}
+      <ScrollArea
+        className="flex-1"
+        viewportRef={scrollContainerRef}
+        viewportClassName="select-text pt-3"
         onScroll={handleScroll}
-        className="flex-1 overflow-auto select-text pt-3"
       >
         {loading ? (
           <div className="px-4 space-y-4 animate-pulse">
@@ -606,6 +616,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                       onResend={handleResend}
                       onRetryError={handleRetryFromError}
                       onExecutePlan={handleExecutePlan}
+                      onContinuePlan={handleContinuePlan}
                       onDismissPlan={handleDismissPlan}
                       onRevisePlan={handleRevise}
                       onAnswerQuestion={answerQuestion}
@@ -617,7 +628,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             ))}
           </div>
         )}
-      </div>
+      </ScrollArea>
 
       <ActivityStatusBar activeTools={activeTools} status={status} />
 

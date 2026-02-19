@@ -1,5 +1,5 @@
 import { memo, useState, useRef, useCallback, useEffect } from "react";
-import { Send, Square, Image, X } from "lucide-react";
+import { Send, Square, Image, X, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -319,16 +319,21 @@ export const ChatInput = memo(function ChatInput({
             isDragOver && "border-primary/50",
           )}
         >
-          {mode === "plan" ? (
-            <button
-              type="button"
-              onClick={onModeToggle}
-              className="flex items-center self-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-all duration-200 cursor-pointer shrink-0"
-              title="Plan 모드 (Shift+Tab으로 전환)"
-            >
-              Plan
-            </button>
-          ) : null}
+          {/* 모드 전환 버튼 (항상 표시) */}
+          <button
+            type="button"
+            onClick={onModeToggle}
+            className={cn(
+              "flex items-center self-center p-1 rounded transition-all duration-200 shrink-0",
+              mode === "plan"
+                ? "text-primary bg-primary/15 border border-primary/30 hover:bg-primary/25"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+            )}
+            aria-label={mode === "plan" ? "Normal 모드로 전환" : "Plan 모드로 전환"}
+            title={mode === "plan" ? "Plan 모드 활성 (클릭하여 해제)" : "Plan 모드로 전환"}
+          >
+            <ClipboardList className="h-4 w-4" />
+          </button>
 
           {/* 이미지 첨부 버튼 */}
           <button
@@ -360,7 +365,7 @@ export const ChatInput = memo(function ChatInput({
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder="(Shift+Tab 모드 전환) >.."
+            placeholder="메시지를 입력하세요…"
             rows={1}
             disabled={!connected}
           />
