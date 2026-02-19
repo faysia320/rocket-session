@@ -75,7 +75,7 @@ export const Sidebar = memo(function Sidebar({
   const [importOpen, setImportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "running" | "idle" | "error"
+    "all" | "running" | "idle" | "error" | "archived"
   >("all");
   const {
     settings: notificationSettings,
@@ -93,7 +93,9 @@ export const Sidebar = memo(function Sidebar({
           s.work_dir.toLowerCase().includes(q),
       );
     }
-    if (statusFilter !== "all") {
+    if (statusFilter === "all") {
+      filtered = filtered.filter((s) => s.status !== "archived");
+    } else {
       filtered = filtered.filter((s) => s.status === statusFilter);
     }
     return filtered;
@@ -189,7 +191,7 @@ export const Sidebar = memo(function Sidebar({
             ) : null}
           </div>
           <div className="flex gap-1">
-            {(["all", "running", "idle", "error"] as const).map((f) => (
+            {(["all", "running", "idle", "error", "archived"] as const).map((f) => (
               <button
                 key={f}
                 type="button"
@@ -255,8 +257,10 @@ export const Sidebar = memo(function Sidebar({
                         "w-2.5 h-2.5 rounded-full shrink-0",
                         s.status === "running" && "bg-success",
                         s.status === "error" && "bg-destructive",
+                        s.status === "archived" && "bg-muted-foreground/40",
                         s.status !== "running" &&
                           s.status !== "error" &&
+                          s.status !== "archived" &&
                           "bg-muted-foreground",
                       )}
                     />

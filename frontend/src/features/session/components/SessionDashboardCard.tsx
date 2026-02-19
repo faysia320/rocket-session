@@ -1,12 +1,6 @@
 import { memo, useMemo } from "react";
-import { Terminal, MessageSquare, FileText, Clock } from "lucide-react";
+import { MessageSquare, FileText, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { getActivityLabel } from "@/features/chat/utils/activityLabel";
@@ -15,7 +9,6 @@ interface SessionDashboardCardProps {
   session: SessionInfo;
   isActive: boolean;
   onSelect: (id: string) => void;
-  onOpenTerminal?: (id: string) => void;
   lastEventTime?: number | null;
 }
 
@@ -44,7 +37,6 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
   session: s,
   isActive,
   onSelect,
-  onOpenTerminal,
   lastEventTime,
 }: SessionDashboardCardProps) {
   const isStale = useMemo(() => {
@@ -172,26 +164,6 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
         <span className="font-mono text-2xs text-info/70">{s.model}</span>
       ) : null}
 
-      {/* 터미널 열기 버튼 */}
-      {onOpenTerminal ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute bottom-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenTerminal(s.id);
-              }}
-              aria-label="터미널에서 열기"
-            >
-              <Terminal className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="left">터미널에서 열기</TooltipContent>
-        </Tooltip>
-      ) : null}
     </Card>
   );
 });

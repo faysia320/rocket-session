@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
+import { useSessions } from "@/features/session/hooks/useSessions";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import {
   computeEstimateSize,
@@ -73,6 +74,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const splitView = useSessionStore((s) => s.splitView);
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
   const queryClient = useQueryClient();
+  const { archiveSession, unarchiveSession } = useSessions();
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? "");
 
@@ -464,6 +466,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         portalContainer={panelRef.current}
         onSendPrompt={handleSendPrompt}
         onRemoveWorktree={handleRemoveWorktree}
+        isArchived={sessionInfo?.status === "archived"}
+        onArchive={() => archiveSession(sessionId)}
+        onUnarchive={() => unarchiveSession(sessionId)}
       />
       <SessionStatsBar
         sessionId={sessionId}

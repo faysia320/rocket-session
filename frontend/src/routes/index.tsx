@@ -1,12 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Menu } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useSessionStore } from "@/store";
 import { useSessions } from "@/features/session/hooks/useSessions";
-import { sessionsApi } from "@/lib/api/sessions.api";
 
 const SessionDashboardCard = lazy(() =>
   import("@/features/session/components/SessionDashboardCard").then((m) => ({
@@ -23,15 +21,6 @@ function IndexPage() {
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const dashboardView = useSessionStore((s) => s.dashboardView);
   const { sessions, selectSession } = useSessions();
-
-  const handleOpenTerminal = useCallback(async (sessionId: string) => {
-    try {
-      await sessionsApi.openTerminal(sessionId);
-      toast.success("터미널이 열렸습니다");
-    } catch {
-      toast.error("터미널 열기에 실패했습니다");
-    }
-  }, []);
 
   const hasSessions = sessions.length > 0;
 
@@ -96,7 +85,6 @@ function IndexPage() {
                 session={s}
                 isActive={false}
                 onSelect={selectSession}
-                onOpenTerminal={handleOpenTerminal}
               />
             ))}
           </Suspense>

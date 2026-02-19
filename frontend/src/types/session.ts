@@ -1,4 +1,4 @@
-export type SessionStatus = "idle" | "running" | "error" | "stopped";
+export type SessionStatus = "idle" | "running" | "error" | "stopped" | "archived";
 export type SessionMode = "normal" | "plan";
 
 export interface CurrentActivity {

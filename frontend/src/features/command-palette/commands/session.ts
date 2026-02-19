@@ -1,4 +1,4 @@
-import { Square, Trash2, Pencil, Download, Terminal } from "lucide-react";
+import { Square, Trash2, Pencil, Download } from "lucide-react";
 import type { PaletteCommand } from "../types";
 
 export function createSessionCommands(deps: {
@@ -6,7 +6,6 @@ export function createSessionCommands(deps: {
   stopSession: (id: string) => void;
   deleteSession: (id: string) => void;
   exportSession: (id: string) => void;
-  openTerminal: (id: string) => void;
 }): PaletteCommand[] {
   const { activeSessionId } = deps;
   if (!activeSessionId) return [];
@@ -56,16 +55,6 @@ export function createSessionCommands(deps: {
       action: () => deps.exportSession(activeSessionId),
       context: { requiresActiveSession: true },
       keywords: ["export", "markdown", "내보내기", "다운로드"],
-    },
-    {
-      id: "session:terminal",
-      label: "터미널 열기",
-      description: "세션 작업 디렉토리에서 터미널 실행",
-      category: "session",
-      icon: Terminal,
-      action: () => deps.openTerminal(activeSessionId),
-      context: { requiresActiveSession: true },
-      keywords: ["terminal", "터미널", "shell"],
     },
   ];
 }

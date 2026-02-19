@@ -1,22 +1,29 @@
 import { memo, useCallback } from "react";
-import { EllipsisVertical, Download, Settings } from "lucide-react";
+import { EllipsisVertical, Download, Settings, Archive, ArchiveRestore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { sessionsApi } from "@/lib/api/sessions.api";
 
 interface SessionDropdownMenuProps {
   sessionId: string;
+  isArchived?: boolean;
   onOpenSettings: () => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
 }
 
 export const SessionDropdownMenu = memo(function SessionDropdownMenu({
   sessionId,
+  isArchived,
   onOpenSettings,
+  onArchive,
+  onUnarchive,
 }: SessionDropdownMenuProps) {
   const handleExport = useCallback(() => {
     sessionsApi.exportMarkdown(sessionId);
@@ -35,6 +42,24 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
+        {isArchived ? (
+          <DropdownMenuItem
+            onClick={onUnarchive}
+            className="font-mono text-xs gap-2"
+          >
+            <ArchiveRestore className="h-3.5 w-3.5" />
+            보관 해제
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem
+            onClick={onArchive}
+            className="font-mono text-xs gap-2"
+          >
+            <Archive className="h-3.5 w-3.5" />
+            보관하기
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleExport}
           className="font-mono text-xs gap-2"

@@ -4,8 +4,7 @@ import {
   useNavigate,
   useLocation,
 } from "@tanstack/react-router";
-import { useCallback, lazy, Suspense } from "react";
-import { toast } from "sonner";
+import { useCallback, useMemo, lazy, Suspense } from "react";
 import { Sidebar } from "@/features/session/components/Sidebar";
 
 const ChatPanel = lazy(() =>
@@ -24,7 +23,6 @@ import { UsageFooter } from "@/features/usage/components/UsageFooter";
 import { CommandPaletteProvider } from "@/features/command-palette/components/CommandPaletteProvider";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { sessionsApi } from "@/lib/api/sessions.api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +52,10 @@ function RootComponent() {
   const setDashboardView = useSessionStore((s) => s.setDashboardView);
   const isMobile = useIsMobile();
   const isNewSessionRoute = location.pathname === "/session/new";
+  const activeSessions = useMemo(
+    () => sessions.filter((s) => s.status !== "archived"),
+    [sessions],
+  );
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -78,15 +80,6 @@ function RootComponent() {
     },
     [refreshSessions, selectSession, isMobile, setSidebarMobileOpen],
   );
-
-  const handleOpenTerminal = useCallback(async (sessionId: string) => {
-    try {
-      await sessionsApi.openTerminal(sessionId);
-      toast.success("터미널이 열렸습니다");
-    } catch {
-      toast.error("터미널 열기에 실패했습니다");
-    }
-  }, []);
 
   const sidebarElement = (
     <Sidebar
@@ -123,23 +116,22 @@ function RootComponent() {
         <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
           {!isMobile &&
           dashboardView &&
-          sessions.length > 0 &&
+          activeSessions.length > 0 &&
           !isNewSessionRoute ? (
             <Suspense fallback={<LoadingSkeleton />}>
               <DashboardGrid
-                sessions={sessions}
+                sessions={activeSessions}
                 activeSessionId={activeSessionId}
                 onSelect={handleSelect}
                 onNew={handleNew}
-                onOpenTerminal={handleOpenTerminal}
               />
             </Suspense>
           ) : !isMobile &&
             splitView &&
-            sessions.length > 0 &&
+            activeSessions.length > 0 &&
             !isNewSessionRoute ? (
             <Suspense fallback={<LoadingSkeleton />}>
-              {sessions.slice(0, 5).map((s) => (
+              {activeSessions.slice(0, 5).map((s) => (
                 <div
                   key={s.id}
                   onPointerDown={() => {
@@ -157,10 +149,10 @@ function RootComponent() {
                   <ChatPanel sessionId={s.id} />
                 </div>
               ))}
-              {sessions.length > 5 ? (
+              {activeSessions.length > 5 ? (
                 <div className="absolute top-2 right-2 z-10">
                   <span className="font-mono text-2xs bg-warning/15 text-warning px-2 py-0.5 rounded border border-warning/30">
-                    +{sessions.length - 5} more (max 5)
+                    +{activeSessions.length - 5} more (max 5)
                   </span>
                 </div>
               ) : null}
@@ -181,13 +173,11 @@ function DashboardGrid({
   activeSessionId,
   onSelect,
   onNew,
-  onOpenTerminal,
 }: {
   sessions: import("@/types").SessionInfo[];
   activeSessionId: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
-  onOpenTerminal: (id: string) => void;
 }) {
   const runningSessions = sessions.filter((s) => s.status === "running");
   const otherSessions = sessions.filter((s) => s.status !== "running");
@@ -221,7 +211,6 @@ function DashboardGrid({
             session={s}
             isActive={s.id === activeSessionId}
             onSelect={onSelect}
-            onOpenTerminal={onOpenTerminal}
           />
         ))}
       </div>

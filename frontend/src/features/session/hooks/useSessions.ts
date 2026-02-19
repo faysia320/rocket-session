@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { sessionKeys } from "./sessionKeys";
-import type { SessionInfo } from "@/types";
+import type { SessionInfo, SessionStatus } from "@/types";
 
 /**
  * 세션 생성 전용 훅.
@@ -149,6 +149,81 @@ export function useSessions() {
     [renameMutation],
   );
 
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => sessionsApi.archive(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
+      const previous = queryClient.getQueryData<SessionInfo[]>(
+        sessionKeys.list(),
+      );
+      queryClient.setQueryData<SessionInfo[]>(
+        sessionKeys.list(),
+        (old) =>
+          old?.map((s) =>
+            s.id === id
+              ? { ...s, status: "archived" as SessionStatus }
+              : s,
+          ) ?? [],
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(sessionKeys.list(), context.previous);
+      }
+      toast.error("세션 보관에 실패했습니다");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+    },
+  });
+
+  const archiveSession = useCallback(
+    async (id: string) => {
+      await archiveMutation.mutateAsync(id);
+      if (location.pathname.includes(id)) {
+        navigate({ to: "/" });
+      }
+    },
+    [archiveMutation, navigate, location.pathname],
+  );
+
+  const unarchiveMutation = useMutation({
+    mutationFn: (id: string) => sessionsApi.unarchive(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
+      const previous = queryClient.getQueryData<SessionInfo[]>(
+        sessionKeys.list(),
+      );
+      queryClient.setQueryData<SessionInfo[]>(
+        sessionKeys.list(),
+        (old) =>
+          old?.map((s) =>
+            s.id === id
+              ? { ...s, status: "idle" as SessionStatus }
+              : s,
+          ) ?? [],
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(sessionKeys.list(), context.previous);
+      }
+      toast.error("세션 보관 해제에 실패했습니다");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+    },
+  });
+
+  const unarchiveSession = useCallback(
+    async (id: string) => {
+      await unarchiveMutation.mutateAsync(id);
+    },
+    [unarchiveMutation],
+  );
+
   const refreshSessions = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
   }, [queryClient]);
@@ -164,6 +239,8 @@ export function useSessions() {
     renameSession,
     selectSession,
     refreshSessions,
+    archiveSession,
+    unarchiveSession,
   };
 }
 

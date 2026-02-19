@@ -47,6 +47,9 @@ interface ChatHeaderProps {
   portalContainer?: HTMLElement | null;
   onSendPrompt: (prompt: string) => void;
   onRemoveWorktree?: () => void;
+  isArchived?: boolean;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -68,6 +71,9 @@ export const ChatHeader = memo(function ChatHeader({
   portalContainer,
   onSendPrompt,
   onRemoveWorktree,
+  isArchived,
+  onArchive,
+  onUnarchive,
 }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-11">
@@ -179,7 +185,10 @@ export const ChatHeader = memo(function ChatHeader({
         <ButtonGroup>
           <SessionDropdownMenu
             sessionId={sessionId}
+            isArchived={isArchived}
             onOpenSettings={() => onSettingsOpenChange(true)}
+            onArchive={onArchive}
+            onUnarchive={onUnarchive}
           />
           <Sheet open={filesOpen} onOpenChange={onFilesOpenChange} modal={!portalContainer}>
             <SheetTrigger asChild>

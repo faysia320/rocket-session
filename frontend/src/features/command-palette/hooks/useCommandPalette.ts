@@ -101,15 +101,6 @@ export function useCommandPalette() {
     }
   }, []);
 
-  const openTerminal = useCallback(async (id: string) => {
-    try {
-      await sessionsApi.openTerminal(id);
-      toast.success("터미널이 열렸습니다");
-    } catch {
-      toast.error("터미널 열기에 실패했습니다");
-    }
-  }, []);
-
   const allCommands = useMemo(() => {
     const navCmds = createNavigationCommands({
       navigate,
@@ -121,7 +112,6 @@ export function useCommandPalette() {
       stopSession,
       deleteSession,
       exportSession,
-      openTerminal,
     });
     const chatCmds = createChatCommands({ activeSessionId });
     const uiCmds = createUICommands({
@@ -144,7 +134,6 @@ export function useCommandPalette() {
     stopSession,
     deleteSession,
     exportSession,
-    openTerminal,
     toggleSidebar,
     toggleSplitView,
     toggleDashboardView,

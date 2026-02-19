@@ -28,6 +28,10 @@ export const sessionsApi = {
 
   stop: (id: string) => api.post<void>(`/api/sessions/${id}/stop`),
 
+  archive: (id: string) => api.post<{ status: string }>(`/api/sessions/${id}/archive`),
+
+  unarchive: (id: string) => api.post<{ status: string }>(`/api/sessions/${id}/unarchive`),
+
   history: (id: string) => api.get<unknown[]>(`/api/sessions/${id}/history`),
 
   files: (id: string) => api.get<unknown[]>(`/api/sessions/${id}/files`),
@@ -91,8 +95,4 @@ export const sessionsApi = {
       total_cache_read_tokens: number;
     }>(`/api/sessions/${id}/stats`),
 
-  openTerminal: (id: string) =>
-    api.post<{ status: string; work_dir: string }>(
-      `/api/sessions/${id}/open-terminal`,
-    ),
 };
