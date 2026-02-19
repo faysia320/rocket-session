@@ -57,28 +57,48 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, container, ...props }, ref) => (
-  <SheetPortal container={container}>
-    <SheetOverlay
-      className={cn(container && "absolute")}
-    />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(
-        sheetVariants({ side }),
-        container && "absolute",
-        className,
+>(({ side = "right", className, children, container, onInteractOutside, ...props }, ref) => {
+  const isScoped = !!container;
+
+  return (
+    <SheetPortal container={container}>
+      {isScoped ? (
+        <SheetPrimitive.Close asChild>
+          <div
+            className="absolute inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+            aria-hidden
+          />
+        </SheetPrimitive.Close>
+      ) : (
+        <SheetOverlay />
       )}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPortal>
-));
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(
+          sheetVariants({ side }),
+          isScoped && "absolute",
+          className,
+        )}
+        onInteractOutside={(e) => {
+          if (isScoped && container) {
+            const target = e.target as Node;
+            if (!container.contains(target)) {
+              e.preventDefault();
+            }
+          }
+          onInteractOutside?.(e);
+        }}
+        {...props}
+      >
+        {children}
+        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  );
+});
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 const SheetHeader = ({
