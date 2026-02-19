@@ -5,6 +5,7 @@ import { Search } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -56,11 +57,13 @@ const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
 >(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
-    {...props}
-  />
+  <ScrollArea className={cn("max-h-[300px]", className)}>
+    <CommandPrimitive.List
+      ref={ref}
+      className="max-h-none overflow-visible"
+      {...props}
+    />
+  </ScrollArea>
 ))
 
 CommandList.displayName = CommandPrimitive.List.displayName
