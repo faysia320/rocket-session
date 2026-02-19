@@ -678,7 +678,11 @@ class ClaudeRunner:
             current_status = current_session.get("status") if current_session else None
             if current_status != SessionStatus.ERROR:
                 await session_manager.update_status(session_id, SessionStatus.IDLE)
-            final_status = current_status if current_status == SessionStatus.ERROR else SessionStatus.IDLE
+            final_status = (
+                current_status
+                if current_status == SessionStatus.ERROR
+                else SessionStatus.IDLE
+            )
             session_manager.clear_process(session_id)
             await ws_manager.broadcast_event(
                 session_id, {"type": WsEventType.STATUS, "status": final_status}
