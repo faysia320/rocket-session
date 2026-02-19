@@ -76,7 +76,7 @@ export const ChatInput = memo(function ChatInput({
       return [];
     });
     if (textareaRef.current) {
-      textareaRef.current.style.height = "44px";
+      textareaRef.current.style.height = "36px";
     }
   }, []);
 
@@ -197,7 +197,7 @@ export const ChatInput = memo(function ChatInput({
       const val = e.target.value;
       setInput(val);
       slashCommands.handleInputChange(val);
-      e.target.style.height = "44px";
+      e.target.style.height = "36px";
       e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
     },
     [slashCommands],
@@ -246,7 +246,7 @@ export const ChatInput = memo(function ChatInput({
 
   return (
     <div
-      className="px-4 py-3 border-t border-border bg-secondary"
+      className="px-4 py-2 border-t border-border bg-secondary"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -351,7 +351,7 @@ export const ChatInput = memo(function ChatInput({
 
           <Textarea
             ref={textareaRef}
-            className="flex-1 font-mono text-md bg-transparent border-0 outline-none resize-none min-h-11 leading-[22px] py-[11px] focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="flex-1 font-mono text-md bg-transparent border-0 outline-none resize-none min-h-9 leading-[22px] py-[7px] focus-visible:ring-0 focus-visible:ring-offset-0"
             value={input}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
