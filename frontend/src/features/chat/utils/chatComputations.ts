@@ -38,8 +38,8 @@ export function computeMessageGaps(
     // user_message 앞에 넉넉한 여백
     if (msg.type === "user_message" && prev.type !== "user_message")
       return "turn-start" as const;
-    const turnTypes = ["assistant_text", "tool_use", "tool_result"];
-    if (turnTypes.includes(msg.type) && turnTypes.includes(prev.type))
+    const tightTypes = ["tool_use", "tool_result", "stderr"];
+    if (tightTypes.includes(msg.type) && tightTypes.includes(prev.type))
       return "tight" as const;
     return "normal" as const;
   });

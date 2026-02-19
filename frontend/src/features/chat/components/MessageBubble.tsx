@@ -4,19 +4,13 @@ import {
   Brain,
   AlertTriangle,
   ShieldAlert,
-  FileText,
-  Pencil,
-  Terminal,
-  Search,
-  Globe,
-  GitBranch,
   ChevronRight,
   ChevronDown,
   Zap,
   FileEdit,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
+import { CodeBlock } from "@/components/ui/CodeBlock";
 import {
   Collapsible,
   CollapsibleContent,
@@ -40,6 +34,10 @@ import type {
 import { PlanApprovalButton } from "./PlanApprovalButton";
 import { AskUserQuestionCard } from "./AskUserQuestionCard";
 import { TodoWriteMessage } from "./TodoWriteMessage";
+import { EditToolMessage } from "./EditToolMessage";
+import { BashToolMessage } from "./BashToolMessage";
+import { ToolStatusIcon } from "./ToolStatusIcon";
+import { getToolIcon, getToolColor, useElapsed, getLanguageFromPath } from "./toolMessageUtils";
 
 interface MessageBubbleProps {
   message: Message;
@@ -83,7 +81,7 @@ export const MessageBubble = memo(function MessageBubble({
         />
       );
     case "assistant_text":
-      return <AssistantText message={message} />;
+      return <AssistantText message={message} isStreaming={isRunning} />;
     case "result":
       return (
         <ResultMessage
@@ -95,11 +93,13 @@ export const MessageBubble = memo(function MessageBubble({
         />
       );
     case "tool_use":
-      return message.tool === "TodoWrite" ? (
-        <TodoWriteMessage message={message} />
-      ) : (
-        <ToolUseMessage message={message} />
-      );
+      if (message.tool === "TodoWrite")
+        return <TodoWriteMessage message={message} />;
+      if (["Edit", "MultiEdit", "Write"].includes(message.tool))
+        return <EditToolMessage message={message} />;
+      if (message.tool === "Bash")
+        return <BashToolMessage message={message} />;
+      return <ToolUseMessage message={message} />;
     case "thinking":
       return <ThinkingMessage message={message} />;
     case "file_change":
@@ -293,76 +293,29 @@ function ResultMessage({
 
 // ─── Phase 2: Secondary Messages ──────────────────────────────────────────────
 
-/** 도구 카테고리별 아이콘 매핑 */
-function getToolIcon(toolName: string): LucideIcon | null {
-  switch (toolName) {
-    case "Read":
-      return FileText;
-    case "Write":
-    case "Edit":
-    case "MultiEdit":
-      return Pencil;
-    case "Bash":
-      return Terminal;
-    case "Grep":
-    case "Glob":
-      return Search;
-    case "WebFetch":
-    case "WebSearch":
-      return Globe;
-    case "Task":
-      return GitBranch;
-    default:
-      return null;
+/** 도구 헤더 요약 텍스트 생성 (Read/Grep/Glob 등) */
+function getToolSummary(toolName: string, input: Record<string, unknown>): string | null {
+  if (toolName === "Grep") {
+    const pattern = input.pattern ? `"${String(input.pattern)}"` : null;
+    const glob = input.glob ? String(input.glob) : null;
+    const path = input.path ? String(input.path) : null;
+    const parts = [pattern, glob ? `in ${glob}` : null, !glob && path ? `in ${path}` : null].filter(Boolean);
+    return parts.length > 0 ? parts.join(" ") : null;
   }
-}
-
-/** 도구 카테고리별 아이콘 색상 */
-function getToolColor(toolName: string): string {
-  switch (toolName) {
-    case "Read":
-    case "Grep":
-    case "Glob":
-      return "text-info";
-    case "Write":
-    case "Edit":
-    case "MultiEdit":
-      return "text-primary";
-    case "Bash":
-      return "text-warning";
-    case "WebFetch":
-    case "WebSearch":
-      return "text-success";
-    default:
-      return "text-muted-foreground";
+  if (toolName === "Glob") {
+    return input.pattern ? String(input.pattern) : null;
   }
-}
-
-function ToolStatusIcon({ status }: { status?: "running" | "done" | "error" }) {
-  if (status === "done") {
-    return (
-      <span className="text-success text-xs font-bold shrink-0">
-        {"\u2713"}
-      </span>
-    );
-  }
-  if (status === "error") {
-    return (
-      <span className="text-destructive text-xs font-bold shrink-0">
-        {"\u2715"}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-block w-3 h-3 border-[1.5px] border-info/40 border-t-info rounded-full animate-spin shrink-0" />
-  );
+  // Read 및 기타: file_path 또는 path
+  return String(input.file_path ?? input.path ?? "") || null;
 }
 
 function ToolUseMessage({ message }: { message: ToolUseMsg }) {
   const [expanded, setExpanded] = useState(false);
   const toolName = message.tool || "Tool";
-  const input = (message.input || {}) as Record<string, string>;
+  const input = (message.input || {}) as Record<string, unknown>;
   const toolStatus: "running" | "done" | "error" = message.status || "running";
+  const isRead = toolName === "Read";
+  const filePath = String(input.file_path ?? input.path ?? "");
 
   const borderColor =
     toolStatus === "error"
@@ -373,16 +326,12 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
 
   const ToolIcon = getToolIcon(toolName);
   const toolColor = getToolColor(toolName);
-
-  const elapsed = useMemo(() => {
-    if (toolStatus !== "done" && toolStatus !== "error") return null;
-    if (!message.timestamp || !message.completed_at) return null;
-    const start = new Date(message.timestamp).getTime();
-    const end = new Date(message.completed_at).getTime();
-    const diff = (end - start) / 1000;
-    if (diff < 0 || !Number.isFinite(diff)) return null;
-    return diff < 1 ? `${(diff * 1000).toFixed(0)}ms` : `${diff.toFixed(1)}s`;
-  }, [toolStatus, message.timestamp, message.completed_at]);
+  const elapsed = useElapsed(toolStatus, message.timestamp, message.completed_at);
+  const summary = useMemo(() => getToolSummary(toolName, input), [toolName, input]);
+  const readLanguage = useMemo(
+    () => (isRead && filePath ? getLanguageFromPath(filePath) : null),
+    [isRead, filePath],
+  );
 
   return (
     <Collapsible
@@ -405,12 +354,9 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
             <span className="font-mono text-xs font-semibold text-foreground">
               {toolName}
             </span>
-            {input.file_path || input.path || input.command ? (
+            {summary ? (
               <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
-                {input.file_path ||
-                  input.path ||
-                  input.command?.slice(0, 60) +
-                    (input.command?.length > 60 ? "\u2026" : "")}
+                {summary}
               </span>
             ) : null}
             {elapsed ? (
@@ -419,47 +365,61 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
               </span>
             ) : null}
             {expanded ? (
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0 transition-transform" />
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
             ) : (
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0 transition-transform" />
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
             )}
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="mt-1.5 space-y-1.5">
-            <div>
-              <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">
-                Input
-              </div>
-              <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
-                {JSON.stringify(input, null, 2)}
-              </pre>
-            </div>
-            {message.output ? (
-              <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-mono text-2xs text-muted-foreground/70">
-                    Output
-                  </span>
-                  {message.is_truncated && message.full_length ? (
-                    <span className="font-mono text-2xs text-warning">
-                      ({message.output.length.toLocaleString()}/
-                      {message.full_length.toLocaleString()}자 표시)
-                    </span>
-                  ) : null}
+            {/* Read: CodeBlock으로 output 렌더링 */}
+            {isRead && message.output ? (
+              <CodeBlock
+                language={readLanguage || "text"}
+                raw={message.output}
+                className="my-0"
+              >
+                {message.output}
+              </CodeBlock>
+            ) : (
+              <>
+                {/* 기타 도구: Input JSON */}
+                <div>
+                  <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">
+                    Input
+                  </div>
+                  <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
+                    {JSON.stringify(input, null, 2)}
+                  </pre>
                 </div>
-                <pre
-                  className={cn(
-                    "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
-                    message.is_error
-                      ? "text-destructive"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {message.output}
-                </pre>
-              </div>
-            ) : null}
+                {message.output ? (
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-mono text-2xs text-muted-foreground/70">
+                        Output
+                      </span>
+                      {message.is_truncated && message.full_length ? (
+                        <span className="font-mono text-2xs text-warning">
+                          ({message.output.length.toLocaleString()}/
+                          {message.full_length.toLocaleString()}자 표시)
+                        </span>
+                      ) : null}
+                    </div>
+                    <pre
+                      className={cn(
+                        "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
+                        message.is_error
+                          ? "text-destructive"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {message.output}
+                    </pre>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         </CollapsibleContent>
       </div>
@@ -499,16 +459,22 @@ function ThinkingMessage({ message }: { message: ThinkingMsg }) {
 
 // ─── Phase 3: Alert Messages ──────────────────────────────────────────────────
 
-function AssistantText({ message }: { message: AssistantTextMsg }) {
+function AssistantText({ message, isStreaming }: { message: AssistantTextMsg; isStreaming?: boolean }) {
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
       <div className="pl-3 border-l-2 border-info/50">
         <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-1.5">
-          <span className="inline-block w-2 h-2 rounded-full bg-info animate-pulse" />
+          {isStreaming ? (
+            <span className="inline-block w-2 h-2 rounded-full bg-info animate-pulse" />
+          ) : (
+            <span className="text-info text-xs">{"◆"}</span>
+          )}
           <span>Claude</span>
-          <span className="text-info/80 animate-[pulse_1.5s_ease-in-out_infinite] ml-1">
-            streaming{"…"}
-          </span>
+          {isStreaming ? (
+            <span className="text-info/80 animate-[pulse_1.5s_ease-in-out_infinite] ml-1">
+              streaming{"…"}
+            </span>
+          ) : null}
         </div>
         <div className="text-foreground select-text">
           <div className="font-sans text-sm whitespace-pre-wrap break-words leading-relaxed">
