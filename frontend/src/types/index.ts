@@ -38,6 +38,8 @@ export type {
   WorktreeInfo,
   WorktreeListResponse,
   CreateWorktreeRequest,
+  GitStatusFile,
+  GitStatusResponse,
   SkillInfo,
   SkillListResponse,
 } from "./filesystem";

@@ -8,6 +8,7 @@ interface SessionState {
   dashboardView: boolean;
   sidebarCollapsed: boolean;
   sidebarMobileOpen: boolean;
+  gitMonitorPath: string;
   setActiveSessionId: (id: string | null) => void;
   setFocusedSessionId: (id: string | null) => void;
   setSplitView: (v: boolean) => void;
@@ -16,6 +17,7 @@ interface SessionState {
   toggleDashboardView: () => void;
   toggleSidebar: () => void;
   setSidebarMobileOpen: (open: boolean) => void;
+  setGitMonitorPath: (path: string) => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -27,6 +29,7 @@ export const useSessionStore = create<SessionState>()(
       dashboardView: false,
       sidebarCollapsed: false,
       sidebarMobileOpen: false,
+      gitMonitorPath: "",
       setActiveSessionId: (id) => set({ activeSessionId: id }),
       setFocusedSessionId: (id) => set({ focusedSessionId: id }),
       setSplitView: (v) => set({ splitView: v }),
@@ -44,6 +47,7 @@ export const useSessionStore = create<SessionState>()(
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarMobileOpen: (open) => set({ sidebarMobileOpen: open }),
+      setGitMonitorPath: (path) => set({ gitMonitorPath: path }),
     }),
     {
       name: "rocket-session-store",
@@ -51,6 +55,7 @@ export const useSessionStore = create<SessionState>()(
         sidebarCollapsed: s.sidebarCollapsed,
         splitView: s.splitView,
         dashboardView: s.dashboardView,
+        gitMonitorPath: s.gitMonitorPath,
       }),
     },
   ),

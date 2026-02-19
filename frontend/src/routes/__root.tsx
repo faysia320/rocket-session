@@ -17,6 +17,11 @@ const SessionDashboardCard = lazy(() =>
     default: m.SessionDashboardCard,
   })),
 );
+const GitMonitorPanel = lazy(() =>
+  import("@/features/git-monitor/components/GitMonitorPanel").then((m) => ({
+    default: m.GitMonitorPanel,
+  })),
+);
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { useSessionStore } from "@/store";
 import { UsageFooter } from "@/features/usage/components/UsageFooter";
@@ -184,36 +189,46 @@ function DashboardGrid({
   const sortedSessions = [...runningSessions, ...otherSessions];
 
   return (
-    <div className="flex-1 overflow-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-mono text-lg font-semibold text-foreground">
-            Dashboard
-          </h1>
-          <p className="font-mono text-xs text-muted-foreground">
-            {sessions.length}개 세션 ({runningSessions.length}개 실행 중)
-          </p>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* 상단: 세션 카드 그리드 (60%) */}
+      <div className="flex-[3] min-h-0 overflow-auto p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="font-mono text-lg font-semibold text-foreground">
+              Dashboard
+            </h1>
+            <p className="font-mono text-xs text-muted-foreground">
+              {sessions.length}개 세션 ({runningSessions.length}개 실행 중)
+            </p>
+          </div>
+          <Button
+            variant="default"
+            size="sm"
+            className="font-mono text-xs"
+            onClick={onNew}
+          >
+            + New Session
+          </Button>
         </div>
-        <Button
-          variant="default"
-          size="sm"
-          className="font-mono text-xs"
-          onClick={onNew}
-        >
-          + New Session
-        </Button>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {sortedSessions.map((s) => (
+            <SessionDashboardCard
+              key={s.id}
+              session={s}
+              isActive={s.id === activeSessionId}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {sortedSessions.map((s) => (
-          <SessionDashboardCard
-            key={s.id}
-            session={s}
-            isActive={s.id === activeSessionId}
-            onSelect={onSelect}
-          />
-        ))}
-      </div>
+      {/* 하단: Git Monitor (40%) */}
+      <Suspense fallback={<LoadingSkeleton />}>
+        <div className="flex-[2] min-h-0 overflow-hidden">
+          <GitMonitorPanel />
+        </div>
+      </Suspense>
     </div>
   );
 }

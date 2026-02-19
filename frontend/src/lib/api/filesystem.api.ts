@@ -5,6 +5,7 @@ import { api } from "./client";
 import type {
   DirectoryListResponse,
   GitInfo,
+  GitStatusResponse,
   WorktreeListResponse,
   WorktreeInfo,
   CreateWorktreeRequest,
@@ -19,6 +20,16 @@ export const filesystemApi = {
 
   getGitInfo: (path: string) =>
     api.get<GitInfo>(`/api/fs/git-info?path=${encodeURIComponent(path)}`),
+
+  getGitStatus: (path: string) =>
+    api.get<GitStatusResponse>(
+      `/api/fs/git-status?path=${encodeURIComponent(path)}`,
+    ),
+
+  getGitDiff: (repoPath: string, filePath: string) =>
+    api.getText(
+      `/api/fs/git-diff?path=${encodeURIComponent(repoPath)}&file=${encodeURIComponent(filePath)}`,
+    ),
 
   listWorktrees: (path: string) =>
     api.get<WorktreeListResponse>(

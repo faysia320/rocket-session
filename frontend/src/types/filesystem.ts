@@ -45,6 +45,21 @@ export interface CreateWorktreeRequest {
   create_branch: boolean;
 }
 
+export interface GitStatusFile {
+  path: string;
+  status: string;
+  is_staged: boolean;
+  is_unstaged: boolean;
+  is_untracked: boolean;
+}
+
+export interface GitStatusResponse {
+  is_git_repo: boolean;
+  repo_root: string | null;
+  files: GitStatusFile[];
+  total_count: number;
+}
+
 export interface SkillInfo {
   name: string;
   filename: string;
