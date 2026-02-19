@@ -58,10 +58,11 @@ function RootComponent() {
   const handleSelect = useCallback(
     (id: string) => {
       selectSession(id);
+      if (splitView) setFocusedSessionId(id);
       if (dashboardView) setDashboardView(false);
       if (isMobile) setSidebarMobileOpen(false);
     },
-    [selectSession, dashboardView, setDashboardView, isMobile, setSidebarMobileOpen],
+    [selectSession, splitView, setFocusedSessionId, dashboardView, setDashboardView, isMobile, setSidebarMobileOpen],
   );
 
   const handleNew = useCallback(() => {
@@ -141,14 +142,18 @@ function RootComponent() {
               {sessions.slice(0, 5).map((s) => (
                 <div
                   key={s.id}
-                  onPointerDown={() => setFocusedSessionId(s.id)}
-                  className={cn(
-                    "flex-1 min-w-0 h-full flex flex-col border-2 border-transparent",
-                    focusedSessionId === s.id
-                      ? "border-primary/50"
-                      : "border-r-border last:border-r-0",
-                  )}
+                  onPointerDown={() => {
+                    setFocusedSessionId(s.id);
+                    navigate({ to: "/session/$sessionId", params: { sessionId: s.id } });
+                  }}
+                  className="flex-1 min-w-0 h-full flex flex-col border-r border-border last:border-r-0"
                 >
+                  <div
+                    className={cn(
+                      "h-0.5 shrink-0 transition-colors duration-200",
+                      focusedSessionId === s.id ? "bg-primary" : "bg-transparent",
+                    )}
+                  />
                   <ChatPanel sessionId={s.id} />
                 </div>
               ))}

@@ -169,6 +169,7 @@ export function useCommandPalette() {
   );
 
   const groupedCommands = useMemo(() => {
+    const recentIdSet = new Set(recentCommandIds);
     const groups: Record<CommandCategory, PaletteCommand[]> = {
       navigation: [],
       session: [],
@@ -177,10 +178,12 @@ export function useCommandPalette() {
       git: [],
     };
     for (const cmd of filteredCommands) {
-      groups[cmd.category].push(cmd);
+      if (!recentIdSet.has(cmd.id)) {
+        groups[cmd.category].push(cmd);
+      }
     }
     return groups;
-  }, [filteredCommands]);
+  }, [filteredCommands, recentCommandIds]);
 
   const recentCommands = useMemo(() => {
     const cmdMap = new Map(filteredCommands.map((c) => [c.id, c]));
