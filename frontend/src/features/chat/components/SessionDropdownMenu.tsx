@@ -44,7 +44,7 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
-            requestAnimationFrame(() => onOpenSettings());
+            setTimeout(() => onOpenSettings(), 0);
           }}
           className="font-mono text-xs gap-2"
         >

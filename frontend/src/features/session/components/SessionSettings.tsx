@@ -108,6 +108,9 @@ export function SessionSettings({
         side="right"
         container={portalContainer}
         className="w-full sm:w-[400px] sm:max-w-[400px] bg-card border-border flex flex-col p-0"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
       >
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <SheetTitle className="font-mono text-sm font-semibold text-foreground">
