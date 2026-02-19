@@ -200,11 +200,14 @@ export const ChatHeader = memo(function ChatHeader({
                 aria-label="파일 변경 패널"
               >
                 <FolderOpen className="h-4 w-4" />
-                {fileChanges.length > 0 ? (
-                  <span className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                    {fileChanges.length > 99 ? "99+" : fileChanges.length}
-                  </span>
-                ) : null}
+                {(() => {
+                  const uniqueFileCount = new Set(fileChanges.map((c) => c.file)).size;
+                  return uniqueFileCount > 0 ? (
+                    <span className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                      {uniqueFileCount > 99 ? "99+" : uniqueFileCount}
+                    </span>
+                  ) : null;
+                })()}
               </Button>
             </SheetTrigger>
             <SheetContent

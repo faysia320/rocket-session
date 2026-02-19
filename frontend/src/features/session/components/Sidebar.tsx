@@ -203,7 +203,7 @@ export const Sidebar = memo(function Sidebar({
                 )}
                 onClick={() => setStatusFilter(f)}
               >
-                {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                {{ all: "All", running: "Run", idle: "Idle", error: "Err", archived: "Archived" }[f]}
               </button>
             ))}
           </div>

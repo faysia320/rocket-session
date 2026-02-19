@@ -360,7 +360,7 @@ export const ChatInput = memo(function ChatInput({
 
           <Textarea
             ref={textareaRef}
-            className="flex-1 font-mono text-md bg-transparent border-0 outline-none resize-none min-h-9 leading-[22px] py-[7px] focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="flex-1 font-mono text-[16px] sm:text-md bg-transparent border-0 outline-none resize-none min-h-9 leading-[22px] py-[7px] focus-visible:ring-0 focus-visible:ring-offset-0"
             value={input}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
