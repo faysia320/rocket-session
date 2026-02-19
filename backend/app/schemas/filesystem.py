@@ -49,6 +49,23 @@ class CreateWorktreeRequest(BaseModel):
     create_branch: bool = False
 
 
+class GitStatusFile(BaseModel):
+    """git status --porcelain 한 줄 파싱 결과."""
+
+    path: str
+    status: str  # "M ", " M", "??", "A " 등
+    is_staged: bool
+    is_unstaged: bool
+    is_untracked: bool
+
+
+class GitStatusResponse(BaseModel):
+    is_git_repo: bool
+    repo_root: Optional[str] = None
+    files: list[GitStatusFile] = []
+    total_count: int = 0
+
+
 class SkillInfo(BaseModel):
     name: str  # 파일명(확장자 제외) → 슬래시 명령어 이름
     filename: str  # 원본 파일명 (e.g. "commit.md")

@@ -12,6 +12,8 @@ from app.schemas.filesystem import (
     DirectoryEntry,
     DirectoryListResponse,
     GitInfo,
+    GitStatusFile,
+    GitStatusResponse,
     SkillInfo,
     SkillListResponse,
     WorktreeInfo,
@@ -417,6 +419,83 @@ class FilesystemService:
                         logger.info(
                             "원격 브랜치 삭제 완료: origin/%s", worktree_branch
                         )
+
+    async def get_git_status(self, path: str) -> GitStatusResponse:
+        """git status --porcelain=v1 결과를 파싱하여 변경 파일 목록 반환."""
+        validated_path = self._validate_path(path)
+        cwd = str(validated_path)
+
+        # git 저장소 여부 확인
+        rc, _, _ = await self._run_git_command(
+            "rev-parse", "--is-inside-work-tree", cwd=cwd
+        )
+        if rc != 0:
+            return GitStatusResponse(is_git_repo=False)
+
+        # repo 루트 + status 병렬 실행
+        (rc_root, root_out, _), (rc_status, status_out, _) = await asyncio.gather(
+            self._run_git_command("rev-parse", "--show-toplevel", cwd=cwd),
+            self._run_git_command("status", "--porcelain=v1", "-u", cwd=cwd),
+        )
+
+        repo_root = root_out if rc_root == 0 else None
+        files: list[GitStatusFile] = []
+
+        if rc_status == 0 and status_out:
+            for line in status_out.split("\n"):
+                if len(line) < 3:
+                    continue
+                x = line[0]  # index status
+                y = line[1]  # working tree status
+                file_path = line[3:]
+                # rename: "old -> new" 형식에서 new만 사용
+                if " -> " in file_path:
+                    file_path = file_path.split(" -> ")[-1]
+                files.append(
+                    GitStatusFile(
+                        path=file_path.strip(),
+                        status=f"{x}{y}".strip(),
+                        is_staged=(x != " " and x != "?"),
+                        is_unstaged=(y != " " and y != "?"),
+                        is_untracked=(x == "?" and y == "?"),
+                    )
+                )
+
+        return GitStatusResponse(
+            is_git_repo=True,
+            repo_root=repo_root,
+            files=files,
+            total_count=len(files),
+        )
+
+    async def get_file_diff(self, repo_path: str, file_path: str) -> str:
+        """임의 경로 기준 특정 파일의 git diff 반환 (세션 비종속).
+
+        우선순위: HEAD diff → unstaged diff → staged diff → untracked
+        """
+        validated_path = self._validate_path(repo_path)
+        cwd = str(validated_path)
+
+        # 4단계 폴백
+        for git_args in [
+            ["diff", "HEAD", "--", file_path],
+            ["diff", "--", file_path],
+            ["diff", "--cached", "--", file_path],
+        ]:
+            rc, out, _ = await self._run_git_command(*git_args, cwd=cwd)
+            if rc == 0 and out.strip():
+                return out
+
+        # untracked 파일
+        abs_file = (validated_path / file_path).resolve()
+        if abs_file.is_file():
+            rc, out, _ = await self._run_git_command(
+                "diff", "--no-index", "--", "/dev/null", file_path, cwd=cwd
+            )
+            if out.strip():
+                return out
+
+        return ""
 
     async def list_skills(self, path: str) -> SkillListResponse:
         """Skills 목록 조회 (.claude/commands/*.md)."""

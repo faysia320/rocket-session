@@ -1,12 +1,14 @@
 """파일시스템 탐색 API 엔드포인트."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import PlainTextResponse
 
 from app.api.dependencies import get_filesystem_service
 from app.schemas.filesystem import (
     CreateWorktreeRequest,
     DirectoryListResponse,
     GitInfo,
+    GitStatusResponse,
     SkillListResponse,
     WorktreeInfo,
     WorktreeListResponse,
@@ -36,6 +38,30 @@ async def get_git_info(
 ):
     try:
         return await fs.get_git_info(path)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/git-status", response_model=GitStatusResponse)
+async def get_git_status(
+    path: str = Query(..., description="Git 상태를 조회할 경로"),
+    fs: FilesystemService = Depends(get_filesystem_service),
+):
+    try:
+        return await fs.get_git_status(path)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/git-diff", response_class=PlainTextResponse)
+async def get_git_diff(
+    path: str = Query(..., description="Git 저장소 경로"),
+    file: str = Query(..., description="diff를 조회할 파일 경로 (저장소 루트 기준 상대 경로)"),
+    fs: FilesystemService = Depends(get_filesystem_service),
+):
+    try:
+        result = await fs.get_file_diff(path, file)
+        return PlainTextResponse(result or "")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
