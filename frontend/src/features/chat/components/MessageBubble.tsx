@@ -1,6 +1,5 @@
 import { useState, memo, useMemo } from "react";
 import {
-  Maximize2,
   Brain,
   AlertTriangle,
   ShieldAlert,
@@ -31,7 +30,7 @@ import type {
   EventMsg,
   AskUserQuestionMsg,
 } from "@/types";
-import { PlanApprovalButton } from "./PlanApprovalButton";
+import { PlanResultCard } from "./PlanResultCard";
 import { AskUserQuestionCard } from "./AskUserQuestionCard";
 import { TodoWriteMessage } from "./TodoWriteMessage";
 import { EditToolMessage } from "./EditToolMessage";
@@ -47,7 +46,7 @@ interface MessageBubbleProps {
   onRetryError?: (messageId: string) => void;
   onExecutePlan?: (messageId: string) => void;
   onDismissPlan?: (messageId: string) => void;
-  onOpenReview?: (messageId: string) => void;
+  onRevisePlan?: (messageId: string, feedback: string) => void;
   onAnswerQuestion?: (
     messageId: string,
     questionIndex: number,
@@ -64,7 +63,7 @@ export const MessageBubble = memo(function MessageBubble({
   onRetryError,
   onExecutePlan,
   onDismissPlan,
-  onOpenReview,
+  onRevisePlan,
   onAnswerQuestion,
   onConfirmAnswers,
 }: MessageBubbleProps) {
@@ -83,15 +82,18 @@ export const MessageBubble = memo(function MessageBubble({
     case "assistant_text":
       return <AssistantText message={message} isStreaming={isRunning} />;
     case "result":
-      return (
-        <ResultMessage
-          message={message}
-          isRunning={isRunning}
-          onExecutePlan={onExecutePlan}
-          onDismissPlan={onDismissPlan}
-          onOpenReview={onOpenReview}
-        />
-      );
+      if (message.mode === "plan") {
+        return (
+          <PlanResultCard
+            message={message}
+            isRunning={isRunning}
+            onExecute={onExecutePlan!}
+            onDismiss={onDismissPlan!}
+            onRevise={onRevisePlan!}
+          />
+        );
+      }
+      return <ResultMessage message={message} />;
     case "tool_use":
       if (message.tool === "TodoWrite")
         return <TodoWriteMessage message={message} />;
@@ -196,20 +198,7 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
-function ResultMessage({
-  message,
-  isRunning = false,
-  onExecutePlan,
-  onDismissPlan,
-  onOpenReview,
-}: {
-  message: ResultMsg;
-  isRunning?: boolean;
-  onExecutePlan?: (messageId: string) => void;
-  onDismissPlan?: (messageId: string) => void;
-  onOpenReview?: (messageId: string) => void;
-}) {
-  const showPlanApproval = message.mode === "plan" && onExecutePlan;
+function ResultMessage({ message }: { message: ResultMsg }) {
   const hasMetadata =
     message.duration_ms ||
     message.model ||
@@ -221,7 +210,6 @@ function ResultMessage({
         className={cn(
           "pl-3 border-l-2 border-info/60",
           message.is_error && "border-l-destructive",
-          showPlanApproval && !message.planExecuted && "border-l-primary",
         )}
       >
         <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-1.5">
@@ -230,22 +218,6 @@ function ResultMessage({
             <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
               Error
             </span>
-          ) : null}
-          {message.mode === "plan" ? (
-            <>
-              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-primary/15 text-primary border border-primary/30">
-                Plan
-              </span>
-              <button
-                type="button"
-                onClick={() => onOpenReview?.(message.id)}
-                className="ml-1 p-0.5 rounded hover:bg-primary/15 text-muted-foreground hover:text-primary transition-colors"
-                aria-label="Plan review dialog"
-                title="Plan review dialog"
-              >
-                <Maximize2 className="h-3 w-3" />
-              </button>
-            </>
           ) : null}
         </div>
         <div className="text-foreground select-text">
@@ -277,14 +249,6 @@ function ResultMessage({
               </span>
             ) : null}
           </div>
-        ) : null}
-        {showPlanApproval ? (
-          <PlanApprovalButton
-            planExecuted={message.planExecuted}
-            isRunning={isRunning}
-            onExecute={() => onExecutePlan(message.id)}
-            onDismiss={() => onDismissPlan?.(message.id)}
-          />
         ) : null}
       </div>
     </div>

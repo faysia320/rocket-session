@@ -23,9 +23,9 @@ vi.mock("@/components/ui/collapsible", () => ({
   ),
 }));
 
-vi.mock("./PlanApprovalButton", () => ({
-  PlanApprovalButton: (props: any) => (
-    <div data-testid="plan-approval" data-executed={props.planExecuted} />
+vi.mock("./PlanResultCard", () => ({
+  PlanResultCard: (props: any) => (
+    <div data-testid="plan-result-card" data-message-id={props.message?.id} />
   ),
 }));
 
@@ -230,27 +230,19 @@ describe("ResultMessage", () => {
     ).toBeInTheDocument();
   });
 
-  it('shows Plan badge when mode="plan"', () => {
+  it('routes to PlanResultCard when mode="plan"', () => {
     render(
       <MessageBubble
-        message={makeMsg({ type: "result", mode: "plan" })}
+        message={makeMsg({ type: "result", mode: "plan", id: "plan-1" })}
         onExecutePlan={vi.fn()}
+        onDismissPlan={vi.fn()}
+        onRevisePlan={vi.fn()}
       />,
     );
-    expect(screen.getByText("Plan")).toBeInTheDocument();
-  });
-
-  it('shows PlanApprovalButton when mode="plan" and onExecutePlan provided', () => {
-    render(
-      <MessageBubble
-        message={makeMsg({ type: "result", mode: "plan", planExecuted: false })}
-        onExecutePlan={vi.fn()}
-      />,
-    );
-    expect(screen.getByTestId("plan-approval")).toBeInTheDocument();
-    expect(screen.getByTestId("plan-approval")).toHaveAttribute(
-      "data-executed",
-      "false",
+    expect(screen.getByTestId("plan-result-card")).toBeInTheDocument();
+    expect(screen.getByTestId("plan-result-card")).toHaveAttribute(
+      "data-message-id",
+      "plan-1",
     );
   });
 });

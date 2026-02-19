@@ -1,4 +1,4 @@
-import type { Message } from "@/types";
+import type { Message, ResultMsg } from "@/types";
 import { getMessageText } from "@/types";
 
 /**
@@ -8,6 +8,7 @@ export function computeEstimateSize(msg: Message | undefined): number {
   if (!msg) return 60;
   switch (msg.type) {
     case "result":
+      if ((msg as ResultMsg).mode === "plan") return 500;
       return 200;
     case "assistant_text":
       return 150;
