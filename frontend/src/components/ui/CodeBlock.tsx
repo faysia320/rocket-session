@@ -32,7 +32,7 @@ export function CodeBlock({
   }, [raw]);
 
   return (
-    <div className={cn("group relative my-2", className)}>
+    <div className={cn("group relative my-2 min-w-0 max-w-full overflow-hidden", className)}>
       <div className="flex items-center justify-between bg-secondary/80 border border-border rounded-t-sm px-3 py-1">
         <span className="font-mono text-2xs text-muted-foreground uppercase tracking-wider">
           {language || "code"}

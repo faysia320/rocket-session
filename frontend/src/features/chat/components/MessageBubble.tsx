@@ -211,11 +211,11 @@ function ResultMessage({ message }: { message: ResultMsg }) {
     <div className="animate-[fadeIn_0.2s_ease]">
       <div
         className={cn(
-          "pl-3 border-l-2 border-info/60",
-          message.is_error && "border-l-destructive",
+          "px-3.5 py-3 bg-card/50 rounded-lg border-l-[3px] border-l-info/60",
+          message.is_error && "border-l-destructive bg-destructive/5",
         )}
       >
-        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-1.5">
+        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-2">
           <span className="text-info text-xs">{"◆"}</span> Claude
           {message.is_error ? (
             <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
@@ -227,7 +227,7 @@ function ResultMessage({ message }: { message: ResultMsg }) {
           <MarkdownRenderer content={message.text || ""} />
         </div>
         {hasMetadata ? (
-          <div className="flex flex-wrap gap-2 mt-2.5 pt-2 border-t border-border/20">
+          <div className="flex flex-wrap gap-2 mt-2.5 pt-2 border-t border-border/30">
             {message.model ? (
               <span className="font-mono text-2xs px-2 py-0.5 rounded-md bg-info/10 text-info border border-info/20">
                 {formatModelName(message.model)}
@@ -339,7 +339,7 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="mt-1.5 space-y-1.5">
+          <div className="mt-1.5 space-y-1.5 min-w-0 overflow-hidden">
             {/* Read: CodeBlock으로 output 렌더링 */}
             {isRead && message.output ? (
               <CodeBlock
@@ -429,8 +429,13 @@ function ThinkingMessage({ message }: { message: ThinkingMsg }) {
 function AssistantText({ message, isStreaming }: { message: AssistantTextMsg; isStreaming?: boolean }) {
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
-      <div className="pl-3 border-l-2 border-info/50">
-        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-1.5">
+      <div
+        className={cn(
+          "px-3.5 py-3 bg-card/50 rounded-lg border-l-[3px]",
+          isStreaming ? "border-l-info/40" : "border-l-info/60",
+        )}
+      >
+        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-2">
           {isStreaming ? (
             <span className="inline-block w-2 h-2 rounded-full bg-info animate-pulse" />
           ) : (

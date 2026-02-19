@@ -480,7 +480,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       {searchOpen ? (
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-secondary/50">
           <input
-            className="flex-1 font-mono text-md bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
+            className="flex-1 font-mono text-[16px] sm:text-md bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
             placeholder="메시지 검색…"
             aria-label="메시지 검색"
             value={searchQuery}
@@ -551,7 +551,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       <ScrollArea
         className="flex-1"
         viewportRef={scrollContainerRef}
-        viewportClassName="select-text pt-3"
+        viewportClassName="select-text pt-3 !overflow-x-hidden"
         onScroll={handleScroll}
       >
         {loading ? (
@@ -600,7 +600,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
               >
                 <div
                   className={[
-                    "px-4",
+                    "px-4 min-w-0 overflow-hidden",
                     messageGaps[virtualItem.index] === "tight"
                       ? "pb-0.5"
                       : messageGaps[virtualItem.index] === "turn-start"

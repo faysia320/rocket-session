@@ -66,7 +66,7 @@ const components: Record<
     // Inline code
     return (
       <code
-        className="font-mono text-[0.85em] bg-input px-1.5 py-0.5 rounded border border-border"
+        className="font-mono text-[0.85em] bg-input px-1.5 py-0.5 rounded border border-border break-all"
         {...props}
       >
         {children}
