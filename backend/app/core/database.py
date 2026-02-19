@@ -67,6 +67,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_file_changes_session_id ON file_changes(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_session_seq ON events(session_id, seq);
+CREATE INDEX IF NOT EXISTS idx_sessions_claude_session_id ON sessions(claude_session_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
 """
 
 
@@ -76,6 +79,7 @@ class Database:
     def __init__(self, db_path: str):
         self._db_path = db_path
         self._db: aiosqlite.Connection | None = None
+        self._read_db: aiosqlite.Connection | None = None
 
     async def initialize(self):
         """DB 파일 생성 및 테이블 초기화."""
@@ -136,10 +140,23 @@ class Database:
             )
 
         await self._db.commit()
+
+        # 읽기 전용 연결 (WAL 모드에서 동시 읽기 지원)
+        # :memory: DB는 연결마다 독립적이므로 읽기 전용 연결을 생성하지 않음
+        if self._db_path != ":memory:":
+            self._read_db = await aiosqlite.connect(self._db_path)
+            self._read_db.row_factory = aiosqlite.Row
+            await self._read_db.execute("PRAGMA journal_mode=WAL")
+            await self._read_db.execute("PRAGMA foreign_keys=ON")
+            await self._read_db.execute("PRAGMA query_only=ON")
+
         logger.info("데이터베이스 초기화 완료: %s", self._db_path)
 
     async def close(self):
         """DB 연결 종료."""
+        if self._read_db:
+            await self._read_db.close()
+            self._read_db = None
         if self._db:
             await self._db.close()
             self._db = None
@@ -150,6 +167,13 @@ class Database:
         if self._db is None:
             raise RuntimeError("데이터베이스가 초기화되지 않았습니다")
         return self._db
+
+    @property
+    def read_conn(self) -> aiosqlite.Connection:
+        """읽기 전용 연결. 초기화 전에는 쓰기 연결을 fallback으로 사용."""
+        if self._read_db is not None:
+            return self._read_db
+        return self.conn
 
     @asynccontextmanager
     async def transaction(self):
@@ -179,6 +203,7 @@ class Database:
         max_budget_usd: float | None = None,
         system_prompt_mode: str = "replace",
         disallowed_tools: str | None = None,
+        auto_commit: bool = True,
     ) -> dict:
         await self.conn.execute(
             """INSERT INTO sessions (id, work_dir, status, created_at, allowed_tools, system_prompt, timeout_seconds, mode, permission_mode, permission_required_tools,
@@ -201,11 +226,12 @@ class Database:
                 disallowed_tools,
             ),
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
         return await self.get_session(session_id)
 
     async def get_session(self, session_id: str) -> dict | None:
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT * FROM sessions WHERE id = ?", (session_id,)
         )
         row = await cursor.fetchone()
@@ -214,7 +240,7 @@ class Database:
         return dict(row)
 
     async def list_sessions(self) -> list[dict]:
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             """SELECT s.*,
                       COALESCE(mc.cnt, 0) as message_count,
                       COALESCE(fc.cnt, 0) as file_changes_count
@@ -230,7 +256,7 @@ class Database:
 
     async def get_session_with_counts(self, session_id: str) -> dict | None:
         """단일 세션을 message_count, file_changes_count와 함께 조회."""
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             """SELECT s.*,
                       COALESCE(mc.cnt, 0) as message_count,
                       COALESCE(fc.cnt, 0) as file_changes_count
@@ -249,7 +275,7 @@ class Database:
 
     async def get_session_stats(self, session_id: str) -> dict | None:
         """세션별 누적 비용, 토큰, 메시지 수 통계."""
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             """SELECT
                   COUNT(*) as total_messages,
                   COALESCE(SUM(cost), 0) as total_cost,
@@ -266,25 +292,32 @@ class Database:
             return None
         return dict(row)
 
-    async def delete_session(self, session_id: str) -> bool:
+    async def delete_session(self, session_id: str, auto_commit: bool = True) -> bool:
         cursor = await self.conn.execute(
             "DELETE FROM sessions WHERE id = ?", (session_id,)
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
         return cursor.rowcount > 0
 
-    async def update_session_status(self, session_id: str, status: str):
+    async def update_session_status(
+        self, session_id: str, status: str, auto_commit: bool = True
+    ):
         await self.conn.execute(
             "UPDATE sessions SET status = ? WHERE id = ?", (status, session_id)
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
 
-    async def update_session_jsonl_path(self, session_id: str, jsonl_path: str):
+    async def update_session_jsonl_path(
+        self, session_id: str, jsonl_path: str, auto_commit: bool = True
+    ):
         """세션의 JSONL 파일 경로 업데이트."""
         await self.conn.execute(
             "UPDATE sessions SET jsonl_path = ? WHERE id = ?", (jsonl_path, session_id)
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
 
     async def get_session_jsonl_path(self, session_id: str) -> str | None:
         """세션의 JSONL 파일 경로 조회."""
@@ -294,12 +327,15 @@ class Database:
         row = await cursor.fetchone()
         return row[0] if row else None
 
-    async def update_claude_session_id(self, session_id: str, claude_session_id: str):
+    async def update_claude_session_id(
+        self, session_id: str, claude_session_id: str, auto_commit: bool = True
+    ):
         await self.conn.execute(
             "UPDATE sessions SET claude_session_id = ? WHERE id = ?",
             (claude_session_id, session_id),
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
 
     async def update_session_settings(
         self,
@@ -316,6 +352,7 @@ class Database:
         max_budget_usd: float | None = None,
         system_prompt_mode: str | None = None,
         disallowed_tools: str | None = None,
+        auto_commit: bool = True,
     ) -> dict | None:
         fields = []
         values = []
@@ -361,7 +398,8 @@ class Database:
         await self.conn.execute(
             f"UPDATE sessions SET {', '.join(fields)} WHERE id = ?", values
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
         return await self.get_session(session_id)
 
     # --- Messages ---
@@ -380,6 +418,7 @@ class Database:
         cache_creation_tokens: int | None = None,
         cache_read_tokens: int | None = None,
         model: str | None = None,
+        auto_commit: bool = True,
     ):
         await self.conn.execute(
             """INSERT INTO messages (session_id, role, content, cost, duration_ms, timestamp,
@@ -400,10 +439,24 @@ class Database:
                 model,
             ),
         )
+        if auto_commit:
+            await self.conn.commit()
+
+    async def add_messages_batch(
+        self,
+        messages: list[tuple],
+    ):
+        """메시지 배치 저장. messages: [(session_id, role, content, timestamp, cost, duration_ms, is_error, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, model), ...]"""
+        await self.conn.executemany(
+            """INSERT INTO messages (session_id, role, content, timestamp, cost, duration_ms,
+                                    is_error, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, model)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            messages,
+        )
         await self.conn.commit()
 
     async def get_messages(self, session_id: str) -> list[dict]:
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             """SELECT role, content, cost, duration_ms, timestamp,
                       is_error, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, model
                FROM messages WHERE session_id = ? ORDER BY id""",
@@ -413,7 +466,7 @@ class Database:
         return [dict(r) for r in rows]
 
     async def get_message_count(self, session_id: str) -> int:
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT COUNT(*) as cnt FROM messages WHERE session_id = ?",
             (session_id,),
         )
@@ -423,17 +476,23 @@ class Database:
     # --- File Changes ---
 
     async def add_file_change(
-        self, session_id: str, tool: str, file: str, timestamp: str
+        self,
+        session_id: str,
+        tool: str,
+        file: str,
+        timestamp: str,
+        auto_commit: bool = True,
     ):
         await self.conn.execute(
             """INSERT INTO file_changes (session_id, tool, file, timestamp)
                VALUES (?, ?, ?, ?)""",
             (session_id, tool, file, timestamp),
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
 
     async def get_file_changes(self, session_id: str) -> list[dict]:
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT tool, file, timestamp FROM file_changes WHERE session_id = ? ORDER BY id",
             (session_id,),
         )
@@ -441,7 +500,7 @@ class Database:
         return [dict(r) for r in rows]
 
     async def get_file_changes_count(self, session_id: str) -> int:
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT COUNT(*) as cnt FROM file_changes WHERE session_id = ?",
             (session_id,),
         )
@@ -457,25 +516,30 @@ class Database:
         event_type: str,
         payload: str,
         timestamp: str,
+        auto_commit: bool = True,
     ):
         await self.conn.execute(
             """INSERT INTO events (session_id, seq, event_type, payload, timestamp)
                VALUES (?, ?, ?, ?, ?)""",
             (session_id, seq, event_type, payload, timestamp),
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
 
-    async def add_events_batch(self, events: list[tuple[str, int, str, str, str]]):
+    async def add_events_batch(
+        self, events: list[tuple[str, int, str, str, str]], auto_commit: bool = True
+    ):
         """이벤트 배치 저장. events: [(session_id, seq, event_type, payload, timestamp), ...]"""
         await self.conn.executemany(
             """INSERT INTO events (session_id, seq, event_type, payload, timestamp)
                VALUES (?, ?, ?, ?, ?)""",
             events,
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
 
     async def get_events_after(self, session_id: str, after_seq: int) -> list[dict]:
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT seq, event_type, payload, timestamp FROM events WHERE session_id = ? AND seq > ? ORDER BY seq",
             (session_id, after_seq),
         )
@@ -483,7 +547,7 @@ class Database:
         return [dict(r) for r in rows]
 
     async def get_all_events(self, session_id: str) -> list[dict]:
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT seq, event_type, payload, timestamp FROM events WHERE session_id = ? ORDER BY seq",
             (session_id,),
         )
@@ -492,7 +556,7 @@ class Database:
 
     async def get_current_turn_events(self, session_id: str) -> list[dict]:
         """DB에서 마지막 user_message 이후의 턴 이벤트를 조회."""
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT MAX(seq) as last_seq FROM events "
             "WHERE session_id = ? AND event_type = 'user_message'",
             (session_id,),
@@ -503,7 +567,7 @@ class Database:
         if last_user_seq == 0:
             return []
 
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT seq, event_type, payload, timestamp FROM events "
             "WHERE session_id = ? AND seq > ? ORDER BY seq",
             (session_id, last_user_seq),
@@ -511,27 +575,31 @@ class Database:
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
 
-    async def delete_events(self, session_id: str):
+    async def delete_events(self, session_id: str, auto_commit: bool = True):
         await self.conn.execute(
             "DELETE FROM events WHERE session_id = ?", (session_id,)
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
 
     async def get_max_seq_per_session(self) -> dict[str, int]:
         """세션별 최대 seq 번호 조회 (서버 재시작 시 seq 카운터 복원용)."""
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT session_id, MAX(seq) as max_seq FROM events GROUP BY session_id"
         )
         rows = await cursor.fetchall()
         return {row["session_id"]: row["max_seq"] for row in rows}
 
-    async def cleanup_old_events(self, max_age_hours: int = 24):
+    async def cleanup_old_events(
+        self, max_age_hours: int = 24, auto_commit: bool = True
+    ):
         """지정 시간 이전의 이벤트 삭제."""
         cursor = await self.conn.execute(
             "DELETE FROM events WHERE timestamp < datetime('now', ?)",
             (f"-{max_age_hours} hours",),
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
         if cursor.rowcount > 0:
             logger.info(
                 "오래된 이벤트 %d건 삭제 (기준: %d시간)", cursor.rowcount, max_age_hours
@@ -539,7 +607,7 @@ class Database:
 
     async def find_session_by_claude_id(self, claude_session_id: str) -> dict | None:
         """claude_session_id로 세션 조회."""
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT * FROM sessions WHERE claude_session_id = ?",
             (claude_session_id,),
         )
@@ -552,7 +620,7 @@ class Database:
 
     async def get_global_settings(self) -> dict | None:
         """글로벌 기본 설정 조회."""
-        cursor = await self.conn.execute(
+        cursor = await self.read_conn.execute(
             "SELECT * FROM global_settings WHERE id = 'default'"
         )
         row = await cursor.fetchone()
@@ -572,6 +640,7 @@ class Database:
         max_budget_usd: float | None = None,
         system_prompt_mode: str | None = None,
         disallowed_tools: str | None = None,
+        auto_commit: bool = True,
     ) -> dict | None:
         """글로벌 기본 설정 업데이트."""
         fields = []
@@ -618,5 +687,6 @@ class Database:
         await self.conn.execute(
             f"UPDATE global_settings SET {', '.join(fields)} WHERE id = ?", values
         )
-        await self.conn.commit()
+        if auto_commit:
+            await self.conn.commit()
         return await self.get_global_settings()
