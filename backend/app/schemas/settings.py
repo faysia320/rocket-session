@@ -19,6 +19,7 @@ class GlobalSettingsResponse(BaseModel):
     max_budget_usd: Optional[float] = None
     system_prompt_mode: str = "replace"
     disallowed_tools: Optional[str] = None
+    mcp_server_ids: Optional[list[str]] = None
 
 
 class UpdateGlobalSettingsRequest(BaseModel):
@@ -34,3 +35,4 @@ class UpdateGlobalSettingsRequest(BaseModel):
     max_budget_usd: Optional[float] = None
     system_prompt_mode: Optional[str] = None
     disallowed_tools: Optional[str] = None
+    mcp_server_ids: Optional[list[str]] = None

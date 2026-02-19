@@ -40,6 +40,7 @@ async def create_session(
         max_budget_usd=req.max_budget_usd,
         system_prompt_mode=req.system_prompt_mode or "replace",
         disallowed_tools=req.disallowed_tools,
+        mcp_server_ids=req.mcp_server_ids,
     )
     session_with_counts = await manager.get_with_counts(session["id"]) or session
     return manager.to_info(session_with_counts)
@@ -102,6 +103,7 @@ async def update_session(
         max_budget_usd=req.max_budget_usd,
         system_prompt_mode=req.system_prompt_mode,
         disallowed_tools=req.disallowed_tools,
+        mcp_server_ids=req.mcp_server_ids,
     )
     if not updated:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")

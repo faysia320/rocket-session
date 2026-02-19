@@ -10,6 +10,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.api.dependencies import (
     get_claude_runner,
     get_jsonl_watcher,
+    get_mcp_service,
     get_session_manager,
     get_settings,
     get_settings_service,
@@ -124,15 +125,19 @@ async def _handle_prompt(
         "max_budget_usd",
         "system_prompt_mode",
         "disallowed_tools",
+        "mcp_server_ids",
     ]:
         if not merged_session.get(key) and global_settings.get(key):
-            if key == "permission_required_tools":
+            if key in ("permission_required_tools", "mcp_server_ids"):
                 val = global_settings[key]
                 merged_session[key] = json.dumps(val) if isinstance(val, list) else val
             elif key == "permission_mode":
                 merged_session[key] = int(global_settings[key])
             else:
                 merged_session[key] = global_settings[key]
+
+    # MCP 서비스 주입
+    mcp_service = get_mcp_service()
 
     # ClaudeRunner에 최신 세션 정보 전달
     task = asyncio.create_task(
@@ -145,6 +150,7 @@ async def _handle_prompt(
             manager,
             mode=mode,
             images=images,
+            mcp_service=mcp_service,
         )
     )
     task.add_done_callback(lambda t: _on_runner_task_done(t, session_id, manager))

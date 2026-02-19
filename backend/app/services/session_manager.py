@@ -40,12 +40,14 @@ class SessionManager:
         max_budget_usd: float | None = None,
         system_prompt_mode: str = "replace",
         disallowed_tools: str | None = None,
+        mcp_server_ids: list[str] | None = None,
     ) -> dict:
         sid = str(uuid.uuid4())[:16]
         created_at = datetime.now(timezone.utc).isoformat()
         perm_tools_json = (
             json.dumps(permission_required_tools) if permission_required_tools else None
         )
+        mcp_ids_json = json.dumps(mcp_server_ids) if mcp_server_ids else None
         session = await self._db.create_session(
             session_id=sid,
             work_dir=work_dir,
@@ -60,6 +62,7 @@ class SessionManager:
             max_budget_usd=max_budget_usd,
             system_prompt_mode=system_prompt_mode,
             disallowed_tools=disallowed_tools,
+            mcp_server_ids=mcp_ids_json,
         )
         logger.info("세션 생성: %s", sid)
         return session
@@ -221,10 +224,16 @@ class SessionManager:
         max_budget_usd: float | None = None,
         system_prompt_mode: str | None = None,
         disallowed_tools: str | None = None,
+        mcp_server_ids: list[str] | None = None,
     ) -> dict | None:
         perm_tools_json = (
             json.dumps(permission_required_tools)
             if permission_required_tools is not None
+            else None
+        )
+        mcp_ids_json = (
+            json.dumps(mcp_server_ids)
+            if mcp_server_ids is not None
             else None
         )
         return await self._db.update_session_settings(
@@ -241,6 +250,7 @@ class SessionManager:
             max_budget_usd=max_budget_usd,
             system_prompt_mode=system_prompt_mode,
             disallowed_tools=disallowed_tools,
+            mcp_server_ids=mcp_ids_json,
         )
 
     @staticmethod
@@ -252,6 +262,13 @@ class SessionManager:
                 perm_tools = json.loads(perm_tools_raw)
             except (json.JSONDecodeError, TypeError):
                 perm_tools = None
+        mcp_ids_raw = session.get("mcp_server_ids")
+        mcp_ids = None
+        if mcp_ids_raw:
+            try:
+                mcp_ids = json.loads(mcp_ids_raw)
+            except (json.JSONDecodeError, TypeError):
+                mcp_ids = None
         return SessionInfo(
             id=session["id"],
             claude_session_id=session.get("claude_session_id"),
@@ -272,6 +289,7 @@ class SessionManager:
             max_budget_usd=session.get("max_budget_usd"),
             system_prompt_mode=session.get("system_prompt_mode", "replace"),
             disallowed_tools=session.get("disallowed_tools"),
+            mcp_server_ids=mcp_ids,
         )
 
     @staticmethod

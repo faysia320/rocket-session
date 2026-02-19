@@ -18,6 +18,7 @@ class CreateSessionRequest(BaseModel):
     max_budget_usd: Optional[float] = Field(None, gt=0)
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     disallowed_tools: Optional[str] = None
+    mcp_server_ids: Optional[list[str]] = None
 
 
 class UpdateSessionRequest(BaseModel):
@@ -33,6 +34,7 @@ class UpdateSessionRequest(BaseModel):
     max_budget_usd: Optional[float] = Field(None, gt=0)
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     disallowed_tools: Optional[str] = None
+    mcp_server_ids: Optional[list[str]] = None
 
 
 class CurrentActivity(BaseModel):
@@ -62,4 +64,5 @@ class SessionInfo(BaseModel):
     max_budget_usd: Optional[float] = None
     system_prompt_mode: str = "replace"
     disallowed_tools: Optional[str] = None
+    mcp_server_ids: Optional[list[str]] = None
     current_activity: Optional[CurrentActivity] = None

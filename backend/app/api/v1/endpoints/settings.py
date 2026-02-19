@@ -40,4 +40,5 @@ async def update_global_settings(
         max_budget_usd=req.max_budget_usd,
         system_prompt_mode=req.system_prompt_mode,
         disallowed_tools=req.disallowed_tools,
+        mcp_server_ids=req.mcp_server_ids,
     )

@@ -70,6 +70,21 @@ CREATE INDEX IF NOT EXISTS idx_events_session_seq ON events(session_id, seq);
 CREATE INDEX IF NOT EXISTS idx_sessions_claude_session_id ON sessions(claude_session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
+
+CREATE TABLE IF NOT EXISTS mcp_servers (
+    id TEXT PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    transport_type TEXT NOT NULL DEFAULT 'stdio',
+    command TEXT,
+    args TEXT,
+    url TEXT,
+    headers TEXT,
+    env TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    source TEXT NOT NULL DEFAULT 'manual',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 """
 
 
@@ -120,6 +135,9 @@ class Database:
             "ALTER TABLE global_settings ADD COLUMN max_budget_usd REAL",
             "ALTER TABLE global_settings ADD COLUMN system_prompt_mode TEXT DEFAULT 'replace'",
             "ALTER TABLE global_settings ADD COLUMN disallowed_tools TEXT",
+            # MCP 서버 관리: 세션별 MCP 서버 선택
+            "ALTER TABLE sessions ADD COLUMN mcp_server_ids TEXT",
+            "ALTER TABLE global_settings ADD COLUMN mcp_server_ids TEXT",
         ]
         for migration in migrations:
             try:
@@ -203,12 +221,13 @@ class Database:
         max_budget_usd: float | None = None,
         system_prompt_mode: str = "replace",
         disallowed_tools: str | None = None,
+        mcp_server_ids: str | None = None,
         auto_commit: bool = True,
     ) -> dict:
         await self.conn.execute(
             """INSERT INTO sessions (id, work_dir, status, created_at, allowed_tools, system_prompt, timeout_seconds, mode, permission_mode, permission_required_tools,
-                                    model, max_turns, max_budget_usd, system_prompt_mode, disallowed_tools)
-               VALUES (?, ?, 'idle', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                    model, max_turns, max_budget_usd, system_prompt_mode, disallowed_tools, mcp_server_ids)
+               VALUES (?, ?, 'idle', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 session_id,
                 work_dir,
@@ -224,6 +243,7 @@ class Database:
                 max_budget_usd,
                 system_prompt_mode,
                 disallowed_tools,
+                mcp_server_ids,
             ),
         )
         if auto_commit:
@@ -352,6 +372,7 @@ class Database:
         max_budget_usd: float | None = None,
         system_prompt_mode: str | None = None,
         disallowed_tools: str | None = None,
+        mcp_server_ids: str | None = None,
         auto_commit: bool = True,
     ) -> dict | None:
         fields = []
@@ -392,6 +413,9 @@ class Database:
         if disallowed_tools is not None:
             fields.append("disallowed_tools = ?")
             values.append(disallowed_tools)
+        if mcp_server_ids is not None:
+            fields.append("mcp_server_ids = ?")
+            values.append(mcp_server_ids)
         if not fields:
             return await self.get_session(session_id)
         values.append(session_id)
@@ -626,6 +650,122 @@ class Database:
         row = await cursor.fetchone()
         return dict(row) if row else None
 
+    # ── MCP 서버 CRUD ────────────────────────────────────────
+
+    async def create_mcp_server(
+        self,
+        server_id: str,
+        name: str,
+        transport_type: str,
+        created_at: str,
+        command: str | None = None,
+        args: str | None = None,
+        url: str | None = None,
+        headers: str | None = None,
+        env: str | None = None,
+        enabled: bool = True,
+        source: str = "manual",
+        auto_commit: bool = True,
+    ) -> dict:
+        await self.conn.execute(
+            """INSERT INTO mcp_servers (id, name, transport_type, command, args, url, headers, env, enabled, source, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                server_id, name, transport_type, command, args, url, headers, env,
+                int(enabled), source, created_at, created_at,
+            ),
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return await self.get_mcp_server(server_id)
+
+    async def get_mcp_server(self, server_id: str) -> dict | None:
+        cursor = await self.read_conn.execute(
+            "SELECT * FROM mcp_servers WHERE id = ?", (server_id,)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def get_mcp_server_by_name(self, name: str) -> dict | None:
+        cursor = await self.read_conn.execute(
+            "SELECT * FROM mcp_servers WHERE name = ?", (name,)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def list_mcp_servers(self) -> list[dict]:
+        cursor = await self.read_conn.execute(
+            "SELECT * FROM mcp_servers ORDER BY created_at DESC"
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def update_mcp_server(
+        self,
+        server_id: str,
+        updated_at: str,
+        name: str | None = None,
+        transport_type: str | None = None,
+        command: str | None = None,
+        args: str | None = None,
+        url: str | None = None,
+        headers: str | None = None,
+        env: str | None = None,
+        enabled: bool | None = None,
+        auto_commit: bool = True,
+    ) -> dict | None:
+        fields = ["updated_at = ?"]
+        values: list = [updated_at]
+        if name is not None:
+            fields.append("name = ?")
+            values.append(name)
+        if transport_type is not None:
+            fields.append("transport_type = ?")
+            values.append(transport_type)
+        if command is not None:
+            fields.append("command = ?")
+            values.append(command)
+        if args is not None:
+            fields.append("args = ?")
+            values.append(args)
+        if url is not None:
+            fields.append("url = ?")
+            values.append(url)
+        if headers is not None:
+            fields.append("headers = ?")
+            values.append(headers)
+        if env is not None:
+            fields.append("env = ?")
+            values.append(env)
+        if enabled is not None:
+            fields.append("enabled = ?")
+            values.append(int(enabled))
+        values.append(server_id)
+        await self.conn.execute(
+            f"UPDATE mcp_servers SET {', '.join(fields)} WHERE id = ?", values
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return await self.get_mcp_server(server_id)
+
+    async def delete_mcp_server(self, server_id: str, auto_commit: bool = True) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM mcp_servers WHERE id = ?", (server_id,)
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return cursor.rowcount > 0
+
+    async def get_mcp_servers_by_ids(self, ids: list[str]) -> list[dict]:
+        if not ids:
+            return []
+        placeholders = ",".join("?" for _ in ids)
+        cursor = await self.read_conn.execute(
+            f"SELECT * FROM mcp_servers WHERE id IN ({placeholders})", ids
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
     async def update_global_settings(
         self,
         work_dir: str | None = None,
@@ -640,6 +780,7 @@ class Database:
         max_budget_usd: float | None = None,
         system_prompt_mode: str | None = None,
         disallowed_tools: str | None = None,
+        mcp_server_ids: str | None = None,
         auto_commit: bool = True,
     ) -> dict | None:
         """글로벌 기본 설정 업데이트."""
@@ -681,6 +822,9 @@ class Database:
         if disallowed_tools is not None:
             fields.append("disallowed_tools = ?")
             values.append(disallowed_tools)
+        if mcp_server_ids is not None:
+            fields.append("mcp_server_ids = ?")
+            values.append(mcp_server_ids)
         if not fields:
             return await self.get_global_settings()
         values.append("default")

@@ -122,8 +122,7 @@ class ClaudeRunner:
 
         # Permission 모드: plan mode와 상호 배타 (--permission-mode 하나만 가능)
         elif session.get("permission_mode"):
-            mcp_config_path = self._setup_permission_mcp(session, session_id, cmd)
-
+            # Permission MCP는 _setup_mcp_config에서 통합 처리됨
             # permission_required_tools에 해당하는 도구는 allowedTools에서 제외
             perm_tools_raw = session.get("permission_required_tools")
             if perm_tools_raw and allowed_tools:
@@ -184,28 +183,79 @@ class ClaudeRunner:
 
         return cmd, system_prompt, mcp_config_path
 
-    def _setup_permission_mcp(
-        self, session: dict, session_id: str, cmd: list[str]
-    ) -> Path:
-        """Permission MCP 서버 설정을 생성하고 커맨드에 추가."""
+    def _build_permission_mcp_dict(self, session_id: str) -> dict:
+        """Permission MCP 서버 설정 dict를 반환 (파일 기록 없이)."""
         mcp_server_script = str(Path(__file__).parent / "permission_mcp_server.py")
-        mcp_config = {
-            "mcpServers": {
-                "permission": {
-                    "command": sys.executable,
-                    "args": [mcp_server_script],
-                    "env": {
-                        "PERMISSION_SESSION_ID": session_id,
-                        "PERMISSION_API_BASE": f"http://localhost:{self._settings.backend_port}",
-                        "PERMISSION_TIMEOUT": "120",
-                    },
-                }
+        return {
+            "permission": {
+                "command": sys.executable,
+                "args": [mcp_server_script],
+                "env": {
+                    "PERMISSION_SESSION_ID": session_id,
+                    "PERMISSION_API_BASE": f"http://localhost:{self._settings.backend_port}",
+                    "PERMISSION_TIMEOUT": "120",
+                },
             }
         }
-        mcp_config_path = Path(tempfile.gettempdir()) / f"mcp-perm-{session_id}.json"
-        mcp_config_path.write_text(json.dumps(mcp_config), encoding="utf-8")
+
+    def _write_mcp_config(self, session_id: str, config: dict) -> Path:
+        """MCP config dict를 임시 파일에 기록하고 Path를 반환."""
+        mcp_config_path = Path(tempfile.gettempdir()) / f"mcp-{session_id}.json"
+        mcp_config_path.write_text(json.dumps(config), encoding="utf-8")
+        return mcp_config_path
+
+    async def _setup_mcp_config(
+        self,
+        session: dict,
+        session_id: str,
+        cmd: list[str],
+        mcp_service=None,
+    ) -> Path | None:
+        """사용자 MCP 서버 + Permission MCP를 병합하여 --mcp-config에 추가.
+
+        Returns:
+            mcp_config_path: 생성된 임시 파일 경로 (정리 대상), 없으면 None
+        """
+        has_permission = bool(session.get("permission_mode"))
+
+        # 세션의 mcp_server_ids 파싱
+        mcp_ids_raw = session.get("mcp_server_ids")
+        mcp_ids: list[str] = []
+        if mcp_ids_raw:
+            try:
+                parsed = json.loads(mcp_ids_raw) if isinstance(mcp_ids_raw, str) else mcp_ids_raw
+                if isinstance(parsed, list):
+                    mcp_ids = parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # MCP 서버도 없고 Permission도 없으면 스킵
+        if not mcp_ids and not has_permission:
+            return None
+
+        # Permission MCP dict
+        permission_dict = None
+        if has_permission:
+            permission_dict = self._build_permission_mcp_dict(session_id)
+
+        # mcp_service를 통해 통합 config 빌드
+        if mcp_service and mcp_ids:
+            config = await mcp_service.build_mcp_config(mcp_ids, permission_dict)
+        elif permission_dict:
+            config = {"mcpServers": permission_dict}
+        else:
+            return None
+
+        # 병합된 config가 비어있으면 스킵
+        if not config.get("mcpServers"):
+            return None
+
+        mcp_config_path = self._write_mcp_config(session_id, config)
         cmd.extend(["--mcp-config", str(mcp_config_path)])
-        cmd.extend(["--permission-prompt-tool", "mcp__permission__handle_request"])
+
+        if has_permission:
+            cmd.extend(["--permission-prompt-tool", "mcp__permission__handle_request"])
+
         return mcp_config_path
 
     async def _start_process(
@@ -611,6 +661,7 @@ class ClaudeRunner:
         session_manager: SessionManager,
         mode: str = "normal",
         images: list[str] | None = None,
+        mcp_service=None,
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
         await session_manager.update_status(session_id, SessionStatus.RUNNING)
@@ -620,6 +671,11 @@ class ClaudeRunner:
 
         cmd, _, mcp_config_path = self._build_command(
             session, prompt, allowed_tools, session_id, mode, images=images
+        )
+
+        # MCP config 통합: 사용자 MCP 서버 + Permission MCP 병합
+        mcp_config_path = await self._setup_mcp_config(
+            session, session_id, cmd, mcp_service
         )
         timeout_seconds = session.get("timeout_seconds")
 

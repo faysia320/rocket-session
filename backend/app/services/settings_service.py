@@ -15,7 +15,7 @@ class SettingsService:
         self._db = db
 
     async def get(self) -> dict:
-        """글로벌 설정을 딕셔너리로 반환. permission_mode는 bool, permission_required_tools는 list."""
+        """글로벌 설정을 딕셔너리로 반환. permission_mode는 bool, JSON 필드는 파싱."""
         row = await self._db.get_global_settings()
         if not row:
             return {}
@@ -29,6 +29,13 @@ class SettingsService:
                 result["permission_required_tools"] = json.loads(prt)
             except (json.JSONDecodeError, TypeError):
                 result["permission_required_tools"] = None
+        # mcp_server_ids: JSON string → list
+        mcp_ids = result.get("mcp_server_ids")
+        if mcp_ids and isinstance(mcp_ids, str):
+            try:
+                result["mcp_server_ids"] = json.loads(mcp_ids)
+            except (json.JSONDecodeError, TypeError):
+                result["mcp_server_ids"] = None
         return result
 
     async def update(
@@ -45,6 +52,7 @@ class SettingsService:
         max_budget_usd: float | None = None,
         system_prompt_mode: str | None = None,
         disallowed_tools: str | None = None,
+        mcp_server_ids: list[str] | None = None,
     ) -> dict:
         """글로벌 설정 업데이트 후 최신 상태 반환."""
         kwargs: dict = {}
@@ -72,5 +80,7 @@ class SettingsService:
             kwargs["system_prompt_mode"] = system_prompt_mode
         if disallowed_tools is not None:
             kwargs["disallowed_tools"] = disallowed_tools
+        if mcp_server_ids is not None:
+            kwargs["mcp_server_ids"] = json.dumps(mcp_server_ids)
         await self._db.update_global_settings(**kwargs)
         return await self.get()
