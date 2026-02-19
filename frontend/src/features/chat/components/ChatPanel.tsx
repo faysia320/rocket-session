@@ -22,7 +22,6 @@ import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
-import { GitActionsBar } from "./GitActionsBar";
 import {
   computeEstimateSize,
   computeMessageGaps,
@@ -478,6 +477,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onMenuToggle={() => setSidebarMobileOpen(true)}
         currentModel={sessionInfo?.model as string | undefined}
         portalContainer={panelRef.current}
+        onSendPrompt={handleSendPrompt}
+        onRemoveWorktree={handleRemoveWorktree}
       />
       <SessionStatsBar
         sessionId={sessionId}
@@ -642,14 +643,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
       <ActivityStatusBar activeTools={activeTools} status={status} />
 
-      <div className="relative">
-        <GitActionsBar
-          gitInfo={gitInfo ?? null}
-          status={status}
-          connected={connected}
-          onSendPrompt={handleSendPrompt}
-          onRemoveWorktree={handleRemoveWorktree}
-        />
+      <div>
         <ChatInput
           connected={connected}
           status={status}

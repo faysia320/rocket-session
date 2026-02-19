@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Settings, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { sessionsApi } from "@/lib/api/sessions.api";
@@ -22,20 +21,17 @@ const PERMISSION_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"] as const;
 
 interface SessionSettingsProps {
   sessionId: string;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   portalContainer?: HTMLElement | null;
 }
 
 export function SessionSettings({
   sessionId,
-  open: controlledOpen,
-  onOpenChange: controlledOnOpenChange,
+  open,
+  onOpenChange,
   portalContainer,
 }: SessionSettingsProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const open = controlledOpen ?? internalOpen;
-  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [systemPrompt, setSystemPrompt] = useState("");
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [permissionMode, setPermissionMode] = useState(false);
@@ -98,7 +94,7 @@ export function SessionSettings({
           disallowedTools.length > 0 ? disallowedTools.join(",") : null,
       });
       toast.success("설정이 저장되었습니다.");
-      setOpen(false);
+      onOpenChange(false);
     } catch {
       toast.error("설정 저장에 실패했습니다.");
     } finally {
@@ -107,17 +103,7 @@ export function SessionSettings({
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          title="Session settings"
-          aria-label="세션 설정"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange} modal={!portalContainer}>
       <SheetContent
         side="right"
         container={portalContainer}

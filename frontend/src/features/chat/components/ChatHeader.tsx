@@ -2,15 +2,16 @@ import { memo } from "react";
 import {
   FolderOpen,
   GitBranch,
-  Download,
   RefreshCw,
   Menu,
 } from "lucide-react";
-import { sessionsApi } from "@/lib/api/sessions.api";
 import { ModelSelector } from "./ModelSelector";
+import { GitDropdownMenu } from "./GitDropdownMenu";
+import { SessionDropdownMenu } from "./SessionDropdownMenu";
 import { SessionSettings } from "@/features/session/components/SessionSettings";
 import { FilePanel } from "@/features/files/components/FilePanel";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Sheet,
   SheetContent,
@@ -39,6 +40,8 @@ interface ChatHeaderProps {
   onMenuToggle?: () => void;
   currentModel?: string | null;
   portalContainer?: HTMLElement | null;
+  onSendPrompt: (prompt: string) => void;
+  onRemoveWorktree?: () => void;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -58,6 +61,8 @@ export const ChatHeader = memo(function ChatHeader({
   onMenuToggle,
   currentModel,
   portalContainer,
+  onSendPrompt,
+  onRemoveWorktree,
 }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-11">
@@ -146,54 +151,61 @@ export const ChatHeader = memo(function ChatHeader({
           currentModel={currentModel}
           disabled={status === "running"}
         />
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => sessionsApi.exportMarkdown(sessionId)}
-          aria-label="대화 내보내기"
-          title="대화 내보내기 (Markdown)"
-        >
-          <Download className="h-4 w-4" />
-        </Button>
+
+        <GitDropdownMenu
+          gitInfo={gitInfo}
+          status={status}
+          connected={connected}
+          onSendPrompt={onSendPrompt}
+          onRemoveWorktree={onRemoveWorktree}
+        />
+
+        <ButtonGroup>
+          <SessionDropdownMenu
+            sessionId={sessionId}
+            onOpenSettings={() => onSettingsOpenChange(true)}
+          />
+          <Sheet open={filesOpen} onOpenChange={onFilesOpenChange} modal={!portalContainer}>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                title="File changes"
+                className={cn("relative", filesOpen && "bg-muted")}
+                aria-label="파일 변경 패널"
+              >
+                <FolderOpen className="h-4 w-4" />
+                {fileChanges.length > 0 ? (
+                  <span className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                    {fileChanges.length > 99 ? "99+" : fileChanges.length}
+                  </span>
+                ) : null}
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              container={portalContainer}
+              className="w-full sm:w-[480px] sm:max-w-[480px] bg-card border-border flex flex-col p-0"
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>File Changes</SheetTitle>
+                <SheetDescription>세션에서 변경된 파일 목록</SheetDescription>
+              </SheetHeader>
+              <FilePanel
+                sessionId={sessionId}
+                fileChanges={fileChanges}
+                onFileClick={onFileClick}
+              />
+            </SheetContent>
+          </Sheet>
+        </ButtonGroup>
+
         <SessionSettings
           sessionId={sessionId}
           open={settingsOpen}
           onOpenChange={onSettingsOpenChange}
           portalContainer={portalContainer}
         />
-        <Sheet open={filesOpen} onOpenChange={onFilesOpenChange}>
-          <SheetTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              title="File changes"
-              className={cn("relative", filesOpen && "bg-muted")}
-              aria-label="파일 변경 패널"
-            >
-              <FolderOpen className="h-4 w-4" />
-              {fileChanges.length > 0 ? (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                  {fileChanges.length > 99 ? "99+" : fileChanges.length}
-                </span>
-              ) : null}
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="right"
-            container={portalContainer}
-            className="w-full sm:w-[480px] sm:max-w-[480px] bg-card border-border flex flex-col p-0"
-          >
-            <SheetHeader className="sr-only">
-              <SheetTitle>File Changes</SheetTitle>
-              <SheetDescription>세션에서 변경된 파일 목록</SheetDescription>
-            </SheetHeader>
-            <FilePanel
-              sessionId={sessionId}
-              fileChanges={fileChanges}
-              onFileClick={onFileClick}
-            />
-          </SheetContent>
-        </Sheet>
       </div>
     </div>
   );
