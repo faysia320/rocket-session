@@ -114,7 +114,11 @@ export const ChatInput = memo(function ChatInput({
 
   const handleSubmit = useCallback(async () => {
     const prompt = input.trim();
-    if ((!prompt && pendingImages.length === 0) || status === "running") return;
+    if (
+      (!prompt && pendingImages.length === 0 && pendingAnswerCount === 0) ||
+      status === "running"
+    )
+      return;
 
     // 이미지가 있으면 업로드 먼저
     if (pendingImages.length > 0 && sessionId) {
@@ -140,10 +144,10 @@ export const ChatInput = memo(function ChatInput({
         imagePaths.length > 0 ? imagePaths : undefined,
       );
     } else {
-      onSubmit(prompt);
+      onSubmit(prompt || "위 질문에 대한 답변입니다.");
     }
     resetTextarea();
-  }, [input, pendingImages, status, sessionId, onSubmit, resetTextarea]);
+  }, [input, pendingImages, pendingAnswerCount, status, sessionId, onSubmit, resetTextarea]);
 
   const executeSlashCommand = useCallback(
     (cmd: SlashCommand) => {
@@ -311,7 +315,7 @@ export const ChatInput = memo(function ChatInput({
 
         <div
           className={cn(
-            "flex items-end gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50",
+            "flex items-center gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50",
             isDragOver && "border-primary/50",
           )}
         >
@@ -360,7 +364,7 @@ export const ChatInput = memo(function ChatInput({
             rows={1}
             disabled={!connected}
           />
-          <div className="flex items-center pb-1">
+          <div className="flex items-center">
             {status === "running" ? (
               <Button
                 variant="destructive"
@@ -376,7 +380,10 @@ export const ChatInput = memo(function ChatInput({
                 size="sm"
                 onClick={handleSubmit}
                 disabled={
-                  (!input.trim() && pendingImages.length === 0) || !connected
+                  (!input.trim() &&
+                    pendingImages.length === 0 &&
+                    pendingAnswerCount === 0) ||
+                  !connected
                 }
                 className="font-mono text-xs font-semibold"
               >

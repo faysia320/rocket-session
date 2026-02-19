@@ -357,8 +357,10 @@ class ClaudeRunner:
                     continue
 
                 # AskUserQuestion 감지: 인터랙티브 질문 이벤트로 변환
+                # 사용자 응답을 기다리기 위해 subprocess 종료를 요청
                 if tool_name == "AskUserQuestion":
                     turn_state["ask_user_question_tool_id"] = tool_use_id
+                    turn_state["should_terminate"] = True
                     await ws_manager.broadcast_event(
                         session_id,
                         {
@@ -542,14 +544,20 @@ class ClaudeRunner:
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
         work_dir: str = "",
-    ) -> None:
-        """subprocess stdout에서 JSON 스트림을 읽고 이벤트별로 처리."""
+    ) -> dict:
+        """subprocess stdout에서 JSON 스트림을 읽고 이벤트별로 처리.
+
+        Returns:
+            turn_state dict. should_terminate 키가 True이면 AskUserQuestion으로
+            인한 조기 중단을 의미.
+        """
         # turn_state: 현재 턴의 공유 상태
         #   text (str): 누적 응답 텍스트
         #   model (str|None): 응답 모델명
         #   work_dir (str): 작업 디렉토리 (파일 경로 정규화용)
         #   mode (str): 현재 모드 ("normal"|"plan"), ExitPlanMode 시 "normal"로 변경
         #   exit_plan_tool_id (str, 동적): ExitPlanMode tool_use_id, tool_result 필터링 후 제거
+        #   should_terminate (bool, 동적): AskUserQuestion 감지 시 True, 스트림 파싱 중단
         turn_state = {"text": "", "model": None, "work_dir": work_dir, "mode": mode}
 
         while True:
@@ -577,6 +585,12 @@ class ClaudeRunner:
                 session_manager,
                 turn_state,
             )
+
+            # AskUserQuestion 감지 시 스트림 파싱 중단 (caller에서 프로세스 종료)
+            if turn_state.get("should_terminate"):
+                break
+
+        return turn_state
 
     @staticmethod
     def _cleanup_mcp_config(mcp_config_path: Path | None) -> None:
@@ -614,10 +628,12 @@ class ClaudeRunner:
             session_manager.set_process(session_id, process)
 
             work_dir = session.get("work_dir", "")
+            turn_state: dict | None = None
+
             # 타임아웃 적용
             if timeout_seconds and timeout_seconds > 0:
                 try:
-                    await asyncio.wait_for(
+                    turn_state = await asyncio.wait_for(
                         self._parse_stream(
                             process,
                             session_id,
@@ -645,7 +661,7 @@ class ClaudeRunner:
                         },
                     )
             else:
-                await self._parse_stream(
+                turn_state = await self._parse_stream(
                     process,
                     session_id,
                     mode,
@@ -654,15 +670,28 @@ class ClaudeRunner:
                     work_dir=work_dir,
                 )
 
-            stderr = await process.stderr.read()
-            if stderr:
-                stderr_text = stderr.decode("utf-8").strip()
-                if stderr_text:
-                    await ws_manager.broadcast_event(
-                        session_id, {"type": WsEventType.STDERR, "text": stderr_text}
-                    )
-
-            await process.wait()
+            # AskUserQuestion으로 인한 조기 중단: subprocess 종료
+            if turn_state and turn_state.get("should_terminate"):
+                logger.info(
+                    "세션 %s: AskUserQuestion 감지 — 사용자 응답 대기를 위해 프로세스 종료",
+                    session_id,
+                )
+                process.terminate()
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    process.kill()
+            else:
+                # 정상 흐름: stderr 읽기 및 프로세스 대기
+                stderr = await process.stderr.read()
+                if stderr:
+                    stderr_text = stderr.decode("utf-8").strip()
+                    if stderr_text:
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {"type": WsEventType.STDERR, "text": stderr_text},
+                        )
+                await process.wait()
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}: (no message)"

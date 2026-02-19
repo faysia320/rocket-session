@@ -353,35 +353,39 @@ export function useClaudeSocket(sessionId: string) {
         allowedTools?: string[];
         mode?: SessionMode;
         images?: string[];
+        skipAnswerPrepend?: boolean;
       },
     ) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
-        // 미전송 답변을 prompt에 prefix로 추가
         let finalPrompt = prompt;
-        const answerCtx = messagesRef.current
-          .filter(
-            (m) =>
-              m.type === "ask_user_question" &&
-              (m as AskUserQuestionMsg).answered &&
-              !(m as AskUserQuestionMsg).sent,
-          )
-          .map((m) => {
-            const msg = m as AskUserQuestionMsg;
-            const lines: string[] = [];
-            for (const [idxStr, labels] of Object.entries(msg.answers || {})) {
-              const idx = Number(idxStr);
-              const q = msg.questions[idx];
-              if (!q || labels.length === 0) continue;
-              lines.push(`[${q.header || q.question}]: ${labels.join(", ")}`);
-            }
-            return lines.join("\n");
-          })
-          .filter(Boolean)
-          .join("\n");
 
-        if (answerCtx) {
-          finalPrompt = `[이전 질문에 대한 답변]\n${answerCtx}\n\n${prompt}`;
-          dispatch({ type: "MARK_ANSWERS_SENT" });
+        // skipAnswerPrepend가 아닌 경우에만 미전송 답변을 prefix로 추가
+        if (!options?.skipAnswerPrepend) {
+          const answerCtx = messagesRef.current
+            .filter(
+              (m) =>
+                m.type === "ask_user_question" &&
+                (m as AskUserQuestionMsg).answered &&
+                !(m as AskUserQuestionMsg).sent,
+            )
+            .map((m) => {
+              const msg = m as AskUserQuestionMsg;
+              const lines: string[] = [];
+              for (const [idxStr, labels] of Object.entries(msg.answers || {})) {
+                const idx = Number(idxStr);
+                const q = msg.questions[idx];
+                if (!q || labels.length === 0) continue;
+                lines.push(`[${q.header || q.question}]: ${labels.join(", ")}`);
+              }
+              return lines.join("\n");
+            })
+            .filter(Boolean)
+            .join("\n");
+
+          if (answerCtx) {
+            finalPrompt = `[이전 질문에 대한 답변]\n${answerCtx}\n\n${prompt}`;
+            dispatch({ type: "MARK_ANSWERS_SENT" });
+          }
         }
 
         lastModeRef.current = options?.mode || "normal";
@@ -398,6 +402,36 @@ export function useClaudeSocket(sessionId: string) {
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- messagesRef로 안정적 참조, 함수 재생성 방지
     [],
+  );
+
+  /** 답변 확정 + 즉시 전송 (confirm 버튼 클릭 시 자동으로 프롬프트 전송) */
+  const confirmAndSendAnswers = useCallback(
+    (messageId: string) => {
+      dispatch({ type: "CONFIRM_ANSWERS", messageId });
+      dispatch({ type: "MARK_ANSWERS_SENT" });
+
+      // messagesRef에서 답변 텍스트 구성 (answers는 이미 ANSWER_QUESTION으로 반영됨)
+      const msg = messagesRef.current.find((m) => m.id === messageId);
+      if (!msg || msg.type !== "ask_user_question") return;
+
+      const askMsg = msg as AskUserQuestionMsg;
+      const lines: string[] = [];
+      for (const [idxStr, labels] of Object.entries(askMsg.answers || {})) {
+        const idx = Number(idxStr);
+        const q = askMsg.questions[idx];
+        if (!q || labels.length === 0) continue;
+        lines.push(`[${q.header || q.question}]: ${labels.join(", ")}`);
+      }
+
+      if (lines.length > 0) {
+        const answerText = `[이전 질문에 대한 답변]\n${lines.join("\n")}`;
+        sendPrompt(answerText, {
+          mode: lastModeRef.current as SessionMode,
+          skipAnswerPrepend: true,
+        });
+      }
+    },
+    [sendPrompt],
   );
 
   const stopExecution = useCallback(() => {
@@ -471,6 +505,7 @@ export function useClaudeSocket(sessionId: string) {
     reconnect,
     answerQuestion,
     confirmAnswers,
+    confirmAndSendAnswers,
     updateSessionMode,
   };
 }

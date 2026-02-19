@@ -6,13 +6,12 @@ import { useClaudeSocket } from "../hooks/useClaudeSocket";
 import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
 import { MessageBubble } from "./MessageBubble";
 import { PermissionDialog } from "./PermissionDialog";
-import { PlanReviewDialog } from "./PlanReviewDialog";
 import { ChatHeader } from "./ChatHeader";
 import { ChatInput } from "./ChatInput";
 import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { FileViewer } from "@/features/files/components/FileViewer";
-import type { FileChange, SessionMode, SessionInfo, ResultMsg, UserMsg } from "@/types";
+import type { FileChange, SessionMode, SessionInfo, UserMsg } from "@/types";
 import { useSessionStore } from "@/store";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { useSlashCommands } from "../hooks/useSlashCommands";
@@ -52,7 +51,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     respondPermission,
     reconnect,
     answerQuestion,
-    confirmAnswers,
+    confirmAndSendAnswers,
     pendingAnswerCount,
     updateSessionMode,
   } = useClaudeSocket(sessionId);
@@ -65,10 +64,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [mode, setMode] = useState<SessionMode>("normal");
-  const [planReviewOpen, setPlanReviewOpen] = useState(false);
-  const [planReviewMessage, setPlanReviewMessage] = useState<ResultMsg | null>(
-    null,
-  );
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchMatchIndex, setSearchMatchIndex] = useState(0);
@@ -204,20 +199,20 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   }, [messagesLength, virtualizer]);
 
-  // Plan result 자동 감지 → Dialog 오픈
+  // Plan result 자동 감지 → 해당 메시지로 스크롤
   useEffect(() => {
     if (messagesLength === 0) return;
     const lastMsg = messages[messagesLength - 1];
     if (
       lastMsg.type === "result" &&
       lastMsg.mode === "plan" &&
-      !lastMsg.planExecuted &&
-      !planReviewOpen
+      !lastMsg.planExecuted
     ) {
-      setPlanReviewMessage(lastMsg as ResultMsg);
-      setPlanReviewOpen(true);
+      requestAnimationFrame(() => {
+        virtualizer.scrollToIndex(messagesLength - 1, { align: "start" });
+      });
     }
-  }, [messagesLength, messages, planReviewOpen]);
+  }, [messagesLength, messages, virtualizer]);
 
   const cycleMode = useCallback(() => {
     setMode((prev) => {
@@ -235,8 +230,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       updateSessionMode("normal");
       sessionsApi.update(sessionId, { mode: "normal" }).catch(() => {});
       sendPrompt("위의 계획대로 단계별로 실행해줘.", { mode: "normal" });
-      setPlanReviewOpen(false);
-      setPlanReviewMessage(null);
     },
     [sessionId, sendPrompt, updateMessage, updateSessionMode],
   );
@@ -244,33 +237,16 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const handleDismissPlan = useCallback(
     (messageId: string) => {
       updateMessage(messageId, { planExecuted: true });
-      setPlanReviewOpen(false);
-      setPlanReviewMessage(null);
     },
     [updateMessage],
   );
 
   const handleRevise = useCallback(
-    (feedback: string) => {
-      if (planReviewMessage) {
-        updateMessage(planReviewMessage.id, { planExecuted: true });
-      }
+    (messageId: string, feedback: string) => {
+      updateMessage(messageId, { planExecuted: true });
       sendPrompt(feedback, { mode: "plan" });
-      setPlanReviewOpen(false);
-      setPlanReviewMessage(null);
     },
-    [planReviewMessage, sendPrompt, updateMessage],
-  );
-
-  const handleOpenReview = useCallback(
-    (messageId: string) => {
-      const msg = messages.find((m) => m.id === messageId);
-      if (msg && msg.type === "result") {
-        setPlanReviewMessage(msg as ResultMsg);
-        setPlanReviewOpen(true);
-      }
-    },
-    [messages],
+    [sendPrompt, updateMessage],
   );
 
   // 검색: 매칭된 메시지 인덱스 목록
@@ -631,9 +607,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                       onRetryError={handleRetryFromError}
                       onExecutePlan={handleExecutePlan}
                       onDismissPlan={handleDismissPlan}
-                      onOpenReview={handleOpenReview}
+                      onRevisePlan={handleRevise}
                       onAnswerQuestion={answerQuestion}
-                      onConfirmAnswers={confirmAnswers}
+                      onConfirmAnswers={confirmAndSendAnswers}
                     />
                   </ErrorBoundary>
                 </div>
@@ -681,16 +657,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         />
       ) : null}
 
-      {/* Plan Review Dialog */}
-      <PlanReviewDialog
-        open={planReviewOpen}
-        onOpenChange={setPlanReviewOpen}
-        message={planReviewMessage}
-        isRunning={status === "running"}
-        onExecute={handleExecutePlan}
-        onDismiss={handleDismissPlan}
-        onRevise={handleRevise}
-      />
     </div>
   );
 }
