@@ -43,7 +43,9 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
           대화 내보내기
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={onOpenSettings}
+          onSelect={() => {
+            requestAnimationFrame(() => onOpenSettings());
+          }}
           className="font-mono text-xs gap-2"
         >
           <Settings className="h-3.5 w-3.5" />
