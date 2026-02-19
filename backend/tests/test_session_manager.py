@@ -27,7 +27,7 @@ class TestSessionManager:
         )
 
         assert session["id"]
-        assert len(session["id"]) == 8  # UUID 8자리
+        assert len(session["id"]) == 16  # UUID 16자리
         assert session["work_dir"] == work_dir
         assert session["status"] == SessionStatus.IDLE
         assert session["allowed_tools"] == "Read,Write"

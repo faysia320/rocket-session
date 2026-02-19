@@ -24,7 +24,7 @@ async def test_register_multiple_websockets(ws_manager, mock_websocket):
     session_id = "test-session"
     ws2 = AsyncMock()
     ws2.client_state = WebSocketState.CONNECTED
-    ws2.send_json = AsyncMock()
+    ws2.send_text = AsyncMock()
 
     ws_manager.register(session_id, mock_websocket)
     ws_manager.register(session_id, ws2)
@@ -106,8 +106,8 @@ async def test_broadcast_event_assigns_seq(ws_manager, mock_websocket):
     seq = await ws_manager.broadcast_event(session_id, message)
 
     assert seq == 1
-    mock_websocket.send_json.assert_called_once()
-    sent_message = mock_websocket.send_json.call_args[0][0]
+    mock_websocket.send_text.assert_called_once()
+    sent_message = json.loads(mock_websocket.send_text.call_args[0][0])
     assert sent_message["seq"] == 1
     assert sent_message["type"] == "status"
 
@@ -164,7 +164,7 @@ async def test_broadcast_event_db_failure_continues_broadcast(ws_manager, mock_w
     seq = await ws_manager.broadcast_event(session_id, message)
 
     assert seq == 1
-    mock_websocket.send_json.assert_called_once()
+    mock_websocket.send_text.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -173,7 +173,7 @@ async def test_broadcast_sends_to_all_connections(ws_manager, mock_websocket):
     session_id = "test-session"
     ws2 = AsyncMock()
     ws2.client_state = WebSocketState.CONNECTED
-    ws2.send_json = AsyncMock()
+    ws2.send_text = AsyncMock()
 
     ws_manager.register(session_id, mock_websocket)
     ws_manager.register(session_id, ws2)
@@ -181,8 +181,9 @@ async def test_broadcast_sends_to_all_connections(ws_manager, mock_websocket):
     message = {"type": "status", "data": "running"}
     await ws_manager.broadcast(session_id, message)
 
-    mock_websocket.send_json.assert_called_once_with(message)
-    ws2.send_json.assert_called_once_with(message)
+    expected_payload = json.dumps(message, ensure_ascii=False)
+    mock_websocket.send_text.assert_called_once_with(expected_payload)
+    ws2.send_text.assert_called_once_with(expected_payload)
 
 
 @pytest.mark.asyncio
@@ -191,7 +192,7 @@ async def test_broadcast_removes_dead_connections(ws_manager, mock_websocket):
     session_id = "test-session"
     dead_ws = AsyncMock()
     dead_ws.client_state = WebSocketState.DISCONNECTED
-    dead_ws.send_json = AsyncMock()
+    dead_ws.send_text = AsyncMock()
 
     ws_manager.register(session_id, mock_websocket)
     ws_manager.register(session_id, dead_ws)
@@ -206,11 +207,11 @@ async def test_broadcast_removes_dead_connections(ws_manager, mock_websocket):
 
 @pytest.mark.asyncio
 async def test_broadcast_removes_websocket_on_send_exception(ws_manager, mock_websocket):
-    """send_json 예외 발생 시 WebSocket을 제거하는지 확인."""
+    """send_text 예외 발생 시 WebSocket을 제거하는지 확인."""
     session_id = "test-session"
     failing_ws = AsyncMock()
     failing_ws.client_state = WebSocketState.CONNECTED
-    failing_ws.send_json = AsyncMock(side_effect=Exception("Send failed"))
+    failing_ws.send_text = AsyncMock(side_effect=Exception("Send failed"))
 
     ws_manager.register(session_id, mock_websocket)
     ws_manager.register(session_id, failing_ws)
@@ -401,7 +402,7 @@ async def test_broadcast_event_includes_original_message_fields(ws_manager, mock
     }
     await ws_manager.broadcast_event(session_id, message)
 
-    sent_message = mock_websocket.send_json.call_args[0][0]
+    sent_message = json.loads(mock_websocket.send_text.call_args[0][0])
     assert sent_message["type"] == "tool_use"
     assert sent_message["tool"] == "Read"
     assert sent_message["path"] == "/path/to/file.py"

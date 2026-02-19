@@ -90,6 +90,7 @@ def mock_websocket():
     from starlette.websockets import WebSocketState
     ws.client_state = WebSocketState.CONNECTED
     ws.send_json = AsyncMock()
+    ws.send_text = AsyncMock()
     return ws
 
 
