@@ -11,6 +11,8 @@ export function computeEstimateSize(msg: Message | undefined): number {
       return 200;
     case "assistant_text":
       return 150;
+    case "ask_user_question":
+      return 300;
     case "tool_use":
       return 44;
     case "system":

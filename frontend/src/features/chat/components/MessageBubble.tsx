@@ -23,6 +23,7 @@ import type {
 } from "@/types";
 import { PlanApprovalButton } from "./PlanApprovalButton";
 import { AskUserQuestionCard } from "./AskUserQuestionCard";
+import { TodoWriteMessage } from "./TodoWriteMessage";
 
 interface MessageBubbleProps {
   message: Message;
@@ -78,7 +79,11 @@ export const MessageBubble = memo(function MessageBubble({
         />
       );
     case "tool_use":
-      return <ToolUseMessage message={message} />;
+      return message.tool === "TodoWrite" ? (
+        <TodoWriteMessage message={message} />
+      ) : (
+        <ToolUseMessage message={message} />
+      );
     case "thinking":
       return <ThinkingMessage message={message} />;
     case "file_change":
