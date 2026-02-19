@@ -20,6 +20,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { FileChange, GitInfo } from "@/types";
 import type { ReconnectState } from "../hooks/useClaudeSocket";
@@ -127,21 +132,32 @@ export const ChatHeader = memo(function ChatHeader({
           <span className="hidden md:contents">
             <span className="text-muted-foreground/70 text-xs">|</span>
             <FolderOpen className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-            <span
-              className="font-mono text-xs text-muted-foreground/70 truncate max-w-[300px] direction-rtl text-left"
-              title={workDir}
-            >
-              {workDir}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="font-mono text-xs text-muted-foreground/70 truncate max-w-[300px] direction-rtl text-left">
+                  {workDir}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-mono text-xs">
+                {workDir}
+              </TooltipContent>
+            </Tooltip>
           </span>
         ) : null}
         {gitInfo?.branch ? (
           <span className="hidden md:contents">
             <span className="text-muted-foreground/70 text-xs">|</span>
             <GitBranch className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-            <span className="font-mono text-xs text-muted-foreground/70">
-              {gitInfo.branch}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="font-mono text-xs text-muted-foreground/70 truncate max-w-[150px]">
+                  {gitInfo.branch}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-mono text-xs">
+                {gitInfo.branch}
+              </TooltipContent>
+            </Tooltip>
           </span>
         ) : null}
       </div>
