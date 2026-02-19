@@ -320,13 +320,25 @@ class LocalSessionScanner:
             messages = await asyncio.to_thread(self._parse_messages, path)
             all_messages.extend(messages)
 
-        for msg in all_messages:
-            await session_manager.add_message(
-                session_id=dashboard_id,
-                role=msg["role"],
-                content=msg["content"],
-                timestamp=msg["timestamp"],
-            )
+        if all_messages:
+            batch = [
+                (
+                    dashboard_id,
+                    msg["role"],
+                    msg["content"],
+                    msg["timestamp"],
+                    None,  # cost
+                    None,  # duration_ms
+                    False,  # is_error
+                    None,  # input_tokens
+                    None,  # output_tokens
+                    None,  # cache_creation_tokens
+                    None,  # cache_read_tokens
+                    None,  # model
+                )
+                for msg in all_messages
+            ]
+            await self._db.add_messages_batch(batch)
 
         return ImportLocalSessionResponse(
             dashboard_session_id=dashboard_id,

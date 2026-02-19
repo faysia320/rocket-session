@@ -5,6 +5,7 @@ import json
 import logging
 import shutil
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,7 +41,7 @@ class SessionManager:
         system_prompt_mode: str = "replace",
         disallowed_tools: str | None = None,
     ) -> dict:
-        sid = str(uuid.uuid4())[:8]
+        sid = str(uuid.uuid4())[:16]
         created_at = datetime.now(timezone.utc).isoformat()
         perm_tools_json = (
             json.dumps(permission_required_tools) if permission_required_tools else None
@@ -76,6 +77,12 @@ class SessionManager:
     async def list_all(self) -> list[dict]:
         return await self._db.list_sessions()
 
+    @asynccontextmanager
+    async def transaction(self):
+        """DB 트랜잭션 컨텍스트 매니저."""
+        async with self._db.transaction():
+            yield
+
     async def delete(self, session_id: str) -> bool:
         await self.kill_process(session_id)
         deleted = await self._db.delete_session(session_id)
@@ -85,7 +92,7 @@ class SessionManager:
                 upload_path = Path(self._upload_dir) / session_id
                 if upload_path.exists():
                     try:
-                        shutil.rmtree(upload_path)
+                        await asyncio.to_thread(shutil.rmtree, upload_path)
                         logger.info("업로드 디렉토리 삭제: %s", upload_path)
                     except OSError as e:
                         logger.warning(
