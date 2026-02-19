@@ -114,9 +114,22 @@ export const PlanResultCard = memo(function PlanResultCard({
           ) : null}
         </div>
 
-        {/* Markdown Content */}
+        {/* Markdown Content: Plan 파일 content 우선, 없으면 result text */}
         <div className="max-h-[500px] overflow-auto rounded-md bg-input/30 p-4">
-          <MarkdownRenderer content={message.text || ""} />
+          {message.planFileContent ? (
+            <>
+              <MarkdownRenderer content={message.planFileContent} />
+              {message.text ? (
+                <div className="mt-3 pt-2 border-t border-border/20">
+                  <p className="font-mono text-2xs text-muted-foreground italic">
+                    {message.text}
+                  </p>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <MarkdownRenderer content={message.text || ""} />
+          )}
         </div>
 
         {/* Token info */}
@@ -176,13 +189,13 @@ export const PlanResultCard = memo(function PlanResultCard({
 
         {/* Action Buttons */}
         {!executed ? (
-          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/30">
+          <div className="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t border-border/30">
             <button
               type="button"
               onClick={handleContinue}
               disabled={isRunning}
               className={cn(
-                "flex items-center gap-1.5 font-mono text-xs font-semibold px-3 py-1.5 rounded transition-colors",
+                "flex shrink-0 items-center gap-1.5 font-mono text-xs font-semibold px-3 py-1.5 rounded transition-colors",
                 isRunning
                   ? "bg-muted text-muted-foreground cursor-not-allowed"
                   : "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -196,7 +209,7 @@ export const PlanResultCard = memo(function PlanResultCard({
               type="button"
               onClick={handleExecute}
               disabled={isRunning}
-              className="flex items-center gap-1.5 font-mono text-xs px-3 py-1.5 rounded border border-border text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex shrink-0 items-center gap-1.5 font-mono text-xs px-3 py-1.5 rounded border border-border text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="계획 실행"
             >
               <Zap className="h-3 w-3" />
@@ -206,7 +219,7 @@ export const PlanResultCard = memo(function PlanResultCard({
               type="button"
               onClick={() => setShowFeedback((p) => !p)}
               disabled={isRunning}
-              className="flex items-center gap-1.5 font-mono text-xs px-3 py-1.5 rounded border border-border text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex shrink-0 items-center gap-1.5 font-mono text-xs px-3 py-1.5 rounded border border-border text-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="계획 수정"
             >
               <Pencil className="h-3 w-3" />
@@ -216,7 +229,7 @@ export const PlanResultCard = memo(function PlanResultCard({
               type="button"
               onClick={handleDismiss}
               disabled={isRunning}
-              className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground px-3 py-1.5 rounded hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex shrink-0 items-center gap-1.5 font-mono text-xs text-muted-foreground px-3 py-1.5 rounded hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="계획 닫기"
             >
               <X className="h-3 w-3" />

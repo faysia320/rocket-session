@@ -12,6 +12,7 @@ import type {
 } from "@/types";
 import { getMessageText } from "@/types";
 import { generateMessageId, RECONNECT_MAX_ATTEMPTS } from "./useClaudeSocket.utils";
+import { extractPlanFileContent } from "../utils/planFileExtractor";
 
 // ---------------------------------------------------------------------------
 // State
@@ -322,6 +323,11 @@ export function claudeSocketReducer(
         : prev;
       const text = action.data.text || assistantText;
 
+      // Plan 모드: Write tool_use에서 plan 파일 content 추출
+      const planFileContent = action.mode === "plan"
+        ? extractPlanFileContent(cleaned, text)
+        : undefined;
+
       const newTokenUsage = (action.inputTokens || action.outputTokens)
         ? {
             inputTokens: state.tokenUsage.inputTokens + action.inputTokens,
@@ -335,7 +341,7 @@ export function claudeSocketReducer(
         ...state,
         messages: [
           ...cleaned,
-          { ...action.data, text, id: generateMessageId(), mode: action.mode } as Message,
+          { ...action.data, text, planFileContent, id: generateMessageId(), mode: action.mode } as Message,
         ],
         tokenUsage: newTokenUsage,
       };

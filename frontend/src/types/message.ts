@@ -34,6 +34,7 @@ export interface AssistantTextMsg extends BaseMessage {
 export interface ResultMsg extends BaseMessage {
   type: "result";
   text?: string;
+  planFileContent?: string;
   is_error?: boolean;
   cost?: number;
   duration_ms?: number;
@@ -179,7 +180,7 @@ export function getMessageText(msg: Message): string {
     case "thinking":
       return msg.text || "";
     case "result":
-      return msg.text || "";
+      return (msg as ResultMsg).planFileContent || msg.text || "";
     case "error":
       return msg.message || msg.text || "";
     case "user_message":
