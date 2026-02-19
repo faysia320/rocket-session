@@ -1,0 +1,45 @@
+# 개발 관련
+.git/
+.github/
+.vscode/
+.claude/
+.omc/
+.serena/
+.worktrees/
+.mcp.json
+.gitmessage.txt
+nul
+
+# node_modules / build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.playwright/
+frontend/playwright-report/
+frontend/test-results/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/data/
+backend/.ruff_cache/
+backend/.pytest_cache/
+backend/tests/
+
+# 환경 변수 (시크릿)
+.env
+.env.*
+backend/.env
+backend/.env.*
+
+# 문서 (npm 패키지에 불필요)
+CLAUDE.md
+docs/
+
+# Docker 관련 (루트 docker-compose는 개발용)
+docker-compose.yml
+.dockerignore
+
+# 기타
+e2e-screenshots/
+.rocket-uploads/
+*.local

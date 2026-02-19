@@ -1,0 +1,51 @@
+{
+  "name": "rocket-session",
+  "version": "0.1.0",
+  "description": "Claude Code Dashboard - Manage and monitor Claude Code CLI sessions from your browser",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "rocket-session": "./bin/cli.mjs"
+  },
+  "files": [
+    "bin/",
+    "cli/",
+    "backend/app/",
+    "backend/pyproject.toml",
+    "backend/uv.lock",
+    "backend/Dockerfile",
+    "backend/entrypoint.sh",
+    "backend/.dockerignore",
+    "frontend/src/",
+    "frontend/design-system/",
+    "frontend/public/",
+    "frontend/package.json",
+    "frontend/pnpm-lock.yaml",
+    "frontend/tsconfig.json",
+    "frontend/tsconfig.app.json",
+    "frontend/tsconfig.node.json",
+    "frontend/vite.config.ts",
+    "frontend/tailwind.config.js",
+    "frontend/postcss.config.js",
+    "frontend/components.json",
+    "frontend/index.html",
+    "frontend/Dockerfile",
+    "frontend/nginx.conf",
+    "frontend/.dockerignore"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "dashboard",
+    "anthropic",
+    "ai",
+    "docker"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/faysia320/rocket-session.git"
+  }
+}
