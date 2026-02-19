@@ -94,20 +94,28 @@ class WebSocketManager:
 
     async def _heartbeat_loop(self):
         """30초 간격 ping으로 dead 연결 감지."""
+        # ping 페이로드를 루프 외부에서 한 번만 직렬화
+        ping_payload = json.dumps({"type": "ping"})
         while True:
             await asyncio.sleep(30)
             for session_id, ws_list in list(self._connections.items()):
-                dead: list[WebSocket] = []
-                for ws in ws_list:
+                if not ws_list:
+                    continue
+
+                async def _ping(ws: WebSocket) -> WebSocket | None:
                     try:
                         if ws.client_state != WebSocketState.CONNECTED:
-                            dead.append(ws)
-                            continue
-                        await ws.send_json({"type": "ping"})
+                            return ws
+                        await asyncio.wait_for(ws.send_text(ping_payload), timeout=5.0)
+                        return None
                     except Exception:
-                        dead.append(ws)
+                        return ws
+
+                results = await asyncio.gather(*[_ping(ws) for ws in ws_list])
+                dead = [ws for ws in results if ws is not None]
                 for ws in dead:
-                    ws_list.remove(ws)
+                    if ws in ws_list:
+                        ws_list.remove(ws)
 
     def register(self, session_id: str, ws: WebSocket):
         if session_id not in self._connections:
@@ -168,22 +176,28 @@ class WebSocketManager:
         return seq
 
     async def broadcast(self, session_id: str, message: dict):
-        """세션에 연결된 모든 WebSocket에 메시지 전송."""
+        """세션에 연결된 모든 WebSocket에 메시지 병렬 전송."""
         ws_list = self._connections.get(session_id, [])
         if not ws_list:
             return
-        dead: list[WebSocket] = []
-        for ws in ws_list:
+
+        # JSON 한 번만 직렬화 (다수 클라이언트가 연결된 경우 직렬화 비용 절감)
+        payload = json.dumps(message, ensure_ascii=False)
+
+        async def _safe_send(ws: WebSocket) -> WebSocket | None:
             try:
                 if ws.client_state != WebSocketState.CONNECTED:
-                    dead.append(ws)
-                    continue
-                await ws.send_json(message)
-            except Exception as e:
-                logger.debug("WebSocket 전송 실패 (세션 %s): %s", session_id, e)
-                dead.append(ws)
+                    return ws
+                await asyncio.wait_for(ws.send_text(payload), timeout=5.0)
+                return None
+            except Exception:
+                return ws
+
+        results = await asyncio.gather(*[_safe_send(ws) for ws in ws_list])
+        dead = [ws for ws in results if ws is not None]
         for ws in dead:
-            ws_list.remove(ws)
+            if ws in ws_list:
+                ws_list.remove(ws)
 
     async def get_buffered_events_after(
         self, session_id: str, after_seq: int
