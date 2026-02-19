@@ -12,7 +12,7 @@ from app.models.event_types import WsEventType
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/permissions", tags=["permissions"])
+router = APIRouter(prefix="/permissions", tags=["permissions"])
 
 # 인메모리 pending 요청 저장소
 MAX_PENDING = 100

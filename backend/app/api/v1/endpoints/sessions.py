@@ -155,13 +155,19 @@ async def open_terminal(
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     work_dir = session["work_dir"]
     system = platform.system()
+    # work_dir 경로 검증
+    from pathlib import Path
+
+    if not Path(work_dir).is_dir():
+        raise HTTPException(status_code=400, detail="유효하지 않은 작업 디렉토리입니다")
     try:
         if system == "Windows":
-            subprocess.Popen(["wt", "-d", work_dir], shell=True)
+            subprocess.Popen(["wt", "-d", work_dir])
         elif system == "Darwin":
             subprocess.Popen(["open", "-a", "Terminal", work_dir])
         else:
-            subprocess.Popen(["xterm", "-e", f"cd {work_dir} && bash"], shell=True)
+            # 셸 인젝션 방지: shell=True 대신 cwd 파라미터 사용
+            subprocess.Popen(["xterm", "-e", "bash"], cwd=work_dir)
         return {"status": "opened", "work_dir": work_dir}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"터미널 열기 실패: {str(e)}")
