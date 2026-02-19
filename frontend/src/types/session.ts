@@ -26,6 +26,7 @@ export interface SessionInfo {
   max_budget_usd?: number | null;
   system_prompt_mode?: string | null;
   disallowed_tools?: string | null;
+  mcp_server_ids?: string[] | null;
   current_activity?: CurrentActivity | null;
 }
 
@@ -42,6 +43,7 @@ export interface CreateSessionRequest {
   max_budget_usd?: number | null;
   system_prompt_mode?: string | null;
   disallowed_tools?: string | null;
+  mcp_server_ids?: string[] | null;
 }
 
 export interface UpdateSessionRequest {
@@ -57,4 +59,5 @@ export interface UpdateSessionRequest {
   max_budget_usd?: number | null;
   system_prompt_mode?: string | null;
   disallowed_tools?: string | null;
+  mcp_server_ids?: string[] | null;
 }

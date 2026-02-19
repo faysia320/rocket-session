@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { sessionsApi } from "@/lib/api/sessions.api";
+import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
 import { AVAILABLE_TOOLS } from "../constants/tools";
 
 const PERMISSION_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"] as const;
@@ -41,6 +42,7 @@ export function SessionSettings({
     "replace" | "append"
   >("replace");
   const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
+  const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const loadSession = useCallback(async () => {
@@ -61,6 +63,7 @@ export function SessionSettings({
           ? s.disallowed_tools.split(",").map((t) => t.trim())
           : [],
       );
+      setMcpServerIds(s.mcp_server_ids ?? []);
     } catch {
       toast.error("세션 설정을 불러오지 못했습니다.");
     }
@@ -92,6 +95,7 @@ export function SessionSettings({
         system_prompt_mode: systemPromptMode,
         disallowed_tools:
           disallowedTools.length > 0 ? disallowedTools.join(",") : null,
+        mcp_server_ids: mcpServerIds.length > 0 ? mcpServerIds : null,
       });
       toast.success("설정이 저장되었습니다.");
       onOpenChange(false);
@@ -259,6 +263,12 @@ export function SessionSettings({
                 </div>
               ) : null}
             </div>
+
+            {/* MCP Servers */}
+            <McpServerSelector
+              selectedIds={mcpServerIds}
+              onChange={setMcpServerIds}
+            />
 
             {/* 타임아웃 */}
             <div className="space-y-2">

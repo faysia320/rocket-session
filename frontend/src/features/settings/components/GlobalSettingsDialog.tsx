@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
+import { McpServerManager } from "@/features/mcp/components/McpServerManager";
 import { NotificationSettingsPanel } from "@/features/notification/components/NotificationSettingsPanel";
 import {
   useGlobalSettings,
@@ -327,6 +328,11 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
                   ))}
                 </div>
               ) : null}
+            </div>
+
+            {/* MCP Servers */}
+            <div className="border-t border-border pt-5">
+              <McpServerManager />
             </div>
 
             {/* Timeout */}

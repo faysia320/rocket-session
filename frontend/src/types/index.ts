@@ -47,6 +47,13 @@ export type {
   ImportLocalSessionResponse,
 } from "./local-session";
 export type { PeriodUsage, UsageInfo } from "./usage";
+export type {
+  McpTransportType,
+  McpServerInfo,
+  CreateMcpServerRequest,
+  UpdateMcpServerRequest,
+  SystemMcpServer,
+} from "./mcp";
 export type { GlobalSettings, UpdateGlobalSettingsRequest } from "./settings";
 export type {
   NotificationCategory,
