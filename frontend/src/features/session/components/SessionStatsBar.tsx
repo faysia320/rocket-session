@@ -1,11 +1,10 @@
 import { memo } from "react";
-import { DollarSign, Zap, Clock } from "lucide-react";
+import { Zap, Clock } from "lucide-react";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { useSessionStats } from "../hooks/useSessionStats";
 import { ContextWindowBar } from "@/features/chat/components/ContextWindowBar";
 
@@ -18,12 +17,6 @@ interface SessionStatsBarProps {
     cacheReadTokens: number;
   };
   messageCount?: number;
-}
-
-function formatCost(cost: number): string {
-  if (cost === 0) return "$0";
-  if (cost < 0.01) return `$${cost.toFixed(4)}`;
-  return `$${cost.toFixed(2)}`;
 }
 
 function formatTokens(n: number): string {
@@ -52,27 +45,6 @@ export const SessionStatsBar = memo(function SessionStatsBar({
 
   return (
     <div className="flex items-center gap-3 px-4 py-1 border-b border-border bg-card/50">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-1 cursor-default">
-            <DollarSign className="h-3 w-3 text-primary/70" />
-            <span
-              className={cn(
-                "font-mono text-2xs",
-                stats.total_cost > 1
-                  ? "text-warning font-semibold"
-                  : "text-muted-foreground",
-              )}
-            >
-              {formatCost(stats.total_cost)}
-            </span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="font-mono text-xs">
-          누적 비용: {formatCost(stats.total_cost)}
-        </TooltipContent>
-      </Tooltip>
-
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1 cursor-default">

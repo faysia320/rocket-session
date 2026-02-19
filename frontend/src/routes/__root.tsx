@@ -143,8 +143,10 @@ function RootComponent() {
                   key={s.id}
                   onPointerDown={() => setFocusedSessionId(s.id)}
                   className={cn(
-                    "flex-1 min-w-0 h-full flex flex-col border-r border-border last:border-r-0",
-                    focusedSessionId === s.id && "outline outline-1 -outline-offset-1 outline-primary/40",
+                    "flex-1 min-w-0 h-full flex flex-col border border-transparent",
+                    focusedSessionId === s.id
+                      ? "border-primary/40"
+                      : "border-r-border last:border-r-0",
                   )}
                 >
                   <ChatPanel sessionId={s.id} />
