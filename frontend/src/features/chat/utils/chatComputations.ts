@@ -25,14 +25,19 @@ export function computeEstimateSize(msg: Message | undefined): number {
 
 /**
  * 같은 턴 내 연속 메시지 간격 계산 (assistant 턴 그룹핑).
- * 'tight' = 같은 assistant 턴 내 연속, 'normal' = 턴 경계
+ * 'tight' = 같은 assistant 턴 내 연속
+ * 'normal' = 턴 경계
+ * 'turn-start' = user_message 직전 (넉넉한 여백)
  */
 export function computeMessageGaps(
   messages: Message[],
-): Array<"tight" | "normal"> {
+): Array<"tight" | "normal" | "turn-start"> {
   return messages.map((msg, i) => {
     if (i === 0) return "normal" as const;
     const prev = messages[i - 1];
+    // user_message 앞에 넉넉한 여백
+    if (msg.type === "user_message" && prev.type !== "user_message")
+      return "turn-start" as const;
     const turnTypes = ["assistant_text", "tool_use", "tool_result"];
     if (turnTypes.includes(msg.type) && turnTypes.includes(prev.type))
       return "tight" as const;

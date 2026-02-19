@@ -1,5 +1,21 @@
 import { useState, memo, useMemo } from "react";
-import { Maximize2, Brain } from "lucide-react";
+import {
+  Maximize2,
+  Brain,
+  AlertTriangle,
+  ShieldAlert,
+  FileText,
+  Pencil,
+  Terminal,
+  Search,
+  Globe,
+  GitBranch,
+  ChevronRight,
+  ChevronDown,
+  Zap,
+  FileEdit,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import {
   Collapsible,
@@ -123,6 +139,8 @@ export const MessageBubble = memo(function MessageBubble({
   }
 });
 
+// ─── Phase 1: Primary Messages ────────────────────────────────────────────────
+
 function UserMessage({
   message,
   searchQuery,
@@ -134,24 +152,20 @@ function UserMessage({
   onResend?: (content: string) => void;
   isRunning?: boolean;
 }) {
-  // user_message의 실제 텍스트: message.message 객체의 content 또는 prompt
   const msg = message.message as Record<string, string> | undefined;
   const text =
     msg?.content || msg?.prompt || message.content || message.prompt || "";
   return (
     <div className="flex justify-end animate-[fadeIn_0.2s_ease]">
-      <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-xl rounded-br-sm">
-        <div className="font-mono text-2xs font-semibold opacity-70 mb-1">
-          You
-        </div>
-        <div className="font-mono text-md leading-normal whitespace-pre-wrap select-text">
+      <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-lg rounded-br-sm shadow-sm">
+        <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap select-text">
           {searchQuery ? highlightText(text, searchQuery) : text}
         </div>
         {onResend ? (
-          <div className="flex justify-end mt-1">
+          <div className="flex justify-end mt-1.5">
             <button
               type="button"
-              className="font-mono text-2xs text-primary-foreground/70 hover:text-primary-foreground transition-colors disabled:opacity-50"
+              className="font-mono text-2xs text-primary-foreground/60 hover:text-primary-foreground hover:underline transition-colors disabled:opacity-50"
               onClick={(e) => {
                 e.stopPropagation();
                 onResend(text);
@@ -163,27 +177,6 @@ function UserMessage({
             </button>
           </div>
         ) : null}
-      </div>
-    </div>
-  );
-}
-
-function AssistantText({ message }: { message: AssistantTextMsg }) {
-  return (
-    <div className="animate-[fadeIn_0.2s_ease]">
-      <div className="pl-3 border-l-2 border-primary/40">
-        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-1.5">
-          <span className="text-primary text-xs">{"◆"}</span> Claude
-          <span className="text-primary animate-[pulse_1.5s_ease-in-out_infinite] ml-1">
-            streaming{"…"}
-          </span>
-        </div>
-        <div className="text-foreground select-text">
-          {/* 스트리밍 중 plain text 렌더링으로 성능 최적화 */}
-          <pre className="font-sans text-sm whitespace-pre-wrap break-words">
-            {message.text || ""}
-          </pre>
-        </div>
       </div>
     </div>
   );
@@ -218,7 +211,6 @@ function ResultMessage({
 }) {
   const showPlanApproval = message.mode === "plan" && onExecutePlan;
   const hasMetadata =
-    message.cost ||
     message.duration_ms ||
     message.model ||
     message.input_tokens;
@@ -227,21 +219,21 @@ function ResultMessage({
     <div className="animate-[fadeIn_0.2s_ease]">
       <div
         className={cn(
-          "pl-3 border-l-2 border-primary/40",
+          "pl-3 border-l-2 border-info/60",
           message.is_error && "border-l-destructive",
           showPlanApproval && !message.planExecuted && "border-l-primary",
         )}
       >
         <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-1.5">
-          <span className="text-primary text-xs">{"◆"}</span> Claude
+          <span className="text-info text-xs">{"◆"}</span> Claude
           {message.is_error ? (
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
+            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
               Error
             </span>
           ) : null}
           {message.mode === "plan" ? (
             <>
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/15 text-primary border border-primary/30">
+              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-primary/15 text-primary border border-primary/30">
                 Plan
               </span>
               <button
@@ -260,24 +252,19 @@ function ResultMessage({
           <MarkdownRenderer content={message.text || ""} />
         </div>
         {hasMetadata ? (
-          <div className="flex flex-wrap gap-2 mt-2.5 pt-2 border-t border-border/30">
+          <div className="flex flex-wrap gap-2 mt-2.5 pt-2 border-t border-border/20">
             {message.model ? (
-              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+              <span className="font-mono text-2xs px-2 py-0.5 rounded-md bg-info/10 text-info border border-info/20">
                 {formatModelName(message.model)}
               </span>
             ) : null}
-            {message.cost ? (
-              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
-                ${Number(message.cost).toFixed(4)}
-              </span>
-            ) : null}
             {message.duration_ms ? (
-              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-md">
                 {(message.duration_ms / 1000).toFixed(1)}s
               </span>
             ) : null}
             {message.input_tokens ? (
-              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+              <span className="font-mono text-2xs px-2 py-0.5 rounded-md bg-success/10 text-success border border-success/20">
                 in:{formatTokens(message.input_tokens)}
                 {message.cache_read_tokens
                   ? ` (cache:${formatTokens(message.cache_read_tokens)})`
@@ -285,7 +272,7 @@ function ResultMessage({
               </span>
             ) : null}
             {message.output_tokens ? (
-              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-lg">
+              <span className="font-mono text-2xs px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
                 out:{formatTokens(message.output_tokens)}
               </span>
             ) : null}
@@ -302,6 +289,53 @@ function ResultMessage({
       </div>
     </div>
   );
+}
+
+// ─── Phase 2: Secondary Messages ──────────────────────────────────────────────
+
+/** 도구 카테고리별 아이콘 매핑 */
+function getToolIcon(toolName: string): LucideIcon | null {
+  switch (toolName) {
+    case "Read":
+      return FileText;
+    case "Write":
+    case "Edit":
+    case "MultiEdit":
+      return Pencil;
+    case "Bash":
+      return Terminal;
+    case "Grep":
+    case "Glob":
+      return Search;
+    case "WebFetch":
+    case "WebSearch":
+      return Globe;
+    case "Task":
+      return GitBranch;
+    default:
+      return null;
+  }
+}
+
+/** 도구 카테고리별 아이콘 색상 */
+function getToolColor(toolName: string): string {
+  switch (toolName) {
+    case "Read":
+    case "Grep":
+    case "Glob":
+      return "text-info";
+    case "Write":
+    case "Edit":
+    case "MultiEdit":
+      return "text-primary";
+    case "Bash":
+      return "text-warning";
+    case "WebFetch":
+    case "WebSearch":
+      return "text-success";
+    default:
+      return "text-muted-foreground";
+  }
 }
 
 function ToolStatusIcon({ status }: { status?: "running" | "done" | "error" }) {
@@ -337,7 +371,9 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
         ? "border-l-success"
         : "border-l-info";
 
-  // 실행 시간 계산 (timestamp → completed_at)
+  const ToolIcon = getToolIcon(toolName);
+  const toolColor = getToolColor(toolName);
+
   const elapsed = useMemo(() => {
     if (toolStatus !== "done" && toolStatus !== "error") return null;
     if (!message.timestamp || !message.completed_at) return null;
@@ -356,13 +392,16 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
     >
       <div
         className={cn(
-          "px-3 py-2 bg-secondary border border-border rounded-sm border-l-[3px]",
+          "px-3 py-2 bg-card border border-border rounded-md border-l-[3px]",
           borderColor,
         )}
       >
         <CollapsibleTrigger asChild>
           <div className="flex items-center gap-2">
             <ToolStatusIcon status={toolStatus} />
+            {ToolIcon ? (
+              <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} />
+            ) : null}
             <span className="font-mono text-xs font-semibold text-foreground">
               {toolName}
             </span>
@@ -379,9 +418,11 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
                 {elapsed}
               </span>
             ) : null}
-            <span className="font-mono text-2xs text-muted-foreground/70">
-              {expanded ? "\u25BE" : "\u25B8"}
-            </span>
+            {expanded ? (
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0 transition-transform" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0 transition-transform" />
+            )}
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -390,7 +431,7 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
               <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">
                 Input
               </div>
-              <pre className="font-mono text-xs text-muted-foreground bg-input p-2 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
+              <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
                 {JSON.stringify(input, null, 2)}
               </pre>
             </div>
@@ -409,7 +450,7 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
                 </div>
                 <pre
                   className={cn(
-                    "font-mono text-xs bg-input p-2 rounded-sm overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
+                    "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
                     message.is_error
                       ? "text-destructive"
                       : "text-muted-foreground",
@@ -434,18 +475,20 @@ function ThinkingMessage({ message }: { message: ThinkingMsg }) {
       onOpenChange={setExpanded}
       className="animate-[fadeIn_0.2s_ease] cursor-pointer"
     >
-      <div className="pl-3 border-l-2 border-muted-foreground/30">
+      <div className="pl-3 border-l-2 border-muted-foreground/40">
         <CollapsibleTrigger asChild>
-          <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground/70">
-            <Brain className="h-3 w-3" />
+          <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground/60">
+            <Brain className="h-3.5 w-3.5" />
             <span>Thinking{"\u2026"}</span>
-            <span className="text-2xs text-muted-foreground/50">
-              {expanded ? "\u25BE" : "\u25B8"}
-            </span>
+            {expanded ? (
+              <ChevronDown className="h-3 w-3 text-muted-foreground/50" />
+            ) : (
+              <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+            )}
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="mt-1.5 text-muted-foreground/80 select-text">
+          <div className="mt-1.5 text-muted-foreground/70 italic select-text">
             <MarkdownRenderer content={message.text || ""} />
           </div>
         </CollapsibleContent>
@@ -454,18 +497,25 @@ function ThinkingMessage({ message }: { message: ThinkingMsg }) {
   );
 }
 
-// FileChangeMessage: 현재 tool_use + file_change 이벤트에서 tool_use 경로로 표시되므로
-// 이 컴포넌트가 직접 사용되는 경우는 드물지만, 향후 활용을 위해 유지
-function FileChangeMessage({ message }: { message: FileChangeMsg }) {
+// ─── Phase 3: Alert Messages ──────────────────────────────────────────────────
+
+function AssistantText({ message }: { message: AssistantTextMsg }) {
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 animate-[fadeIn_0.2s_ease]">
-      <span className="text-xs">{"\u{1F4DD}"}</span>
-      <span className="font-mono text-xs text-muted-foreground">
-        {message.change?.tool}:{" "}
-        <code className="text-primary bg-primary/15 px-1 py-px rounded">
-          {message.change?.file}
-        </code>
-      </span>
+    <div className="animate-[fadeIn_0.2s_ease]">
+      <div className="pl-3 border-l-2 border-info/50">
+        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-info animate-pulse" />
+          <span>Claude</span>
+          <span className="text-info/80 animate-[pulse_1.5s_ease-in-out_infinite] ml-1">
+            streaming{"…"}
+          </span>
+        </div>
+        <div className="text-foreground select-text">
+          <div className="font-sans text-sm whitespace-pre-wrap break-words leading-relaxed">
+            {message.text || ""}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -482,8 +532,8 @@ function ErrorMessage({
   const errorText = message.message || message.text || "Unknown error";
   return (
     <div className="animate-[fadeIn_0.2s_ease]">
-      <div className="flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-sm">
-        <span className="text-sm">{"⚠"}</span>
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-destructive/10 border border-destructive/30 rounded-md border-l-[3px] border-l-destructive">
+        <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
         <span className="font-mono text-xs text-destructive flex-1">
           {searchQuery
             ? highlightText(String(errorText), searchQuery)
@@ -493,7 +543,7 @@ function ErrorMessage({
           <button
             type="button"
             onClick={onRetry}
-            className="font-mono text-2xs text-destructive hover:text-destructive/80 px-2 py-0.5 border border-destructive/30 rounded shrink-0"
+            className="font-mono text-2xs font-semibold text-destructive-foreground bg-destructive/80 hover:bg-destructive px-2.5 py-1 rounded-md transition-colors shrink-0"
             aria-label="재시도"
           >
             재시도
@@ -504,12 +554,52 @@ function ErrorMessage({
   );
 }
 
+function PermissionRequestMessage({
+  message,
+}: {
+  message: Extract<Message, { type: "permission_request" }>;
+}) {
+  return (
+    <div className="animate-[fadeIn_0.2s_ease]">
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-warning/10 border border-warning/25 rounded-md border-l-[3px] border-l-warning">
+        <ShieldAlert className="h-4 w-4 text-warning shrink-0" />
+        <span className="font-mono text-2xs font-semibold text-warning uppercase tracking-wider">
+          Permission Required
+        </span>
+        <span className="font-mono text-xs text-foreground font-semibold bg-warning/10 px-1.5 py-0.5 rounded">
+          {message.tool}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Phase 4: Tertiary Messages ───────────────────────────────────────────────
+
+// FileChangeMessage: 현재 tool_use + file_change 이벤트에서 tool_use 경로로 표시되므로
+// 이 컴포넌트가 직접 사용되는 경우는 드물지만, 향후 활용을 위해 유지
+function FileChangeMessage({ message }: { message: FileChangeMsg }) {
+  return (
+    <div className="flex items-center gap-1.5 px-2 py-1 animate-[fadeIn_0.2s_ease]">
+      <FileEdit className="h-3 w-3 text-primary/60 shrink-0" />
+      <span className="font-mono text-xs text-muted-foreground">
+        {message.change?.tool}:{" "}
+        <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm border border-primary/20">
+          {message.change?.file}
+        </code>
+      </span>
+    </div>
+  );
+}
+
 function StderrMessage({ message }: { message: StderrMsg }) {
   return (
-    <div className="px-2 py-1 animate-[fadeIn_0.2s_ease]">
-      <pre className="font-mono text-xs text-warning whitespace-pre-wrap opacity-70">
-        {message.text}
-      </pre>
+    <div className="px-3 py-1 animate-[fadeIn_0.2s_ease]">
+      <div className="pl-2 border-l border-warning/20">
+        <pre className="font-mono text-2xs text-warning/60 whitespace-pre-wrap leading-relaxed">
+          {message.text}
+        </pre>
+      </div>
     </div>
   );
 }
@@ -522,12 +612,14 @@ function SystemMessage({
   searchQuery?: string;
 }) {
   return (
-    <div className="text-center p-1 animate-[fadeIn_0.2s_ease]">
-      <span className="font-mono text-xs text-muted-foreground/70 italic">
+    <div className="flex items-center gap-3 px-4 py-2 animate-[fadeIn_0.2s_ease]">
+      <div className="flex-1 h-px bg-border/50" />
+      <span className="font-mono text-2xs text-muted-foreground/50 italic shrink-0">
         {searchQuery
           ? highlightText(message.text || "", searchQuery)
           : message.text}
       </span>
+      <div className="flex-1 h-px bg-border/50" />
     </div>
   );
 }
@@ -538,37 +630,26 @@ function EventMessage({ message }: { message: EventMsg }) {
     <Collapsible
       open={expanded}
       onOpenChange={setExpanded}
-      className="px-2 py-1 cursor-pointer animate-[fadeIn_0.2s_ease]"
+      className="px-3 py-1 cursor-pointer animate-[fadeIn_0.2s_ease]"
     >
       <CollapsibleTrigger asChild>
-        <span className="font-mono text-2xs text-muted-foreground/70">
-          Event: {String(message.event?.type || "unknown")}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <Zap className="h-2.5 w-2.5 text-muted-foreground/40 shrink-0" />
+          <span className="font-mono text-2xs text-muted-foreground/50">
+            {String(message.event?.type || "unknown")}
+          </span>
+          {expanded ? (
+            <ChevronDown className="h-2.5 w-2.5 text-muted-foreground/40" />
+          ) : (
+            <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/40" />
+          )}
+        </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <pre className="font-mono text-2xs text-muted-foreground bg-input p-1.5 rounded mt-1 max-h-[120px] overflow-auto whitespace-pre-wrap">
+        <pre className="font-mono text-2xs text-muted-foreground bg-input/50 p-1.5 rounded-md mt-1 max-h-[120px] overflow-auto whitespace-pre-wrap">
           {JSON.stringify(message.event, null, 2)}
         </pre>
       </CollapsibleContent>
     </Collapsible>
-  );
-}
-
-function PermissionRequestMessage({
-  message,
-}: {
-  message: Extract<Message, { type: "permission_request" }>;
-}) {
-  return (
-    <div className="animate-[fadeIn_0.2s_ease]">
-      <div className="flex items-center gap-2 px-3 py-2 bg-warning/10 border border-warning/20 rounded-sm border-l-[3px] border-l-warning">
-        <span className="font-mono text-2xs font-semibold text-warning uppercase tracking-wider">
-          Permission Required
-        </span>
-        <span className="font-mono text-xs text-foreground font-semibold">
-          {message.tool}
-        </span>
-      </div>
-    </div>
   );
 }

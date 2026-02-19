@@ -280,7 +280,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   );
 
   // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
-  const prevGapsRef = useRef<Record<number, "tight" | "normal">>({});
+  const prevGapsRef = useRef<Record<number, "tight" | "normal" | "turn-start">>({});
   const messageGaps = useMemo(() => {
     if (status === "running") return prevGapsRef.current;
     return computeMessageGaps(messages);
@@ -612,7 +612,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                     "px-4",
                     messageGaps[virtualItem.index] === "tight"
                       ? "pb-0.5"
-                      : "pb-2",
+                      : messageGaps[virtualItem.index] === "turn-start"
+                        ? "pb-4"
+                        : "pb-2",
                     searchQuery && searchMatches.includes(virtualItem.index)
                       ? "ring-1 ring-primary/40 rounded-sm bg-primary/5"
                       : "",
