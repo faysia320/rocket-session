@@ -1,14 +1,13 @@
 """세션 CRUD REST 엔드포인트."""
 
-import platform
-import subprocess
-
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 
-from app.api.dependencies import get_session_manager, get_settings, get_settings_service, get_ws_manager
+from app.api.dependencies import get_mcp_service, get_session_manager, get_settings, get_settings_service, get_ws_manager
 from app.core.config import Settings
+from app.models.session import SessionStatus
 from app.schemas.session import CreateSessionRequest, CurrentActivity, SessionInfo, UpdateSessionRequest
+from app.services.mcp_service import McpService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
 from app.services.websocket_manager import WebSocketManager
@@ -22,12 +21,20 @@ async def create_session(
     settings: Settings = Depends(get_settings),
     manager: SessionManager = Depends(get_session_manager),
     settings_service: SettingsService = Depends(get_settings_service),
+    mcp_service: McpService = Depends(get_mcp_service),
 ):
     global_settings = await settings_service.get()
     # work_dir 우선순위: 요청 > 글로벌 > env
     work_dir = (
         req.work_dir or global_settings.get("work_dir") or settings.claude_work_dir
     )
+
+    # MCP 서버: 요청에 없으면 활성화된 모든 MCP 서버를 자동 선택
+    mcp_server_ids = req.mcp_server_ids
+    if not mcp_server_ids:
+        enabled_servers = await mcp_service.list_servers()
+        mcp_server_ids = [s.id for s in enabled_servers if s.enabled]
+
     session = await manager.create(
         work_dir=work_dir,
         allowed_tools=req.allowed_tools,
@@ -40,7 +47,7 @@ async def create_session(
         max_budget_usd=req.max_budget_usd,
         system_prompt_mode=req.system_prompt_mode or "replace",
         disallowed_tools=req.disallowed_tools,
-        mcp_server_ids=req.mcp_server_ids,
+        mcp_server_ids=mcp_server_ids if mcp_server_ids else None,
     )
     session_with_counts = await manager.get_with_counts(session["id"]) or session
     return manager.to_info(session_with_counts)
@@ -165,34 +172,6 @@ async def get_session_stats(
     }
 
 
-@router.post("/{session_id}/open-terminal")
-async def open_terminal(
-    session_id: str,
-    manager: SessionManager = Depends(get_session_manager),
-):
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-    work_dir = session["work_dir"]
-    system = platform.system()
-    # work_dir 경로 검증
-    from pathlib import Path
-
-    if not Path(work_dir).is_dir():
-        raise HTTPException(status_code=400, detail="유효하지 않은 작업 디렉토리입니다")
-    try:
-        if system == "Windows":
-            subprocess.Popen(["wt", "-d", work_dir])
-        elif system == "Darwin":
-            subprocess.Popen(["open", "-a", "Terminal", work_dir])
-        else:
-            # 셸 인젝션 방지: shell=True 대신 cwd 파라미터 사용
-            subprocess.Popen(["xterm", "-e", "bash"], cwd=work_dir)
-        return {"status": "opened", "work_dir": work_dir}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"터미널 열기 실패: {str(e)}")
-
-
 @router.get("/{session_id}/export")
 async def export_session(
     session_id: str,
@@ -226,6 +205,34 @@ async def export_session(
             "Content-Disposition": f'attachment; filename="session-{session_id}.md"'
         },
     )
+
+
+@router.post("/{session_id}/archive")
+async def archive_session(
+    session_id: str,
+    manager: SessionManager = Depends(get_session_manager),
+):
+    """세션을 보관 처리합니다."""
+    session = await manager.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    if session.get("status") == SessionStatus.RUNNING:
+        await manager.kill_process(session_id)
+    await manager.update_status(session_id, SessionStatus.ARCHIVED)
+    return {"status": "archived"}
+
+
+@router.post("/{session_id}/unarchive")
+async def unarchive_session(
+    session_id: str,
+    manager: SessionManager = Depends(get_session_manager),
+):
+    """세션 보관을 해제합니다."""
+    session = await manager.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.update_status(session_id, SessionStatus.IDLE)
+    return {"status": "idle"}
 
 
 @router.delete("/{session_id}")

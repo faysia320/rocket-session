@@ -7,3 +7,4 @@ class SessionStatus(str, Enum):
     IDLE = "idle"
     RUNNING = "running"
     ERROR = "error"
+    ARCHIVED = "archived"
