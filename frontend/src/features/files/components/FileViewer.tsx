@@ -73,7 +73,7 @@ export function FileViewer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col bg-card border-border p-0 gap-0">
+      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col overflow-hidden bg-card border-border p-0 gap-0">
         <DialogHeader className="px-4 py-3 border-b border-border bg-secondary">
           <div className="flex items-center gap-2">
             <FileCode className="h-3.5 w-3.5 text-muted-foreground shrink-0" />

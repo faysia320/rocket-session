@@ -143,9 +143,9 @@ function RootComponent() {
                   key={s.id}
                   onPointerDown={() => setFocusedSessionId(s.id)}
                   className={cn(
-                    "flex-1 min-w-0 h-full flex flex-col border border-transparent",
+                    "flex-1 min-w-0 h-full flex flex-col border-2 border-transparent",
                     focusedSessionId === s.id
-                      ? "border-primary/40"
+                      ? "border-primary/50"
                       : "border-r-border last:border-r-0",
                   )}
                 >
