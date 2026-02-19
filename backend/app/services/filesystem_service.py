@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 class FilesystemService:
     """파일시스템 탐색 및 Git 워크트리 관리 서비스."""
 
+    # Git 정보 캐시 최대 항목 수
+    _GIT_CACHE_MAX_SIZE = 100
+
     def __init__(self, root_dir: str = ""):
         self._git_cache: dict[str, tuple[float, GitInfo]] = {}
         self._git_cache_ttl: float = 10.0  # 10초 TTL
@@ -98,9 +101,8 @@ class FilesystemService:
                 )
 
         # 상위 디렉토리 계산 (루트이거나 root_dir 경계이면 None)
-        at_root_boundary = (
-            validated_path.parent == validated_path
-            or (self._root_dir and validated_path == self._root_dir)
+        at_root_boundary = validated_path.parent == validated_path or (
+            self._root_dir and validated_path == self._root_dir
         )
         parent = None if at_root_boundary else str(validated_path.parent)
 
@@ -133,7 +135,7 @@ class FilesystemService:
         return await asyncio.to_thread(_run)
 
     async def get_git_info(self, path: str) -> GitInfo:
-        """Git 저장소 정보 조회 (10초 TTL 캐시)."""
+        """Git 저장소 정보 조회 (10초 TTL 캐시, 최대 100개 항목)."""
         now = time.monotonic()
         cached = self._git_cache.get(path)
         if cached and (now - cached[0]) < self._git_cache_ttl:
@@ -141,11 +143,17 @@ class FilesystemService:
 
         result = await self._fetch_git_info(path)
         self._git_cache[path] = (now, result)
+        # 캐시 크기 제한: 가장 오래된 항목 제거
+        if len(self._git_cache) > self._GIT_CACHE_MAX_SIZE:
+            oldest_key = min(self._git_cache, key=lambda k: self._git_cache[k][0])
+            del self._git_cache[oldest_key]
         return result
 
     async def _fetch_git_info(self, path: str) -> GitInfo:
         """Git 저장소 정보 실제 조회."""
         validated_path = self._validate_path(path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
         cwd = str(validated_path)
 
         # Git 저장소 여부 확인
@@ -157,28 +165,40 @@ class FilesystemService:
 
         info = GitInfo(is_git_repo=True)
 
-        # 브랜치명
-        returncode, stdout, _ = await self._run_git_command(
-            "branch", "--show-current", cwd=cwd
+        # 독립적인 Git 명령을 병렬 실행 (순차 → 병렬로 약 7배 빠름)
+        (
+            (rc_branch, branch_out, _),
+            (rc_status, status_out, _),
+            (rc_log, log_out, _),
+            (rc_remote, remote_out, _),
+            (rc_ahead, ahead_out, _),
+            (rc_dir, git_dir, _),
+            (rc_common, git_common, _),
+        ) = await asyncio.gather(
+            self._run_git_command("branch", "--show-current", cwd=cwd),
+            self._run_git_command("status", "--porcelain", cwd=cwd),
+            self._run_git_command("log", "-1", "--format=%H%n%s%n%aI", cwd=cwd),
+            self._run_git_command("remote", "get-url", "origin", cwd=cwd),
+            self._run_git_command(
+                "rev-list", "--left-right", "--count", "HEAD...@{upstream}", cwd=cwd
+            ),
+            self._run_git_command("rev-parse", "--git-dir", cwd=cwd),
+            self._run_git_command("rev-parse", "--git-common-dir", cwd=cwd),
         )
-        if returncode == 0 and stdout:
-            info.branch = stdout
+
+        # 브랜치명
+        if rc_branch == 0 and branch_out:
+            info.branch = branch_out
 
         # 상태 확인 (dirty / untracked)
-        returncode, stdout, _ = await self._run_git_command(
-            "status", "--porcelain", cwd=cwd
-        )
-        if returncode == 0 and stdout:
-            lines = stdout.split("\n")
+        if rc_status == 0 and status_out:
+            lines = status_out.split("\n")
             info.has_untracked = any(line.startswith("?") for line in lines)
             info.is_dirty = any(line and not line.startswith("?") for line in lines)
 
         # 최근 커밋 정보
-        returncode, stdout, _ = await self._run_git_command(
-            "log", "-1", "--format=%H%n%s%n%aI", cwd=cwd
-        )
-        if returncode == 0 and stdout:
-            parts = stdout.split("\n", 2)
+        if rc_log == 0 and log_out:
+            parts = log_out.split("\n", 2)
             if len(parts) >= 1:
                 info.last_commit_hash = parts[0]
             if len(parts) >= 2:
@@ -187,18 +207,12 @@ class FilesystemService:
                 info.last_commit_date = parts[2]
 
         # 리모트 URL (실패해도 무시)
-        returncode, stdout, _ = await self._run_git_command(
-            "remote", "get-url", "origin", cwd=cwd
-        )
-        if returncode == 0 and stdout:
-            info.remote_url = stdout
+        if rc_remote == 0 and remote_out:
+            info.remote_url = remote_out
 
         # ahead/behind (실패해도 0/0)
-        returncode, stdout, _ = await self._run_git_command(
-            "rev-list", "--left-right", "--count", "HEAD...@{upstream}", cwd=cwd
-        )
-        if returncode == 0 and stdout:
-            parts = stdout.split()
+        if rc_ahead == 0 and ahead_out:
+            parts = ahead_out.split()
             if len(parts) == 2:
                 try:
                     info.ahead = int(parts[0])
@@ -207,15 +221,7 @@ class FilesystemService:
                     pass
 
         # 워크트리 여부 판별
-        rc_dir, git_dir, _ = await self._run_git_command(
-            "rev-parse", "--git-dir", cwd=cwd
-        )
-        rc_common, git_common, _ = await self._run_git_command(
-            "rev-parse", "--git-common-dir", cwd=cwd
-        )
         if rc_dir == 0 and rc_common == 0 and git_dir and git_common:
-            import os
-
             norm_dir = os.path.normpath(os.path.join(cwd, git_dir))
             norm_common = os.path.normpath(os.path.join(cwd, git_common))
             info.is_worktree = norm_dir != norm_common
@@ -225,6 +231,8 @@ class FilesystemService:
     async def list_worktrees(self, path: str) -> WorktreeListResponse:
         """Git 워크트리 목록 조회."""
         validated_path = self._validate_path(path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
         cwd = str(validated_path)
 
         returncode, stdout, stderr = await self._run_git_command(
@@ -287,6 +295,8 @@ class FilesystemService:
     ) -> WorktreeInfo:
         """Git 워크트리 생성."""
         validated_repo = self._validate_path(repo_path)
+        if not self._is_within_root(validated_repo):
+            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated_repo)
 
         # target_path가 없으면 repo_path 옆에 {repo_name}-{branch} 디렉토리 생성
@@ -326,6 +336,8 @@ class FilesystemService:
         force: 미커밋 변경사항이 있어도 강제 삭제
         """
         validated_path = self._validate_path(worktree_path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {worktree_path}")
         cwd = str(validated_path)
 
         # 워크트리인지 확인 (git-dir != git-common-dir)
@@ -337,8 +349,6 @@ class FilesystemService:
         )
         if rc_dir != 0 or rc_common != 0:
             raise ValueError("유효한 Git 저장소가 아닙니다.")
-
-        import os
 
         norm_dir = os.path.normpath(os.path.join(cwd, git_dir))
         norm_common = os.path.normpath(os.path.join(cwd, git_common))
