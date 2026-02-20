@@ -105,18 +105,18 @@ function CommandItemRow({
     <CommandItem
       value={searchValue}
       onSelect={() => onSelect(cmd)}
-      className="flex items-center gap-3 px-3 py-2.5 cursor-pointer"
+      className="group flex items-center gap-3 px-3 py-2.5 cursor-pointer"
     >
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground group-data-[selected=true]:text-accent-foreground/70" />
       <div className="flex flex-col flex-1 min-w-0">
         <span className="font-mono text-sm truncate">{cmd.label}</span>
-        <span className="font-mono text-xs text-muted-foreground truncate">
+        <span className="font-mono text-xs text-muted-foreground group-data-[selected=true]:text-accent-foreground/70 truncate">
           {cmd.description}
         </span>
       </div>
       {cmd.shortcut ? (
         <kbd
-          className="ml-auto shrink-0 font-mono text-2xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border"
+          className="ml-auto shrink-0 font-mono text-2xs text-muted-foreground group-data-[selected=true]:text-accent-foreground/60 bg-muted group-data-[selected=true]:bg-accent-foreground/10 px-1.5 py-0.5 rounded border border-border group-data-[selected=true]:border-accent-foreground/20"
           aria-hidden="true"
         >
           {cmd.shortcut}

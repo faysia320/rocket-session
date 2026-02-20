@@ -49,17 +49,38 @@ export const SlashCommandPopup = memo(function SlashCommandPopup({
                   onClick={() => onSelect(cmd)}
                   onMouseEnter={() => onHover(idx)}
                 >
-                  <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <Icon
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      idx === activeIndex
+                        ? "text-accent-foreground/70"
+                        : "text-muted-foreground",
+                    )}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="font-mono text-xs font-semibold inline-flex items-center">
                       {cmd.label}
                       {cmd.source === "skill" ? (
-                        <span className="ml-1.5 text-[9px] text-muted-foreground/60 font-normal">
+                        <span
+                          className={cn(
+                            "ml-1.5 text-[9px] font-normal",
+                            idx === activeIndex
+                              ? "text-accent-foreground/50"
+                              : "text-muted-foreground/60",
+                          )}
+                        >
                           skill
                         </span>
                       ) : null}
                     </div>
-                    <div className="font-mono text-2xs text-muted-foreground truncate">
+                    <div
+                      className={cn(
+                        "font-mono text-2xs truncate",
+                        idx === activeIndex
+                          ? "text-accent-foreground/70"
+                          : "text-muted-foreground",
+                      )}
+                    >
                       {cmd.description}
                     </div>
                   </div>
