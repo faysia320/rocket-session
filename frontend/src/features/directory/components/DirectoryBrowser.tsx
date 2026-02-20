@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { Folder, FolderGit2, ArrowUp, Star, X } from "lucide-react";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -66,12 +71,14 @@ export function DirectoryBrowser({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div
-            className="font-mono text-2xs text-muted-foreground truncate"
-            title={currentPath}
-          >
-            현재: {currentPath}
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="font-mono text-2xs text-muted-foreground truncate">
+                현재: {currentPath}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">{currentPath}</TooltipContent>
+          </Tooltip>
 
           <div className="flex gap-1.5">
             <Input

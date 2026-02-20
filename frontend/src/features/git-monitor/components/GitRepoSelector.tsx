@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { FolderGit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { DirectoryBrowser } from "@/features/directory/components/DirectoryBrowser";
 
 interface GitRepoSelectorProps {
@@ -20,14 +25,20 @@ export function GitRepoSelector({ value, onChange }: GitRepoSelectorProps) {
 
   return (
     <>
-      <button
-        type="button"
-        className="font-mono text-2xs text-muted-foreground truncate max-w-[200px] text-left hover:text-foreground transition-colors"
-        onClick={() => setBrowserOpen(true)}
-        title={value || "클릭하여 저장소 선택"}
-      >
-        {value ? truncatePath(value) : "저장소 선택…"}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="font-mono text-2xs text-muted-foreground truncate max-w-[200px] text-left hover:text-foreground transition-colors"
+            onClick={() => setBrowserOpen(true)}
+          >
+            {value ? truncatePath(value) : "저장소 선택…"}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="font-mono text-xs">
+          {value || "클릭하여 저장소 선택"}
+        </TooltipContent>
+      </Tooltip>
       <Button
         variant="ghost"
         size="icon"

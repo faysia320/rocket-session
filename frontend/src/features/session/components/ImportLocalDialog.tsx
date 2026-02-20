@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   Download,
   Loader2,
   GitBranch,
@@ -229,12 +234,14 @@ export function ImportLocalDialog({
                             <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
                           )}
                           <FolderOpen className="h-3 w-3 text-muted-foreground shrink-0" />
-                          <span
-                            className="font-mono text-2xs text-muted-foreground truncate"
-                            title={item.cwd}
-                          >
-                            {truncateCwd(item.cwd)}
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="font-mono text-2xs text-muted-foreground truncate">
+                                {truncateCwd(item.cwd)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="font-mono text-xs">{item.cwd}</TooltipContent>
+                          </Tooltip>
                           <Badge
                             variant="secondary"
                             className="font-mono text-[9px] ml-auto"

@@ -8,6 +8,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -79,16 +84,20 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Git actions"
-            title="Git actions"
-          >
-            <GitBranch className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Git 작업"
+              >
+                <GitBranch className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Git 작업</TooltipContent>
+        </Tooltip>
         <DropdownMenuContent align="end" className="w-48">
           {showCommit ? (
             <DropdownMenuItem

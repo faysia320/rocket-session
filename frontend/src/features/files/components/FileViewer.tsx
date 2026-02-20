@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { FileCode, Loader2, ArrowLeftRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -77,12 +82,14 @@ export function FileViewer({
         <DialogHeader className="px-4 py-3 border-b border-border bg-secondary">
           <div className="flex items-center gap-2">
             <FileCode className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <DialogTitle
-              className="font-mono text-xs text-foreground truncate"
-              title={filePath}
-            >
-              {fileName}
-            </DialogTitle>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DialogTitle className="font-mono text-xs text-foreground truncate">
+                  {fileName}
+                </DialogTitle>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">{filePath}</TooltipContent>
+            </Tooltip>
           </div>
           <DialogDescription className="flex items-center gap-1.5 mt-0.5">
             <Badge
@@ -97,12 +104,14 @@ export function FileViewer({
                 {formatTime(timestamp)}
               </span>
             ) : null}
-            <span
-              className="font-mono text-2xs text-muted-foreground truncate ml-1"
-              title={filePath}
-            >
-              {filePath}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="font-mono text-2xs text-muted-foreground truncate ml-1">
+                  {filePath}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">{filePath}</TooltipContent>
+            </Tooltip>
           </DialogDescription>
         </DialogHeader>
 

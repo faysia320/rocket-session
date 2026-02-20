@@ -191,25 +191,29 @@ export const ChatHeader = memo(function ChatHeader({
             onUnarchive={onUnarchive}
           />
           <Sheet open={filesOpen} onOpenChange={onFilesOpenChange} modal={!portalContainer}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                title="File changes"
-                className={cn("relative", filesOpen && "bg-muted")}
-                aria-label="파일 변경 패널"
-              >
-                <FolderOpen className="h-4 w-4" />
-                {(() => {
-                  const uniqueFileCount = new Set(fileChanges.map((c) => c.file)).size;
-                  return uniqueFileCount > 0 ? (
-                    <span className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                      {uniqueFileCount > 99 ? "99+" : uniqueFileCount}
-                    </span>
-                  ) : null;
-                })()}
-              </Button>
-            </SheetTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={cn("relative", filesOpen && "bg-muted")}
+                    aria-label="파일 변경 패널"
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                    {(() => {
+                      const uniqueFileCount = new Set(fileChanges.map((c) => c.file)).size;
+                      return uniqueFileCount > 0 ? (
+                        <span className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                          {uniqueFileCount > 99 ? "99+" : uniqueFileCount}
+                        </span>
+                      ) : null;
+                    })()}
+                  </Button>
+                </SheetTrigger>
+              </TooltipTrigger>
+              <TooltipContent>파일 변경</TooltipContent>
+            </Tooltip>
             <SheetContent
               side="right"
               container={portalContainer}

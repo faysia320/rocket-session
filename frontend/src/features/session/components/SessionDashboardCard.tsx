@@ -1,6 +1,11 @@
 import { memo, useMemo } from "react";
 import { MessageSquare, FileText, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { getActivityLabel } from "@/features/chat/utils/activityLabel";
@@ -86,12 +91,14 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
             s.status === "running" && !isStale && "animate-pulse",
           )}
         />
-        <span
-          className="font-mono text-sm font-semibold text-foreground truncate flex-1"
-          title={s.name || s.id}
-        >
-          {s.name || s.id}
-        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="font-mono text-sm font-semibold text-foreground truncate flex-1">
+              {s.name || s.id}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="font-mono text-xs">{s.name || s.id}</TooltipContent>
+        </Tooltip>
         <span
           className={cn(
             "font-mono text-2xs px-1.5 py-0.5 rounded-sm border",
@@ -136,28 +143,34 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
       {s.status === "running" && s.current_activity ? (
         <div className="flex items-center gap-1.5 mb-2 min-h-[20px]">
           <span className="inline-block w-3 h-3 border-[1.5px] border-info/40 border-t-info rounded-full animate-spin shrink-0" />
-          <span
-            className="font-mono text-2xs text-info/80 truncate"
-            title={getActivityLabel(
-              s.current_activity.tool,
-              s.current_activity.input,
-            )}
-          >
-            {getActivityLabel(
-              s.current_activity.tool,
-              s.current_activity.input,
-            )}
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="font-mono text-2xs text-info/80 truncate">
+                {getActivityLabel(
+                  s.current_activity.tool,
+                  s.current_activity.input,
+                )}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">
+              {getActivityLabel(
+                s.current_activity.tool,
+                s.current_activity.input,
+              )}
+            </TooltipContent>
+          </Tooltip>
         </div>
       ) : null}
 
       {/* work_dir */}
-      <div
-        className="font-mono text-2xs text-muted-foreground/60 truncate mb-2"
-        title={s.work_dir}
-      >
-        {truncatePath(s.work_dir)}
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="font-mono text-2xs text-muted-foreground/60 truncate mb-2">
+            {truncatePath(s.work_dir)}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="font-mono text-xs">{s.work_dir}</TooltipContent>
+      </Tooltip>
 
       {/* 모델 표시 */}
       {s.model ? (

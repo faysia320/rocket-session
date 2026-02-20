@@ -1,5 +1,10 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, GitBranch, Star } from "lucide-react";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { useWorktrees } from "../hooks/useWorktrees";
 
 interface WorktreePanelProps {
@@ -34,25 +39,29 @@ export function WorktreePanel({ repoPath, onChange }: WorktreePanelProps) {
       {expanded ? (
         <div className="border-t border-border px-1 py-1 space-y-0.5">
           {worktrees.map((wt) => (
-            <button
-              key={wt.path}
-              type="button"
-              className="w-full flex items-center gap-1.5 px-2 py-1 rounded-sm hover:bg-muted text-left"
-              onClick={() => onChange(wt.path)}
-              title={wt.path}
-            >
-              {wt.is_main ? (
-                <Star className="h-2.5 w-2.5 text-warning shrink-0" />
-              ) : (
-                <div className="w-2.5" />
-              )}
-              <span className="font-mono text-2xs text-muted-foreground truncate flex-1">
-                {wt.path}
-              </span>
-              <span className="font-mono text-2xs text-info shrink-0">
-                ({wt.branch ?? "detached"})
-              </span>
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  key={wt.path}
+                  type="button"
+                  className="w-full flex items-center gap-1.5 px-2 py-1 rounded-sm hover:bg-muted text-left"
+                  onClick={() => onChange(wt.path)}
+                >
+                  {wt.is_main ? (
+                    <Star className="h-2.5 w-2.5 text-warning shrink-0" />
+                  ) : (
+                    <div className="w-2.5" />
+                  )}
+                  <span className="font-mono text-2xs text-muted-foreground truncate flex-1">
+                    {wt.path}
+                  </span>
+                  <span className="font-mono text-2xs text-info shrink-0">
+                    ({wt.branch ?? "detached"})
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">{wt.path}</TooltipContent>
+            </Tooltip>
           ))}
         </div>
       ) : null}

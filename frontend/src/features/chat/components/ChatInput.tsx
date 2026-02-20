@@ -1,5 +1,10 @@
 import { memo, useState, useRef, useCallback, useEffect } from "react";
 import { Send, Square, Image, X, ClipboardList } from "lucide-react";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -320,31 +325,41 @@ export const ChatInput = memo(function ChatInput({
           )}
         >
           {/* 모드 전환 버튼 (항상 표시) */}
-          <button
-            type="button"
-            onClick={onModeToggle}
-            className={cn(
-              "flex items-center self-center p-1 rounded transition-all duration-200 shrink-0",
-              mode === "plan"
-                ? "text-primary bg-primary/15 border border-primary/30 hover:bg-primary/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted",
-            )}
-            aria-label={mode === "plan" ? "Normal 모드로 전환" : "Plan 모드로 전환"}
-            title={mode === "plan" ? "Plan 모드 활성 (클릭하여 해제)" : "Plan 모드로 전환"}
-          >
-            <ClipboardList className="h-4 w-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onModeToggle}
+                className={cn(
+                  "flex items-center self-center p-1 rounded transition-all duration-200 shrink-0",
+                  mode === "plan"
+                    ? "text-primary bg-primary/15 border border-primary/30 hover:bg-primary/25"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                )}
+                aria-label={mode === "plan" ? "Normal 모드로 전환" : "Plan 모드로 전환"}
+              >
+                <ClipboardList className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {mode === "plan" ? "Plan 모드 활성 (클릭하여 해제)" : "Plan 모드로 전환"}
+            </TooltipContent>
+          </Tooltip>
 
           {/* 이미지 첨부 버튼 */}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="self-center text-muted-foreground hover:text-foreground transition-colors p-1 shrink-0"
-            aria-label="이미지 첨부"
-            title="이미지 첨부"
-          >
-            <Image className="h-4 w-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="self-center text-muted-foreground hover:text-foreground transition-colors p-1 shrink-0"
+                aria-label="이미지 첨부"
+              >
+                <Image className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>이미지 첨부</TooltipContent>
+          </Tooltip>
           <input
             ref={fileInputRef}
             type="file"

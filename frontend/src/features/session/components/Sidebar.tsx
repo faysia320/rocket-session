@@ -498,16 +498,20 @@ const SessionItem = memo(function SessionItem({
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span
-            className="font-mono text-md font-medium text-foreground flex-1 truncate"
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              startEditing();
-            }}
-            title={displayName}
-          >
-            {displayName}
-          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className="font-mono text-md font-medium text-foreground flex-1 truncate"
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  startEditing();
+                }}
+              >
+                {displayName}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">{displayName}</TooltipContent>
+          </Tooltip>
         )}
         <Button
           variant="ghost"
@@ -560,12 +564,14 @@ const SessionItem = memo(function SessionItem({
           {s.file_changes_count} changes
         </span>
       </div>
-      <div
-        className="font-mono text-2xs text-muted-foreground/70 truncate"
-        title={s.work_dir}
-      >
-        {truncatePath(s.work_dir)}
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="font-mono text-2xs text-muted-foreground/70 truncate">
+            {truncatePath(s.work_dir)}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="font-mono text-xs">{s.work_dir}</TooltipContent>
+      </Tooltip>
     </button>
   );
 });

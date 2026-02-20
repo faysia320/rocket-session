@@ -2,6 +2,11 @@ import { memo, useCallback } from "react";
 import { EllipsisVertical, Download, Settings, Archive, ArchiveRestore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,16 +36,20 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label="세션 메뉴"
-          title="세션 메뉴"
-        >
-          <EllipsisVertical className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="세션 메뉴"
+            >
+              <EllipsisVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>세션 메뉴</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end" className="w-44">
         {isArchived ? (
           <DropdownMenuItem

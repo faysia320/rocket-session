@@ -1,6 +1,11 @@
 import { useState, useCallback, useMemo } from "react";
 import { ChevronRight, Maximize2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Collapsible,
@@ -193,22 +198,28 @@ function MergedFileChangeItem({
             <span className="font-mono text-2xs text-muted-foreground/70 ml-auto shrink-0">
               {item.lastTimestamp ? formatTime(item.lastTimestamp) : null}
             </span>
-            <button
-              type="button"
-              className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0"
-              onClick={handleFullView}
-              aria-label={`전체 보기: ${item.file}`}
-              title="전체 보기"
-            >
-              <Maximize2 className="h-3 w-3 text-muted-foreground" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0"
+                  onClick={handleFullView}
+                  aria-label={`전체 보기: ${item.file}`}
+                >
+                  <Maximize2 className="h-3 w-3 text-muted-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>전체 보기</TooltipContent>
+            </Tooltip>
           </div>
-          <div
-            className="font-mono text-xs text-primary break-all pl-5"
-            title={item.file}
-          >
-            {shortenFilePath(item.file)}
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="font-mono text-xs text-primary break-all pl-5">
+                {shortenFilePath(item.file)}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">{item.file}</TooltipContent>
+          </Tooltip>
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>

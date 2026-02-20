@@ -7,6 +7,11 @@ import {
   FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import type { GitInfo } from "@/types";
 
 interface GitInfoCardProps {
@@ -51,13 +56,15 @@ export function GitInfoCard({ gitInfo }: GitInfoCardProps) {
         ) : null}
       </div>
       {gitInfo.last_commit_message ? (
-        <div
-          className="font-mono text-2xs text-muted-foreground truncate flex items-center gap-1"
-          title={gitInfo.last_commit_message}
-        >
-          <FileText className="h-2.5 w-2.5 inline shrink-0" />
-          {gitInfo.last_commit_message}
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="font-mono text-2xs text-muted-foreground truncate flex items-center gap-1">
+              <FileText className="h-2.5 w-2.5 inline shrink-0" />
+              {gitInfo.last_commit_message}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="font-mono text-xs">{gitInfo.last_commit_message}</TooltipContent>
+        </Tooltip>
       ) : null}
     </div>
   );
