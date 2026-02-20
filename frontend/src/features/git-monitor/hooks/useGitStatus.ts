@@ -8,7 +8,7 @@ export function useGitStatus(repoPath: string) {
     queryKey: ["git-status", repoPath],
     queryFn: () => filesystemApi.getGitStatus(repoPath),
     enabled: repoPath.length > 0,
-    staleTime: 0,
+    staleTime: 25_000,
     refetchInterval: 30_000,
   });
 }

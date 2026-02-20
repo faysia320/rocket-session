@@ -2,7 +2,7 @@
  * 세션 도메인 API 함수.
  */
 import { api } from "./client";
-import type { SessionInfo, UpdateSessionRequest } from "@/types";
+import type { SessionInfo, UpdateSessionRequest, SessionStats, Message, FileChange } from "@/types";
 
 export const sessionsApi = {
   create: (
@@ -32,9 +32,9 @@ export const sessionsApi = {
 
   unarchive: (id: string) => api.post<{ status: string }>(`/api/sessions/${id}/unarchive`),
 
-  history: (id: string) => api.get<unknown[]>(`/api/sessions/${id}/history`),
+  history: (id: string) => api.get<Message[]>(`/api/sessions/${id}/history`),
 
-  files: (id: string) => api.get<unknown[]>(`/api/sessions/${id}/files`),
+  files: (id: string) => api.get<FileChange[]>(`/api/sessions/${id}/files`),
 
   fileContent: (sessionId: string, filePath: string) =>
     api.getText(
@@ -47,11 +47,7 @@ export const sessionsApi = {
     ),
 
   exportMarkdown: async (sessionId: string): Promise<void> => {
-    const response = await fetch(`/api/sessions/${sessionId}/export`);
-    if (!response.ok) {
-      throw new Error(`Export failed: HTTP ${response.status}`);
-    }
-    const blob = await response.blob();
+    const blob = await api.getBlob(`/api/sessions/${sessionId}/export`);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -71,28 +67,9 @@ export const sessionsApi = {
   ): Promise<{ path: string; name: string; size: number }> => {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await fetch(`/api/sessions/${sessionId}/upload`, {
-      method: "POST",
-      body: formData,
-    });
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ detail: "Upload failed" }));
-      throw new Error(error.detail || `HTTP ${response.status}`);
-    }
-    return response.json();
+    return api.postFormData(`/api/sessions/${sessionId}/upload`, formData);
   },
 
-  stats: (id: string) =>
-    api.get<{
-      total_messages: number;
-      total_cost: number;
-      total_duration_ms: number;
-      total_input_tokens: number;
-      total_output_tokens: number;
-      total_cache_creation_tokens: number;
-      total_cache_read_tokens: number;
-    }>(`/api/sessions/${id}/stats`),
+  stats: (id: string) => api.get<SessionStats>(`/api/sessions/${id}/stats`),
 
 };
