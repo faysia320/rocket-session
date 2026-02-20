@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Save } from "lucide-react";
+import { Save, FileStack } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
+import { SaveAsTemplateDialog } from "@/features/template/components/SaveAsTemplateDialog";
 import { AVAILABLE_TOOLS } from "../constants/tools";
 
 const PERMISSION_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"] as const;
@@ -290,7 +291,7 @@ export function SessionSettings({
           </div>
         </div>
 
-        <SheetFooter className="px-6 py-4 border-t border-border shrink-0">
+        <SheetFooter className="px-6 py-4 border-t border-border shrink-0 flex-col gap-2">
           <Button
             className="w-full font-mono text-xs font-semibold"
             onClick={handleSave}
@@ -299,6 +300,15 @@ export function SessionSettings({
             <Save className="h-3.5 w-3.5 mr-1.5" />
             {saving ? "Saving…" : "Save Settings"}
           </Button>
+          <SaveAsTemplateDialog sessionId={sessionId}>
+            <Button
+              variant="outline"
+              className="w-full font-mono text-xs gap-1.5"
+            >
+              <FileStack className="h-3.5 w-3.5" />
+              템플릿으로 저장
+            </Button>
+          </SaveAsTemplateDialog>
         </SheetFooter>
       </SheetContent>
     </Sheet>

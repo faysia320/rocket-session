@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Rocket, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
+import { TemplateSelector } from "@/features/template/components/TemplateSelector";
+import type { TemplateInfo } from "@/types";
 
 interface SessionSetupPanelProps {
   onCreate: (
@@ -17,6 +19,7 @@ interface SessionSetupPanelProps {
     options?: {
       system_prompt?: string;
       timeout_seconds?: number;
+      template_id?: string;
     },
   ) => void;
   onCancel: () => void;
@@ -32,15 +35,39 @@ export function SessionSetupPanel({
   const [creating, setCreating] = useState(false);
   const [useWorktree, setUseWorktree] = useState(false);
   const [worktreeBranch, setWorktreeBranch] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
   const { data: globalSettings } = useGlobalSettings();
   const { gitInfo } = useGitInfo(workDir);
 
+  // 글로벌 설정의 work_dir이 이미 적용되었는지 추적
+  const globalAppliedRef = useRef(false);
+
   // 글로벌 work_dir 기본값 적용
   useEffect(() => {
-    if (!workDir && globalSettings?.work_dir) {
+    if (!globalAppliedRef.current && !workDir && globalSettings?.work_dir) {
       setWorkDir(globalSettings.work_dir);
+      globalAppliedRef.current = true;
     }
   }, [globalSettings?.work_dir]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleTemplateSelect = (template: TemplateInfo | null) => {
+    if (!template) {
+      setSelectedTemplateId(null);
+      return;
+    }
+    setSelectedTemplateId(template.id);
+    if (template.work_dir) {
+      setWorkDir(template.work_dir);
+    }
+    if (template.system_prompt) {
+      setSystemPrompt(template.system_prompt);
+    }
+    if (template.timeout_seconds) {
+      setTimeoutMinutes(String(template.timeout_seconds / 60));
+    }
+  };
 
   const handleCreate = async () => {
     setCreating(true);
@@ -59,12 +86,16 @@ export function SessionSetupPanel({
       const options: {
         system_prompt?: string;
         timeout_seconds?: number;
+        template_id?: string;
       } = {};
       if (systemPrompt.trim()) {
         options.system_prompt = systemPrompt.trim();
       }
       if (timeoutMinutes && Number(timeoutMinutes) > 0) {
         options.timeout_seconds = Number(timeoutMinutes) * 60;
+      }
+      if (selectedTemplateId) {
+        options.template_id = selectedTemplateId;
       }
       onCreate(
         targetDir,
@@ -91,6 +122,17 @@ export function SessionSetupPanel({
               Configure and launch a new Claude Code session
             </p>
           </div>
+        </div>
+
+        {/* Template Selector */}
+        <div className="space-y-2">
+          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+            TEMPLATE
+          </Label>
+          <p className="font-mono text-2xs text-muted-foreground/70">
+            저장된 템플릿으로 설정을 빠르게 채울 수 있습니다.
+          </p>
+          <TemplateSelector onSelect={handleTemplateSelect} />
         </div>
 
         {/* Working Directory */}

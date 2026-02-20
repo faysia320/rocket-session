@@ -1,3 +1,5 @@
+import type { TagInfo } from "./tag";
+
 export type SessionStatus = "idle" | "running" | "error" | "stopped" | "archived";
 export type SessionMode = "normal" | "plan";
 
@@ -27,6 +29,7 @@ export interface SessionInfo {
   system_prompt_mode?: string | null;
   disallowed_tools?: string | null;
   mcp_server_ids?: string[] | null;
+  tags?: TagInfo[];
   current_activity?: CurrentActivity | null;
 }
 
@@ -44,6 +47,7 @@ export interface CreateSessionRequest {
   system_prompt_mode?: string | null;
   disallowed_tools?: string | null;
   mcp_server_ids?: string[] | null;
+  template_id?: string | null;
 }
 
 export interface UpdateSessionRequest {

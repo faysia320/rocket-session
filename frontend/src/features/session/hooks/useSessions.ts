@@ -20,6 +20,7 @@ export function useCreateSession() {
       options?: {
         system_prompt?: string;
         timeout_seconds?: number;
+        template_id?: string;
       };
     }) => sessionsApi.create(params.workDir, params.options),
     onSuccess: (session) => {
@@ -37,6 +38,7 @@ export function useCreateSession() {
       options?: {
         system_prompt?: string;
         timeout_seconds?: number;
+        template_id?: string;
       },
     ) => {
       return mutation.mutateAsync({ workDir, options });

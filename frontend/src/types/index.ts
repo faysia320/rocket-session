@@ -59,6 +59,13 @@ export type {
 } from "./mcp";
 export type { GlobalSettings, UpdateGlobalSettingsRequest } from "./settings";
 export type {
+  TemplateInfo,
+  CreateTemplateRequest,
+  UpdateTemplateRequest,
+  CreateTemplateFromSessionRequest,
+  TemplateExport,
+} from "./template";
+export type {
   NotificationCategory,
   NotificationChannel,
   CategoryNotificationConfig,
@@ -66,3 +73,12 @@ export type {
   SoundPack,
 } from "./notification";
 export { DEFAULT_NOTIFICATION_SETTINGS, CATEGORY_LABELS } from "./notification";
+export type { TagInfo, CreateTagRequest, UpdateTagRequest } from "./tag";
+export type {
+  AnalyticsPeriod,
+  TokenSummary,
+  DailyTokenUsage,
+  SessionTokenRanking,
+  ProjectTokenUsage,
+  AnalyticsResponse,
+} from "./analytics";

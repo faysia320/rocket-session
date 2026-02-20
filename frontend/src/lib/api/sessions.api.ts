@@ -4,12 +4,36 @@
 import { api } from "./client";
 import type { SessionInfo, UpdateSessionRequest, SessionStats, Message, FileChange } from "@/types";
 
+export interface SearchSessionsParams {
+  q?: string;
+  fts?: string;
+  status?: string;
+  model?: string;
+  work_dir?: string;
+  tag_ids?: string[];
+  date_from?: string;
+  date_to?: string;
+  sort?: string;
+  order?: string;
+  limit?: number;
+  offset?: number;
+  include_tags?: boolean;
+}
+
+export interface PaginatedSessions {
+  items: SessionInfo[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export const sessionsApi = {
   create: (
     workDir?: string,
     options?: {
       system_prompt?: string;
       timeout_seconds?: number;
+      template_id?: string;
     },
   ) =>
     api.post<SessionInfo>("/api/sessions/", {
@@ -72,4 +96,21 @@ export const sessionsApi = {
 
   stats: (id: string) => api.get<SessionStats>(`/api/sessions/${id}/stats`),
 
+  search: (params: SearchSessionsParams) => {
+    const searchParams = new URLSearchParams();
+    if (params.q) searchParams.set("q", params.q);
+    if (params.fts) searchParams.set("fts", params.fts);
+    if (params.status) searchParams.set("status", params.status);
+    if (params.model) searchParams.set("model", params.model);
+    if (params.work_dir) searchParams.set("work_dir", params.work_dir);
+    if (params.tag_ids?.length) searchParams.set("tag_ids", params.tag_ids.join(","));
+    if (params.date_from) searchParams.set("date_from", params.date_from);
+    if (params.date_to) searchParams.set("date_to", params.date_to);
+    if (params.sort) searchParams.set("sort", params.sort);
+    if (params.order) searchParams.set("order", params.order);
+    if (params.limit != null) searchParams.set("limit", String(params.limit));
+    if (params.offset != null) searchParams.set("offset", String(params.offset));
+    if (params.include_tags) searchParams.set("include_tags", "true");
+    return api.get<PaginatedSessions>(`/api/sessions/search?${searchParams.toString()}`);
+  },
 };
