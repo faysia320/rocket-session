@@ -5,6 +5,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { formatTokens } from "@/lib/utils";
 import { useSessionStats } from "../hooks/useSessionStats";
 import { ContextWindowBar } from "@/features/chat/components/ContextWindowBar";
 
@@ -17,12 +18,6 @@ interface SessionStatsBarProps {
     cacheReadTokens: number;
   };
   messageCount?: number;
-}
-
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
 }
 
 function formatDuration(ms: number): string {

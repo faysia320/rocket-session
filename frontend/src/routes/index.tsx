@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useSessionStore } from "@/store";
 import { useSessions } from "@/features/session/hooks/useSessions";
+import { sortSessionsByStatus } from "@/lib/utils";
 
 const SessionDashboardCard = lazy(() =>
   import("@/features/session/components/SessionDashboardCard").then((m) => ({
@@ -41,9 +42,8 @@ function IndexPage() {
     );
   }
 
-  const runningSessions = sessions.filter((s) => s.status === "running");
-  const otherSessions = sessions.filter((s) => s.status !== "running");
-  const sortedSessions = [...runningSessions, ...otherSessions];
+  const sortedSessions = sortSessionsByStatus(sessions);
+  const runningCount = sessions.filter((s) => s.status === "running").length;
 
   return (
     <div className="relative flex-1 flex flex-col overflow-hidden">
@@ -64,7 +64,7 @@ function IndexPage() {
               Dashboard
             </h1>
             <p className="font-mono text-xs text-muted-foreground">
-              {sessions.length}개 세션 ({runningSessions.length}개 실행 중)
+              {sessions.length}개 세션 ({runningCount}개 실행 중)
             </p>
           </div>
           <Button

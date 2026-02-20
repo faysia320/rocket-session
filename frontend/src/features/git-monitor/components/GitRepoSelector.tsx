@@ -7,17 +7,11 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { DirectoryBrowser } from "@/features/directory/components/DirectoryBrowser";
+import { truncatePath } from "@/lib/utils";
 
 interface GitRepoSelectorProps {
   value: string;
   onChange: (path: string) => void;
-}
-
-function truncatePath(path: string, maxLen = 30): string {
-  if (path.length <= maxLen) return path;
-  const parts = path.split("/");
-  if (parts.length <= 2) return path;
-  return `…/${parts.slice(-2).join("/")}`;
 }
 
 export function GitRepoSelector({ value, onChange }: GitRepoSelectorProps) {
@@ -32,7 +26,7 @@ export function GitRepoSelector({ value, onChange }: GitRepoSelectorProps) {
             className="font-mono text-2xs text-muted-foreground truncate max-w-[200px] text-left hover:text-foreground transition-colors"
             onClick={() => setBrowserOpen(true)}
           >
-            {value ? truncatePath(value) : "저장소 선택…"}
+            {value ? truncatePath(value, 30) : "저장소 선택…"}
           </button>
         </TooltipTrigger>
         <TooltipContent className="font-mono text-xs">

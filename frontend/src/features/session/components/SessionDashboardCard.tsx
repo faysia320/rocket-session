@@ -6,7 +6,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, truncatePath } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { getActivityLabel } from "@/features/chat/utils/activityLabel";
 
@@ -27,13 +27,6 @@ function formatRelativeTime(dateStr?: string): string {
   if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
   return `${days}일 전`;
-}
-
-function truncatePath(p: string): string {
-  if (!p) return "~";
-  const parts = p.split(/[/\\]/);
-  if (parts.length <= 3) return p;
-  return "~/" + parts.slice(-2).join("/");
 }
 
 const STALE_THRESHOLD_MS = 5 * 60 * 1000;

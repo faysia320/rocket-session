@@ -8,6 +8,7 @@ import { useSessionStore, useCommandPaletteStore } from "@/store";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
+import { useSessions } from "@/features/session/hooks/useSessions";
 import type { SessionInfo } from "@/types";
 import type { PaletteCommand, CommandCategory } from "../types";
 import { CATEGORY_ORDER } from "../types";
@@ -43,6 +44,8 @@ export function useCommandPalette() {
 
   const recentCommandIds = useCommandPaletteStore((s) => s.recentCommandIds);
 
+  const { deleteSession } = useSessions();
+
   const { data: sessions = [] } = useQuery<SessionInfo[]>({
     queryKey: sessionKeys.list(),
     queryFn: () => sessionsApi.list(),
@@ -66,21 +69,6 @@ export function useCommandPalette() {
       navigate({ to: "/session/$sessionId", params: { sessionId: id } });
     },
     [navigate],
-  );
-
-  const deleteSession = useCallback(
-    async (id: string) => {
-      try {
-        await sessionsApi.delete(id);
-        if (location.pathname.includes(id)) {
-          navigate({ to: "/" });
-        }
-        toast.success("세션이 삭제되었습니다");
-      } catch {
-        toast.error("세션 삭제에 실패했습니다");
-      }
-    },
-    [navigate, location.pathname],
   );
 
   const stopSession = useCallback(async (id: string) => {

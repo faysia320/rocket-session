@@ -41,3 +41,34 @@ export function highlightText(text: string, query: string): ReactNode[] {
       : part,
   );
 }
+
+/**
+ * 경로를 최대 길이로 잘라서 말줄임표 표시.
+ * 중간 디렉토리를 "…"으로 대체합니다.
+ */
+export function truncatePath(path: string, maxLen = 40): string {
+  if (path.length <= maxLen) return path;
+  const parts = path.split("/");
+  if (parts.length <= 2) return "…" + path.slice(-(maxLen - 1));
+  const first = parts[0] || "/";
+  const last = parts[parts.length - 1];
+  return first + "/…/" + last;
+}
+
+/**
+ * 토큰 수를 1K/1M 단위로 포맷합니다.
+ */
+export function formatTokens(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";
+  return String(n);
+}
+
+/**
+ * 세션 목록을 running 상태가 앞에 오도록 정렬합니다.
+ */
+export function sortSessionsByStatus<T extends { status: string }>(sessions: T[]): T[] {
+  const running = sessions.filter((s) => s.status === "running");
+  const others = sessions.filter((s) => s.status !== "running");
+  return [...running, ...others];
+}

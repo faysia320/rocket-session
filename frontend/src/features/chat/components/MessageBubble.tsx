@@ -15,7 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn, highlightText } from "@/lib/utils";
+import { cn, highlightText, formatTokens } from "@/lib/utils";
 import type {
   Message,
   UserMsg,
@@ -193,12 +193,6 @@ function formatModelName(model: string): string {
   if (model.includes("sonnet")) return "Sonnet";
   if (model.includes("haiku")) return "Haiku";
   return model.split("-").slice(0, 2).join(" ");
-}
-
-/** 토큰 수를 읽기 쉬운 형태로 포맷 (예: 1234 → "1.2k") */
-function formatTokens(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
 }
 
 function ResultMessage({ message }: { message: ResultMsg }) {

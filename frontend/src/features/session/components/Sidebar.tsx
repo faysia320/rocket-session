@@ -34,7 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { cn, truncatePath } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { ImportLocalDialog } from "./ImportLocalDialog";
 import { GlobalSettingsDialog } from "@/features/settings/components/GlobalSettingsDialog";
@@ -576,9 +576,3 @@ const SessionItem = memo(function SessionItem({
   );
 });
 
-function truncatePath(p: string): string {
-  if (!p) return "~";
-  const parts = p.split(/[/\\]/);
-  if (parts.length <= 3) return p;
-  return "~/" + parts.slice(-2).join("/");
-}

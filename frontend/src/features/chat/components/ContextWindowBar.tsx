@@ -4,7 +4,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, formatTokens } from "@/lib/utils";
 
 const MAX_TOKENS = 200_000;
 
@@ -14,11 +14,6 @@ interface ContextWindowBarProps {
   cacheCreationTokens: number;
   cacheReadTokens: number;
   messageCount?: number;
-}
-
-function formatTokens(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
 }
 
 export const ContextWindowBar = memo(function ContextWindowBar({

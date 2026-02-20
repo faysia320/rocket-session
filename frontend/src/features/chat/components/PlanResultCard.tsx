@@ -1,7 +1,7 @@
 import { useState, memo } from "react";
 import { Play, Pencil, X, Send, CheckCircle2, Zap } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
-import { cn } from "@/lib/utils";
+import { cn, formatTokens } from "@/lib/utils";
 import type { ResultMsg } from "@/types";
 
 interface PlanResultCardProps {
@@ -19,12 +19,6 @@ function formatModelName(model: string): string {
   if (model.includes("sonnet")) return "Sonnet";
   if (model.includes("haiku")) return "Haiku";
   return model.split("-").slice(0, 2).join(" ");
-}
-
-/** 토큰 수를 읽기 쉬운 형태로 포맷 */
-function formatTokens(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
 }
 
 export const PlanResultCard = memo(function PlanResultCard({
