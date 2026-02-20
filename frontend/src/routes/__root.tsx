@@ -23,6 +23,11 @@ const GitMonitorPanel = lazy(() =>
     default: m.GitMonitorPanel,
   })),
 );
+const AnalyticsDashboard = lazy(() =>
+  import("@/features/analytics/components/AnalyticsDashboard").then((m) => ({
+    default: m.AnalyticsDashboard,
+  })),
+);
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { useSessionStore } from "@/store";
 import { UsageFooter } from "@/features/usage/components/UsageFooter";
@@ -51,11 +56,13 @@ function RootComponent() {
   } = useSessions();
   const splitView = useSessionStore((s) => s.splitView);
   const dashboardView = useSessionStore((s) => s.dashboardView);
+  const costView = useSessionStore((s) => s.costView);
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
   const setFocusedSessionId = useSessionStore((s) => s.setFocusedSessionId);
   const sidebarMobileOpen = useSessionStore((s) => s.sidebarMobileOpen);
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const setDashboardView = useSessionStore((s) => s.setDashboardView);
+  const setCostView = useSessionStore((s) => s.setCostView);
   const isMobile = useIsMobile();
   const isNewSessionRoute = location.pathname === "/session/new";
   const activeSessions = useMemo(
@@ -98,9 +105,10 @@ function RootComponent() {
       selectSession(id);
       if (splitView) setFocusedSessionId(id);
       if (dashboardView) setDashboardView(false);
+      if (costView) setCostView(false);
       if (isMobile) setSidebarMobileOpen(false);
     },
-    [selectSession, splitView, setFocusedSessionId, dashboardView, setDashboardView, isMobile, setSidebarMobileOpen],
+    [selectSession, splitView, setFocusedSessionId, dashboardView, setDashboardView, costView, setCostView, isMobile, setSidebarMobileOpen],
   );
 
   const handleNew = useCallback(() => {
@@ -151,7 +159,11 @@ function RootComponent() {
       )}
       <div className="flex flex-col flex-1 overflow-hidden">
         <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
-          {!isMobile &&
+          {!isMobile && costView ? (
+            <Suspense fallback={<LoadingSkeleton />}>
+              <AnalyticsDashboard />
+            </Suspense>
+          ) : !isMobile &&
           dashboardView &&
           activeSessions.length > 0 &&
           !isNewSessionRoute ? (
@@ -291,8 +303,8 @@ const DashboardGrid = memo(function DashboardGrid({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* 상단: 세션 카드 그리드 (60%) */}
-      <div className="flex-[3] min-h-0 overflow-auto p-6">
+      {/* 상단: 세션 카드 그리드 (40%) */}
+      <div className="flex-[2] min-h-0 overflow-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="font-mono text-lg font-semibold text-foreground">
@@ -324,9 +336,9 @@ const DashboardGrid = memo(function DashboardGrid({
         </div>
       </div>
 
-      {/* 하단: Git Monitor (40%) */}
+      {/* 하단: Git Monitor (60%) */}
       <Suspense fallback={<LoadingSkeleton />}>
-        <div className="flex-[2] min-h-0 overflow-hidden">
+        <div className="flex-[3] min-h-0 overflow-hidden">
           <GitMonitorPanel />
         </div>
       </Suspense>

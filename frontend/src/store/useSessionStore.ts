@@ -9,6 +9,7 @@ interface SessionState {
   focusedSessionId: string | null;
   splitView: boolean;
   dashboardView: boolean;
+  costView: boolean;
   sidebarCollapsed: boolean;
   sidebarMobileOpen: boolean;
   gitMonitorPaths: string[];
@@ -18,6 +19,8 @@ interface SessionState {
   toggleSplitView: () => void;
   setDashboardView: (v: boolean) => void;
   toggleDashboardView: () => void;
+  setCostView: (v: boolean) => void;
+  toggleCostView: () => void;
   toggleSidebar: () => void;
   setSidebarMobileOpen: (open: boolean) => void;
   addGitMonitorPath: (path: string) => void;
@@ -31,6 +34,7 @@ export const useSessionStore = create<SessionState>()(
       focusedSessionId: null,
       splitView: false,
       dashboardView: false,
+      costView: false,
       sidebarCollapsed: false,
       sidebarMobileOpen: false,
       gitMonitorPaths: [],
@@ -40,13 +44,19 @@ export const useSessionStore = create<SessionState>()(
       toggleSplitView: () =>
         set((state) => ({
           splitView: !state.splitView,
-          ...(state.splitView ? {} : { dashboardView: false }),
+          ...(state.splitView ? {} : { dashboardView: false, costView: false }),
         })),
       setDashboardView: (v) => set({ dashboardView: v }),
       toggleDashboardView: () =>
         set((state) => ({
           dashboardView: !state.dashboardView,
-          ...(state.dashboardView ? {} : { splitView: false }),
+          ...(state.dashboardView ? {} : { splitView: false, costView: false }),
+        })),
+      setCostView: (v) => set({ costView: v }),
+      toggleCostView: () =>
+        set((state) => ({
+          costView: !state.costView,
+          ...(state.costView ? {} : { dashboardView: false, splitView: false }),
         })),
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -85,6 +95,7 @@ export const useSessionStore = create<SessionState>()(
         sidebarCollapsed: s.sidebarCollapsed,
         splitView: s.splitView,
         dashboardView: s.dashboardView,
+        costView: s.costView,
         gitMonitorPaths: s.gitMonitorPaths,
       }),
     },
