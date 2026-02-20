@@ -218,7 +218,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           const helpText =
             "사용 가능한 명령어:\n" +
             "  /help     - 명령어 목록 표시\n" +
-            "  /clear    - 대화 컨텍스트 초기화 (CLI 전달)\n" +
+            "  /clear    - 대화 컨텍스트 초기화 (새 대화 시작)\n" +
             "  /compact  - 컨텍스트 압축 (CLI 전달)\n" +
             "  /model    - 모델 변경 (CLI 전달)\n" +
             "  /settings - 세션 설정 열기\n" +
@@ -228,7 +228,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         }
         case "clear":
           clearMessages();
-          sendPrompt("/clear", { mode });
           break;
         case "compact":
         case "model":

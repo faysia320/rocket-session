@@ -445,6 +445,9 @@ export function useClaudeSocket(sessionId: string) {
   const clearMessages = useCallback(() => {
     dispatch({ type: "CLEAR_MESSAGES" });
     lastSeqRef.current = 0;
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "clear" }));
+    }
   }, []);
 
   const addSystemMessage = useCallback((text: string) => {

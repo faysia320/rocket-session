@@ -167,6 +167,18 @@ async def _handle_stop(
     await ws_manager.broadcast_event(session_id, {"type": WsEventType.STOPPED})
 
 
+async def _handle_clear(
+    session_id: str,
+    manager: SessionManager,
+    ws_manager: WebSocketManager,
+) -> None:
+    """clear 메시지 처리: claude_session_id 초기화 → 다음 프롬프트에서 새 대화 시작."""
+    await manager.update_claude_session_id(session_id, "")
+    await ws_manager.broadcast_event(
+        session_id, {"type": WsEventType.SYSTEM, "message": "대화 컨텍스트가 초기화되었습니다"}
+    )
+
+
 async def _handle_permission_respond(data: dict) -> None:
     """permission_respond 메시지 처리."""
     perm_id = data.get("permission_id", "")
@@ -267,6 +279,9 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
             elif msg_type == "stop":
                 await _handle_stop(session_id, manager, ws_manager)
+
+            elif msg_type == "clear":
+                await _handle_clear(session_id, manager, ws_manager)
 
             elif msg_type == "permission_respond":
                 await _handle_permission_respond(data)
