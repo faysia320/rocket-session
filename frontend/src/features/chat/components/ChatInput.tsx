@@ -386,29 +386,40 @@ export const ChatInput = memo(function ChatInput({
           />
           <div className="flex items-center">
             {status === "running" ? (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={onStop}
-                className="font-mono text-xs font-semibold"
-              >
-                <Square className="h-3 w-3 mr-1.5 fill-current" />
-                Stop
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={onStop}
+                    className="h-8 w-8 shrink-0"
+                    aria-label="중지"
+                  >
+                    <Square className="h-3.5 w-3.5 fill-current" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>중지 (Esc)</TooltipContent>
+              </Tooltip>
             ) : (
-              <Button
-                size="sm"
-                onClick={handleSubmit}
-                disabled={
-                  (!input.trim() &&
-                    pendingImages.length === 0 &&
-                    pendingAnswerCount === 0) ||
-                  !connected
-                }
-                className="font-mono text-xs font-semibold"
-              >
-                Send <Send className="h-3 w-3 ml-1.5" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    onClick={handleSubmit}
+                    disabled={
+                      (!input.trim() &&
+                        pendingImages.length === 0 &&
+                        pendingAnswerCount === 0) ||
+                      !connected
+                    }
+                    className="h-8 w-8 shrink-0"
+                    aria-label="전송"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>전송 (Enter)</TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>
