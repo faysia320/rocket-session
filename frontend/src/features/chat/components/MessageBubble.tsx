@@ -205,7 +205,7 @@ function ResultMessage({ message }: { message: ResultMsg }) {
     <div className="animate-[fadeIn_0.2s_ease]">
       <div
         className={cn(
-          "px-3.5 py-3 bg-card/50 rounded-lg border-l-[3px] border-l-info/60",
+          "px-3.5 py-3 bg-card/50 rounded-md border-l-[3px] border-l-info/60",
           message.is_error && "border-l-destructive bg-destructive/5",
         )}
       >
@@ -425,7 +425,7 @@ function AssistantText({ message, isStreaming }: { message: AssistantTextMsg; is
     <div className="animate-[fadeIn_0.2s_ease]">
       <div
         className={cn(
-          "px-3.5 py-3 bg-card/50 rounded-lg border-l-[3px]",
+          "px-3.5 py-3 bg-card/50 rounded-md border-l-[3px]",
           isStreaming ? "border-l-info/40" : "border-l-info/60",
         )}
       >
