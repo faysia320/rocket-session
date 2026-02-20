@@ -75,11 +75,11 @@ export function SessionSettings({
     }
   }, [open, loadSession]);
 
-  const handlePermissionToolToggle = (tool: string, checked: boolean) => {
+  const handlePermissionToolToggle = useCallback((tool: string, checked: boolean) => {
     setPermissionTools((prev) =>
       checked ? [...prev, tool] : prev.filter((t) => t !== tool),
     );
-  };
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);

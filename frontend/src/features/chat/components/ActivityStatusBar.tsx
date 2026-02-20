@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
 import { getActivityLabel } from "../utils/activityLabel";
@@ -7,7 +8,7 @@ interface ActivityStatusBarProps {
   status: "idle" | "running" | "error";
 }
 
-export function ActivityStatusBar({
+export const ActivityStatusBar = memo(function ActivityStatusBar({
   activeTools,
   status,
 }: ActivityStatusBarProps) {
@@ -37,4 +38,4 @@ export function ActivityStatusBar({
       </div>
     </div>
   );
-}
+});

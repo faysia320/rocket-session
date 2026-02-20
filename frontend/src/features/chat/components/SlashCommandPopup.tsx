@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { memo, useRef, useEffect } from "react";
 import { Sparkles, Terminal } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ interface SlashCommandPopupProps {
   onHover: (index: number) => void;
 }
 
-export function SlashCommandPopup({
+export const SlashCommandPopup = memo(function SlashCommandPopup({
   commands,
   activeIndex,
   onSelect,
@@ -71,4 +71,4 @@ export function SlashCommandPopup({
       </div>
     </div>
   );
-}
+});

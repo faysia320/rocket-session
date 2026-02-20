@@ -4,7 +4,7 @@ import {
   useNavigate,
   useLocation,
 } from "@tanstack/react-router";
-import { useCallback, useMemo, lazy, Suspense } from "react";
+import { memo, useCallback, useMemo, lazy, Suspense } from "react";
 import { Sidebar } from "@/features/session/components/Sidebar";
 
 const ChatPanel = lazy(() =>
@@ -29,7 +29,7 @@ import { CommandPaletteProvider } from "@/features/command-palette/components/Co
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, sortSessionsByStatus } from "@/lib/utils";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -109,6 +109,7 @@ function RootComponent() {
             side="left"
             className="p-0 w-[280px]"
             aria-describedby={undefined}
+            hideClose
           >
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             {sidebarElement}
@@ -137,22 +138,12 @@ function RootComponent() {
             !isNewSessionRoute ? (
             <Suspense fallback={<LoadingSkeleton />}>
               {activeSessions.slice(0, 5).map((s) => (
-                <div
+                <SplitViewPane
                   key={s.id}
-                  onPointerDown={() => {
-                    setFocusedSessionId(s.id);
-                    navigate({ to: "/session/$sessionId", params: { sessionId: s.id } });
-                  }}
-                  className="flex-1 min-w-0 h-full flex flex-col border-r border-border last:border-r-0"
-                >
-                  <div
-                    className={cn(
-                      "h-0.5 shrink-0 transition-colors duration-200",
-                      focusedSessionId === s.id ? "bg-primary" : "bg-secondary",
-                    )}
-                  />
-                  <ChatPanel sessionId={s.id} />
-                </div>
+                  sessionId={s.id}
+                  isFocused={focusedSessionId === s.id}
+                  onFocus={setFocusedSessionId}
+                />
               ))}
               {activeSessions.length > 5 ? (
                 <div className="absolute top-2 right-2 z-10">
@@ -173,7 +164,38 @@ function RootComponent() {
   );
 }
 
-function DashboardGrid({
+const SplitViewPane = memo(function SplitViewPane({
+  sessionId,
+  isFocused,
+  onFocus,
+}: {
+  sessionId: string;
+  isFocused: boolean;
+  onFocus: (id: string) => void;
+}) {
+  const navigate = useNavigate();
+  const handlePointerDown = useCallback(() => {
+    onFocus(sessionId);
+    navigate({ to: "/session/$sessionId", params: { sessionId } });
+  }, [sessionId, onFocus, navigate]);
+
+  return (
+    <div
+      onPointerDown={handlePointerDown}
+      className="flex-1 min-w-0 h-full flex flex-col border-r border-border last:border-r-0"
+    >
+      <div
+        className={cn(
+          "h-0.5 shrink-0 transition-colors duration-200",
+          isFocused ? "bg-primary" : "bg-secondary",
+        )}
+      />
+      <ChatPanel sessionId={sessionId} />
+    </div>
+  );
+});
+
+const DashboardGrid = memo(function DashboardGrid({
   sessions,
   activeSessionId,
   onSelect,
@@ -184,9 +206,8 @@ function DashboardGrid({
   onSelect: (id: string) => void;
   onNew: () => void;
 }) {
-  const runningSessions = sessions.filter((s) => s.status === "running");
-  const otherSessions = sessions.filter((s) => s.status !== "running");
-  const sortedSessions = [...runningSessions, ...otherSessions];
+  const sortedSessions = sortSessionsByStatus(sessions);
+  const runningCount = sessions.filter((s) => s.status === "running").length;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -198,7 +219,7 @@ function DashboardGrid({
               Dashboard
             </h1>
             <p className="font-mono text-xs text-muted-foreground">
-              {sessions.length}개 세션 ({runningSessions.length}개 실행 중)
+              {sessions.length}개 세션 ({runningCount}개 실행 중)
             </p>
           </div>
           <Button
@@ -231,7 +252,7 @@ function DashboardGrid({
       </Suspense>
     </div>
   );
-}
+});
 
 function LoadingSkeleton() {
   return (

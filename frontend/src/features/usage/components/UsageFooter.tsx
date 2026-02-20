@@ -1,7 +1,7 @@
 import { AlertCircle } from "lucide-react";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 
 function formatTimeRemaining(resetsAt: string | null): string {
   if (!resetsAt) return "--:--";
@@ -20,7 +20,7 @@ function utilizationColor(util: number): string {
   return "text-success";
 }
 
-export function UsageFooter() {
+export const UsageFooter = memo(function UsageFooter() {
   const { data, isLoading, isError } = useUsage();
 
   const fiveHourCountdown = useMemo(
@@ -87,4 +87,4 @@ export function UsageFooter() {
       </div>
     </footer>
   );
-}
+});

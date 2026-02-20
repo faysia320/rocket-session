@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { memo, useState, useCallback, useMemo } from "react";
 import { ChevronRight, Maximize2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -62,7 +62,7 @@ interface FilePanelProps {
   onFileClick?: (change: FileChange) => void;
 }
 
-export function FilePanel({
+export const FilePanel = memo(function FilePanel({
   sessionId,
   fileChanges = [],
   onFileClick,
@@ -112,7 +112,7 @@ export function FilePanel({
       </div>
     </div>
   );
-}
+});
 
 /** 절대 경로이면 마지막 3세그먼트로 축약, 상대 경로는 그대로 표시 */
 function shortenFilePath(filePath: string): string {
