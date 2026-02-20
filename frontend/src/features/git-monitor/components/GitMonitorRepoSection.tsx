@@ -1,5 +1,7 @@
+import { useState, useCallback } from "react";
 import {
   GitBranch,
+  GitCommit,
   AlertCircle,
   Check,
   RefreshCw,
@@ -18,6 +20,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { useGitStatus } from "../hooks/useGitStatus";
+import { useCreateSession } from "@/features/session/hooks/useSessions";
+import { useSessionStore } from "@/store";
 import { GitInfoCard } from "@/features/directory/components/GitInfoCard";
 import { GitStatusFileList } from "./GitStatusFileList";
 
@@ -43,9 +47,27 @@ export function GitMonitorRepoSection({
     refetch,
   } = useGitStatus(path);
 
+  const { createSession } = useCreateSession();
+  const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt);
+  const clearPendingPrompt = useSessionStore((s) => s.clearPendingPrompt);
+  const [isCreating, setIsCreating] = useState(false);
+
   const isGitRepo = gitInfo?.is_git_repo ?? false;
   const isLoading = gitInfoLoading || statusLoading;
   const changeCount = status?.total_count ?? 0;
+  const hasChanges = (gitInfo?.is_dirty || gitInfo?.has_untracked) ?? false;
+
+  const handleCommit = useCallback(async () => {
+    if (isCreating) return;
+    setIsCreating(true);
+    setPendingPrompt("/git-commit");
+    try {
+      await createSession(path);
+    } catch {
+      clearPendingPrompt();
+      setIsCreating(false);
+    }
+  }, [createSession, path, setPendingPrompt, clearPendingPrompt, isCreating]);
 
   return (
     <div className="flex flex-col h-full min-w-[280px] w-[320px] shrink-0 border-r border-border last:border-r-0">
@@ -109,6 +131,18 @@ export function GitMonitorRepoSection({
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />
         ) : null}
 
+        {isGitRepo && hasChanges ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-success"
+            onClick={handleCommit}
+            disabled={isCreating}
+            aria-label="커밋"
+          >
+            <GitCommit className="h-3 w-3" />
+          </Button>
+        ) : null}
         <Button
           variant="ghost"
           size="icon"

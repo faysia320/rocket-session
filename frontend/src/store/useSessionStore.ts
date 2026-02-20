@@ -25,6 +25,9 @@ interface SessionState {
   setSidebarMobileOpen: (open: boolean) => void;
   addGitMonitorPath: (path: string) => void;
   removeGitMonitorPath: (path: string) => void;
+  pendingPrompt: string | null;
+  setPendingPrompt: (prompt: string) => void;
+  clearPendingPrompt: () => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -75,6 +78,9 @@ export const useSessionStore = create<SessionState>()(
         set((s) => ({
           gitMonitorPaths: s.gitMonitorPaths.filter((p) => p !== path),
         })),
+      pendingPrompt: null,
+      setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),
+      clearPendingPrompt: () => set({ pendingPrompt: null }),
     }),
     {
       name: "rocket-session-store",

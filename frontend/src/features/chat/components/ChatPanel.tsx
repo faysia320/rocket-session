@@ -70,6 +70,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const splitView = useSessionStore((s) => s.splitView);
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
+  const pendingPrompt = useSessionStore((s) => s.pendingPrompt);
+  const clearPendingPrompt = useSessionStore((s) => s.clearPendingPrompt);
   const queryClient = useQueryClient();
   const { archiveSession, unarchiveSession } = useSessions();
   const workDir = sessionInfo?.work_dir;
@@ -83,6 +85,21 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       setMode(sessionInfo.mode);
     }
   }, [sessionInfo]);
+
+  // pendingPrompt 자동 전송 (Git Monitor 커밋 등 외부에서 세션 생성 시)
+  const hasAutoSentRef = useRef(false);
+
+  useEffect(() => {
+    if (connected && pendingPrompt && !hasAutoSentRef.current) {
+      hasAutoSentRef.current = true;
+      sendPrompt(pendingPrompt, { mode: "normal" });
+      clearPendingPrompt();
+    }
+  }, [connected, pendingPrompt, sendPrompt, clearPendingPrompt]);
+
+  useEffect(() => {
+    hasAutoSentRef.current = false;
+  }, [sessionId]);
 
   const { data: skillsData } = useQuery({
     queryKey: ["skills", workDir],
