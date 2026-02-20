@@ -13,6 +13,10 @@ from app.services.local_session_scanner import LocalSessionScanner
 from app.services.mcp_service import McpService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
+from app.services.analytics_service import AnalyticsService
+from app.services.search_service import SearchService
+from app.services.tag_service import TagService
+from app.services.template_service import TemplateService
 from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
 
@@ -27,6 +31,10 @@ _claude_runner: ClaudeRunner | None = None
 _settings_service: SettingsService | None = None
 _jsonl_watcher: JsonlWatcher | None = None
 _mcp_service: McpService | None = None
+_template_service: TemplateService | None = None
+_tag_service: TagService | None = None
+_search_service: SearchService | None = None
+_analytics_service: AnalyticsService | None = None
 
 
 @lru_cache(maxsize=1)
@@ -94,6 +102,30 @@ def get_mcp_service() -> McpService:
     return _mcp_service
 
 
+def get_template_service() -> TemplateService:
+    if _template_service is None:
+        raise RuntimeError("TemplateService가 초기화되지 않았습니다")
+    return _template_service
+
+
+def get_tag_service() -> TagService:
+    if _tag_service is None:
+        raise RuntimeError("TagService가 초기화되지 않았습니다")
+    return _tag_service
+
+
+def get_search_service() -> SearchService:
+    if _search_service is None:
+        raise RuntimeError("SearchService가 초기화되지 않았습니다")
+    return _search_service
+
+
+def get_analytics_service() -> AnalyticsService:
+    if _analytics_service is None:
+        raise RuntimeError("AnalyticsService가 초기화되지 않았습니다")
+    return _analytics_service
+
+
 async def init_dependencies():
     """앱 시작 시 DB 및 SessionManager 초기화."""
     global \
@@ -106,7 +138,11 @@ async def init_dependencies():
         _filesystem_service, \
         _ws_manager, \
         _claude_runner, \
-        _mcp_service
+        _mcp_service, \
+        _template_service, \
+        _tag_service, \
+        _search_service, \
+        _analytics_service
     logger = logging.getLogger(__name__)
     settings = get_settings()
     _filesystem_service = FilesystemService(root_dir=settings.claude_work_dir)
@@ -129,6 +165,10 @@ async def init_dependencies():
     _claude_runner = ClaudeRunner(settings)
     _settings_service = SettingsService(_database)
     _mcp_service = McpService(_database)
+    _template_service = TemplateService(_database)
+    _tag_service = TagService(_database)
+    _search_service = SearchService(_database)
+    _analytics_service = AnalyticsService(_database)
     _jsonl_watcher = JsonlWatcher(_session_manager, _ws_manager)
 
     # 서버 재시작 시 프로세스/task가 없는 stale running 세션을 idle로 복구
@@ -156,7 +196,11 @@ async def shutdown_dependencies():
         _jsonl_watcher, \
         _filesystem_service, \
         _ws_manager, \
-        _mcp_service
+        _mcp_service, \
+        _template_service, \
+        _tag_service, \
+        _search_service, \
+        _analytics_service
     logger = logging.getLogger(__name__)
     # 1. 실행 중인 세션 프로세스 종료
     if _session_manager:
@@ -190,3 +234,7 @@ async def shutdown_dependencies():
     _filesystem_service = None
     _ws_manager = None
     _mcp_service = None
+    _template_service = None
+    _tag_service = None
+    _search_service = None
+    _analytics_service = None

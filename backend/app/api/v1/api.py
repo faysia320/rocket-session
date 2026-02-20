@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    analytics,
     files,
     filesystem,
     health,
@@ -11,6 +12,8 @@ from app.api.v1.endpoints import (
     permissions,
     sessions,
     settings,
+    tags,
+    templates,
     usage,
 )
 
@@ -24,3 +27,6 @@ api_router.include_router(permissions.router)
 api_router.include_router(usage.router)
 api_router.include_router(settings.router)
 api_router.include_router(mcp.router)
+api_router.include_router(templates.router)
+api_router.include_router(tags.router)
+api_router.include_router(analytics.router)
