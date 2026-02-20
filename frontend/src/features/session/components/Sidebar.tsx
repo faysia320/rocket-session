@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, memo } from "react";
 import { useTheme } from "next-themes";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Sun,
   Moon,
@@ -14,6 +15,9 @@ import {
   X,
   Bell,
   BellOff,
+  FileStack,
+  BarChart3,
+  Clock,
 } from "lucide-react";
 import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
 import { Button } from "@/components/ui/button";
@@ -38,6 +42,7 @@ import { cn, truncatePath } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { ImportLocalDialog } from "./ImportLocalDialog";
 import { GlobalSettingsDialog } from "@/features/settings/components/GlobalSettingsDialog";
+import { TemplateListDialog } from "@/features/template/components/TemplateListDialog";
 import { useSessionStore } from "@/store";
 
 interface SidebarProps {
@@ -65,10 +70,13 @@ export const Sidebar = memo(function Sidebar({
   isLoading,
   isError,
 }: SidebarProps) {
+  const navigate = useNavigate();
   const splitView = useSessionStore((s) => s.splitView);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
   const dashboardView = useSessionStore((s) => s.dashboardView);
   const toggleDashboardView = useSessionStore((s) => s.toggleDashboardView);
+  const costView = useSessionStore((s) => s.costView);
+  const toggleCostView = useSessionStore((s) => s.toggleCostView);
   const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
   const collapsed = isMobileOverlay ? false : sidebarCollapsed;
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
@@ -340,6 +348,39 @@ export const Sidebar = memo(function Sidebar({
               <Settings className="h-4 w-4" />
             </Button>
           </GlobalSettingsDialog>
+          <TemplateListDialog>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="세션 템플릿"
+                >
+                  <FileStack className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side={collapsed ? "right" : "top"}>
+                템플릿
+              </TooltipContent>
+            </Tooltip>
+          </TemplateListDialog>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => navigate({ to: "/history" })}
+                aria-label="세션 히스토리"
+              >
+                <Clock className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side={collapsed ? "right" : "top"}>
+              History
+            </TooltipContent>
+          </Tooltip>
           <ThemeToggle />
           {isMobileOverlay ? null : (
             <>
@@ -359,6 +400,24 @@ export const Sidebar = memo(function Sidebar({
                 </TooltipTrigger>
                 <TooltipContent side={collapsed ? "right" : "top"}>
                   Dashboard
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn("h-8 w-8", costView && "bg-muted")}
+                    onClick={toggleCostView}
+                    aria-label={
+                      costView ? "토큰 분석 끄기" : "토큰 분석 켜기"
+                    }
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side={collapsed ? "right" : "top"}>
+                  Token Analytics
                 </TooltipContent>
               </Tooltip>
               <Tooltip>

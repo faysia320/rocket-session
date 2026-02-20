@@ -39,6 +39,7 @@ export function useCommandPalette() {
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
   const toggleDashboardView = useSessionStore((s) => s.toggleDashboardView);
+  const toggleCostView = useSessionStore((s) => s.toggleCostView);
   const splitView = useSessionStore((s) => s.splitView);
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
 
@@ -106,6 +107,7 @@ export function useCommandPalette() {
       toggleSidebar,
       toggleSplitView,
       toggleDashboardView,
+      toggleCostView,
       toggleTheme,
       isDark,
       sidebarCollapsed,
@@ -125,6 +127,7 @@ export function useCommandPalette() {
     toggleSidebar,
     toggleSplitView,
     toggleDashboardView,
+    toggleCostView,
     toggleTheme,
     isDark,
     sidebarCollapsed,

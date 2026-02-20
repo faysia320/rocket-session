@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { GitBranch, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSessionStore } from "@/store";
 import { DirectoryBrowser } from "@/features/directory/components/DirectoryBrowser";
 import { GitMonitorRepoSection } from "./GitMonitorRepoSection";
@@ -37,36 +36,36 @@ export function GitMonitorPanel() {
         </Button>
       </div>
 
-      {/* 저장소 섹션 목록 */}
-      <div className="flex-1 min-h-0">
-        <ScrollArea className="h-full" viewportClassName="h-full">
-          {gitMonitorPaths.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <GitBranch className="h-8 w-8 text-muted-foreground/30 mb-2" />
-              <div className="font-mono text-xs text-muted-foreground mb-2">
-                모니터링할 Git 저장소를 추가하세요
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-mono text-xs"
-                onClick={() => setBrowserOpen(true)}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                저장소 추가
-              </Button>
+      {/* 저장소 섹션 목록 (횡 배치) */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {gitMonitorPaths.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <GitBranch className="h-8 w-8 text-muted-foreground/30 mb-2" />
+            <div className="font-mono text-xs text-muted-foreground mb-2">
+              모니터링할 Git 저장소를 추가하세요
             </div>
-          ) : (
-            gitMonitorPaths.map((path, i) => (
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-mono text-xs"
+              onClick={() => setBrowserOpen(true)}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              저장소 추가
+            </Button>
+          </div>
+        ) : (
+          <div className="flex h-full gap-0 overflow-x-auto">
+            {gitMonitorPaths.map((path) => (
               <GitMonitorRepoSection
                 key={path}
                 path={path}
-                defaultOpen={i === 0}
+                defaultOpen
                 onRemove={removeGitMonitorPath}
               />
-            ))
-          )}
-        </ScrollArea>
+            ))}
+          </div>
+        )}
       </div>
 
       <DirectoryBrowser
