@@ -89,95 +89,104 @@ export const ChatHeader = memo(function ChatHeader({
   );
 
   return (
-    <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-11">
-      <div className="flex items-center gap-2 min-w-0">
-        {onMenuToggle ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 md:hidden shrink-0"
-            onClick={onMenuToggle}
-            aria-label="메뉴 열기"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        ) : null}
-        <span
-          className={cn(
-            "w-2 h-2 rounded-full transition-all",
-            !connected
+    <div className="flex items-center justify-between px-2 md:px-4 py-1.5 border-b border-border bg-secondary">
+      <div className="flex flex-col gap-0.5 min-w-0">
+        {/* 1줄: 연결 상태 */}
+        <div className="flex items-center gap-2">
+          {onMenuToggle ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 md:hidden shrink-0"
+              onClick={onMenuToggle}
+              aria-label="메뉴 열기"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          ) : null}
+          <span
+            className={cn(
+              "w-2 h-2 rounded-full transition-all",
+              !connected
+                ? reconnectState?.status === "reconnecting"
+                  ? "bg-warning animate-pulse"
+                  : "bg-destructive"
+                : status === "running"
+                  ? "bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]"
+                  : status === "error"
+                    ? "bg-destructive shadow-[0_0_8px_hsl(var(--destructive))]"
+                    : "bg-success shadow-[0_0_8px_hsl(var(--success))]",
+            )}
+          />
+          <span className={cn(
+            "font-mono text-xs",
+            status === "running" && connected
+              ? "text-primary font-semibold"
+              : status === "error" && connected
+                ? "text-destructive font-semibold"
+                : "text-muted-foreground",
+          )}>
+            {!connected
               ? reconnectState?.status === "reconnecting"
-                ? "bg-warning animate-pulse"
-                : "bg-destructive"
+                ? `Reconnecting (${reconnectState.attempt}/${reconnectState.maxAttempts})`
+                : reconnectState?.status === "failed"
+                  ? "Connection Failed"
+                  : "Disconnected"
               : status === "running"
-                ? "bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]"
+                ? "Running"
                 : status === "error"
-                  ? "bg-destructive shadow-[0_0_8px_hsl(var(--destructive))]"
-                  : "bg-success shadow-[0_0_8px_hsl(var(--success))]",
-          )}
-        />
-        <span className={cn(
-          "font-mono text-xs",
-          status === "running" && connected
-            ? "text-primary font-semibold"
-            : status === "error" && connected
-              ? "text-destructive font-semibold"
-              : "text-muted-foreground",
-        )}>
-          {!connected
-            ? reconnectState?.status === "reconnecting"
-              ? `Reconnecting (${reconnectState.attempt}/${reconnectState.maxAttempts})`
-              : reconnectState?.status === "failed"
-                ? "Connection Failed"
-                : "Disconnected"
-            : status === "running"
-              ? "Running"
-              : status === "error"
-                ? "Error"
-                : "Connected"}
-        </span>
-        {reconnectState?.status === "failed" && onRetryConnect ? (
-          <button
-            type="button"
-            onClick={onRetryConnect}
-            className="flex items-center gap-1 px-2 py-0.5 font-mono text-2xs font-semibold text-primary bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
-            aria-label="재연결 시도"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Retry
-          </button>
-        ) : null}
-        {workDir ? (
-          <span className="hidden md:contents">
-            <span className="text-muted-foreground/70 text-xs">|</span>
-            <FolderOpen className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="font-mono text-xs text-muted-foreground/70 truncate max-w-[300px] direction-rtl text-left">
-                  {workDir}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="font-mono text-xs">
-                {workDir}
-              </TooltipContent>
-            </Tooltip>
+                  ? "Error"
+                  : "Connected"}
           </span>
-        ) : null}
-        {gitInfo?.branch ? (
-          <span className="hidden md:contents">
-            <span className="text-muted-foreground/70 text-xs">|</span>
-            <GitBranch className="h-3 w-3 text-muted-foreground/70 shrink-0" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="font-mono text-xs text-muted-foreground/70 truncate max-w-[150px]">
-                  {gitInfo.branch}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="font-mono text-xs">
-                {gitInfo.branch}
-              </TooltipContent>
-            </Tooltip>
-          </span>
+          {reconnectState?.status === "failed" && onRetryConnect ? (
+            <button
+              type="button"
+              onClick={onRetryConnect}
+              className="flex items-center gap-1 px-2 py-0.5 font-mono text-2xs font-semibold text-primary bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
+              aria-label="재연결 시도"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </button>
+          ) : null}
+        </div>
+        {/* 2줄: 작업 디렉토리 + Git 브랜치 */}
+        {workDir || gitInfo?.branch ? (
+          <div className="hidden md:flex items-center gap-1.5 pl-4">
+            {workDir ? (
+              <>
+                <FolderOpen className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="font-mono text-2xs text-muted-foreground/60 truncate max-w-[300px] direction-rtl text-left">
+                      {workDir}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-mono text-xs">
+                    {workDir}
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            ) : null}
+            {workDir && gitInfo?.branch ? (
+              <span className="text-muted-foreground/40 text-2xs">|</span>
+            ) : null}
+            {gitInfo?.branch ? (
+              <>
+                <GitBranch className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="font-mono text-2xs text-muted-foreground/60 truncate max-w-[150px]">
+                      {gitInfo.branch}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-mono text-xs">
+                    {gitInfo.branch}
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            ) : null}
+          </div>
         ) : null}
       </div>
       <div className="flex items-center gap-2">
