@@ -1,7 +1,7 @@
 import { AlertCircle } from "lucide-react";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "@/lib/utils";
-import { memo, useMemo } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 
 function formatTimeRemaining(resetsAt: string | null): string {
   if (!resetsAt) return "--:--";
@@ -20,7 +20,11 @@ function utilizationColor(util: number): string {
   return "text-success";
 }
 
-export const UsageFooter = memo(function UsageFooter() {
+export const UsageFooter = memo(function UsageFooter({
+  centerSlot,
+}: {
+  centerSlot?: ReactNode;
+}) {
   const { data, isLoading, isError } = useUsage();
 
   const fiveHourCountdown = useMemo(
@@ -35,22 +39,26 @@ export const UsageFooter = memo(function UsageFooter() {
 
   if (isLoading) {
     return (
-      <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center justify-between px-3">
-        <span className="font-mono text-xs font-semibold text-primary">
+      <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center px-3">
+        <span className="flex-1 font-mono text-xs font-semibold text-primary">
           Rocket Session
         </span>
-        <div className="h-3 w-48 animate-pulse rounded bg-muted" />
+        {centerSlot ? <div className="flex-1 flex justify-center">{centerSlot}</div> : null}
+        <div className="flex-1 flex justify-end">
+          <div className="h-3 w-48 animate-pulse rounded bg-muted" />
+        </div>
       </footer>
     );
   }
 
   if (isError || !data || !data.available) {
     return (
-      <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center justify-between px-3 text-xs text-muted-foreground">
-        <span className="font-mono text-xs font-semibold text-primary">
+      <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center px-3 text-xs text-muted-foreground">
+        <span className="flex-1 font-mono text-xs font-semibold text-primary">
           Rocket Session
         </span>
-        <span className="flex items-center gap-1.5">
+        {centerSlot ? <div className="flex-1 flex justify-center">{centerSlot}</div> : null}
+        <span className="flex-1 flex items-center justify-end gap-1.5">
           <AlertCircle className="h-3 w-3" />
           <span>
             {data?.error ? data.error : "사용량 정보를 가져올 수 없습니다"}
@@ -63,14 +71,17 @@ export const UsageFooter = memo(function UsageFooter() {
   const { five_hour, seven_day } = data;
 
   return (
-    <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center justify-between px-3 text-xs text-muted-foreground">
+    <footer className="h-8 shrink-0 border-t border-sidebar-border bg-sidebar flex items-center px-3 text-xs text-muted-foreground">
       {/* 좌측: 브랜드 */}
-      <span className="font-mono text-xs font-semibold text-primary">
+      <span className="flex-1 font-mono text-xs font-semibold text-primary">
         Rocket Session
       </span>
 
+      {/* 중앙: 슬롯 (페이지네이션 등) */}
+      {centerSlot ? <div className="flex-1 flex justify-center">{centerSlot}</div> : null}
+
       {/* 우측: 5시간 + 주간 사용량 */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex-1 flex items-center justify-end gap-1.5">
         <span className="text-muted-foreground/60">5시간:</span>
         <span className={cn("font-medium", utilizationColor(five_hour.utilization))}>
           {five_hour.utilization.toFixed(0)}%

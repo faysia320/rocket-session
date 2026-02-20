@@ -176,19 +176,22 @@ function RootComponent() {
                   onFocus={setFocusedSessionId}
                 />
               ))}
-              {totalSplitPages > 1 ? (
-                <SplitViewPagination
-                  currentPage={splitPage}
-                  totalPages={totalSplitPages}
-                  onPageChange={setSplitPage}
-                />
-              ) : null}
             </Suspense>
           ) : (
             <Outlet />
           )}
         </main>
-        <UsageFooter />
+        <UsageFooter
+          centerSlot={
+            splitView && !isMobile && totalSplitPages > 1 ? (
+              <SplitViewPagination
+                currentPage={splitPage}
+                totalPages={totalSplitPages}
+                onPageChange={setSplitPage}
+              />
+            ) : undefined
+          }
+        />
       </div>
       <CommandPaletteProvider />
     </div>
@@ -236,7 +239,7 @@ const SplitViewPagination = memo(function SplitViewPagination({
   onPageChange: (page: number) => void;
 }) {
   return (
-    <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+    <div className="flex items-center gap-1">
       <button
         type="button"
         aria-label="이전 페이지"
