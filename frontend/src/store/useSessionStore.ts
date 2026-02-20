@@ -1,5 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { toast } from "sonner";
+
+const MAX_GIT_MONITOR_PATHS = 10;
 
 interface SessionState {
   activeSessionId: string | null;
@@ -8,7 +11,7 @@ interface SessionState {
   dashboardView: boolean;
   sidebarCollapsed: boolean;
   sidebarMobileOpen: boolean;
-  gitMonitorPath: string;
+  gitMonitorPaths: string[];
   setActiveSessionId: (id: string | null) => void;
   setFocusedSessionId: (id: string | null) => void;
   setSplitView: (v: boolean) => void;
@@ -17,7 +20,8 @@ interface SessionState {
   toggleDashboardView: () => void;
   toggleSidebar: () => void;
   setSidebarMobileOpen: (open: boolean) => void;
-  setGitMonitorPath: (path: string) => void;
+  addGitMonitorPath: (path: string) => void;
+  removeGitMonitorPath: (path: string) => void;
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -29,7 +33,7 @@ export const useSessionStore = create<SessionState>()(
       dashboardView: false,
       sidebarCollapsed: false,
       sidebarMobileOpen: false,
-      gitMonitorPath: "",
+      gitMonitorPaths: [],
       setActiveSessionId: (id) => set({ activeSessionId: id }),
       setFocusedSessionId: (id) => set({ focusedSessionId: id }),
       setSplitView: (v) => set({ splitView: v }),
@@ -47,15 +51,41 @@ export const useSessionStore = create<SessionState>()(
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarMobileOpen: (open) => set({ sidebarMobileOpen: open }),
-      setGitMonitorPath: (path) => set({ gitMonitorPath: path }),
+      addGitMonitorPath: (path) =>
+        set((s) => {
+          const normalized = path.replace(/\/+$/, "");
+          if (s.gitMonitorPaths.includes(normalized)) return s;
+          if (s.gitMonitorPaths.length >= MAX_GIT_MONITOR_PATHS) {
+            toast.error(`최대 ${MAX_GIT_MONITOR_PATHS}개까지 모니터링할 수 있습니다`);
+            return s;
+          }
+          return { gitMonitorPaths: [...s.gitMonitorPaths, normalized] };
+        }),
+      removeGitMonitorPath: (path) =>
+        set((s) => ({
+          gitMonitorPaths: s.gitMonitorPaths.filter((p) => p !== path),
+        })),
     }),
     {
       name: "rocket-session-store",
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as Record<string, unknown>;
+        if (version === 0) {
+          const oldPath = state.gitMonitorPath as string | undefined;
+          return {
+            ...state,
+            gitMonitorPaths: oldPath ? [oldPath] : [],
+            gitMonitorPath: undefined,
+          };
+        }
+        return state;
+      },
       partialize: (s) => ({
         sidebarCollapsed: s.sidebarCollapsed,
         splitView: s.splitView,
         dashboardView: s.dashboardView,
-        gitMonitorPath: s.gitMonitorPath,
+        gitMonitorPaths: s.gitMonitorPaths,
       }),
     },
   ),
