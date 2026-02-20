@@ -172,11 +172,18 @@ async def _handle_clear(
     manager: SessionManager,
     ws_manager: WebSocketManager,
 ) -> None:
-    """clear 메시지 처리: claude_session_id 초기화 → 다음 프롬프트에서 새 대화 시작."""
+    """clear 메시지 처리: 대화 기록 삭제 + claude_session_id 초기화 → 새 대화 시작."""
+    # 1. Claude CLI 세션 ID 초기화 (다음 프롬프트에서 --resume 없이 새 대화)
     await manager.update_claude_session_id(session_id, "")
-    await ws_manager.broadcast_event(
-        session_id, {"type": WsEventType.SYSTEM, "message": "대화 컨텍스트가 초기화되었습니다"}
-    )
+    # 2. DB에서 메시지/파일변경/이벤트 삭제
+    await manager.clear_history(session_id)
+    # 3. 인메모리 이벤트 버퍼 + seq 카운터 초기화
+    ws_manager.reset_session(session_id)
+    # 4. 클라이언트에 직접 알림 (reset 후이므로 broadcast_event 대신 broadcast 사용)
+    await ws_manager.broadcast(session_id, {
+        "type": WsEventType.SYSTEM,
+        "message": "대화 컨텍스트가 초기화되었습니다",
+    })
 
 
 async def _handle_permission_respond(data: dict) -> None:

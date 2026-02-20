@@ -599,6 +599,22 @@ class Database:
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
 
+    async def delete_messages(self, session_id: str, auto_commit: bool = True):
+        """세션의 모든 메시지 삭제."""
+        await self.conn.execute(
+            "DELETE FROM messages WHERE session_id = ?", (session_id,)
+        )
+        if auto_commit:
+            await self.conn.commit()
+
+    async def delete_file_changes(self, session_id: str, auto_commit: bool = True):
+        """세션의 모든 파일 변경 기록 삭제."""
+        await self.conn.execute(
+            "DELETE FROM file_changes WHERE session_id = ?", (session_id,)
+        )
+        if auto_commit:
+            await self.conn.commit()
+
     async def delete_events(self, session_id: str, auto_commit: bool = True):
         await self.conn.execute(
             "DELETE FROM events WHERE session_id = ?", (session_id,)

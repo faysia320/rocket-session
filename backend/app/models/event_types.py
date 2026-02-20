@@ -53,3 +53,6 @@ class WsEventType:
 
     # Heartbeat
     PONG = "pong"
+
+    # System
+    SYSTEM = "system"

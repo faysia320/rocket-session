@@ -195,6 +195,12 @@ class SessionManager:
     async def get_history(self, session_id: str) -> list[dict]:
         return await self._db.get_messages(session_id)
 
+    async def clear_history(self, session_id: str):
+        """세션의 대화 기록, 파일 변경, 이벤트를 모두 삭제."""
+        await self._db.delete_messages(session_id)
+        await self._db.delete_file_changes(session_id)
+        await self._db.delete_events(session_id)
+
     async def add_file_change(
         self, session_id: str, tool: str, file: str, timestamp: str
     ):

@@ -498,7 +498,12 @@ export function claudeSocketReducer(
       };
 
     case "CLEAR_MESSAGES":
-      return { ...state, messages: [], fileChanges: [] };
+      return {
+        ...state,
+        messages: [],
+        fileChanges: [],
+        tokenUsage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 },
+      };
 
     case "ADD_SYSTEM_MESSAGE":
       return {

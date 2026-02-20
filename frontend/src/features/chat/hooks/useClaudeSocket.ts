@@ -233,6 +233,12 @@ export function useClaudeSocket(sessionId: string) {
         dispatch({ type: "WS_RAW", text: data.text as string });
         break;
 
+      case "system":
+        if (typeof data.message === "string") {
+          dispatch({ type: "ADD_SYSTEM_MESSAGE", text: data.message });
+        }
+        break;
+
       default:
         break;
     }
