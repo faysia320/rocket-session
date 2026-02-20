@@ -6,6 +6,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { mcpApi } from "@/lib/api/mcp.api";
 import type {
   CreateMcpServerRequest,
@@ -41,6 +42,9 @@ export function useCreateMcpServer() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mcpKeys.list() });
     },
+    onError: (err) => {
+      toast.error(`MCP 서버 추가에 실패했습니다: ${err instanceof Error ? err.message : String(err)}`);
+    },
   });
 }
 
@@ -57,6 +61,9 @@ export function useUpdateMcpServer() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mcpKeys.list() });
     },
+    onError: (err) => {
+      toast.error(`MCP 서버 업데이트에 실패했습니다: ${err instanceof Error ? err.message : String(err)}`);
+    },
   });
 }
 
@@ -66,6 +73,9 @@ export function useDeleteMcpServer() {
     mutationFn: (id: string) => mcpApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mcpKeys.list() });
+    },
+    onError: (err) => {
+      toast.error(`MCP 서버 삭제에 실패했습니다: ${err instanceof Error ? err.message : String(err)}`);
     },
   });
 }
@@ -85,6 +95,9 @@ export function useImportSystemMcpServers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mcpKeys.list() });
       queryClient.invalidateQueries({ queryKey: mcpKeys.system() });
+    },
+    onError: (err) => {
+      toast.error(`시스템 MCP 서버 가져오기에 실패했습니다: ${err instanceof Error ? err.message : String(err)}`);
     },
   });
 }

@@ -14,6 +14,8 @@ interface BaseMessage {
   id: string;
   seq?: number;
   timestamp?: string;
+  /** 오래된 메시지 본문이 잘려있는지 여부 (메모리 절약용) */
+  _truncated?: boolean;
 }
 
 // ---------------------------------------------------------------------------

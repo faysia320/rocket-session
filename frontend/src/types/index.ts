@@ -5,6 +5,7 @@ export type {
   SessionInfo,
   CreateSessionRequest,
   UpdateSessionRequest,
+  SessionStats,
 } from "./session";
 export type {
   MessageType,

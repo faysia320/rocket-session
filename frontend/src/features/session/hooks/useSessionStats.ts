@@ -1,16 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { sessionKeys } from "./sessionKeys";
+import type { SessionStats } from "@/types";
 
-export interface SessionStats {
-  total_messages: number;
-  total_cost: number;
-  total_duration_ms: number;
-  total_input_tokens: number;
-  total_output_tokens: number;
-  total_cache_creation_tokens: number;
-  total_cache_read_tokens: number;
-}
+export type { SessionStats };
 
 export function useSessionStats(sessionId: string | null) {
   return useQuery({

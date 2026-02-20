@@ -84,7 +84,7 @@ export const initialState: ClaudeSocketState = {
 // Actions
 // ---------------------------------------------------------------------------
 
-interface HistoryItem {
+export interface HistoryItem {
   role: "user" | "assistant";
   content: string;
   timestamp?: string;
@@ -531,13 +531,13 @@ export function claudeSocketReducer(
       let changed = false;
       const updated = state.messages.map((m, i) => {
         const mText = getMessageText(m);
-        if (i < cutoff && mText.length > 500 && !(m as any)._truncated) {
+        if (i < cutoff && mText.length > 500 && !m._truncated) {
           changed = true;
           return {
             ...m,
             text: mText.slice(0, 200) + "\n\n\u2026 (이전 메시지, 전체 내용은 내보내기를 사용하세요)",
             _truncated: true,
-          } as any as Message;
+          } as Message;
         }
         return m;
       });

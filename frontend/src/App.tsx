@@ -3,6 +3,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ErrorBoundary, AppErrorFallback } from "@/components/ui/ErrorBoundary";
 import { routeTree } from "./routeTree.gen";
 
 const router = createRouter({ routeTree });
@@ -24,13 +25,15 @@ const queryClient = new QueryClient({
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-        <TooltipProvider delayDuration={300}>
-          <RouterProvider router={router} />
-          <Toaster position="bottom-center" richColors />
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary fallback={<AppErrorFallback />}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <TooltipProvider delayDuration={300}>
+            <RouterProvider router={router} />
+            <Toaster position="bottom-center" richColors />
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

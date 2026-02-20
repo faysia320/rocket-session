@@ -1,6 +1,7 @@
 import { useEffect, useRef, useReducer, useCallback, useMemo } from "react";
 import type {
   Message,
+  FileChange,
   SessionMode,
   PermissionRequestData,
   AssistantTextMsg,
@@ -19,6 +20,7 @@ import {
   initialState,
   type SessionState,
   type ClaudeSocketAction,
+  type HistoryItem,
 } from "./claudeSocketReducer";
 
 export type { ReconnectState } from "./claudeSocketReducer";
@@ -65,7 +67,7 @@ export function useClaudeSocket(sessionId: string) {
           isRunning: Boolean(data.is_running),
           isReconnect: Boolean(data.is_reconnect),
           history: (!data.is_reconnect && data.history)
-            ? data.history as any[]
+            ? data.history as HistoryItem[]
             : null,
           latestSeq: typeof data.latest_seq === "number" ? data.latest_seq : undefined,
           currentTurnEvents: null, // current_turn_events는 아래에서 별도 처리
@@ -148,7 +150,7 @@ export function useClaudeSocket(sessionId: string) {
         break;
 
       case "file_change":
-        dispatch({ type: "WS_FILE_CHANGE", change: data.change as any });
+        dispatch({ type: "WS_FILE_CHANGE", change: data.change as FileChange });
         break;
 
       case "result": {

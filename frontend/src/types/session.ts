@@ -61,3 +61,13 @@ export interface UpdateSessionRequest {
   disallowed_tools?: string | null;
   mcp_server_ids?: string[] | null;
 }
+
+export interface SessionStats {
+  total_messages: number;
+  total_cost: number;
+  total_duration_ms: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cache_creation_tokens: number;
+  total_cache_read_tokens: number;
+}

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { settingsApi } from "@/lib/api/settings.api";
 import type { GlobalSettings, UpdateGlobalSettingsRequest } from "@/types";
 
@@ -24,6 +25,9 @@ export function useUpdateGlobalSettings() {
     mutationFn: (data: UpdateGlobalSettingsRequest) => settingsApi.update(data),
     onSuccess: (data: GlobalSettings) => {
       queryClient.setQueryData(settingsKeys.global(), data);
+    },
+    onError: (err) => {
+      toast.error(`설정 저장에 실패했습니다: ${err instanceof Error ? err.message : String(err)}`);
     },
   });
 }
