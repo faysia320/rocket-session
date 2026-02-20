@@ -433,9 +433,11 @@ class FilesystemService:
             return GitStatusResponse(is_git_repo=False)
 
         # repo 루트 + status 병렬 실행
+        # -u 플래그 미사용: 기본값(--untracked-files=normal)으로
+        # untracked 디렉토리를 단일 항목으로 표시 (재귀 확장 방지)
         (rc_root, root_out, _), (rc_status, status_out, _) = await asyncio.gather(
             self._run_git_command("rev-parse", "--show-toplevel", cwd=cwd),
-            self._run_git_command("status", "--porcelain=v1", "-u", cwd=cwd),
+            self._run_git_command("status", "--porcelain=v1", cwd=cwd),
         )
 
         repo_root = root_out if rc_root == 0 else None
