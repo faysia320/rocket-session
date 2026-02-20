@@ -19,7 +19,17 @@ CREATE TABLE IF NOT EXISTS sessions (
     allowed_tools TEXT,
     system_prompt TEXT,
     timeout_seconds INTEGER,
-    mode TEXT NOT NULL DEFAULT 'normal'
+    mode TEXT NOT NULL DEFAULT 'normal',
+    permission_mode INTEGER NOT NULL DEFAULT 0,
+    permission_required_tools TEXT,
+    name TEXT,
+    jsonl_path TEXT,
+    model TEXT,
+    max_turns INTEGER,
+    max_budget_usd REAL,
+    system_prompt_mode TEXT NOT NULL DEFAULT 'replace',
+    disallowed_tools TEXT,
+    mcp_server_ids TEXT
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -30,6 +40,12 @@ CREATE TABLE IF NOT EXISTS messages (
     cost REAL,
     duration_ms INTEGER,
     timestamp TEXT NOT NULL,
+    is_error INTEGER NOT NULL DEFAULT 0,
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    cache_creation_tokens INTEGER,
+    cache_read_tokens INTEGER,
+    model TEXT,
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 
@@ -69,6 +85,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_session_seq ON events(session_id, seq);
 CREATE INDEX IF NOT EXISTS idx_sessions_claude_session_id ON sessions(claude_session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+CREATE INDEX IF NOT EXISTS idx_sessions_model ON sessions(model);
+CREATE INDEX IF NOT EXISTS idx_sessions_work_dir ON sessions(work_dir);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
 
 CREATE TABLE IF NOT EXISTS mcp_servers (
@@ -84,6 +102,54 @@ CREATE TABLE IF NOT EXISTS mcp_servers (
     source TEXT NOT NULL DEFAULT 'manual',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+    id TEXT PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    color TEXT NOT NULL DEFAULT '#6366f1',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS session_tags (
+    session_id TEXT NOT NULL,
+    tag_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (session_id, tag_id),
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_tags_tag_id ON session_tags(tag_id);
+CREATE INDEX IF NOT EXISTS idx_session_tags_session_id ON session_tags(session_id);
+
+CREATE TABLE IF NOT EXISTS session_templates (
+    id TEXT PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT,
+    work_dir TEXT,
+    system_prompt TEXT,
+    allowed_tools TEXT,
+    disallowed_tools TEXT,
+    timeout_seconds INTEGER,
+    mode TEXT DEFAULT 'normal',
+    permission_mode INTEGER NOT NULL DEFAULT 0,
+    permission_required_tools TEXT,
+    model TEXT,
+    max_turns INTEGER,
+    max_budget_usd REAL,
+    system_prompt_mode TEXT DEFAULT 'replace',
+    mcp_server_ids TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+-- FTS5 가상 테이블: 세션 이름 + 메시지 내용 전문 검색
+CREATE VIRTUAL TABLE IF NOT EXISTS sessions_fts USING fts5(
+    session_id UNINDEXED,
+    name,
+    content,
+    tokenize='unicode61'
 );
 """
 
@@ -139,6 +205,13 @@ class Database:
             "ALTER TABLE sessions ADD COLUMN mcp_server_ids TEXT",
             "ALTER TABLE global_settings ADD COLUMN mcp_server_ids TEXT",
         ]
+        # DDL 마이그레이션 (CREATE INDEX 등)
+        ddl_migrations = [
+            # Phase 4: 분석 쿼리 최적화 인덱스
+            "CREATE INDEX IF NOT EXISTS idx_messages_session_timestamp ON messages(session_id, timestamp)",
+            "CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)",
+            "CREATE INDEX IF NOT EXISTS idx_messages_model ON messages(model)",
+        ]
         for migration in migrations:
             try:
                 await self._db.execute(migration)
@@ -148,6 +221,63 @@ class Database:
                     continue  # 이미 존재하는 컬럼 - 정상
                 logger.error("마이그레이션 실패: %s - %s", migration, e)
                 raise
+
+        for ddl in ddl_migrations:
+            try:
+                await self._db.execute(ddl)
+                await self._db.commit()
+            except aiosqlite.OperationalError as e:
+                logger.error("DDL 마이그레이션 실패: %s - %s", ddl, e)
+                raise
+
+        # FTS5 트리거 생성 (메시지 INSERT 시 자동 인덱싱)
+        fts_triggers = [
+            """CREATE TRIGGER IF NOT EXISTS trg_messages_fts_insert
+               AFTER INSERT ON messages
+               BEGIN
+                 INSERT INTO sessions_fts(session_id, name, content)
+                 VALUES (NEW.session_id, '', NEW.content);
+               END""",
+            """CREATE TRIGGER IF NOT EXISTS trg_sessions_fts_name_update
+               AFTER UPDATE OF name ON sessions
+               WHEN NEW.name IS NOT NULL AND NEW.name != ''
+               BEGIN
+                 DELETE FROM sessions_fts WHERE session_id = NEW.id AND content = '';
+                 INSERT OR REPLACE INTO sessions_fts(session_id, name, content)
+                 VALUES (NEW.id, NEW.name, '');
+               END""",
+            """CREATE TRIGGER IF NOT EXISTS trg_sessions_fts_delete
+               AFTER DELETE ON sessions
+               BEGIN
+                 DELETE FROM sessions_fts WHERE session_id = OLD.id;
+               END""",
+        ]
+        for trigger in fts_triggers:
+            try:
+                await self._db.execute(trigger)
+            except aiosqlite.OperationalError as e:
+                logger.warning("FTS 트리거 생성 실패: %s", e)
+
+        # FTS5 초기 빌드: 비어있으면 기존 데이터로 채움
+        fts_count = await self._db.execute("SELECT COUNT(*) FROM sessions_fts")
+        fts_row = await fts_count.fetchone()
+        if fts_row[0] == 0:
+            msg_count = await self._db.execute("SELECT COUNT(*) FROM messages")
+            msg_row = await msg_count.fetchone()
+            if msg_row[0] > 0:
+                await self._db.execute(
+                    """INSERT INTO sessions_fts(session_id, name, content)
+                       SELECT session_id, '', content FROM messages"""
+                )
+                # 세션 이름도 인덱싱
+                await self._db.execute(
+                    """INSERT INTO sessions_fts(session_id, name, content)
+                       SELECT id, name, '' FROM sessions
+                       WHERE name IS NOT NULL AND name != ''"""
+                )
+                logger.info("FTS5 초기 빌드 완료")
+
+        await self._db.commit()
 
         # 글로벌 설정 기본 행 보장
         cursor = await self._db.execute("SELECT COUNT(*) FROM global_settings")
@@ -850,3 +980,411 @@ class Database:
         if auto_commit:
             await self.conn.commit()
         return await self.get_global_settings()
+
+    # ── 세션 템플릿 CRUD ──────────────────────────────────────
+
+    async def create_template(
+        self,
+        template_id: str,
+        name: str,
+        created_at: str,
+        description: str | None = None,
+        work_dir: str | None = None,
+        system_prompt: str | None = None,
+        allowed_tools: str | None = None,
+        disallowed_tools: str | None = None,
+        timeout_seconds: int | None = None,
+        mode: str = "normal",
+        permission_mode: bool = False,
+        permission_required_tools: str | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        system_prompt_mode: str = "replace",
+        mcp_server_ids: str | None = None,
+        auto_commit: bool = True,
+    ) -> dict:
+        await self.conn.execute(
+            """INSERT INTO session_templates
+               (id, name, description, work_dir, system_prompt, allowed_tools, disallowed_tools,
+                timeout_seconds, mode, permission_mode, permission_required_tools,
+                model, max_turns, max_budget_usd, system_prompt_mode, mcp_server_ids,
+                created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                template_id, name, description, work_dir, system_prompt,
+                allowed_tools, disallowed_tools, timeout_seconds, mode,
+                int(permission_mode), permission_required_tools,
+                model, max_turns, max_budget_usd, system_prompt_mode, mcp_server_ids,
+                created_at, created_at,
+            ),
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return await self.get_template(template_id)
+
+    async def get_template(self, template_id: str) -> dict | None:
+        cursor = await self.read_conn.execute(
+            "SELECT * FROM session_templates WHERE id = ?", (template_id,)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def get_template_by_name(self, name: str) -> dict | None:
+        cursor = await self.read_conn.execute(
+            "SELECT * FROM session_templates WHERE name = ?", (name,)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def list_templates(self) -> list[dict]:
+        cursor = await self.read_conn.execute(
+            "SELECT * FROM session_templates ORDER BY updated_at DESC"
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def update_template(
+        self,
+        template_id: str,
+        updated_at: str,
+        name: str | None = None,
+        description: str | None = None,
+        work_dir: str | None = None,
+        system_prompt: str | None = None,
+        allowed_tools: str | None = None,
+        disallowed_tools: str | None = None,
+        timeout_seconds: int | None = None,
+        mode: str | None = None,
+        permission_mode: bool | None = None,
+        permission_required_tools: str | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        system_prompt_mode: str | None = None,
+        mcp_server_ids: str | None = None,
+        auto_commit: bool = True,
+    ) -> dict | None:
+        fields = ["updated_at = ?"]
+        values: list = [updated_at]
+        if name is not None:
+            fields.append("name = ?")
+            values.append(name)
+        if description is not None:
+            fields.append("description = ?")
+            values.append(description)
+        if work_dir is not None:
+            fields.append("work_dir = ?")
+            values.append(work_dir)
+        if system_prompt is not None:
+            fields.append("system_prompt = ?")
+            values.append(system_prompt)
+        if allowed_tools is not None:
+            fields.append("allowed_tools = ?")
+            values.append(allowed_tools)
+        if disallowed_tools is not None:
+            fields.append("disallowed_tools = ?")
+            values.append(disallowed_tools)
+        if timeout_seconds is not None:
+            fields.append("timeout_seconds = ?")
+            values.append(timeout_seconds)
+        if mode is not None:
+            fields.append("mode = ?")
+            values.append(mode)
+        if permission_mode is not None:
+            fields.append("permission_mode = ?")
+            values.append(int(permission_mode))
+        if permission_required_tools is not None:
+            fields.append("permission_required_tools = ?")
+            values.append(permission_required_tools)
+        if model is not None:
+            fields.append("model = ?")
+            values.append(model)
+        if max_turns is not None:
+            fields.append("max_turns = ?")
+            values.append(max_turns)
+        if max_budget_usd is not None:
+            fields.append("max_budget_usd = ?")
+            values.append(max_budget_usd)
+        if system_prompt_mode is not None:
+            fields.append("system_prompt_mode = ?")
+            values.append(system_prompt_mode)
+        if mcp_server_ids is not None:
+            fields.append("mcp_server_ids = ?")
+            values.append(mcp_server_ids)
+        values.append(template_id)
+        await self.conn.execute(
+            f"UPDATE session_templates SET {', '.join(fields)} WHERE id = ?", values
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return await self.get_template(template_id)
+
+    async def delete_template(self, template_id: str, auto_commit: bool = True) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM session_templates WHERE id = ?", (template_id,)
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return cursor.rowcount > 0
+
+    # ── 토큰 분석 (Analytics) ──────────────────────────────────
+
+    async def get_analytics_summary(self, start: str, end: str) -> dict:
+        """기간 내 전체 토큰 요약 통계."""
+        cursor = await self.read_conn.execute(
+            """SELECT
+                  COUNT(*) as total_messages,
+                  COALESCE(SUM(input_tokens), 0) as total_input_tokens,
+                  COALESCE(SUM(output_tokens), 0) as total_output_tokens,
+                  COALESCE(SUM(cache_read_tokens), 0) as total_cache_read_tokens,
+                  COALESCE(SUM(cache_creation_tokens), 0) as total_cache_creation_tokens,
+                  COUNT(DISTINCT session_id) as total_sessions
+               FROM messages
+               WHERE role = 'assistant'
+                 AND timestamp >= ? AND timestamp < ?""",
+            (start, end),
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else {}
+
+    async def get_daily_token_usage(self, start: str, end: str) -> list[dict]:
+        """일별 토큰 사용량."""
+        cursor = await self.read_conn.execute(
+            """SELECT
+                  DATE(timestamp) as date,
+                  COALESCE(SUM(input_tokens), 0) as input_tokens,
+                  COALESCE(SUM(output_tokens), 0) as output_tokens,
+                  COALESCE(SUM(cache_read_tokens), 0) as cache_read_tokens,
+                  COALESCE(SUM(cache_creation_tokens), 0) as cache_creation_tokens,
+                  COUNT(DISTINCT session_id) as active_sessions
+               FROM messages
+               WHERE role = 'assistant'
+                 AND timestamp >= ? AND timestamp < ?
+               GROUP BY DATE(timestamp)
+               ORDER BY date ASC""",
+            (start, end),
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def get_session_token_ranking(
+        self, start: str, end: str, limit: int = 20
+    ) -> list[dict]:
+        """세션별 토큰 사용량 랭킹."""
+        cursor = await self.read_conn.execute(
+            """SELECT
+                  m.session_id,
+                  s.name as session_name,
+                  s.work_dir,
+                  COALESCE(SUM(m.input_tokens), 0) as input_tokens,
+                  COALESCE(SUM(m.output_tokens), 0) as output_tokens,
+                  (COALESCE(SUM(m.input_tokens), 0) + COALESCE(SUM(m.output_tokens), 0)) as total_tokens,
+                  COUNT(*) as message_count,
+                  (SELECT model FROM messages
+                   WHERE session_id = m.session_id AND model IS NOT NULL
+                   GROUP BY model ORDER BY COUNT(*) DESC LIMIT 1) as model
+               FROM messages m
+               JOIN sessions s ON m.session_id = s.id
+               WHERE m.role = 'assistant'
+                 AND m.timestamp >= ? AND m.timestamp < ?
+               GROUP BY m.session_id
+               ORDER BY total_tokens DESC
+               LIMIT ?""",
+            (start, end, limit),
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def get_project_token_usage(self, start: str, end: str) -> list[dict]:
+        """프로젝트(work_dir)별 토큰 사용량."""
+        cursor = await self.read_conn.execute(
+            """SELECT
+                  s.work_dir,
+                  COALESCE(SUM(m.input_tokens), 0) as input_tokens,
+                  COALESCE(SUM(m.output_tokens), 0) as output_tokens,
+                  COALESCE(SUM(m.cache_read_tokens), 0) as cache_read_tokens,
+                  COALESCE(SUM(m.cache_creation_tokens), 0) as cache_creation_tokens,
+                  COUNT(DISTINCT m.session_id) as session_count
+               FROM messages m
+               JOIN sessions s ON m.session_id = s.id
+               WHERE m.role = 'assistant'
+                 AND m.timestamp >= ? AND m.timestamp < ?
+               GROUP BY s.work_dir
+               ORDER BY (COALESCE(SUM(m.input_tokens), 0) + COALESCE(SUM(m.output_tokens), 0)) DESC""",
+            (start, end),
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    # ── 태그 CRUD ──────────────────────────────────────────────
+
+    async def create_tag(
+        self,
+        tag_id: str,
+        name: str,
+        color: str,
+        created_at: str,
+        auto_commit: bool = True,
+    ) -> dict:
+        await self.conn.execute(
+            "INSERT INTO tags (id, name, color, created_at) VALUES (?, ?, ?, ?)",
+            (tag_id, name, color, created_at),
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return await self.get_tag(tag_id)
+
+    async def get_tag(self, tag_id: str) -> dict | None:
+        cursor = await self.read_conn.execute(
+            "SELECT * FROM tags WHERE id = ?", (tag_id,)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def get_tag_by_name(self, name: str) -> dict | None:
+        cursor = await self.read_conn.execute(
+            "SELECT * FROM tags WHERE name = ?", (name,)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+    async def list_tags(self) -> list[dict]:
+        cursor = await self.read_conn.execute(
+            "SELECT * FROM tags ORDER BY name ASC"
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def update_tag(
+        self,
+        tag_id: str,
+        name: str | None = None,
+        color: str | None = None,
+        auto_commit: bool = True,
+    ) -> dict | None:
+        fields = []
+        values: list = []
+        if name is not None:
+            fields.append("name = ?")
+            values.append(name)
+        if color is not None:
+            fields.append("color = ?")
+            values.append(color)
+        if not fields:
+            return await self.get_tag(tag_id)
+        values.append(tag_id)
+        await self.conn.execute(
+            f"UPDATE tags SET {', '.join(fields)} WHERE id = ?", values
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return await self.get_tag(tag_id)
+
+    async def delete_tag(self, tag_id: str, auto_commit: bool = True) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM tags WHERE id = ?", (tag_id,)
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return cursor.rowcount > 0
+
+    # ── 세션-태그 연결 ─────────────────────────────────────────
+
+    async def add_session_tag(
+        self,
+        session_id: str,
+        tag_id: str,
+        created_at: str,
+        auto_commit: bool = True,
+    ):
+        await self.conn.execute(
+            "INSERT OR IGNORE INTO session_tags (session_id, tag_id, created_at) VALUES (?, ?, ?)",
+            (session_id, tag_id, created_at),
+        )
+        if auto_commit:
+            await self.conn.commit()
+
+    async def remove_session_tag(
+        self, session_id: str, tag_id: str, auto_commit: bool = True
+    ) -> bool:
+        cursor = await self.conn.execute(
+            "DELETE FROM session_tags WHERE session_id = ? AND tag_id = ?",
+            (session_id, tag_id),
+        )
+        if auto_commit:
+            await self.conn.commit()
+        return cursor.rowcount > 0
+
+    async def get_session_tags(self, session_id: str) -> list[dict]:
+        cursor = await self.read_conn.execute(
+            """SELECT t.id, t.name, t.color
+               FROM tags t
+               JOIN session_tags st ON st.tag_id = t.id
+               WHERE st.session_id = ?
+               ORDER BY t.name ASC""",
+            (session_id,),
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    async def get_tags_for_sessions(self, session_ids: list[str]) -> dict[str, list[dict]]:
+        """여러 세션의 태그를 배치 조회 (N+1 방지)."""
+        if not session_ids:
+            return {}
+        placeholders = ",".join("?" for _ in session_ids)
+        cursor = await self.read_conn.execute(
+            f"""SELECT st.session_id, t.id, t.name, t.color
+                FROM session_tags st
+                JOIN tags t ON t.id = st.tag_id
+                WHERE st.session_id IN ({placeholders})
+                ORDER BY t.name ASC""",
+            session_ids,
+        )
+        rows = await cursor.fetchall()
+        result: dict[str, list[dict]] = {sid: [] for sid in session_ids}
+        for row in rows:
+            r = dict(row)
+            sid = r.pop("session_id")
+            result[sid].append(r)
+        return result
+
+    # ── FTS5 전문 검색 ─────────────────────────────────────────
+
+    async def fts_search(
+        self, query: str, limit: int = 50, offset: int = 0
+    ) -> dict:
+        """FTS5로 세션 전문 검색.
+
+        Returns:
+            dict: { session_ids: list[str], total: int }
+        """
+        # unicode61 prefix match: 쿼리 끝에 * 추가
+        fts_query = " ".join(
+            f"{term}*" if not term.endswith("*") else term
+            for term in query.split()
+            if term.strip()
+        )
+        if not fts_query:
+            return {"session_ids": [], "total": 0}
+
+        # 매치된 세션 ID (중복 제거, rank 순)
+        count_cursor = await self.read_conn.execute(
+            """SELECT COUNT(DISTINCT session_id) FROM sessions_fts
+               WHERE sessions_fts MATCH ?""",
+            (fts_query,),
+        )
+        count_row = await count_cursor.fetchone()
+        total = count_row[0] if count_row else 0
+
+        cursor = await self.read_conn.execute(
+            """SELECT DISTINCT session_id FROM sessions_fts
+               WHERE sessions_fts MATCH ?
+               ORDER BY rank
+               LIMIT ? OFFSET ?""",
+            (fts_query, limit, offset),
+        )
+        rows = await cursor.fetchall()
+        session_ids = [row[0] for row in rows]
+
+        return {"session_ids": session_ids, "total": total}
