@@ -332,9 +332,10 @@ export const ChatInput = memo(function ChatInput({
                 onClick={onModeToggle}
                 className={cn(
                   "flex items-center self-center p-1 rounded transition-all duration-200 shrink-0",
+                  "border",
                   mode === "plan"
-                    ? "text-primary bg-primary/15 border border-primary/30 hover:bg-primary/25"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                    ? "text-primary bg-primary/15 border-primary/30 hover:bg-primary/25"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted border-transparent",
                 )}
                 aria-label={mode === "plan" ? "Normal 모드로 전환" : "Plan 모드로 전환"}
               >

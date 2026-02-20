@@ -81,8 +81,8 @@ export const UsageFooter = memo(function UsageFooter({
       {centerSlot ? <div className="flex-1 flex justify-center">{centerSlot}</div> : null}
 
       {/* 우측: 5시간 + 주간 사용량 */}
-      <div className="flex-1 flex items-center justify-end gap-1.5">
-        <span className="text-muted-foreground/60">5시간:</span>
+      <div className="flex-1 flex items-center justify-end gap-1.5 whitespace-nowrap">
+        <span className="text-muted-foreground/60"><span className="hidden md:inline">5시간</span><span className="md:hidden">h</span>:</span>
         <span className={cn("font-medium", utilizationColor(five_hour.utilization))}>
           {five_hour.utilization.toFixed(0)}%
         </span>
@@ -90,7 +90,7 @@ export const UsageFooter = memo(function UsageFooter({
 
         <span className="text-border mx-0.5">|</span>
 
-        <span className="text-muted-foreground/60">주간:</span>
+        <span className="text-muted-foreground/60"><span className="hidden md:inline">주간</span><span className="md:hidden">w</span>:</span>
         <span className={cn("font-medium", utilizationColor(seven_day.utilization))}>
           {seven_day.utilization.toFixed(0)}%
         </span>
