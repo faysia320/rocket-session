@@ -1,11 +1,11 @@
-import { memo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import {
   FolderOpen,
   GitBranch,
   RefreshCw,
   Menu,
 } from "lucide-react";
-import { ModelSelector } from "./ModelSelector";
+import { sessionsApi } from "@/lib/api/sessions.api";
 import { GitDropdownMenu } from "./GitDropdownMenu";
 import { SessionDropdownMenu } from "./SessionDropdownMenu";
 import { SessionSettings } from "@/features/session/components/SessionSettings";
@@ -75,6 +75,19 @@ export const ChatHeader = memo(function ChatHeader({
   onArchive,
   onUnarchive,
 }: ChatHeaderProps) {
+  useEffect(() => {
+    if (currentModel !== "opus") {
+      sessionsApi.update(sessionId, { model: "opus" }).catch((err) => {
+        console.warn("모델 설정 실패:", err);
+      });
+    }
+  }, [sessionId, currentModel]);
+
+  const uniqueFileCount = useMemo(
+    () => new Set(fileChanges.map((c) => c.file)).size,
+    [fileChanges],
+  );
+
   return (
     <div className="flex items-center justify-between px-2 md:px-4 py-2.5 border-b border-border bg-secondary min-h-11">
       <div className="flex items-center gap-2 min-w-0">
@@ -91,7 +104,7 @@ export const ChatHeader = memo(function ChatHeader({
         ) : null}
         <span
           className={cn(
-            "w-[7px] h-[7px] rounded-full transition-all",
+            "w-2 h-2 rounded-full transition-all",
             !connected
               ? reconnectState?.status === "reconnecting"
                 ? "bg-warning animate-pulse"
@@ -168,12 +181,6 @@ export const ChatHeader = memo(function ChatHeader({
         ) : null}
       </div>
       <div className="flex items-center gap-2">
-        <ModelSelector
-          sessionId={sessionId}
-          currentModel={currentModel}
-          disabled={status === "running"}
-        />
-
         <GitDropdownMenu
           gitInfo={gitInfo}
           status={status}
@@ -201,14 +208,11 @@ export const ChatHeader = memo(function ChatHeader({
                     aria-label="파일 변경 패널"
                   >
                     <FolderOpen className="h-4 w-4" />
-                    {(() => {
-                      const uniqueFileCount = new Set(fileChanges.map((c) => c.file)).size;
-                      return uniqueFileCount > 0 ? (
-                        <span className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                          {uniqueFileCount > 99 ? "99+" : uniqueFileCount}
-                        </span>
-                      ) : null;
-                    })()}
+                    {uniqueFileCount > 0 ? (
+                      <span className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                        {uniqueFileCount > 99 ? "99+" : uniqueFileCount}
+                      </span>
+                    ) : null}
                   </Button>
                 </SheetTrigger>
               </TooltipTrigger>

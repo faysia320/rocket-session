@@ -3,8 +3,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClaudeSocket } from "../hooks/useClaudeSocket";
-import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
+import { useChatNotifications } from "../hooks/useChatNotifications";
+import { useChatSearch } from "../hooks/useChatSearch";
+import { usePlanActions } from "../hooks/usePlanActions";
 import { MessageBubble } from "./MessageBubble";
+import { ChatSearchBar } from "./ChatSearchBar";
 import { PermissionDialog } from "./PermissionDialog";
 import { ChatHeader } from "./ChatHeader";
 import { ChatInput } from "./ChatInput";
@@ -12,7 +15,7 @@ import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileViewer } from "@/features/files/components/FileViewer";
-import type { FileChange, SessionMode, SessionInfo, UserMsg } from "@/types";
+import type { FileChange, SessionMode, UserMsg } from "@/types";
 import { useSessionStore } from "@/store";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { useSlashCommands } from "../hooks/useSlashCommands";
@@ -20,13 +23,11 @@ import type { SlashCommand } from "../constants/slashCommands";
 import { toast } from "sonner";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
-import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import {
   computeEstimateSize,
   computeMessageGaps,
-  computeSearchMatches,
 } from "../utils/chatComputations";
 
 interface ChatPanelProps {
@@ -57,7 +58,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     pendingAnswerCount,
     updateSessionMode,
   } = useClaudeSocket(sessionId);
-  const { notify } = useNotificationCenter();
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
@@ -66,9 +66,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [mode, setMode] = useState<SessionMode>("normal");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchMatchIndex, setSearchMatchIndex] = useState(0);
 
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const splitView = useSessionStore((s) => s.splitView);
@@ -78,75 +75,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? "");
 
-  // 세션 상태 전환 시 알림 + gitInfo 갱신 + 세션 목록 캐시 동기화
-  const prevStatusRef = useRef(status);
-  useEffect(() => {
-    const prev = prevStatusRef.current;
-    if (prev === status) return;
-
-    // 세션 목록 캐시에 상태를 실시간 반영 (사이드바 동기화)
-    queryClient.setQueryData<SessionInfo[]>(
-      sessionKeys.list(),
-      (old) => old?.map((s) =>
-        s.id === sessionId ? { ...s, status } : s,
-      ),
-    );
-
-    // running → idle: 작업 완료
-    if (prev === "running" && status === "idle") {
-      notify("task.complete", {
-        title: "Claude Code",
-        body: "작업이 완료되었습니다.",
-      });
-      if (workDir) {
-        const timer = setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["git-info", workDir] });
-        }, 1500);
-        prevStatusRef.current = status;
-        return () => clearTimeout(timer);
-      }
-    }
-
-    // → running: 세션 시작
-    if (status === "running" && prev !== "running") {
-      notify("session.start", {
-        title: "Claude Code",
-        body: "세션이 실행을 시작했습니다.",
-      });
-    }
-
-    prevStatusRef.current = status;
-  }, [status, workDir, queryClient, notify, sessionId]);
-
-  // 에러 메시지 수신 시 알림
-  const prevMsgCountRef = useRef(messages.length);
-  useEffect(() => {
-    if (messages.length > prevMsgCountRef.current) {
-      const newMsgs = messages.slice(prevMsgCountRef.current);
-      for (const msg of newMsgs) {
-        if (msg.type === "error") {
-          notify("task.error", {
-            title: "Claude Code",
-            body: "세션에서 에러가 발생했습니다.",
-          });
-          break;
-        }
-      }
-    }
-    prevMsgCountRef.current = messages.length;
-  }, [messages.length, messages, notify]);
-
-  // Permission 요청 시 알림
-  const prevPermissionRef = useRef(pendingPermission);
-  useEffect(() => {
-    if (pendingPermission && pendingPermission !== prevPermissionRef.current) {
-      notify("input.required", {
-        title: "Permission 요청",
-        body: `${pendingPermission.tool_name} 도구 사용 승인이 필요합니다.`,
-      });
-    }
-    prevPermissionRef.current = pendingPermission;
-  }, [pendingPermission, notify]);
+  useChatNotifications({ sessionId, status, messages, pendingPermission, workDir });
 
   // 세션 정보에서 mode 동기화
   useEffect(() => {
@@ -217,54 +146,15 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   }, [messagesLength, messages, virtualizer]);
 
-  const cycleMode = useCallback(() => {
-    setMode((prev) => {
-      const next: SessionMode = prev === "normal" ? "plan" : "normal";
-      sessionsApi.update(sessionId, { mode: next }).catch(() => {});
-      updateSessionMode(next);
-      return next;
-    });
-  }, [sessionId, updateSessionMode]);
+  const {
+    cycleMode, handleExecutePlan, handleContinuePlan,
+    handleDismissPlan, handleRevise,
+  } = usePlanActions({ sessionId, setMode, sendPrompt, updateMessage, updateSessionMode });
 
-  const handleExecutePlan = useCallback(
-    (messageId: string) => {
-      updateMessage(messageId, { planExecuted: true });
-      setMode("normal");
-      updateSessionMode("normal");
-      sessionsApi.update(sessionId, { mode: "normal" }).catch(() => {});
-      sendPrompt("위의 계획대로 단계별로 실행해줘.", { mode: "normal" });
-    },
-    [sessionId, sendPrompt, updateMessage, updateSessionMode],
-  );
-
-  const handleContinuePlan = useCallback(
-    (messageId: string) => {
-      updateMessage(messageId, { planExecuted: true });
-      sendPrompt("위의 계획을 승인합니다. 계속 진행해주세요.", { mode: "plan" });
-    },
-    [sendPrompt, updateMessage],
-  );
-
-  const handleDismissPlan = useCallback(
-    (messageId: string) => {
-      updateMessage(messageId, { planExecuted: true });
-    },
-    [updateMessage],
-  );
-
-  const handleRevise = useCallback(
-    (messageId: string, feedback: string) => {
-      updateMessage(messageId, { planExecuted: true });
-      sendPrompt(feedback, { mode: "plan" });
-    },
-    [sendPrompt, updateMessage],
-  );
-
-  // 검색: 매칭된 메시지 인덱스 목록
-  const searchMatches = useMemo(
-    () => computeSearchMatches(messages, searchQuery),
-    [messages, searchQuery],
-  );
+  const {
+    searchOpen, searchQuery, searchMatchIndex, searchMatches,
+    setSearchQuery, setSearchMatchIndex, handleToggleSearch,
+  } = useChatSearch({ messages, virtualizer, splitView, focusedSessionId, sessionId });
 
   // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
   const prevGapsRef = useRef<Record<number, "tight" | "normal" | "turn-start">>({});
@@ -275,38 +165,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   useEffect(() => {
     prevGapsRef.current = messageGaps;
   }, [messageGaps]);
-
-  // 검색 결과 이동 시 스크롤
-  useEffect(() => {
-    if (searchMatches.length > 0 && searchMatchIndex < searchMatches.length) {
-      virtualizer.scrollToIndex(searchMatches[searchMatchIndex], {
-        align: "center",
-      });
-    }
-  }, [searchMatchIndex, searchMatches, virtualizer]);
-
-  const handleToggleSearch = useCallback(() => {
-    setSearchOpen((prev) => {
-      if (prev) {
-        setSearchQuery("");
-        setSearchMatchIndex(0);
-      }
-      return !prev;
-    });
-  }, []);
-
-  // Ctrl+F / Cmd+F 검색 단축키 (split view에서는 포커스된 세션에서만 동작)
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-        if (splitView && focusedSessionId !== sessionId) return;
-        e.preventDefault();
-        handleToggleSearch();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [handleToggleSearch, splitView, focusedSessionId, sessionId]);
 
   // 커맨드 팔레트 이벤트 리스너
   useEffect(() => {
@@ -478,73 +336,14 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
       {/* 검색 바 */}
       {searchOpen ? (
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-secondary/50">
-          <input
-            className="flex-1 font-mono text-[16px] sm:text-md bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
-            placeholder="메시지 검색…"
-            aria-label="메시지 검색"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setSearchMatchIndex(0);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                setSearchMatchIndex((prev) =>
-                  searchMatches.length > 0
-                    ? (prev + 1) % searchMatches.length
-                    : 0,
-                );
-              }
-              if (e.key === "Escape") handleToggleSearch();
-            }}
-            autoFocus
-          />
-          <span
-            className="font-mono text-xs text-muted-foreground shrink-0"
-            aria-live="polite"
-          >
-            {searchMatches.length > 0
-              ? `${searchMatchIndex + 1}/${searchMatches.length}`
-              : searchQuery
-                ? "0 results"
-                : ""}
-          </span>
-          <button
-            type="button"
-            className="font-mono text-xs text-muted-foreground hover:text-foreground px-1"
-            onClick={() =>
-              setSearchMatchIndex((p) =>
-                p > 0 ? p - 1 : searchMatches.length - 1,
-              )
-            }
-            disabled={searchMatches.length === 0}
-            aria-label="이전 검색 결과"
-          >
-            {"\u25B2"}
-          </button>
-          <button
-            type="button"
-            className="font-mono text-xs text-muted-foreground hover:text-foreground px-1"
-            onClick={() =>
-              setSearchMatchIndex(
-                (p) => (p + 1) % Math.max(searchMatches.length, 1),
-              )
-            }
-            disabled={searchMatches.length === 0}
-            aria-label="다음 검색 결과"
-          >
-            {"\u25BC"}
-          </button>
-          <button
-            type="button"
-            className="font-mono text-md text-muted-foreground hover:text-foreground px-1 ml-1"
-            onClick={handleToggleSearch}
-            aria-label="검색 닫기"
-          >
-            {"\u00D7"}
-          </button>
-        </div>
+        <ChatSearchBar
+          searchQuery={searchQuery}
+          searchMatchIndex={searchMatchIndex}
+          searchMatchCount={searchMatches.length}
+          onQueryChange={setSearchQuery}
+          onMatchIndexChange={setSearchMatchIndex}
+          onClose={handleToggleSearch}
+        />
       ) : null}
 
       {/* 메시지 영역 */}
