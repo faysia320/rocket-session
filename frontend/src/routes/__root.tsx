@@ -4,7 +4,8 @@ import {
   useNavigate,
   useLocation,
 } from "@tanstack/react-router";
-import { memo, useCallback, useMemo, lazy, Suspense } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, lazy, Suspense } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Sidebar } from "@/features/session/components/Sidebar";
 
 const ChatPanel = lazy(() =>
@@ -61,6 +62,36 @@ function RootComponent() {
     () => sessions.filter((s) => s.status !== "archived"),
     [sessions],
   );
+
+  // split view 페이징
+  const SPLIT_PAGE_SIZE = 5;
+  const [splitPage, setSplitPage] = useState(0);
+  const totalSplitPages = Math.ceil(activeSessions.length / SPLIT_PAGE_SIZE);
+
+  // 세션 삭제/아카이브 시 페이지 범위 자동 보정
+  useEffect(() => {
+    if (splitPage >= totalSplitPages && totalSplitPages > 0) {
+      setSplitPage(totalSplitPages - 1);
+    }
+  }, [splitPage, totalSplitPages]);
+
+  // 현재 페이지에 표시할 세션
+  const pagedSessions = useMemo(
+    () =>
+      activeSessions.slice(
+        splitPage * SPLIT_PAGE_SIZE,
+        (splitPage + 1) * SPLIT_PAGE_SIZE,
+      ),
+    [activeSessions, splitPage],
+  );
+
+  // 페이지 전환 시 focusedSessionId가 현재 페이지에 없으면 첫 번째 세션으로 이동
+  useEffect(() => {
+    if (!splitView || pagedSessions.length === 0) return;
+    if (!pagedSessions.some((s) => s.id === focusedSessionId)) {
+      setFocusedSessionId(pagedSessions[0].id);
+    }
+  }, [splitView, pagedSessions, focusedSessionId, setFocusedSessionId]);
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -137,7 +168,7 @@ function RootComponent() {
             activeSessions.length > 0 &&
             !isNewSessionRoute ? (
             <Suspense fallback={<LoadingSkeleton />}>
-              {activeSessions.slice(0, 5).map((s) => (
+              {pagedSessions.map((s) => (
                 <SplitViewPane
                   key={s.id}
                   sessionId={s.id}
@@ -145,12 +176,12 @@ function RootComponent() {
                   onFocus={setFocusedSessionId}
                 />
               ))}
-              {activeSessions.length > 5 ? (
-                <div className="absolute top-2 right-2 z-10">
-                  <span className="font-mono text-2xs bg-warning/15 text-warning px-2 py-0.5 rounded border border-warning/30">
-                    +{activeSessions.length - 5} more (max 5)
-                  </span>
-                </div>
+              {totalSplitPages > 1 ? (
+                <SplitViewPagination
+                  currentPage={splitPage}
+                  totalPages={totalSplitPages}
+                  onPageChange={setSplitPage}
+                />
               ) : null}
             </Suspense>
           ) : (
@@ -191,6 +222,52 @@ const SplitViewPane = memo(function SplitViewPane({
         )}
       />
       <ChatPanel sessionId={sessionId} />
+    </div>
+  );
+});
+
+const SplitViewPagination = memo(function SplitViewPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+      <button
+        type="button"
+        aria-label="이전 페이지"
+        disabled={currentPage === 0}
+        onClick={() => onPageChange(currentPage - 1)}
+        className={cn(
+          "inline-flex items-center justify-center w-6 h-6 rounded transition-colors",
+          currentPage === 0
+            ? "text-muted-foreground/40 cursor-not-allowed"
+            : "text-foreground hover:bg-secondary",
+        )}
+      >
+        <ChevronLeft className="w-3.5 h-3.5" />
+      </button>
+      <span className="font-mono text-2xs text-muted-foreground px-1 select-none">
+        {currentPage + 1}/{totalPages}
+      </span>
+      <button
+        type="button"
+        aria-label="다음 페이지"
+        disabled={currentPage === totalPages - 1}
+        onClick={() => onPageChange(currentPage + 1)}
+        className={cn(
+          "inline-flex items-center justify-center w-6 h-6 rounded transition-colors",
+          currentPage === totalPages - 1
+            ? "text-muted-foreground/40 cursor-not-allowed"
+            : "text-foreground hover:bg-secondary",
+        )}
+      >
+        <ChevronRight className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 });
