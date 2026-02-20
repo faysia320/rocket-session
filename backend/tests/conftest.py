@@ -41,9 +41,10 @@ def settings():
 
 
 @pytest_asyncio.fixture
-async def db():
-    """In-memory SQLite database fixture."""
-    database = Database(":memory:")
+async def db(tmp_path):
+    """SQLite database fixture (임시 파일 기반, Alembic 호환)."""
+    db_path = str(tmp_path / "test_sessions.db")
+    database = Database(db_path)
     await database.initialize()
     yield database
     await database.close()

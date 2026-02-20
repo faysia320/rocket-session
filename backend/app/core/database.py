@@ -1,157 +1,15 @@
-"""SQLite 데이터베이스 연결 관리 및 테이블 초기화."""
+"""SQLite 데이터베이스 연결 관리 및 Alembic 마이그레이션."""
 
+import asyncio
 import logging
+import os
+import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import aiosqlite
 
 logger = logging.getLogger(__name__)
-
-# SQL 스키마 정의
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS sessions (
-    id TEXT PRIMARY KEY,
-    claude_session_id TEXT,
-    work_dir TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'idle',
-    created_at TEXT NOT NULL,
-    allowed_tools TEXT,
-    system_prompt TEXT,
-    timeout_seconds INTEGER,
-    mode TEXT NOT NULL DEFAULT 'normal',
-    permission_mode INTEGER NOT NULL DEFAULT 0,
-    permission_required_tools TEXT,
-    name TEXT,
-    jsonl_path TEXT,
-    model TEXT,
-    max_turns INTEGER,
-    max_budget_usd REAL,
-    system_prompt_mode TEXT NOT NULL DEFAULT 'replace',
-    disallowed_tools TEXT,
-    mcp_server_ids TEXT
-);
-
-CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    role TEXT NOT NULL,
-    content TEXT NOT NULL,
-    cost REAL,
-    duration_ms INTEGER,
-    timestamp TEXT NOT NULL,
-    is_error INTEGER NOT NULL DEFAULT 0,
-    input_tokens INTEGER,
-    output_tokens INTEGER,
-    cache_creation_tokens INTEGER,
-    cache_read_tokens INTEGER,
-    model TEXT,
-    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS file_changes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    tool TEXT NOT NULL,
-    file TEXT NOT NULL,
-    timestamp TEXT NOT NULL,
-    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    seq INTEGER NOT NULL,
-    event_type TEXT NOT NULL,
-    payload TEXT NOT NULL,
-    timestamp TEXT NOT NULL,
-    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS global_settings (
-    id TEXT PRIMARY KEY DEFAULT 'default',
-    work_dir TEXT,
-    allowed_tools TEXT,
-    system_prompt TEXT,
-    timeout_seconds INTEGER,
-    mode TEXT DEFAULT 'normal',
-    permission_mode INTEGER DEFAULT 0,
-    permission_required_tools TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
-CREATE INDEX IF NOT EXISTS idx_file_changes_session_id ON file_changes(session_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_events_session_seq ON events(session_id, seq);
-CREATE INDEX IF NOT EXISTS idx_sessions_claude_session_id ON sessions(claude_session_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
-CREATE INDEX IF NOT EXISTS idx_sessions_model ON sessions(model);
-CREATE INDEX IF NOT EXISTS idx_sessions_work_dir ON sessions(work_dir);
-CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
-
-CREATE TABLE IF NOT EXISTS mcp_servers (
-    id TEXT PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    transport_type TEXT NOT NULL DEFAULT 'stdio',
-    command TEXT,
-    args TEXT,
-    url TEXT,
-    headers TEXT,
-    env TEXT,
-    enabled INTEGER NOT NULL DEFAULT 1,
-    source TEXT NOT NULL DEFAULT 'manual',
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS tags (
-    id TEXT PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    color TEXT NOT NULL DEFAULT '#6366f1',
-    created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS session_tags (
-    session_id TEXT NOT NULL,
-    tag_id TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    PRIMARY KEY (session_id, tag_id),
-    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
-    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_session_tags_tag_id ON session_tags(tag_id);
-CREATE INDEX IF NOT EXISTS idx_session_tags_session_id ON session_tags(session_id);
-
-CREATE TABLE IF NOT EXISTS session_templates (
-    id TEXT PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    description TEXT,
-    work_dir TEXT,
-    system_prompt TEXT,
-    allowed_tools TEXT,
-    disallowed_tools TEXT,
-    timeout_seconds INTEGER,
-    mode TEXT DEFAULT 'normal',
-    permission_mode INTEGER NOT NULL DEFAULT 0,
-    permission_required_tools TEXT,
-    model TEXT,
-    max_turns INTEGER,
-    max_budget_usd REAL,
-    system_prompt_mode TEXT DEFAULT 'replace',
-    mcp_server_ids TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-);
-
--- FTS5 가상 테이블: 세션 이름 + 메시지 내용 전문 검색
-CREATE VIRTUAL TABLE IF NOT EXISTS sessions_fts USING fts5(
-    session_id UNINDEXED,
-    name,
-    content,
-    tokenize='unicode61'
-);
-"""
 
 
 class Database:
@@ -163,102 +21,115 @@ class Database:
         self._read_db: aiosqlite.Connection | None = None
 
     async def initialize(self):
-        """DB 파일 생성 및 테이블 초기화."""
-        db_dir = Path(self._db_path).parent
-        db_dir.mkdir(parents=True, exist_ok=True)
+        """DB 파일 생성, Alembic 마이그레이션 실행, 연결 초기화."""
+        if self._db_path != ":memory:":
+            db_dir = Path(self._db_path).parent
+            db_dir.mkdir(parents=True, exist_ok=True)
 
+        # 1. Alembic 마이그레이션 실행 (별도 스레드)
+        await self._run_migrations()
+
+        # 2. 메인 연결 열기
         self._db = await aiosqlite.connect(self._db_path)
         self._db.row_factory = aiosqlite.Row
         await self._db.execute("PRAGMA journal_mode=WAL")
         await self._db.execute("PRAGMA foreign_keys=ON")
         await self._db.execute("PRAGMA busy_timeout=5000")
-        await self._db.executescript(_SCHEMA)
 
-        # 마이그레이션: 기존 DB에 새 컬럼이 없을 수 있음
-        migrations = [
-            "ALTER TABLE sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
-            "ALTER TABLE sessions ADD COLUMN permission_mode INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE sessions ADD COLUMN permission_required_tools TEXT",
-            "ALTER TABLE sessions ADD COLUMN name TEXT",
-            # Phase 1: result.is_error 추적
-            "ALTER TABLE messages ADD COLUMN is_error INTEGER NOT NULL DEFAULT 0",
-            # Phase 2: 토큰 사용량 + 모델명 저장
-            "ALTER TABLE messages ADD COLUMN input_tokens INTEGER",
-            "ALTER TABLE messages ADD COLUMN output_tokens INTEGER",
-            "ALTER TABLE messages ADD COLUMN cache_creation_tokens INTEGER",
-            "ALTER TABLE messages ADD COLUMN cache_read_tokens INTEGER",
-            "ALTER TABLE messages ADD COLUMN model TEXT",
-            # JSONL 실시간 감시용: import된 세션의 JSONL 파일 경로
-            "ALTER TABLE sessions ADD COLUMN jsonl_path TEXT",
-            # Phase 3: CLI 기능 이식 (model, max_turns, max_budget_usd, system_prompt_mode, disallowed_tools)
-            "ALTER TABLE sessions ADD COLUMN model TEXT",
-            "ALTER TABLE sessions ADD COLUMN max_turns INTEGER",
-            "ALTER TABLE sessions ADD COLUMN max_budget_usd REAL",
-            "ALTER TABLE sessions ADD COLUMN system_prompt_mode TEXT NOT NULL DEFAULT 'replace'",
-            "ALTER TABLE sessions ADD COLUMN disallowed_tools TEXT",
-            "ALTER TABLE global_settings ADD COLUMN model TEXT",
-            "ALTER TABLE global_settings ADD COLUMN max_turns INTEGER",
-            "ALTER TABLE global_settings ADD COLUMN max_budget_usd REAL",
-            "ALTER TABLE global_settings ADD COLUMN system_prompt_mode TEXT DEFAULT 'replace'",
-            "ALTER TABLE global_settings ADD COLUMN disallowed_tools TEXT",
-            # MCP 서버 관리: 세션별 MCP 서버 선택
-            "ALTER TABLE sessions ADD COLUMN mcp_server_ids TEXT",
-            "ALTER TABLE global_settings ADD COLUMN mcp_server_ids TEXT",
-        ]
-        # DDL 마이그레이션 (CREATE INDEX 등)
-        ddl_migrations = [
-            # Phase 4: 분석 쿼리 최적화 인덱스
-            "CREATE INDEX IF NOT EXISTS idx_messages_session_timestamp ON messages(session_id, timestamp)",
-            "CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)",
-            "CREATE INDEX IF NOT EXISTS idx_messages_model ON messages(model)",
-        ]
-        for migration in migrations:
+        # 3. FTS5 초기 빌드 (기존 데이터가 있고 FTS가 비어있을 때)
+        await self._build_fts_index()
+
+        # 4. 글로벌 설정 기본 행 보장
+        cursor = await self._db.execute("SELECT COUNT(*) FROM global_settings")
+        row = await cursor.fetchone()
+        if row[0] == 0:
+            await self._db.execute(
+                "INSERT INTO global_settings (id) VALUES ('default')"
+            )
+        await self._db.commit()
+
+        # 5. 읽기 전용 연결 (WAL 모드에서 동시 읽기 지원)
+        if self._db_path != ":memory:":
+            self._read_db = await aiosqlite.connect(self._db_path)
+            self._read_db.row_factory = aiosqlite.Row
+            await self._read_db.execute("PRAGMA journal_mode=WAL")
+            await self._read_db.execute("PRAGMA foreign_keys=ON")
+            await self._read_db.execute("PRAGMA query_only=ON")
+
+        logger.info("데이터베이스 초기화 완료: %s", self._db_path)
+
+    async def _run_migrations(self):
+        """Alembic 마이그레이션을 프로그래매틱으로 실행."""
+        from alembic import command
+        from alembic.config import Config
+
+        alembic_ini = os.environ.get(
+            "ALEMBIC_INI_PATH",
+            str(Path(__file__).resolve().parent.parent.parent / "alembic.ini"),
+        )
+        alembic_cfg = Config(alembic_ini)
+
+        # DB URL 동적 설정 (동기 SQLite 드라이버 사용)
+        if self._db_path == ":memory:":
+            db_url = "sqlite://"
+        else:
+            db_url = f"sqlite:///{self._db_path}"
+        alembic_cfg.set_main_option("sqlalchemy.url", db_url)
+
+        # 기존 DB: alembic_version이 잘못 stamp된 경우 복구
+        self._ensure_migration_integrity(alembic_cfg)
+
+        # 별도 스레드에서 동기 실행 (이벤트 루프 충돌 방지)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, command.upgrade, alembic_cfg, "head")
+
+    def _ensure_migration_integrity(self, alembic_cfg):
+        """기존 DB 마이그레이션 무결성 보장.
+
+        - alembic_version이 없는 기존 DB: 마이그레이션이 IF NOT EXISTS이므로 그대로 실행
+        - alembic_version이 있지만 테이블 누락: 리셋 후 재실행
+        - 정상 상태: 그대로 통과
+        """
+        if self._db_path == ":memory:":
+            return
+
+        try:
+            conn = sqlite3.connect(self._db_path)
             try:
-                await self._db.execute(migration)
-                await self._db.commit()
-            except aiosqlite.OperationalError as e:
-                if "duplicate column" in str(e).lower():
-                    continue  # 이미 존재하는 컬럼 - 정상
-                logger.error("마이그레이션 실패: %s - %s", migration, e)
-                raise
+                # alembic_version 테이블 확인
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='table' AND name='alembic_version'"
+                )
+                if not cursor.fetchone():
+                    return  # alembic_version 없음 → upgrade가 처음부터 실행
 
-        for ddl in ddl_migrations:
-            try:
-                await self._db.execute(ddl)
-                await self._db.commit()
-            except aiosqlite.OperationalError as e:
-                logger.error("DDL 마이그레이션 실패: %s - %s", ddl, e)
-                raise
+                # 필수 테이블 존재 여부 확인
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type IN ('table', 'view')"
+                )
+                existing = {row[0] for row in cursor.fetchall()}
 
-        # FTS5 트리거 생성 (메시지 INSERT 시 자동 인덱싱)
-        fts_triggers = [
-            """CREATE TRIGGER IF NOT EXISTS trg_messages_fts_insert
-               AFTER INSERT ON messages
-               BEGIN
-                 INSERT INTO sessions_fts(session_id, name, content)
-                 VALUES (NEW.session_id, '', NEW.content);
-               END""",
-            """CREATE TRIGGER IF NOT EXISTS trg_sessions_fts_name_update
-               AFTER UPDATE OF name ON sessions
-               WHEN NEW.name IS NOT NULL AND NEW.name != ''
-               BEGIN
-                 DELETE FROM sessions_fts WHERE session_id = NEW.id AND content = '';
-                 INSERT OR REPLACE INTO sessions_fts(session_id, name, content)
-                 VALUES (NEW.id, NEW.name, '');
-               END""",
-            """CREATE TRIGGER IF NOT EXISTS trg_sessions_fts_delete
-               AFTER DELETE ON sessions
-               BEGIN
-                 DELETE FROM sessions_fts WHERE session_id = OLD.id;
-               END""",
-        ]
-        for trigger in fts_triggers:
-            try:
-                await self._db.execute(trigger)
-            except aiosqlite.OperationalError as e:
-                logger.warning("FTS 트리거 생성 실패: %s", e)
+                required = {
+                    "sessions", "messages", "file_changes", "events",
+                    "global_settings", "mcp_servers", "tags", "session_tags",
+                    "session_templates", "sessions_fts",
+                }
+                missing = required - existing
+                if missing:
+                    logger.warning(
+                        "DB에 누락 테이블 감지 (%s): alembic_version 리셋",
+                        ", ".join(sorted(missing)),
+                    )
+                    conn.execute("DELETE FROM alembic_version")
+                    conn.commit()
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.debug("마이그레이션 무결성 확인 중 예외 (새 DB일 수 있음): %s", e)
 
-        # FTS5 초기 빌드: 비어있으면 기존 데이터로 채움
+    async def _build_fts_index(self):
+        """FTS5 초기 빌드: 비어있으면 기존 데이터로 채움."""
         fts_count = await self._db.execute("SELECT COUNT(*) FROM sessions_fts")
         fts_row = await fts_count.fetchone()
         if fts_row[0] == 0:
@@ -269,36 +140,13 @@ class Database:
                     """INSERT INTO sessions_fts(session_id, name, content)
                        SELECT session_id, '', content FROM messages"""
                 )
-                # 세션 이름도 인덱싱
                 await self._db.execute(
                     """INSERT INTO sessions_fts(session_id, name, content)
                        SELECT id, name, '' FROM sessions
                        WHERE name IS NOT NULL AND name != ''"""
                 )
                 logger.info("FTS5 초기 빌드 완료")
-
-        await self._db.commit()
-
-        # 글로벌 설정 기본 행 보장
-        cursor = await self._db.execute("SELECT COUNT(*) FROM global_settings")
-        row = await cursor.fetchone()
-        if row[0] == 0:
-            await self._db.execute(
-                "INSERT INTO global_settings (id) VALUES ('default')"
-            )
-
-        await self._db.commit()
-
-        # 읽기 전용 연결 (WAL 모드에서 동시 읽기 지원)
-        # :memory: DB는 연결마다 독립적이므로 읽기 전용 연결을 생성하지 않음
-        if self._db_path != ":memory:":
-            self._read_db = await aiosqlite.connect(self._db_path)
-            self._read_db.row_factory = aiosqlite.Row
-            await self._read_db.execute("PRAGMA journal_mode=WAL")
-            await self._read_db.execute("PRAGMA foreign_keys=ON")
-            await self._read_db.execute("PRAGMA query_only=ON")
-
-        logger.info("데이터베이스 초기화 완료: %s", self._db_path)
+            await self._db.commit()
 
     async def close(self):
         """DB 연결 종료."""

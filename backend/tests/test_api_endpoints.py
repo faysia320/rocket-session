@@ -25,14 +25,13 @@ from app.services.websocket_manager import WebSocketManager
 
 
 @pytest_asyncio.fixture
-async def test_client():
+async def test_client(tmp_path):
     """
-    Create httpx AsyncClient with in-memory database dependencies.
+    Create httpx AsyncClient with file-based test database.
 
     Overrides FastAPI dependencies to use test database and services.
     """
-    # Create in-memory database
-    db = Database(":memory:")
+    db = Database(str(tmp_path / "test_api.db"))
     await db.initialize()
 
     # Create test services

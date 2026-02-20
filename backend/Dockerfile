@@ -28,6 +28,10 @@ RUN uv sync --frozen --no-dev
 # 앱 코드 복사
 COPY app/ app/
 
+# Alembic 마이그레이션 파일 복사
+COPY alembic.ini ./
+COPY migrations/ migrations/
+
 # 데이터 디렉토리 생성
 RUN mkdir -p /app/data
 

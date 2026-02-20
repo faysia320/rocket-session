@@ -725,9 +725,9 @@ class TestDatabaseLifecycle:
         session = await db.get_session(session_id)
         assert session is None
 
-    async def test_close_database(self):
+    async def test_close_database(self, tmp_path):
         """Test closing database connection."""
-        database = Database(":memory:")
+        database = Database(str(tmp_path / "test_close.db"))
         await database.initialize()
 
         # Verify connection is active
