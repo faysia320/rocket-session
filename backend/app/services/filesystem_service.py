@@ -30,7 +30,12 @@ class FilesystemService:
     _GIT_CACHE_MAX_SIZE = 100
 
     # Cross-platform git 설정: Windows↔WSL2 환경에서 false positive 방지
-    _GIT_CROSS_PLATFORM_OPTS = ("-c", "core.fileMode=false")
+    _GIT_CROSS_PLATFORM_OPTS = (
+        "-c", "core.fileMode=false",      # Windows/Linux 파일 권한 차이 무시
+        "-c", "core.autocrlf=input",      # CRLF→LF 정규화 (비교 시 clean filter 적용)
+        "-c", "core.trustctime=false",    # WSL2 ctime 불일치 무시
+        "-c", "core.checkStat=minimal",   # stat 비교를 mtime+size로 최소화
+    )
 
     def __init__(self, root_dir: str = ""):
         self._git_cache: dict[str, tuple[float, GitInfo]] = {}
@@ -189,7 +194,7 @@ class FilesystemService:
         # per-repo lock: get_git_status()와 동시 실행 시 index.lock 경합 방지
         async with self._get_git_lock(cwd):
             # 독립적인 Git 명령을 병렬 실행 (순차 → 병렬로 약 7배 빠름)
-            # core.fileMode=false: Windows↔Linux 파일 권한 차이 무시
+            # --no-optional-locks: index.lock 경합 방지
             (
                 (rc_branch, branch_out, _),
                 (rc_status, status_out, _),
@@ -202,9 +207,11 @@ class FilesystemService:
                 self._run_git_command("branch", "--show-current", cwd=cwd),
                 self._run_git_command(
                     *self._GIT_CROSS_PLATFORM_OPTS,
+                    "--no-optional-locks",
                     "status",
                     "--porcelain",
                     cwd=cwd,
+                    timeout=60.0,
                 ),
                 self._run_git_command("log", "-1", "--format=%H%n%s%n%aI", cwd=cwd),
                 self._run_git_command("remote", "get-url", "origin", cwd=cwd),
@@ -458,22 +465,11 @@ class FilesystemService:
         if rc != 0:
             return GitStatusResponse(is_git_repo=False)
 
-        # per-repo lock: get_git_info()와 동시 실행 시 index.lock 경합 방지
+        # per-repo lock: get_git_info()와 동시 실행 시 subprocess 경합 방지
         async with self._get_git_lock(cwd):
-            # stat 캐시 사전 갱신: cross-platform(Windows↔WSL2) 환경에서
-            # stale 타임스탬프로 인한 false positive 방지
-            await self._run_git_command(
-                *self._GIT_CROSS_PLATFORM_OPTS,
-                "update-index",
-                "--refresh",
-                "-q",
-                cwd=cwd,
-                timeout=30.0,
-            )
-
-            # repo 루트 + status 병렬 실행
-            # core.fileMode=false: Windows↔Linux 파일 권한 차이 무시
-            # -u 플래그 미사용: untracked 디렉토리를 단일 항목으로 표시
+            # update-index --refresh 제거: 대형 레포(WSL2 9P)에서 타임아웃 위험
+            # git status가 내부적으로 refresh_index()를 호출하므로 별도 실행 불필요
+            # --no-optional-locks: index.lock 경합 방지 (VS Code 등과 안전 공존)
             (
                 (rc_root, root_out, _),
                 (rc_status, status_out, stderr),
@@ -481,10 +477,11 @@ class FilesystemService:
                 self._run_git_command("rev-parse", "--show-toplevel", cwd=cwd),
                 self._run_git_command(
                     *self._GIT_CROSS_PLATFORM_OPTS,
+                    "--no-optional-locks",
                     "status",
                     "--porcelain=v1",
                     cwd=cwd,
-                    timeout=30.0,
+                    timeout=60.0,
                 ),
             )
 
@@ -524,10 +521,17 @@ class FilesystemService:
 
         elapsed = time.monotonic() - start
         if len(files) > 100 or elapsed > 5.0:
+            staged = sum(1 for f in files if f.is_staged)
+            unstaged = sum(1 for f in files if f.is_unstaged)
+            untracked = sum(1 for f in files if f.is_untracked)
             logger.warning(
-                "git status 대형 결과: path=%s, files=%d, elapsed=%.1fs",
+                "git status 대형 결과: path=%s, total=%d "
+                "(staged=%d, unstaged=%d, untracked=%d), elapsed=%.1fs",
                 path,
                 len(files),
+                staged,
+                unstaged,
+                untracked,
                 elapsed,
             )
 
