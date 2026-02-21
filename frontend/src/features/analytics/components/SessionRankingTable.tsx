@@ -1,7 +1,6 @@
 import { memo, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { formatTokens, truncatePath } from "@/lib/utils";
-import { useSessionStore } from "@/store";
 import type { SessionTokenRanking } from "@/types";
 
 interface SessionRankingTableProps {
@@ -21,14 +20,12 @@ export const SessionRankingTable = memo(function SessionRankingTable({
   data,
 }: SessionRankingTableProps) {
   const navigate = useNavigate();
-  const setCostView = useSessionStore((s) => s.setCostView);
 
   const handleClick = useCallback(
     (sessionId: string) => {
-      setCostView(false);
       navigate({ to: "/session/$sessionId", params: { sessionId } });
     },
-    [navigate, setCostView],
+    [navigate],
   );
 
   if (data.length === 0) {

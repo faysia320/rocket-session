@@ -1,4 +1,4 @@
-import { Home, Plus, Monitor } from "lucide-react";
+import { LayoutGrid, Plus, Monitor, BarChart3, Clock } from "lucide-react";
 import type { PaletteCommand } from "../types";
 import type { SessionInfo } from "@/types";
 
@@ -12,12 +12,30 @@ export function createNavigationCommands(deps: {
   const staticCommands: PaletteCommand[] = [
     {
       id: "nav:home",
-      label: "홈으로 이동",
-      description: "메인 화면으로 돌아가기",
+      label: "대시보드",
+      description: "세션 대시보드 화면",
       category: "navigation",
-      icon: Home,
+      icon: LayoutGrid,
       action: () => navigate({ to: "/" }),
-      keywords: ["home", "메인", "대시보드"],
+      keywords: ["home", "메인", "대시보드", "dashboard"],
+    },
+    {
+      id: "nav:analytics",
+      label: "토큰 분석",
+      description: "토큰 사용량 분석 대시보드",
+      category: "navigation",
+      icon: BarChart3,
+      action: () => navigate({ to: "/analytics" }),
+      keywords: ["token", "analytics", "cost", "토큰", "분석", "비용"],
+    },
+    {
+      id: "nav:history",
+      label: "세션 히스토리",
+      description: "세션 검색 및 필터",
+      category: "navigation",
+      icon: Clock,
+      action: () => navigate({ to: "/history" }),
+      keywords: ["history", "히스토리", "검색", "기록"],
     },
     {
       id: "nav:new-session",

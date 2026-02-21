@@ -2,8 +2,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Columns2,
-  LayoutGrid,
-  BarChart3,
   Sun,
   Moon,
 } from "lucide-react";
@@ -12,8 +10,6 @@ import type { PaletteCommand } from "../types";
 export function createUICommands(deps: {
   toggleSidebar: () => void;
   toggleSplitView: () => void;
-  toggleDashboardView: () => void;
-  toggleCostView: () => void;
   toggleTheme: () => void;
   isDark: boolean;
   sidebarCollapsed: boolean;
@@ -21,8 +17,6 @@ export function createUICommands(deps: {
   const {
     toggleSidebar,
     toggleSplitView,
-    toggleDashboardView,
-    toggleCostView,
     toggleTheme,
     isDark,
     sidebarCollapsed,
@@ -47,24 +41,6 @@ export function createUICommands(deps: {
       icon: Columns2,
       action: toggleSplitView,
       keywords: ["split", "분할", "view"],
-    },
-    {
-      id: "ui:toggle-dashboard",
-      label: "대시보드 뷰 전환",
-      description: "세션 카드 그리드 표시",
-      category: "ui",
-      icon: LayoutGrid,
-      action: toggleDashboardView,
-      keywords: ["dashboard", "대시보드", "grid"],
-    },
-    {
-      id: "ui:toggle-cost",
-      label: "토큰 분석 뷰 전환",
-      description: "토큰 사용량 분석 대시보드 표시",
-      category: "ui",
-      icon: BarChart3,
-      action: toggleCostView,
-      keywords: ["token", "analytics", "cost", "토큰", "분석", "비용"],
     },
     {
       id: "ui:toggle-theme",

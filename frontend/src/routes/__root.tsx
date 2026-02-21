@@ -13,29 +13,13 @@ const ChatPanel = lazy(() =>
     default: m.ChatPanel,
   })),
 );
-const SessionDashboardCard = lazy(() =>
-  import("@/features/session/components/SessionDashboardCard").then((m) => ({
-    default: m.SessionDashboardCard,
-  })),
-);
-const GitMonitorPanel = lazy(() =>
-  import("@/features/git-monitor/components/GitMonitorPanel").then((m) => ({
-    default: m.GitMonitorPanel,
-  })),
-);
-const AnalyticsDashboard = lazy(() =>
-  import("@/features/analytics/components/AnalyticsDashboard").then((m) => ({
-    default: m.AnalyticsDashboard,
-  })),
-);
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { useSessionStore } from "@/store";
 import { UsageFooter } from "@/features/usage/components/UsageFooter";
 import { CommandPaletteProvider } from "@/features/command-palette/components/CommandPaletteProvider";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { cn, sortSessionsByStatus } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -55,20 +39,21 @@ function RootComponent() {
     refreshSessions,
   } = useSessions();
   const splitView = useSessionStore((s) => s.splitView);
-  const dashboardView = useSessionStore((s) => s.dashboardView);
-  const costView = useSessionStore((s) => s.costView);
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
   const setFocusedSessionId = useSessionStore((s) => s.setFocusedSessionId);
   const sidebarMobileOpen = useSessionStore((s) => s.sidebarMobileOpen);
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
-  const setDashboardView = useSessionStore((s) => s.setDashboardView);
-  const setCostView = useSessionStore((s) => s.setCostView);
   const isMobile = useIsMobile();
-  const isNewSessionRoute = location.pathname === "/session/new";
+
   const activeSessions = useMemo(
     () => sessions.filter((s) => s.status !== "archived"),
     [sessions],
   );
+
+  // Split View는 세션 라우트(/session/:id)에서만 활성화
+  const isSessionRoute =
+    location.pathname.startsWith("/session/") &&
+    !location.pathname.endsWith("/new");
 
   // split view 페이징
   const SPLIT_PAGE_SIZE = 5;
@@ -104,11 +89,9 @@ function RootComponent() {
     (id: string) => {
       selectSession(id);
       if (splitView) setFocusedSessionId(id);
-      if (dashboardView) setDashboardView(false);
-      if (costView) setCostView(false);
       if (isMobile) setSidebarMobileOpen(false);
     },
-    [selectSession, splitView, setFocusedSessionId, dashboardView, setDashboardView, costView, setCostView, isMobile, setSidebarMobileOpen],
+    [selectSession, splitView, setFocusedSessionId, isMobile, setSidebarMobileOpen],
   );
 
   const handleNew = useCallback(() => {
@@ -159,26 +142,7 @@ function RootComponent() {
       )}
       <div className="flex flex-col flex-1 overflow-hidden">
         <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
-          {!isMobile && costView ? (
-            <Suspense fallback={<LoadingSkeleton />}>
-              <AnalyticsDashboard />
-            </Suspense>
-          ) : !isMobile &&
-          dashboardView &&
-          activeSessions.length > 0 &&
-          !isNewSessionRoute ? (
-            <Suspense fallback={<LoadingSkeleton />}>
-              <DashboardGrid
-                sessions={activeSessions}
-                activeSessionId={activeSessionId}
-                onSelect={handleSelect}
-                onNew={handleNew}
-              />
-            </Suspense>
-          ) : !isMobile &&
-            splitView &&
-            activeSessions.length > 0 &&
-            !isNewSessionRoute ? (
+          {!isMobile && splitView && activeSessions.length > 0 && isSessionRoute ? (
             <Suspense fallback={<LoadingSkeleton />}>
               {pagedSessions.map((s) => (
                 <SplitViewPane
@@ -283,65 +247,6 @@ const SplitViewPagination = memo(function SplitViewPagination({
       >
         <ChevronRight className="w-3.5 h-3.5" />
       </button>
-    </div>
-  );
-});
-
-const DashboardGrid = memo(function DashboardGrid({
-  sessions,
-  activeSessionId,
-  onSelect,
-  onNew,
-}: {
-  sessions: import("@/types").SessionInfo[];
-  activeSessionId: string | null;
-  onSelect: (id: string) => void;
-  onNew: () => void;
-}) {
-  const sortedSessions = sortSessionsByStatus(sessions);
-  const runningCount = sessions.filter((s) => s.status === "running").length;
-
-  return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* 상단: 세션 카드 그리드 (40%) */}
-      <div className="flex-[2] min-h-0 overflow-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-mono text-lg font-semibold text-foreground">
-              Dashboard
-            </h1>
-            <p className="font-mono text-xs text-muted-foreground">
-              {sessions.length}개 세션 ({runningCount}개 실행 중)
-            </p>
-          </div>
-          <Button
-            variant="default"
-            size="sm"
-            className="font-mono text-xs"
-            onClick={onNew}
-          >
-            + New Session
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {sortedSessions.map((s) => (
-            <SessionDashboardCard
-              key={s.id}
-              session={s}
-              isActive={s.id === activeSessionId}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* 하단: Git Monitor (60%) */}
-      <Suspense fallback={<LoadingSkeleton />}>
-        <div className="flex-[3] min-h-0 overflow-hidden">
-          <GitMonitorPanel />
-        </div>
-      </Suspense>
     </div>
   );
 });

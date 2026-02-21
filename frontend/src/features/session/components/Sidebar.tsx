@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo, memo } from "react";
 import { useTheme } from "next-themes";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useLocation } from "@tanstack/react-router";
 import {
   Sun,
   Moon,
@@ -71,13 +71,12 @@ export const Sidebar = memo(function Sidebar({
   isError,
 }: SidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const splitView = useSessionStore((s) => s.splitView);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
-  const dashboardView = useSessionStore((s) => s.dashboardView);
-  const toggleDashboardView = useSessionStore((s) => s.toggleDashboardView);
-  const costView = useSessionStore((s) => s.costView);
-  const toggleCostView = useSessionStore((s) => s.toggleCostView);
   const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
+  const isHome = location.pathname === "/";
+  const isAnalytics = location.pathname === "/analytics";
   const collapsed = isMobileOverlay ? false : sidebarCollapsed;
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const [importOpen, setImportOpen] = useState(false);
@@ -389,11 +388,9 @@ export const Sidebar = memo(function Sidebar({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={cn("h-8 w-8", dashboardView && "bg-muted")}
-                    onClick={toggleDashboardView}
-                    aria-label={
-                      dashboardView ? "대시보드 뷰 끄기" : "대시보드 뷰 켜기"
-                    }
+                    className={cn("h-8 w-8", isHome && "bg-muted")}
+                    onClick={() => navigate({ to: "/" })}
+                    aria-label="대시보드"
                   >
                     <LayoutGrid className="h-4 w-4" />
                   </Button>
@@ -407,11 +404,9 @@ export const Sidebar = memo(function Sidebar({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={cn("h-8 w-8", costView && "bg-muted")}
-                    onClick={toggleCostView}
-                    aria-label={
-                      costView ? "토큰 분석 끄기" : "토큰 분석 켜기"
-                    }
+                    className={cn("h-8 w-8", isAnalytics && "bg-muted")}
+                    onClick={() => navigate({ to: "/analytics" })}
+                    aria-label="토큰 분석"
                   >
                     <BarChart3 className="h-4 w-4" />
                   </Button>

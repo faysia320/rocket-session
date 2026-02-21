@@ -8,8 +8,6 @@ interface SessionState {
   activeSessionId: string | null;
   focusedSessionId: string | null;
   splitView: boolean;
-  dashboardView: boolean;
-  costView: boolean;
   sidebarCollapsed: boolean;
   sidebarMobileOpen: boolean;
   gitMonitorPaths: string[];
@@ -17,10 +15,6 @@ interface SessionState {
   setFocusedSessionId: (id: string | null) => void;
   setSplitView: (v: boolean) => void;
   toggleSplitView: () => void;
-  setDashboardView: (v: boolean) => void;
-  toggleDashboardView: () => void;
-  setCostView: (v: boolean) => void;
-  toggleCostView: () => void;
   toggleSidebar: () => void;
   setSidebarMobileOpen: (open: boolean) => void;
   addGitMonitorPath: (path: string) => void;
@@ -36,8 +30,6 @@ export const useSessionStore = create<SessionState>()(
       activeSessionId: null,
       focusedSessionId: null,
       splitView: false,
-      dashboardView: false,
-      costView: false,
       sidebarCollapsed: false,
       sidebarMobileOpen: false,
       gitMonitorPaths: [],
@@ -45,22 +37,7 @@ export const useSessionStore = create<SessionState>()(
       setFocusedSessionId: (id) => set({ focusedSessionId: id }),
       setSplitView: (v) => set({ splitView: v }),
       toggleSplitView: () =>
-        set((state) => ({
-          splitView: !state.splitView,
-          ...(state.splitView ? {} : { dashboardView: false, costView: false }),
-        })),
-      setDashboardView: (v) => set({ dashboardView: v }),
-      toggleDashboardView: () =>
-        set((state) => ({
-          dashboardView: !state.dashboardView,
-          ...(state.dashboardView ? {} : { splitView: false, costView: false }),
-        })),
-      setCostView: (v) => set({ costView: v }),
-      toggleCostView: () =>
-        set((state) => ({
-          costView: !state.costView,
-          ...(state.costView ? {} : { dashboardView: false, splitView: false }),
-        })),
+        set((state) => ({ splitView: !state.splitView })),
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarMobileOpen: (open) => set({ sidebarMobileOpen: open }),
@@ -84,7 +61,7 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: "rocket-session-store",
-      version: 1,
+      version: 2,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version === 0) {
@@ -95,13 +72,16 @@ export const useSessionStore = create<SessionState>()(
             gitMonitorPath: undefined,
           };
         }
+        if (version === 1) {
+          // v1→v2: 라우트 기반으로 전환된 뷰 boolean 제거
+          const { dashboardView, costView, ...rest } = state;
+          return rest;
+        }
         return state;
       },
       partialize: (s) => ({
         sidebarCollapsed: s.sidebarCollapsed,
         splitView: s.splitView,
-        dashboardView: s.dashboardView,
-        costView: s.costView,
         gitMonitorPaths: s.gitMonitorPaths,
       }),
     },

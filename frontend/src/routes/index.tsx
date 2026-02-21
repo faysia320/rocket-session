@@ -5,11 +5,10 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useSessionStore } from "@/store";
 import { useSessions } from "@/features/session/hooks/useSessions";
-import { sortSessionsByStatus } from "@/lib/utils";
 
-const SessionDashboardCard = lazy(() =>
-  import("@/features/session/components/SessionDashboardCard").then((m) => ({
-    default: m.SessionDashboardCard,
+const DashboardGrid = lazy(() =>
+  import("@/features/dashboard/components/DashboardGrid").then((m) => ({
+    default: m.DashboardGrid,
   })),
 );
 
@@ -20,12 +19,11 @@ export const Route = createFileRoute("/")({
 function IndexPage() {
   const navigate = useNavigate();
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
-  const dashboardView = useSessionStore((s) => s.dashboardView);
-  const { sessions, selectSession } = useSessions();
+  const { sessions, activeSessionId, selectSession } = useSessions();
 
-  const hasSessions = sessions.length > 0;
+  const activeSessions = sessions.filter((s) => s.status !== "archived");
 
-  if (!hasSessions || !dashboardView) {
+  if (activeSessions.length === 0) {
     return (
       <div className="relative flex-1 flex flex-col">
         <Button
@@ -42,9 +40,6 @@ function IndexPage() {
     );
   }
 
-  const sortedSessions = sortSessionsByStatus(sessions);
-  const runningCount = sessions.filter((s) => s.status === "running").length;
-
   return (
     <div className="relative flex-1 flex flex-col overflow-hidden">
       <Button
@@ -56,40 +51,25 @@ function IndexPage() {
       >
         <Menu className="h-4 w-4" />
       </Button>
-
-      <div className="flex-1 overflow-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-mono text-lg font-semibold text-foreground">
-              Dashboard
-            </h1>
-            <p className="font-mono text-xs text-muted-foreground">
-              {sessions.length}개 세션 ({runningCount}개 실행 중)
-            </p>
+      <Suspense
+        fallback={
+          <div className="flex-1 flex items-center justify-center">
+            <span className="font-mono text-sm text-muted-foreground animate-pulse">
+              로딩 중…
+            </span>
           </div>
-          <Button
-            variant="default"
-            size="sm"
-            className="font-mono text-xs"
-            onClick={() => navigate({ to: "/session/new" })}
-          >
-            + New Session
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <Suspense>
-            {sortedSessions.map((s) => (
-              <SessionDashboardCard
-                key={s.id}
-                session={s}
-                isActive={false}
-                onSelect={selectSession}
-              />
-            ))}
-          </Suspense>
-        </div>
-      </div>
+        }
+      >
+        <DashboardGrid
+          sessions={activeSessions}
+          activeSessionId={activeSessionId}
+          onSelect={(id) => {
+            selectSession(id);
+            navigate({ to: "/session/$sessionId", params: { sessionId: id } });
+          }}
+          onNew={() => navigate({ to: "/session/new" })}
+        />
+      </Suspense>
     </div>
   );
 }
