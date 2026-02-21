@@ -70,7 +70,18 @@ class LocalSessionScanner:
             dirs = [d for d in base.iterdir() if d.is_dir()]
 
         # 1단계: 모든 JSONL에서 메타데이터 + parent_session_id 수집
-        raw_results: list[tuple[LocalSessionMeta, str | None]] = []
+        # asyncio.gather()로 병렬 실행 + Semaphore로 동시 스레드 수 제한
+        _sem = asyncio.Semaphore(10)
+
+        async def _extract_with_limit(
+            jsonl_file: Path, dir_name: str
+        ) -> tuple[LocalSessionMeta, str | None] | None:
+            async with _sem:
+                return await asyncio.to_thread(
+                    self._extract_metadata, jsonl_file, dir_name, imported_ids
+                )
+
+        tasks: list[asyncio.Task] = []
         for d in dirs:
             if not d.exists():
                 continue
@@ -79,12 +90,16 @@ class LocalSessionScanner:
                 # 파일 수정 시간 기반 사전 필터링 (파싱 비용 절감)
                 if since_mtime and f.stat().st_mtime < since_mtime:
                     continue
+                tasks.append(asyncio.ensure_future(_extract_with_limit(f, d.name)))
 
-                result = await asyncio.to_thread(
-                    self._extract_metadata, f, d.name, imported_ids
-                )
-                if result:
-                    raw_results.append(result)
+        gathered = await asyncio.gather(*tasks, return_exceptions=True)
+        raw_results: list[tuple[LocalSessionMeta, str | None]] = []
+        for result in gathered:
+            if isinstance(result, Exception):
+                logger.warning("메타데이터 추출 실패: %s", result)
+                continue
+            if result:
+                raw_results.append(result)
 
         # 2단계: continuation 체인 병합
         results = self._merge_continuation_chains(raw_results)
@@ -401,13 +416,15 @@ class LocalSessionScanner:
 
         # 체인이 길어지면 간접 참조를 놓칠 수 있으므로 반복 탐색
         # (A→root, B→A 인데 A를 B보다 늦게 발견하는 경우)
+        # glob 결과를 한 번만 수집하여 재사용 (O(n^2) → O(n) glob 호출)
         if continuations:
+            all_jsonl_files = list(project_path.glob("*.jsonl"))
             changed = True
             while changed:
                 changed = False
                 known_ids = {root_session_id}
                 known_ids.update(c[0] for c in continuations)
-                for jsonl_path in project_path.glob("*.jsonl"):
+                for jsonl_path in all_jsonl_files:
                     file_id = jsonl_path.stem
                     if file_id in known_ids:
                         continue

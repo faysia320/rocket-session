@@ -37,7 +37,7 @@ class WebSocketManager:
         self._event_buffers: dict[str, deque[BufferedEvent]] = {}
         self._seq_counters: dict[str, int] = {}
         self._db: Database | None = None
-        self._event_queue: asyncio.Queue[dict] = asyncio.Queue()
+        self._event_queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=10000)
         self._flush_task: asyncio.Task | None = None
         self._heartbeat_task: asyncio.Task | None = None
 
@@ -128,6 +128,9 @@ class WebSocketManager:
         ws_list = self._connections.get(session_id, [])
         if ws in ws_list:
             ws_list.remove(ws)
+        # 빈 리스트 정리
+        if not ws_list and session_id in self._connections:
+            del self._connections[session_id]
 
     def has_connections(self, session_id: str) -> bool:
         return bool(self._connections.get(session_id))
@@ -141,7 +144,10 @@ class WebSocketManager:
         return self._seq_counters.get(session_id, 0)
 
     async def broadcast_event(self, session_id: str, message: dict) -> int:
-        """이벤트에 seq 부여 + 버퍼 저장 + DB 저장 + broadcast."""
+        """이벤트에 seq 부여 + 버퍼 저장 + DB 저장 + broadcast.
+
+        broadcast는 fire-and-forget으로 실행하여 stdout 읽기를 블로킹하지 않음.
+        """
         seq = self._next_seq(session_id)
         event_type = message.get("type", "unknown")
         ts = datetime.now(timezone.utc).isoformat()
@@ -159,15 +165,23 @@ class WebSocketManager:
 
         # DB 저장: 큐에 enqueue (JSONB이므로 dict 그대로 저장)
         if self._db:
-            self._event_queue.put_nowait({
-                "session_id": session_id,
-                "seq": seq,
-                "event_type": event_type,
-                "payload": message_with_seq,
-                "timestamp": ts,
-            })
+            try:
+                self._event_queue.put_nowait(
+                    {
+                        "session_id": session_id,
+                        "seq": seq,
+                        "event_type": event_type,
+                        "payload": message_with_seq,
+                        "timestamp": ts,
+                    }
+                )
+            except asyncio.QueueFull:
+                logger.warning(
+                    "이벤트 큐 가득 참 — 이벤트 드롭 (세션 %s, seq %d)", session_id, seq
+                )
 
-        await self.broadcast(session_id, message_with_seq)
+        # fire-and-forget: 느린 WS 클라이언트가 stdout 파이프라인을 블로킹하지 않도록
+        asyncio.create_task(self.broadcast(session_id, message_with_seq))
         return seq
 
     async def broadcast(self, session_id: str, message: dict):
@@ -182,7 +196,7 @@ class WebSocketManager:
             try:
                 if ws.client_state != WebSocketState.CONNECTED:
                     return ws
-                await asyncio.wait_for(ws.send_text(payload), timeout=5.0)
+                await asyncio.wait_for(ws.send_text(payload), timeout=3.0)
                 return None
             except Exception:
                 return ws

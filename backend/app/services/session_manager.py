@@ -113,10 +113,14 @@ class SessionManager:
 
     async def kill_process(self, session_id: str):
         """실행 중인 Claude CLI 프로세스 및 runner task를 안전하게 종료."""
-        # runner task 취소 (stdout reader)
+        # runner task 취소 (stdout reader) — cancel 후 완료 대기
         runner_task = self._runner_tasks.get(session_id)
         if runner_task and not runner_task.done():
             runner_task.cancel()
+            try:
+                await asyncio.wait_for(asyncio.shield(runner_task), timeout=3)
+            except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
+                pass
         self._runner_tasks.pop(session_id, None)
 
         # 프로세스 종료

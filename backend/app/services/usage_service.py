@@ -75,7 +75,8 @@ class UsageService:
 
             result = await self._fetch_usage()
             self._cache = result
-            self._cache_time = now
+            # 에러 응답은 짧은 TTL(5초)로 캐싱하여 빠른 재시도 허용
+            self._cache_time = now if result.available else now - _CACHE_TTL + 5.0
             return result
 
     async def _fetch_usage(self) -> UsageInfo:

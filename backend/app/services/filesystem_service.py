@@ -29,9 +29,14 @@ class FilesystemService:
     # Git 정보 캐시 최대 항목 수
     _GIT_CACHE_MAX_SIZE = 100
 
+    # Cross-platform git 설정: Windows↔WSL2 환경에서 false positive 방지
+    _GIT_CROSS_PLATFORM_OPTS = ("-c", "core.fileMode=false")
+
     def __init__(self, root_dir: str = ""):
         self._git_cache: dict[str, tuple[float, GitInfo]] = {}
         self._git_cache_ttl: float = 10.0  # 10초 TTL
+        # 동일 레포에 대한 동시 git 명령 직렬화 (index.lock 경합 방지)
+        self._git_locks: dict[str, asyncio.Lock] = {}
         # 탐색 경계: 이 디렉토리 상위로는 이동 불가
         self._root_dir: Path | None = None
         if root_dir:
@@ -46,6 +51,15 @@ class FilesystemService:
                     root_dir,
                     resolved,
                 )
+
+    def _get_git_lock(self, path: str) -> asyncio.Lock:
+        """경로별 asyncio.Lock 반환 (lazy 생성, 최대 100개)."""
+        if path not in self._git_locks:
+            if len(self._git_locks) > self._GIT_CACHE_MAX_SIZE:
+                oldest = next(iter(self._git_locks))
+                del self._git_locks[oldest]
+            self._git_locks[path] = asyncio.Lock()
+        return self._git_locks[path]
 
     @property
     def root_dir(self) -> str:
@@ -84,23 +98,28 @@ class FilesystemService:
             else:
                 raise ValueError(f"접근할 수 없는 경로입니다: {path}")
 
-        entries = []
-        for item in sorted(validated_path.iterdir()):
-            # 숨김 디렉토리 제외
-            if item.name.startswith("."):
-                continue
+        def _scan_directory(target: Path) -> list[DirectoryEntry]:
+            """동기 파일시스템 탐색 (이벤트 루프 블로킹 방지용 헬퍼)."""
+            items = []
+            for item in sorted(target.iterdir()):
+                # 숨김 디렉토리 제외
+                if item.name.startswith("."):
+                    continue
 
-            if item.is_dir():
-                # .git 폴더 존재 여부 확인
-                is_git_repo = (item / ".git").exists()
-                entries.append(
-                    DirectoryEntry(
-                        name=item.name,
-                        path=str(item),
-                        is_dir=True,
-                        is_git_repo=is_git_repo,
+                if item.is_dir():
+                    # .git 폴더 존재 여부 확인
+                    is_git_repo = (item / ".git").exists()
+                    items.append(
+                        DirectoryEntry(
+                            name=item.name,
+                            path=str(item),
+                            is_dir=True,
+                            is_git_repo=is_git_repo,
+                        )
                     )
-                )
+            return items
+
+        entries = await asyncio.to_thread(_scan_directory, validated_path)
 
         # 상위 디렉토리 계산 (루트이거나 root_dir 경계이면 None)
         at_root_boundary = validated_path.parent == validated_path or (
@@ -167,26 +186,34 @@ class FilesystemService:
 
         info = GitInfo(is_git_repo=True)
 
-        # 독립적인 Git 명령을 병렬 실행 (순차 → 병렬로 약 7배 빠름)
-        (
-            (rc_branch, branch_out, _),
-            (rc_status, status_out, _),
-            (rc_log, log_out, _),
-            (rc_remote, remote_out, _),
-            (rc_ahead, ahead_out, _),
-            (rc_dir, git_dir, _),
-            (rc_common, git_common, _),
-        ) = await asyncio.gather(
-            self._run_git_command("branch", "--show-current", cwd=cwd),
-            self._run_git_command("status", "--porcelain", cwd=cwd),
-            self._run_git_command("log", "-1", "--format=%H%n%s%n%aI", cwd=cwd),
-            self._run_git_command("remote", "get-url", "origin", cwd=cwd),
-            self._run_git_command(
-                "rev-list", "--left-right", "--count", "HEAD...@{upstream}", cwd=cwd
-            ),
-            self._run_git_command("rev-parse", "--git-dir", cwd=cwd),
-            self._run_git_command("rev-parse", "--git-common-dir", cwd=cwd),
-        )
+        # per-repo lock: get_git_status()와 동시 실행 시 index.lock 경합 방지
+        async with self._get_git_lock(cwd):
+            # 독립적인 Git 명령을 병렬 실행 (순차 → 병렬로 약 7배 빠름)
+            # core.fileMode=false: Windows↔Linux 파일 권한 차이 무시
+            (
+                (rc_branch, branch_out, _),
+                (rc_status, status_out, _),
+                (rc_log, log_out, _),
+                (rc_remote, remote_out, _),
+                (rc_ahead, ahead_out, _),
+                (rc_dir, git_dir, _),
+                (rc_common, git_common, _),
+            ) = await asyncio.gather(
+                self._run_git_command("branch", "--show-current", cwd=cwd),
+                self._run_git_command(
+                    *self._GIT_CROSS_PLATFORM_OPTS,
+                    "status",
+                    "--porcelain",
+                    cwd=cwd,
+                ),
+                self._run_git_command("log", "-1", "--format=%H%n%s%n%aI", cwd=cwd),
+                self._run_git_command("remote", "get-url", "origin", cwd=cwd),
+                self._run_git_command(
+                    "rev-list", "--left-right", "--count", "HEAD...@{upstream}", cwd=cwd
+                ),
+                self._run_git_command("rev-parse", "--git-dir", cwd=cwd),
+                self._run_git_command("rev-parse", "--git-common-dir", cwd=cwd),
+            )
 
         # 브랜치명
         if rc_branch == 0 and branch_out:
@@ -416,9 +443,7 @@ class FilesystemService:
                             push_err,
                         )
                     else:
-                        logger.info(
-                            "원격 브랜치 삭제 완료: origin/%s", worktree_branch
-                        )
+                        logger.info("원격 브랜치 삭제 완료: origin/%s", worktree_branch)
 
     async def get_git_status(self, path: str) -> GitStatusResponse:
         """git status --porcelain=v1 결과를 파싱하여 변경 파일 목록 반환."""
@@ -433,27 +458,41 @@ class FilesystemService:
         if rc != 0:
             return GitStatusResponse(is_git_repo=False)
 
-        # stat 캐시 사전 갱신: cross-platform(Windows↔WSL2) 환경에서
-        # stale 타임스탬프로 인한 false positive 방지
-        await self._run_git_command(
-            "update-index", "--refresh", "-q", cwd=cwd, timeout=30.0
-        )
+        # per-repo lock: get_git_info()와 동시 실행 시 index.lock 경합 방지
+        async with self._get_git_lock(cwd):
+            # stat 캐시 사전 갱신: cross-platform(Windows↔WSL2) 환경에서
+            # stale 타임스탬프로 인한 false positive 방지
+            await self._run_git_command(
+                *self._GIT_CROSS_PLATFORM_OPTS,
+                "update-index",
+                "--refresh",
+                "-q",
+                cwd=cwd,
+                timeout=30.0,
+            )
 
-        # repo 루트 + status 병렬 실행
-        # -u 플래그 미사용: 기본값(--untracked-files=normal)으로
-        # untracked 디렉토리를 단일 항목으로 표시 (재귀 확장 방지)
-        (rc_root, root_out, _), (rc_status, status_out, stderr) = await asyncio.gather(
-            self._run_git_command("rev-parse", "--show-toplevel", cwd=cwd),
-            self._run_git_command("status", "--porcelain=v1", cwd=cwd, timeout=30.0),
-        )
+            # repo 루트 + status 병렬 실행
+            # core.fileMode=false: Windows↔Linux 파일 권한 차이 무시
+            # -u 플래그 미사용: untracked 디렉토리를 단일 항목으로 표시
+            (
+                (rc_root, root_out, _),
+                (rc_status, status_out, stderr),
+            ) = await asyncio.gather(
+                self._run_git_command("rev-parse", "--show-toplevel", cwd=cwd),
+                self._run_git_command(
+                    *self._GIT_CROSS_PLATFORM_OPTS,
+                    "status",
+                    "--porcelain=v1",
+                    cwd=cwd,
+                    timeout=30.0,
+                ),
+            )
 
         repo_root = root_out if rc_root == 0 else None
 
         # git status 실패/타임아웃 시 에러 반환
         if rc_status != 0:
-            error_msg = (
-                "timeout" if stderr == "timeout" else f"git error: {stderr}"
-            )
+            error_msg = "timeout" if stderr == "timeout" else f"git error: {stderr}"
             logger.error(
                 "git status 실패: path=%s, rc=%d, error=%s", path, rc_status, error_msg
             )
@@ -530,59 +569,71 @@ class FilesystemService:
 
     async def list_skills(self, path: str) -> SkillListResponse:
         """Skills 목록 조회 (.claude/commands/*.md)."""
-        skills = []
-        seen_names = set()  # 프로젝트 skills 우선순위를 위한 중복 체크
 
-        # 1. 프로젝트 스킬 스캔 ({path}/.claude/commands/)
-        if path:
+        def _scan_skills(project_path: str) -> list[SkillInfo]:
+            """동기 스킬 파일 탐색 (이벤트 루프 블로킹 방지용 헬퍼)."""
+            results: list[SkillInfo] = []
+            seen_names: set[str] = set()
+
+            # 1. 프로젝트 스킬 스캔 ({path}/.claude/commands/)
+            if project_path:
+                try:
+                    project_commands_path = (
+                        Path(project_path).resolve() / ".claude" / "commands"
+                    )
+                    if (
+                        project_commands_path.exists()
+                        and project_commands_path.is_dir()
+                    ):
+                        for md_file in sorted(project_commands_path.glob("*.md")):
+                            skill_name = md_file.stem
+                            description = _extract_first_line(md_file)
+                            results.append(
+                                SkillInfo(
+                                    name=skill_name,
+                                    filename=md_file.name,
+                                    description=description,
+                                    scope="project",
+                                )
+                            )
+                            seen_names.add(skill_name)
+                except Exception:
+                    pass  # 프로젝트 경로 에러는 무시
+
+            # 2. 사용자 스킬 스캔 (~/.claude/commands/)
             try:
-                project_commands_path = Path(path).resolve() / ".claude" / "commands"
-                if project_commands_path.exists() and project_commands_path.is_dir():
-                    for md_file in sorted(project_commands_path.glob("*.md")):
+                user_commands_path = Path.home() / ".claude" / "commands"
+                if user_commands_path.exists() and user_commands_path.is_dir():
+                    for md_file in sorted(user_commands_path.glob("*.md")):
                         skill_name = md_file.stem
-                        description = self._extract_first_line(md_file)
-                        skills.append(
+                        if skill_name in seen_names:
+                            continue  # 프로젝트 스킬이 우선
+                        description = _extract_first_line(md_file)
+                        results.append(
                             SkillInfo(
                                 name=skill_name,
                                 filename=md_file.name,
                                 description=description,
-                                scope="project",
+                                scope="user",
                             )
                         )
-                        seen_names.add(skill_name)
             except Exception:
-                pass  # 프로젝트 경로 에러는 무시
+                pass  # 사용자 경로 에러는 무시
 
-        # 2. 사용자 스킬 스캔 (~/.claude/commands/)
-        try:
-            user_commands_path = Path.home() / ".claude" / "commands"
-            if user_commands_path.exists() and user_commands_path.is_dir():
-                for md_file in sorted(user_commands_path.glob("*.md")):
-                    skill_name = md_file.stem
-                    if skill_name in seen_names:
-                        continue  # 프로젝트 스킬이 우선
-                    description = self._extract_first_line(md_file)
-                    skills.append(
-                        SkillInfo(
-                            name=skill_name,
-                            filename=md_file.name,
-                            description=description,
-                            scope="user",
-                        )
-                    )
-        except Exception:
-            pass  # 사용자 경로 에러는 무시
+            return results
 
+        skills = await asyncio.to_thread(_scan_skills, path)
         return SkillListResponse(skills=skills)
 
-    def _extract_first_line(self, file_path: Path) -> str:
-        """파일의 첫 비어있지 않은 줄을 추출."""
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    stripped = line.strip()
-                    if stripped:
-                        return stripped
-        except Exception:
-            pass
-        return ""
+
+def _extract_first_line(file_path: Path) -> str:
+    """파일의 첫 비어있지 않은 줄을 추출."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped:
+                    return stripped
+    except Exception:
+        pass
+    return ""

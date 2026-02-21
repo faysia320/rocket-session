@@ -223,7 +223,11 @@ class ClaudeRunner:
         mcp_ids: list[str] = []
         if mcp_ids_raw:
             try:
-                parsed = json.loads(mcp_ids_raw) if isinstance(mcp_ids_raw, str) else mcp_ids_raw
+                parsed = (
+                    json.loads(mcp_ids_raw)
+                    if isinstance(mcp_ids_raw, str)
+                    else mcp_ids_raw
+                )
                 if isinstance(parsed, list):
                     mcp_ids = parsed
             except (json.JSONDecodeError, TypeError):
@@ -669,8 +673,16 @@ class ClaudeRunner:
             session_id, {"type": WsEventType.STATUS, "status": SessionStatus.RUNNING}
         )
 
-        cmd, _, mcp_config_path = self._build_command(
-            session, prompt, allowed_tools, session_id, mode, images=images
+        # _build_command는 동기 메서드 (내부에서 _copy_images_to_workdir의 shutil.copy2 등
+        # 블로킹 I/O를 수행하므로 이벤트 루프 보호를 위해 스레드에서 실행)
+        cmd, _, mcp_config_path = await asyncio.to_thread(
+            self._build_command,
+            session,
+            prompt,
+            allowed_tools,
+            session_id,
+            mode,
+            images,
         )
 
         # MCP config 통합: 사용자 MCP 서버 + Permission MCP 병합
@@ -738,30 +750,35 @@ class ClaudeRunner:
                 except asyncio.TimeoutError:
                     process.kill()
             else:
-                # 정상 흐름: stderr 읽기 (타임아웃 적용) 및 프로세스 대기
-                try:
-                    stderr = await asyncio.wait_for(
-                        process.stderr.read(), timeout=10
-                    )
-                    if stderr:
-                        stderr_text = stderr.decode("utf-8").strip()
-                        if stderr_text:
-                            await ws_manager.broadcast_event(
-                                session_id,
-                                {"type": WsEventType.STDERR, "text": stderr_text},
-                            )
-                except asyncio.TimeoutError:
-                    logger.warning(
-                        "세션 %s: stderr 읽기 타임아웃 (10초)", session_id
-                    )
-                try:
-                    await asyncio.wait_for(process.wait(), timeout=10)
-                except asyncio.TimeoutError:
-                    logger.warning(
-                        "세션 %s: 프로세스 종료 대기 타임아웃 — 강제 종료",
-                        session_id,
-                    )
-                    process.kill()
+                # 정상 흐름: stderr 읽기와 프로세스 대기를 병렬 실행
+                async def _read_stderr():
+                    try:
+                        stderr = await asyncio.wait_for(
+                            process.stderr.read(), timeout=10
+                        )
+                        if stderr:
+                            stderr_text = stderr.decode("utf-8").strip()
+                            if stderr_text:
+                                await ws_manager.broadcast_event(
+                                    session_id,
+                                    {"type": WsEventType.STDERR, "text": stderr_text},
+                                )
+                    except asyncio.TimeoutError:
+                        logger.warning(
+                            "세션 %s: stderr 읽기 타임아웃 (10초)", session_id
+                        )
+
+                async def _wait_process():
+                    try:
+                        await asyncio.wait_for(process.wait(), timeout=10)
+                    except asyncio.TimeoutError:
+                        logger.warning(
+                            "세션 %s: 프로세스 종료 대기 타임아웃 — 강제 종료",
+                            session_id,
+                        )
+                        process.kill()
+
+                await asyncio.gather(_read_stderr(), _wait_process())
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}: (no message)"

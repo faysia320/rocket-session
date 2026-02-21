@@ -33,11 +33,20 @@ from app.api.v1.endpoints.permissions import clear_pending  # noqa: E402
 
 async def _periodic_cleanup():
     """1시간마다 오래된 이벤트 정리."""
+    from app.repositories.event_repo import EventRepository
+
     while True:
         await asyncio.sleep(3600)
         try:
             db = get_database()
-            await db.cleanup_old_events(24)
+            async with db.session() as session:
+                repo = EventRepository(session)
+                deleted = await repo.cleanup_old_events(24)
+                await session.commit()
+                if deleted:
+                    logging.getLogger(__name__).info(
+                        "오래된 이벤트 %d건 정리 완료", deleted
+                    )
         except Exception as e:
             logging.getLogger(__name__).warning("주기적 이벤트 정리 실패: %s", e)
 
