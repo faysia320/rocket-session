@@ -5,11 +5,25 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
-from app.api.dependencies import get_mcp_service, get_search_service, get_session_manager, get_settings, get_settings_service, get_tag_service, get_template_service, get_ws_manager
+from app.api.dependencies import (
+    get_mcp_service,
+    get_search_service,
+    get_session_manager,
+    get_settings,
+    get_settings_service,
+    get_tag_service,
+    get_template_service,
+    get_ws_manager,
+)
 from app.core.config import Settings
 from app.models.session import SessionStatus
 from app.schemas.search import PaginatedSessionsResponse
-from app.schemas.session import CreateSessionRequest, CurrentActivity, SessionInfo, UpdateSessionRequest
+from app.schemas.session import (
+    CreateSessionRequest,
+    CurrentActivity,
+    SessionInfo,
+    UpdateSessionRequest,
+)
 from app.schemas.tag import SessionTagRequest, TagInfo
 from app.services.mcp_service import McpService
 from app.services.search_service import SearchService
@@ -49,16 +63,50 @@ async def create_session(
     )
 
     # 각 필드 우선순위: 요청값 > 템플릿값
-    system_prompt = req.system_prompt if req.system_prompt is not None else (tpl.system_prompt if tpl else None)
-    allowed_tools = req.allowed_tools if req.allowed_tools is not None else (tpl.allowed_tools if tpl else None)
-    disallowed_tools = req.disallowed_tools if req.disallowed_tools is not None else (tpl.disallowed_tools if tpl else None)
-    timeout_seconds = req.timeout_seconds if req.timeout_seconds is not None else (tpl.timeout_seconds if tpl else None)
-    permission_mode = req.permission_mode if req.permission_mode is not None else (tpl.permission_mode if tpl else False)
-    permission_required_tools = req.permission_required_tools if req.permission_required_tools is not None else (tpl.permission_required_tools if tpl else None)
+    system_prompt = (
+        req.system_prompt
+        if req.system_prompt is not None
+        else (tpl.system_prompt if tpl else None)
+    )
+    allowed_tools = (
+        req.allowed_tools
+        if req.allowed_tools is not None
+        else (tpl.allowed_tools if tpl else None)
+    )
+    disallowed_tools = (
+        req.disallowed_tools
+        if req.disallowed_tools is not None
+        else (tpl.disallowed_tools if tpl else None)
+    )
+    timeout_seconds = (
+        req.timeout_seconds
+        if req.timeout_seconds is not None
+        else (tpl.timeout_seconds if tpl else None)
+    )
+    permission_mode = (
+        req.permission_mode
+        if req.permission_mode is not None
+        else (tpl.permission_mode if tpl else False)
+    )
+    permission_required_tools = (
+        req.permission_required_tools
+        if req.permission_required_tools is not None
+        else (tpl.permission_required_tools if tpl else None)
+    )
     model = req.model if req.model is not None else (tpl.model if tpl else None)
-    max_turns = req.max_turns if req.max_turns is not None else (tpl.max_turns if tpl else None)
-    max_budget_usd = req.max_budget_usd if req.max_budget_usd is not None else (tpl.max_budget_usd if tpl else None)
-    system_prompt_mode = req.system_prompt_mode if req.system_prompt_mode is not None else (tpl.system_prompt_mode if tpl else "replace")
+    max_turns = (
+        req.max_turns if req.max_turns is not None else (tpl.max_turns if tpl else None)
+    )
+    max_budget_usd = (
+        req.max_budget_usd
+        if req.max_budget_usd is not None
+        else (tpl.max_budget_usd if tpl else None)
+    )
+    system_prompt_mode = (
+        req.system_prompt_mode
+        if req.system_prompt_mode is not None
+        else (tpl.system_prompt_mode if tpl else "replace")
+    )
     mode = req.mode if req.mode is not None else (tpl.mode if tpl else None)
 
     # MCP 서버: 요청 > 템플릿 > 활성화된 모든 MCP 서버
@@ -312,10 +360,13 @@ async def unarchive_session(
 async def delete_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
+    ws_manager: WebSocketManager = Depends(get_ws_manager),
 ):
     deleted = await manager.delete(session_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    # 인메모리 자원 정리 (seq 카운터, 이벤트 버퍼)
+    ws_manager.reset_session(session_id)
     return {"status": "deleted"}
 
 

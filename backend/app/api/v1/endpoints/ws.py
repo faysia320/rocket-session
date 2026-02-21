@@ -26,6 +26,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# 세션별 프롬프트 Lock (TOCTOU 방지: runner_task 체크와 설정 사이의 경합 방지)
+_prompt_locks: dict[str, asyncio.Lock] = {}
+
 
 def _on_runner_task_done(
     task: asyncio.Task, session_id: str, manager: SessionManager
@@ -56,105 +59,113 @@ async def _handle_prompt(
         )
         return
 
-    # 이미 실행 중인 runner가 있으면 거부
-    existing_task = manager.get_runner_task(session_id)
-    if existing_task:
-        await ws.send_json(
-            {"type": WsEventType.ERROR, "message": "이미 실행 중인 요청이 있습니다."}
+    # 세션별 Lock으로 TOCTOU 방지 (runner_task 체크 → 설정 사이의 경합 차단)
+    lock = _prompt_locks.setdefault(session_id, asyncio.Lock())
+    async with lock:
+        # 이미 실행 중인 runner가 있으면 거부
+        existing_task = manager.get_runner_task(session_id)
+        if existing_task:
+            await ws.send_json(
+                {
+                    "type": WsEventType.ERROR,
+                    "message": "이미 실행 중인 요청이 있습니다.",
+                }
+            )
+            return
+
+        # 세션 정보 로드
+        current_session = await manager.get(session_id)
+
+        # 글로벌 기본 설정 로드
+        settings_service = get_settings_service()
+        global_settings = await settings_service.get()
+
+        # allowed_tools: 요청 > 세션 > 글로벌 > env
+        allowed_tools = (
+            data.get("allowed_tools")
+            or (current_session.get("allowed_tools") if current_session else None)
+            or global_settings.get("allowed_tools")
+            or settings.claude_allowed_tools
         )
-        return
 
-    # 세션 정보 로드
-    current_session = await manager.get(session_id)
-
-    # 글로벌 기본 설정 로드
-    settings_service = get_settings_service()
-    global_settings = await settings_service.get()
-
-    # allowed_tools: 요청 > 세션 > 글로벌 > env
-    allowed_tools = (
-        data.get("allowed_tools")
-        or (current_session.get("allowed_tools") if current_session else None)
-        or global_settings.get("allowed_tools")
-        or settings.claude_allowed_tools
-    )
-
-    # 모드: 요청 > 세션 > 글로벌 > 기본값
-    mode = (
-        data.get("mode")
-        or (current_session.get("mode") if current_session else None)
-        or global_settings.get("mode")
-        or "normal"
-    )
-
-    # 이미지 경로 목록 (업로드 API로 먼저 업로드한 파일 경로)
-    images = data.get("images", [])
-
-    # 세션에 이름이 없으면 첫 프롬프트로 자동 이름 설정
-    if current_session and not current_session.get("name"):
-        auto_name = prompt[:40].strip()
-        if len(prompt) > 40:
-            auto_name += "…"
-        await manager.update_settings(session_id, name=auto_name)
-
-    ts = datetime.now(timezone.utc).isoformat()
-    await manager.add_message(
-        session_id=session_id,
-        role="user",
-        content=prompt,
-        timestamp=ts,
-    )
-    user_msg = {
-        "role": "user",
-        "content": prompt,
-        "timestamp": ts,
-    }
-    await ws_manager.broadcast_event(
-        session_id, {"type": WsEventType.USER_MESSAGE, "message": user_msg}
-    )
-
-    # 글로벌 기본값으로 세션 설정 병합 (세션에 값이 없는 필드만)
-    merged_session = dict(current_session) if current_session else {}
-    for key in [
-        "system_prompt",
-        "timeout_seconds",
-        "permission_mode",
-        "permission_required_tools",
-        "model",
-        "max_turns",
-        "max_budget_usd",
-        "system_prompt_mode",
-        "disallowed_tools",
-        "mcp_server_ids",
-    ]:
-        if not merged_session.get(key) and global_settings.get(key):
-            if key in ("permission_required_tools", "mcp_server_ids"):
-                val = global_settings[key]
-                merged_session[key] = json.dumps(val) if isinstance(val, list) else val
-            elif key == "permission_mode":
-                merged_session[key] = int(global_settings[key])
-            else:
-                merged_session[key] = global_settings[key]
-
-    # MCP 서비스 주입
-    mcp_service = get_mcp_service()
-
-    # ClaudeRunner에 최신 세션 정보 전달
-    task = asyncio.create_task(
-        runner.run(
-            merged_session,
-            prompt,
-            allowed_tools,
-            session_id,
-            ws_manager,
-            manager,
-            mode=mode,
-            images=images,
-            mcp_service=mcp_service,
+        # 모드: 요청 > 세션 > 글로벌 > 기본값
+        mode = (
+            data.get("mode")
+            or (current_session.get("mode") if current_session else None)
+            or global_settings.get("mode")
+            or "normal"
         )
-    )
-    task.add_done_callback(lambda t: _on_runner_task_done(t, session_id, manager))
-    manager.set_runner_task(session_id, task)
+
+        # 이미지 경로 목록 (업로드 API로 먼저 업로드한 파일 경로)
+        images = data.get("images", [])
+
+        # 세션에 이름이 없으면 첫 프롬프트로 자동 이름 설정
+        if current_session and not current_session.get("name"):
+            auto_name = prompt[:40].strip()
+            if len(prompt) > 40:
+                auto_name += "…"
+            await manager.update_settings(session_id, name=auto_name)
+
+        ts = datetime.now(timezone.utc).isoformat()
+        await manager.add_message(
+            session_id=session_id,
+            role="user",
+            content=prompt,
+            timestamp=ts,
+        )
+        user_msg = {
+            "role": "user",
+            "content": prompt,
+            "timestamp": ts,
+        }
+        await ws_manager.broadcast_event(
+            session_id, {"type": WsEventType.USER_MESSAGE, "message": user_msg}
+        )
+
+        # 글로벌 기본값으로 세션 설정 병합 (세션에 값이 없는 필드만)
+        merged_session = dict(current_session) if current_session else {}
+        for key in [
+            "system_prompt",
+            "timeout_seconds",
+            "permission_mode",
+            "permission_required_tools",
+            "model",
+            "max_turns",
+            "max_budget_usd",
+            "system_prompt_mode",
+            "disallowed_tools",
+            "mcp_server_ids",
+        ]:
+            if not merged_session.get(key) and global_settings.get(key):
+                if key in ("permission_required_tools", "mcp_server_ids"):
+                    val = global_settings[key]
+                    merged_session[key] = (
+                        json.dumps(val) if isinstance(val, list) else val
+                    )
+                elif key == "permission_mode":
+                    merged_session[key] = int(global_settings[key])
+                else:
+                    merged_session[key] = global_settings[key]
+
+        # MCP 서비스 주입
+        mcp_service = get_mcp_service()
+
+        # ClaudeRunner에 최신 세션 정보 전달
+        task = asyncio.create_task(
+            runner.run(
+                merged_session,
+                prompt,
+                allowed_tools,
+                session_id,
+                ws_manager,
+                manager,
+                mode=mode,
+                images=images,
+                mcp_service=mcp_service,
+            )
+        )
+        task.add_done_callback(lambda t: _on_runner_task_done(t, session_id, manager))
+        manager.set_runner_task(session_id, task)
 
 
 async def _handle_stop(
@@ -180,10 +191,13 @@ async def _handle_clear(
     # 3. 인메모리 이벤트 버퍼 + seq 카운터 초기화
     ws_manager.reset_session(session_id)
     # 4. 클라이언트에 직접 알림 (reset 후이므로 broadcast_event 대신 broadcast 사용)
-    await ws_manager.broadcast(session_id, {
-        "type": WsEventType.SYSTEM,
-        "message": "대화 컨텍스트가 초기화되었습니다",
-    })
+    await ws_manager.broadcast(
+        session_id,
+        {
+            "type": WsEventType.SYSTEM,
+            "message": "대화 컨텍스트가 초기화되었습니다",
+        },
+    )
 
 
 async def _handle_permission_respond(data: dict) -> None:
@@ -220,10 +234,9 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
     ws_manager.register(session_id, ws)
 
-    # JSONL 감시 자동 시작 (import된 세션 + 활성 JSONL 파일)
-    await jsonl_watcher.try_auto_start(session_id)
-
     try:
+        # JSONL 감시 자동 시작 (import된 세션 + 활성 JSONL 파일)
+        await jsonl_watcher.try_auto_start(session_id)
         session_with_counts = await manager.get_with_counts(session_id) or session
         latest_seq = ws_manager.get_latest_seq(session_id)
         is_running = manager.get_runner_task(
