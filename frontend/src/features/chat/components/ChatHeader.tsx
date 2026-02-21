@@ -3,7 +3,6 @@ import {
   FolderOpen,
   GitBranch,
   RefreshCw,
-  Menu,
 } from "lucide-react";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { GitDropdownMenu } from "./GitDropdownMenu";
@@ -42,7 +41,6 @@ interface ChatHeaderProps {
   filesOpen: boolean;
   onFilesOpenChange: (open: boolean) => void;
   onRetryConnect?: () => void;
-  onMenuToggle?: () => void;
   currentModel?: string | null;
   portalContainer?: HTMLElement | null;
   onSendPrompt: (prompt: string) => void;
@@ -66,7 +64,6 @@ export const ChatHeader = memo(function ChatHeader({
   filesOpen,
   onFilesOpenChange,
   onRetryConnect,
-  onMenuToggle,
   currentModel,
   portalContainer,
   onSendPrompt,
@@ -93,17 +90,6 @@ export const ChatHeader = memo(function ChatHeader({
       <div className="flex flex-col gap-0.5 min-w-0">
         {/* 1줄: 연결 상태 */}
         <div className="flex items-center gap-2">
-          {onMenuToggle ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 md:hidden shrink-0"
-              onClick={onMenuToggle}
-              aria-label="메뉴 열기"
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
-          ) : null}
           <span
             className={cn(
               "w-2 h-2 rounded-full transition-all",

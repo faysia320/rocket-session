@@ -1,25 +1,13 @@
 import { useState, useRef, useCallback, useMemo, memo } from "react";
-import { useTheme } from "next-themes";
-import { useNavigate, useLocation } from "@tanstack/react-router";
 import {
-  Sun,
-  Moon,
   Columns2,
-  LayoutGrid,
   Download,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Settings,
   Search,
   X,
-  Bell,
-  BellOff,
-  FileStack,
-  BarChart3,
-  Clock,
 } from "lucide-react";
-import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,8 +29,6 @@ import {
 import { cn, truncatePath } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { ImportLocalDialog } from "./ImportLocalDialog";
-import { GlobalSettingsDialog } from "@/features/settings/components/GlobalSettingsDialog";
-import { TemplateListDialog } from "@/features/template/components/TemplateListDialog";
 import { useSessionStore } from "@/store";
 
 interface SidebarProps {
@@ -70,14 +56,9 @@ export const Sidebar = memo(function Sidebar({
   isLoading,
   isError,
 }: SidebarProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
   const splitView = useSessionStore((s) => s.splitView);
   const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
   const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
-  const isHome = location.pathname === "/";
-  const isAnalytics = location.pathname === "/analytics";
-  const isHistory = location.pathname === "/history";
   const collapsed = isMobileOverlay ? false : sidebarCollapsed;
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const [importOpen, setImportOpen] = useState(false);
@@ -85,11 +66,6 @@ export const Sidebar = memo(function Sidebar({
   const [statusFilter, setStatusFilter] = useState<
     "all" | "running" | "idle" | "error" | "archived"
   >("all");
-  const {
-    settings: notificationSettings,
-    toggleEnabled: toggleNotifications,
-    requestDesktopPermission,
-  } = useNotificationCenter();
 
   const filteredSessions = useMemo(() => {
     let filtered = sessions;
@@ -120,102 +96,8 @@ export const Sidebar = memo(function Sidebar({
           (collapsed ? "w-16 min-w-16" : "w-[260px] min-w-[260px]"),
       )}
     >
-      {/* Navigation */}
-      <nav
-        className={cn(
-          "px-3 pt-3",
-          collapsed ? "pb-1" : "pb-0",
-        )}
-      >
-        {collapsed ? (
-          <div className="flex flex-col gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn("w-full h-8", isHome && "bg-muted")}
-                  onClick={() => navigate({ to: "/" })}
-                  aria-label="Dashboard"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Dashboard</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn("w-full h-8", isHistory && "bg-muted")}
-                  onClick={() => navigate({ to: "/history" })}
-                  aria-label="History"
-                >
-                  <Clock className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">History</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn("w-full h-8", isAnalytics && "bg-muted")}
-                  onClick={() => navigate({ to: "/analytics" })}
-                  aria-label="Analytics"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Analytics</TooltipContent>
-            </Tooltip>
-          </div>
-        ) : (
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              className={cn(
-                "flex-1 h-8 gap-1.5 font-mono text-xs",
-                isHome && "bg-muted",
-              )}
-              onClick={() => navigate({ to: "/" })}
-              aria-label="Dashboard"
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-              Dashboard
-            </Button>
-            <Button
-              variant="ghost"
-              className={cn(
-                "flex-1 h-8 gap-1.5 font-mono text-xs",
-                isHistory && "bg-muted",
-              )}
-              onClick={() => navigate({ to: "/history" })}
-              aria-label="History"
-            >
-              <Clock className="h-3.5 w-3.5" />
-              History
-            </Button>
-            <Button
-              variant="ghost"
-              className={cn(
-                "flex-1 h-8 gap-1.5 font-mono text-xs",
-                isAnalytics && "bg-muted",
-              )}
-              onClick={() => navigate({ to: "/analytics" })}
-              aria-label="Analytics"
-            >
-              <BarChart3 className="h-3.5 w-3.5" />
-              Analytics
-            </Button>
-          </div>
-        )}
-      </nav>
-
       {/* New Session */}
-      <div className="px-3 pt-2">
+      <div className="px-3 pt-3">
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -389,131 +271,59 @@ export const Sidebar = memo(function Sidebar({
         )}
       </ScrollArea>
 
-      {/* Footer: 설정 · 레이아웃 */}
-      <div
-        className={cn(
-          "py-3 border-t border-border",
-          collapsed ? "px-2" : "px-4",
-        )}
-      >
+      {/* Footer: 분할뷰 + 사이드바 토글 */}
+      {isMobileOverlay ? null : (
         <div
           className={cn(
-            "flex items-center",
-            collapsed ? "flex-col gap-1" : "justify-center gap-1",
+            "py-3 border-t border-border",
+            collapsed ? "px-2" : "px-4",
           )}
         >
-          {/* 설정 그룹: 알림, 설정, 템플릿 */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "h-8 w-8",
-                  notificationSettings.enabled && "text-primary",
-                )}
-                onClick={async () => {
-                  if (!notificationSettings.enabled) {
-                    await requestDesktopPermission();
-                  }
-                  toggleNotifications();
-                }}
-                aria-label={
-                  notificationSettings.enabled ? "알림 비활성화" : "알림 활성화"
-                }
-              >
-                {notificationSettings.enabled ? (
-                  <Bell className="h-4 w-4" />
-                ) : (
-                  <BellOff className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side={collapsed ? "right" : "top"}>
-              {notificationSettings.enabled ? "알림 켜짐" : "알림 꺼짐"}
-            </TooltipContent>
-          </Tooltip>
-          <GlobalSettingsDialog>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              aria-label="글로벌 설정"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </GlobalSettingsDialog>
-          <TemplateListDialog>
+          <div
+            className={cn(
+              "flex items-center",
+              collapsed ? "flex-col gap-1" : "justify-center gap-1",
+            )}
+          >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-8 w-8", splitView && "bg-muted")}
+                  onClick={toggleSplitView}
+                  aria-label={splitView ? "단일 뷰로 전환" : "분할 뷰로 전환"}
+                >
+                  <Columns2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side={collapsed ? "right" : "top"}>
+                Split View
+              </TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  aria-label="세션 템플릿"
+                  onClick={toggleSidebar}
+                  aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
                 >
-                  <FileStack className="h-4 w-4" />
+                  {collapsed ? (
+                    <PanelLeftOpen className="h-4 w-4" />
+                  ) : (
+                    <PanelLeftClose className="h-4 w-4" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side={collapsed ? "right" : "top"}>
-                템플릿
+                {collapsed ? "사이드바 펼치기" : "사이드바 접기"}
               </TooltipContent>
             </Tooltip>
-          </TemplateListDialog>
-
-          {/* 그룹 구분선 */}
-          {isMobileOverlay ? null : (
-            collapsed ? (
-              <div className="h-px w-5 bg-border my-1 self-center" />
-            ) : (
-              <div className="w-px h-5 bg-border mx-1" />
-            )
-          )}
-
-          {/* 레이아웃 그룹: 테마, 분할 뷰, 사이드바 토글 */}
-          <ThemeToggle />
-          {isMobileOverlay ? null : (
-            <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn("h-8 w-8", splitView && "bg-muted")}
-                    onClick={toggleSplitView}
-                    aria-label={splitView ? "단일 뷰로 전환" : "분할 뷰로 전환"}
-                  >
-                    <Columns2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side={collapsed ? "right" : "top"}>
-                  Split View
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={toggleSidebar}
-                    aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-                  >
-                    {collapsed ? (
-                      <PanelLeftOpen className="h-4 w-4" />
-                    ) : (
-                      <PanelLeftClose className="h-4 w-4" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side={collapsed ? "right" : "top"}>
-                  {collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-                </TooltipContent>
-              </Tooltip>
-            </>
-          )}
+          </div>
         </div>
-      </div>
+      )}
       <ImportLocalDialog
         open={importOpen}
         onOpenChange={setImportOpen}
@@ -525,23 +335,6 @@ export const Sidebar = memo(function Sidebar({
     </aside>
   );
 });
-
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-8 w-8"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      aria-label="테마 변경"
-    >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </Button>
-  );
-}
 
 const SessionItem = memo(function SessionItem({
   session: s,
@@ -688,4 +481,3 @@ const SessionItem = memo(function SessionItem({
     </button>
   );
 });
-

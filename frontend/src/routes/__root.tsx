@@ -7,6 +7,7 @@ import {
 import { memo, useCallback, useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Sidebar } from "@/features/session/components/Sidebar";
+import { GlobalTopBar } from "@/features/layout/components/GlobalTopBar";
 
 const ChatPanel = lazy(() =>
   import("@/features/chat/components/ChatPanel").then((m) => ({
@@ -50,8 +51,11 @@ function RootComponent() {
     [sessions],
   );
 
+  // 사이드바는 세션 라우트에서만 표시
+  const isOnSessionRoute = location.pathname.startsWith("/session");
+
   // Split View는 세션 라우트(/session/:id)에서만 활성화
-  const isSessionRoute =
+  const isSessionDetailRoute =
     location.pathname.startsWith("/session/") &&
     !location.pathname.endsWith("/new");
 
@@ -124,50 +128,60 @@ function RootComponent() {
   );
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
-      {isMobile ? (
-        <Sheet open={sidebarMobileOpen} onOpenChange={setSidebarMobileOpen}>
-          <SheetContent
-            side="left"
-            className="p-0 w-[280px]"
-            aria-describedby={undefined}
-            hideClose
-          >
-            <SheetTitle className="sr-only">Navigation</SheetTitle>
-            {sidebarElement}
-          </SheetContent>
-        </Sheet>
-      ) : (
-        sidebarElement
-      )}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
-          {!isMobile && splitView && activeSessions.length > 0 && isSessionRoute ? (
-            <Suspense fallback={<LoadingSkeleton />}>
-              {pagedSessions.map((s) => (
-                <SplitViewPane
-                  key={s.id}
-                  sessionId={s.id}
-                  isFocused={focusedSessionId === s.id}
-                  onFocus={setFocusedSessionId}
-                />
-              ))}
-            </Suspense>
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
+      {/* 글로벌 Top Bar */}
+      <GlobalTopBar />
+
+      {/* 사이드바 + 콘텐츠 영역 */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* 사이드바: 세션 라우트에서만 표시 */}
+        {isOnSessionRoute ? (
+          isMobile ? (
+            <Sheet open={sidebarMobileOpen} onOpenChange={setSidebarMobileOpen}>
+              <SheetContent
+                side="left"
+                className="p-0 w-[280px]"
+                aria-describedby={undefined}
+                hideClose
+              >
+                <SheetTitle className="sr-only">세션 목록</SheetTitle>
+                {sidebarElement}
+              </SheetContent>
+            </Sheet>
           ) : (
-            <Outlet />
-          )}
-        </main>
-        <UsageFooter
-          centerSlot={
-            splitView && !isMobile && totalSplitPages > 1 ? (
-              <SplitViewPagination
-                currentPage={splitPage}
-                totalPages={totalSplitPages}
-                onPageChange={setSplitPage}
-              />
-            ) : undefined
-          }
-        />
+            sidebarElement
+          )
+        ) : null}
+
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
+            {!isMobile && splitView && activeSessions.length > 0 && isSessionDetailRoute ? (
+              <Suspense fallback={<LoadingSkeleton />}>
+                {pagedSessions.map((s) => (
+                  <SplitViewPane
+                    key={s.id}
+                    sessionId={s.id}
+                    isFocused={focusedSessionId === s.id}
+                    onFocus={setFocusedSessionId}
+                  />
+                ))}
+              </Suspense>
+            ) : (
+              <Outlet />
+            )}
+          </main>
+          <UsageFooter
+            centerSlot={
+              splitView && !isMobile && totalSplitPages > 1 ? (
+                <SplitViewPagination
+                  currentPage={splitPage}
+                  totalPages={totalSplitPages}
+                  onPageChange={setSplitPage}
+                />
+              ) : undefined
+            }
+          />
+        </div>
       </div>
       <CommandPaletteProvider />
     </div>
