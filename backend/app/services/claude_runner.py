@@ -738,16 +738,30 @@ class ClaudeRunner:
                 except asyncio.TimeoutError:
                     process.kill()
             else:
-                # 정상 흐름: stderr 읽기 및 프로세스 대기
-                stderr = await process.stderr.read()
-                if stderr:
-                    stderr_text = stderr.decode("utf-8").strip()
-                    if stderr_text:
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {"type": WsEventType.STDERR, "text": stderr_text},
-                        )
-                await process.wait()
+                # 정상 흐름: stderr 읽기 (타임아웃 적용) 및 프로세스 대기
+                try:
+                    stderr = await asyncio.wait_for(
+                        process.stderr.read(), timeout=10
+                    )
+                    if stderr:
+                        stderr_text = stderr.decode("utf-8").strip()
+                        if stderr_text:
+                            await ws_manager.broadcast_event(
+                                session_id,
+                                {"type": WsEventType.STDERR, "text": stderr_text},
+                            )
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "세션 %s: stderr 읽기 타임아웃 (10초)", session_id
+                    )
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=10)
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "세션 %s: 프로세스 종료 대기 타임아웃 — 강제 종료",
+                        session_id,
+                    )
+                    process.kill()
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}: (no message)"

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import type { ResultMsg } from "@/types";
 import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -172,6 +173,17 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     searchOpen, searchQuery, searchMatchIndex, searchMatches,
     setSearchQuery, setSearchMatchIndex, handleToggleSearch,
   } = useChatSearch({ messages, virtualizer, splitView, focusedSessionId, sessionId });
+
+  // Plan 승인 대기 상태 감지
+  const waitingForPlanApproval = useMemo(() => {
+    if (messages.length === 0) return false;
+    const lastMsg = messages[messages.length - 1];
+    return (
+      lastMsg.type === "result" &&
+      (lastMsg as ResultMsg).mode === "plan" &&
+      !(lastMsg as ResultMsg).planExecuted
+    );
+  }, [messages]);
 
   // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
   const prevGapsRef = useRef<Record<number, "tight" | "normal" | "turn-start">>({});
@@ -451,7 +463,12 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         )}
       </ScrollArea>
 
-      <ActivityStatusBar activeTools={activeTools} status={status} />
+      <ActivityStatusBar
+        activeTools={activeTools}
+        status={status}
+        pendingPermission={pendingPermission}
+        waitingForPlanApproval={waitingForPlanApproval}
+      />
 
       <div>
         <ChatInput

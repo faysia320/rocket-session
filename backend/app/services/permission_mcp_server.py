@@ -9,24 +9,41 @@
 """
 
 import json
+import logging
 import os
 import sys
-import urllib.request
+import threading
 import urllib.error
+import urllib.request
+
+# stderr로 로깅 (stdout은 MCP stdio 프로토콜에 사용됨)
+logging.basicConfig(
+    stream=sys.stderr,
+    level=logging.DEBUG,
+    format="[PermissionMCP] %(levelname)s %(message)s",
+)
+logger = logging.getLogger("permission_mcp")
 
 
 def read_message() -> dict | None:
     """stdin에서 JSON-RPC 메시지를 한 줄씩 읽습니다."""
-    line = sys.stdin.readline()
-    if not line:
+    try:
+        line = sys.stdin.readline()
+        if not line:
+            return None
+        return json.loads(line.strip())
+    except (json.JSONDecodeError, OSError) as e:
+        logger.error("메시지 읽기 실패: %s", e)
         return None
-    return json.loads(line.strip())
 
 
 def write_message(msg: dict):
     """stdout으로 JSON-RPC 메시지를 씁니다."""
-    sys.stdout.write(json.dumps(msg) + "\n")
-    sys.stdout.flush()
+    try:
+        sys.stdout.write(json.dumps(msg) + "\n")
+        sys.stdout.flush()
+    except OSError as e:
+        logger.error("메시지 쓰기 실패: %s", e)
 
 
 def write_error(msg_id, code: int, message: str):
@@ -106,8 +123,34 @@ def _make_deny_response(msg_id) -> dict:
     }
 
 
+def _do_http_request(url: str, payload: bytes, timeout: int) -> dict | None:
+    """HTTP POST 요청을 수행합니다. 실패 시 None 반환."""
+    try:
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.URLError as e:
+        logger.error("HTTP 요청 실패 (URLError): %s → %s", url, e)
+        return None
+    except TimeoutError:
+        logger.error("HTTP 요청 타임아웃: %s (%d초)", url, timeout)
+        return None
+    except Exception as e:
+        logger.error("HTTP 요청 예외: %s → %s", url, e)
+        return None
+
+
 def handle_tool_call(msg: dict):
-    """도구 호출 처리 - Backend에 permission 요청 후 응답 대기."""
+    """도구 호출 처리 - Backend에 permission 요청 후 응답 대기.
+
+    HTTP 요청을 별도 스레드에서 실행하여, stdin이 닫히는 경우(프로세스 종료)
+    main 루프가 감지하고 빠져나올 수 있도록 합니다.
+    """
     msg_id = msg.get("id")
     params = msg.get("params", {})
     tool_name_called = params.get("name", "")
@@ -137,51 +180,57 @@ def handle_tool_call(msg: dict):
         }
     ).encode("utf-8")
 
-    try:
-        req = urllib.request.Request(
-            url,
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=timeout + 10) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
+    logger.info("Permission 요청: tool=%s, session=%s", request_tool, session_id)
 
-        behavior = result.get("behavior", "deny")
+    # HTTP 요청을 별도 스레드에서 실행 (메인 스레드 블로킹 방지)
+    result_holder: list[dict | None] = [None]
 
-        # Claude CLI는 permission-prompt-tool의 결과에서 JSON을 파싱
-        # "allow" 또는 "deny" behavior를 반환
-        permission_result = {
-            "behavior": behavior,
+    def do_request():
+        result_holder[0] = _do_http_request(url, payload, timeout + 10)
+
+    thread = threading.Thread(target=do_request, daemon=True)
+    thread.start()
+    # timeout + 15초 여유: HTTP 타임아웃(timeout+10) 보다 약간 길게 대기
+    thread.join(timeout=timeout + 15)
+
+    if thread.is_alive():
+        # 스레드가 여전히 실행 중 = HTTP 요청이 timeout+15초 내에 완료 안 됨
+        logger.error("Permission 요청 스레드 타임아웃 (%d초)", timeout + 15)
+        write_message(_make_deny_response(msg_id))
+        return
+
+    result = result_holder[0]
+    if result is None:
+        logger.warning("Permission 요청 실패 → deny 반환")
+        write_message(_make_deny_response(msg_id))
+        return
+
+    behavior = result.get("behavior", "deny")
+    logger.info("Permission 응답: behavior=%s", behavior)
+
+    write_message(
+        {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps({"behavior": behavior}),
+                    }
+                ],
+            },
         }
-
-        write_message(
-            {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "result": {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": json.dumps(permission_result),
-                        }
-                    ],
-                },
-            }
-        )
-
-    except urllib.error.URLError:
-        # 네트워크 오류 시 deny
-        write_message(_make_deny_response(msg_id))
-    except Exception:
-        write_message(_make_deny_response(msg_id))
+    )
 
 
 def main():
     """MCP 서버 메인 루프 (stdio JSON-RPC)."""
+    logger.info("Permission MCP 서버 시작")
     while True:
         msg = read_message()
         if msg is None:
+            logger.info("stdin EOF — 종료")
             break
 
         method = msg.get("method", "")
@@ -199,6 +248,8 @@ def main():
             # 알 수 없는 메서드는 무시하거나 에러 반환
             if msg.get("id") is not None:
                 write_error(msg.get("id"), -32601, f"Method not found: {method}")
+
+    logger.info("Permission MCP 서버 종료")
 
 
 if __name__ == "__main__":
