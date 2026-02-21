@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 
 from app.api import dependencies as deps
 from app.core.config import Settings
@@ -25,19 +26,38 @@ from app.services.template_service import TemplateService
 from app.services.websocket_manager import WebSocketManager
 
 
+def _build_test_database_url() -> str:
+    """테스트 전용 DB URL 생성. 프로덕션 DB를 절대 사용하지 않도록 보장."""
+    base_url = os.environ.get(
+        "TEST_DATABASE_URL",
+        "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session_test",
+    )
+    # 안전장치: DB 이름에 'test'가 포함되어 있는지 확인
+    if "test" not in base_url.split("/")[-1]:
+        raise RuntimeError(
+            f"테스트 DB URL에 'test'가 포함되어야 합니다. "
+            f"프로덕션 DB 보호를 위해 중단합니다: {base_url}"
+        )
+    return base_url
+
+
 @pytest_asyncio.fixture
 async def test_client():
     """
     Create httpx AsyncClient with PostgreSQL test database.
 
     Overrides FastAPI dependencies to use test database and services.
+    주의: DATABASE_URL이 아닌 TEST_DATABASE_URL 환경변수를 사용합니다.
+    프로덕션 DB의 데이터를 보호하기 위해 DB 이름에 'test' 포함을 강제합니다.
     """
-    database_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session_test",
-    )
+    database_url = _build_test_database_url()
     db = Database(database_url)
     await db.initialize()
+
+    # 테스트 격리: 이전 실행에서 남은 데이터 정리
+    async with db.session() as session:
+        await session.execute(text("TRUNCATE sessions CASCADE"))
+        await session.commit()
 
     # Create test services
     test_settings = Settings(

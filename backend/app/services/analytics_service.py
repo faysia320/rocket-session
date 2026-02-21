@@ -1,6 +1,5 @@
 """토큰 사용량 분석 서비스."""
 
-import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import PurePosixPath
 
@@ -29,12 +28,10 @@ class AnalyticsService:
 
         async with self._db.session() as session:
             repo = AnalyticsRepository(session)
-            summary_raw, daily_raw, sessions_raw, projects_raw = await asyncio.gather(
-                repo.get_summary(start, end),
-                repo.get_daily_usage(start, end),
-                repo.get_session_ranking(start, end, limit=20),
-                repo.get_project_usage(start, end),
-            )
+            summary_raw = await repo.get_summary(start, end)
+            daily_raw = await repo.get_daily_usage(start, end)
+            sessions_raw = await repo.get_session_ranking(start, end, limit=20)
+            projects_raw = await repo.get_project_usage(start, end)
 
         total_tokens = summary_raw.get("total_input_tokens", 0) + summary_raw.get(
             "total_output_tokens", 0
