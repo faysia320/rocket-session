@@ -358,6 +358,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         workDir={workDir}
         gitInfo={gitInfo ?? null}
         status={status}
+        activeTools={activeTools}
         sessionId={sessionId}
         fileChanges={fileChanges}
         reconnectState={reconnectState}
@@ -377,7 +378,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       />
       <SessionStatsBar
         sessionId={sessionId}
-        isRunning={status === "running"}
+        isRunning={status === "running" || activeTools.length > 0}
         tokenUsage={tokenUsage}
         messageCount={messages.length}
       />
@@ -463,7 +464,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                   <ErrorBoundary>
                     <MessageBubble
                       message={messages[virtualItem.index]}
-                      isRunning={status === "running"}
+                      isRunning={status === "running" || activeTools.length > 0}
                       searchQuery={searchQuery || undefined}
                       onResend={handleResend}
                       onRetryError={handleRetryFromError}
@@ -493,6 +494,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         <ChatInput
           connected={connected}
           status={status}
+          activeTools={activeTools}
           mode={mode}
           slashCommands={slashCommands}
           onSubmit={handleSendPrompt}

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SlashCommandPopup } from "./SlashCommandPopup";
 import { cn } from "@/lib/utils";
 import { sessionsApi } from "@/lib/api/sessions.api";
-import type { SessionMode } from "@/types";
+import type { SessionMode, ToolUseMsg } from "@/types";
 import type { SlashCommand } from "../constants/slashCommands";
 import type { useSlashCommands } from "../hooks/useSlashCommands";
 
@@ -23,6 +23,7 @@ interface PendingImage {
 interface ChatInputProps {
   connected: boolean;
   status: "idle" | "running" | "error";
+  activeTools: ToolUseMsg[];
   mode: SessionMode;
   slashCommands: ReturnType<typeof useSlashCommands>;
   onSubmit: (prompt: string, images?: string[]) => void;
@@ -45,6 +46,7 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 export const ChatInput = memo(function ChatInput({
   connected,
   status,
+  activeTools,
   mode,
   slashCommands,
   onSubmit,
@@ -117,11 +119,13 @@ export const ChatInput = memo(function ChatInput({
     });
   }, []);
 
+  const isEffectivelyRunning = status === "running" || activeTools.length > 0;
+
   const handleSubmit = useCallback(async () => {
     const prompt = input.trim();
     if (
       (!prompt && pendingImages.length === 0 && pendingAnswerCount === 0) ||
-      status === "running"
+      isEffectivelyRunning
     )
       return;
 
@@ -152,7 +156,7 @@ export const ChatInput = memo(function ChatInput({
       onSubmit(prompt || "위 질문에 대한 답변입니다.");
     }
     resetTextarea();
-  }, [input, pendingImages, pendingAnswerCount, status, sessionId, onSubmit, resetTextarea]);
+  }, [input, pendingImages, pendingAnswerCount, isEffectivelyRunning, sessionId, onSubmit, resetTextarea]);
 
   const executeSlashCommand = useCallback(
     (cmd: SlashCommand) => {
@@ -173,7 +177,7 @@ export const ChatInput = memo(function ChatInput({
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        if (status === "running") {
+        if (isEffectivelyRunning) {
           onStop();
         } else {
           resetTextarea();
@@ -386,7 +390,7 @@ export const ChatInput = memo(function ChatInput({
             disabled={!connected}
           />
           <div className="flex items-center">
-            {status === "running" ? (
+            {isEffectivelyRunning ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

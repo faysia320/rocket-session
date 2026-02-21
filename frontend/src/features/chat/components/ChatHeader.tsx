@@ -25,13 +25,14 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { FileChange, GitInfo } from "@/types";
+import type { FileChange, GitInfo, ToolUseMsg } from "@/types";
 import type { ReconnectState } from "../hooks/useClaudeSocket";
 interface ChatHeaderProps {
   connected: boolean;
   workDir?: string;
   gitInfo: GitInfo | null;
   status: "idle" | "running" | "error";
+  activeTools: ToolUseMsg[];
   sessionId: string;
   fileChanges: FileChange[];
   reconnectState?: ReconnectState;
@@ -55,6 +56,7 @@ export const ChatHeader = memo(function ChatHeader({
   workDir,
   gitInfo,
   status,
+  activeTools,
   sessionId,
   fileChanges,
   reconnectState,
@@ -72,6 +74,8 @@ export const ChatHeader = memo(function ChatHeader({
   onArchive,
   onUnarchive,
 }: ChatHeaderProps) {
+  const isEffectivelyRunning = status === "running" || activeTools.length > 0;
+
   useEffect(() => {
     if (currentModel !== "opus") {
       sessionsApi.update(sessionId, { model: "opus" }).catch((err) => {
@@ -97,7 +101,7 @@ export const ChatHeader = memo(function ChatHeader({
                 ? reconnectState?.status === "reconnecting"
                   ? "bg-warning animate-pulse"
                   : "bg-destructive"
-                : status === "running"
+                : isEffectivelyRunning
                   ? "bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]"
                   : status === "error"
                     ? "bg-destructive shadow-[0_0_8px_hsl(var(--destructive))]"
@@ -106,7 +110,7 @@ export const ChatHeader = memo(function ChatHeader({
           />
           <span className={cn(
             "font-mono text-xs",
-            status === "running" && connected
+            isEffectivelyRunning && connected
               ? "text-primary font-semibold"
               : status === "error" && connected
                 ? "text-destructive font-semibold"
@@ -118,7 +122,7 @@ export const ChatHeader = memo(function ChatHeader({
                 : reconnectState?.status === "failed"
                   ? "Connection Failed"
                   : "Disconnected"
-              : status === "running"
+              : isEffectivelyRunning
                 ? "Running"
                 : status === "error"
                   ? "Error"

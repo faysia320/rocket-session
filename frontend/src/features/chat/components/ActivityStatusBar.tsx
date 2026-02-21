@@ -21,10 +21,11 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
   const hasPermissionWait = !!pendingPermission;
   const hasPlanWait = !!waitingForPlanApproval;
   const hasActiveTools = activeTools.length > 0;
-  const isRunning = status === "running";
+  // status가 "running"이 아니더라도 activeTools가 있으면 실제로 동작 중
+  const isEffectivelyRunning = status === "running" || hasActiveTools;
 
   // 아무 표시할 내용이 없으면 null
-  if (!hasPermissionWait && !hasPlanWait && !isRunning) return null;
+  if (!hasPermissionWait && !hasPlanWait && !isEffectivelyRunning) return null;
 
   return (
     <div
@@ -76,7 +77,7 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
           : null}
 
         {/* running이지만 도구/승인 대기 없을 때: 기본 처리 중 표시 */}
-        {isRunning && !hasActiveTools && !hasPermissionWait && !hasPlanWait ? (
+        {isEffectivelyRunning && !hasActiveTools && !hasPermissionWait && !hasPlanWait ? (
           <div className="flex items-center gap-2 min-h-[20px]">
             <span className="inline-block w-3 h-3 border-[1.5px] border-primary/40 border-t-primary rounded-full animate-spin shrink-0" />
             <span className="font-mono text-xs text-muted-foreground">
