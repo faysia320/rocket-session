@@ -443,9 +443,7 @@ function AssistantText({ message, isStreaming }: { message: AssistantTextMsg; is
           ) : null}
         </div>
         <div className="text-foreground select-text">
-          <div className="font-sans text-sm whitespace-pre-wrap break-words leading-relaxed">
-            {message.text || ""}
-          </div>
+          <MarkdownRenderer content={message.text || ""} />
         </div>
       </div>
     </div>
