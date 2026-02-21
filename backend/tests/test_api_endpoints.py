@@ -5,7 +5,6 @@ Tests all REST API endpoints with real FastAPI app and PostgreSQL test database.
 Uses httpx.AsyncClient for async requests and overrides dependencies for testing.
 """
 
-import os
 import tempfile
 from datetime import datetime, timezone
 
@@ -24,21 +23,7 @@ from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
 from app.services.template_service import TemplateService
 from app.services.websocket_manager import WebSocketManager
-
-
-def _build_test_database_url() -> str:
-    """테스트 전용 DB URL 생성. 프로덕션 DB를 절대 사용하지 않도록 보장."""
-    base_url = os.environ.get(
-        "TEST_DATABASE_URL",
-        "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session_test",
-    )
-    # 안전장치: DB 이름에 'test'가 포함되어 있는지 확인
-    if "test" not in base_url.split("/")[-1]:
-        raise RuntimeError(
-            f"테스트 DB URL에 'test'가 포함되어야 합니다. "
-            f"프로덕션 DB 보호를 위해 중단합니다: {base_url}"
-        )
-    return base_url
+from tests.conftest import _TEST_DB_URL
 
 
 @pytest_asyncio.fixture
@@ -46,17 +31,18 @@ async def test_client():
     """
     Create httpx AsyncClient with PostgreSQL test database.
 
-    Overrides FastAPI dependencies to use test database and services.
-    주의: DATABASE_URL이 아닌 TEST_DATABASE_URL 환경변수를 사용합니다.
-    프로덕션 DB의 데이터를 보호하기 위해 DB 이름에 'test' 포함을 강제합니다.
+    conftest.py의 _TEST_DB_URL을 사용하여 프로덕션 DB 접근을 원천 차단합니다.
     """
-    database_url = _build_test_database_url()
-    db = Database(database_url)
+    db = Database(_TEST_DB_URL)
     await db.initialize()
 
     # 테스트 격리: 이전 실행에서 남은 데이터 정리
     async with db.session() as session:
-        await session.execute(text("TRUNCATE sessions CASCADE"))
+        await session.execute(text("DELETE FROM session_tags"))
+        await session.execute(text("DELETE FROM events"))
+        await session.execute(text("DELETE FROM file_changes"))
+        await session.execute(text("DELETE FROM messages"))
+        await session.execute(text("DELETE FROM sessions"))
         await session.commit()
 
     # Create test services
@@ -126,10 +112,7 @@ class TestSessionCRUD:
     async def test_create_session_with_work_dir(self, test_client: AsyncClient):
         """Should create session with provided work_dir."""
         work_dir = "/test/path"
-        response = await test_client.post(
-            "/api/sessions/",
-            json={"work_dir": work_dir}
-        )
+        response = await test_client.post("/api/sessions/", json={"work_dir": work_dir})
 
         assert response.status_code == 200
         data = response.json()
@@ -199,11 +182,10 @@ class TestSessionCRUD:
             "name": "테스트 세션",
             "allowed_tools": "Read,Write",
             "system_prompt": "You are a helpful assistant.",
-            "timeout_seconds": 600
+            "timeout_seconds": 600,
         }
         response = await test_client.patch(
-            f"/api/sessions/{session_id}",
-            json=update_data
+            f"/api/sessions/{session_id}", json=update_data
         )
 
         assert response.status_code == 200
@@ -216,8 +198,7 @@ class TestSessionCRUD:
     async def test_update_session_not_found(self, test_client: AsyncClient):
         """Should return 404 when updating non-existent session."""
         response = await test_client.patch(
-            "/api/sessions/non-existent-id",
-            json={"name": "test"}
+            "/api/sessions/non-existent-id", json={"name": "test"}
         )
 
         assert response.status_code == 404
@@ -343,10 +324,7 @@ class TestSessionModes:
 
     async def test_create_session_default_mode(self, test_client: AsyncClient):
         """Should create session with default normal mode (mode is set via update)."""
-        response = await test_client.post(
-            "/api/sessions/",
-            json={"work_dir": "/test"}
-        )
+        response = await test_client.post("/api/sessions/", json={"work_dir": "/test"})
 
         assert response.status_code == 200
         data = response.json()
@@ -359,8 +337,8 @@ class TestSessionModes:
             json={
                 "work_dir": "/test",
                 "permission_mode": True,
-                "permission_required_tools": ["Write", "Edit", "Bash"]
-            }
+                "permission_required_tools": ["Write", "Edit", "Bash"],
+            },
         )
 
         assert response.status_code == 200
@@ -378,8 +356,8 @@ class TestSessionModes:
             json={
                 "mode": "plan",
                 "permission_mode": True,
-                "permission_required_tools": ["Bash"]
-            }
+                "permission_required_tools": ["Bash"],
+            },
         )
 
         assert response.status_code == 200

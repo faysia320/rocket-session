@@ -1,10 +1,15 @@
 """WebSocketManager comprehensive test suite."""
 
 import json
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 import pytest
 from starlette.websockets import WebSocketState
+
+from app.models.session import Session
+from app.repositories.event_repo import EventRepository
+from app.repositories.session_repo import SessionRepository
 
 
 @pytest.mark.asyncio
@@ -131,13 +136,19 @@ async def test_broadcast_event_stores_in_memory(ws_manager):
 @pytest.mark.asyncio
 async def test_broadcast_event_stores_in_db(ws_manager_with_db, db):
     """broadcast_event가 DB에 저장하는지 확인."""
-    session_id = "test-session"
+    session_id = "test-session-db"
     # FOREIGN KEY 제약 조건을 위해 세션 먼저 생성
-    await db.create_session(
-        session_id=session_id,
-        work_dir="/tmp",
-        created_at="2024-01-01T00:00:00Z",
-    )
+    async with db.session() as session:
+        repo = SessionRepository(session)
+        await repo.add(
+            Session(
+                id=session_id,
+                work_dir="/tmp",
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+        await session.commit()
+
     message = {"type": "tool_use", "tool": "Read", "path": "test.py"}
 
     await ws_manager_with_db.broadcast_event(session_id, message)
@@ -145,16 +156,24 @@ async def test_broadcast_event_stores_in_db(ws_manager_with_db, db):
     await ws_manager_with_db._flush_events()
 
     # DB에서 이벤트 조회
-    rows = await db.get_events_after(session_id, 0)
+    async with db.session() as session:
+        repo = EventRepository(session)
+        rows = await repo.get_after(session_id, 0)
     assert len(rows) == 1
     assert rows[0]["seq"] == 1
     assert rows[0]["event_type"] == "tool_use"
-    payload = json.loads(rows[0]["payload"])
+    payload = (
+        json.loads(rows[0]["payload"])
+        if isinstance(rows[0]["payload"], str)
+        else rows[0]["payload"]
+    )
     assert payload["tool"] == "Read"
 
 
 @pytest.mark.asyncio
-async def test_broadcast_event_db_failure_continues_broadcast(ws_manager, mock_websocket):
+async def test_broadcast_event_db_failure_continues_broadcast(
+    ws_manager, mock_websocket
+):
     """DB 저장 실패해도 broadcast는 진행되는지 확인."""
     session_id = "test-session"
     ws_manager.register(session_id, mock_websocket)
@@ -206,7 +225,9 @@ async def test_broadcast_removes_dead_connections(ws_manager, mock_websocket):
 
 
 @pytest.mark.asyncio
-async def test_broadcast_removes_websocket_on_send_exception(ws_manager, mock_websocket):
+async def test_broadcast_removes_websocket_on_send_exception(
+    ws_manager, mock_websocket
+):
     """send_text 예외 발생 시 WebSocket을 제거하는지 확인."""
     session_id = "test-session"
     failing_ws = AsyncMock()
@@ -253,17 +274,26 @@ async def test_get_buffered_events_after_from_memory(ws_manager):
 @pytest.mark.asyncio
 async def test_get_buffered_events_after_db_fallback(ws_manager_with_db, db):
     """인메모리에 없을 때 DB fallback 동작 확인."""
-    session_id = "test-session"
+    session_id = "test-session-fallback"
     # FOREIGN KEY 제약 조건을 위해 세션 먼저 생성
-    await db.create_session(
-        session_id=session_id,
-        work_dir="/tmp",
-        created_at="2024-01-01T00:00:00Z",
-    )
+    async with db.session() as session:
+        repo = SessionRepository(session)
+        await repo.add(
+            Session(
+                id=session_id,
+                work_dir="/tmp",
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+        await session.commit()
 
     # 이벤트 생성
-    await ws_manager_with_db.broadcast_event(session_id, {"type": "status", "data": "idle"})
-    await ws_manager_with_db.broadcast_event(session_id, {"type": "assistant", "text": "Hello"})
+    await ws_manager_with_db.broadcast_event(
+        session_id, {"type": "status", "data": "idle"}
+    )
+    await ws_manager_with_db.broadcast_event(
+        session_id, {"type": "assistant", "text": "Hello"}
+    )
     # 배치 큐 flush
     await ws_manager_with_db._flush_events()
 
@@ -324,27 +354,67 @@ async def test_clear_buffer(ws_manager):
 @pytest.mark.asyncio
 async def test_restore_seq_counters_from_db(ws_manager, db):
     """DB에서 seq 카운터를 복원하는지 확인."""
-    session_id1 = "session-1"
-    session_id2 = "session-2"
+    session_id1 = "seq-restore-1"
+    session_id2 = "seq-restore-2"
 
     # FOREIGN KEY 제약 조건을 위해 세션 먼저 생성
-    await db.create_session(
-        session_id=session_id1,
-        work_dir="/tmp",
-        created_at="2024-01-01T00:00:00Z",
-    )
-    await db.create_session(
-        session_id=session_id2,
-        work_dir="/tmp",
-        created_at="2024-01-01T00:00:00Z",
-    )
+    async with db.session() as session:
+        s_repo = SessionRepository(session)
+        await s_repo.add(
+            Session(
+                id=session_id1,
+                work_dir="/tmp",
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+        await s_repo.add(
+            Session(
+                id=session_id2,
+                work_dir="/tmp",
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+        await session.commit()
 
     # DB에 이벤트 직접 추가
-    await db.add_event(session_id1, 1, "status", "{}", "2024-01-01T00:00:00Z")
-    await db.add_event(session_id1, 2, "assistant", "{}", "2024-01-01T00:00:01Z")
-    await db.add_event(session_id2, 1, "status", "{}", "2024-01-01T00:00:02Z")
-    await db.add_event(session_id2, 2, "tool_use", "{}", "2024-01-01T00:00:03Z")
-    await db.add_event(session_id2, 3, "result", "{}", "2024-01-01T00:00:04Z")
+    async with db.session() as session:
+        e_repo = EventRepository(session)
+        await e_repo.add_event(
+            session_id=session_id1,
+            seq=1,
+            event_type="status",
+            payload="{}",
+            timestamp="2024-01-01T00:00:00Z",
+        )
+        await e_repo.add_event(
+            session_id=session_id1,
+            seq=2,
+            event_type="assistant",
+            payload="{}",
+            timestamp="2024-01-01T00:00:01Z",
+        )
+        await e_repo.add_event(
+            session_id=session_id2,
+            seq=1,
+            event_type="status",
+            payload="{}",
+            timestamp="2024-01-01T00:00:02Z",
+        )
+        await e_repo.add_event(
+            session_id=session_id2,
+            seq=2,
+            event_type="tool_use",
+            payload="{}",
+            timestamp="2024-01-01T00:00:03Z",
+        )
+        await e_repo.add_event(
+            session_id=session_id2,
+            seq=3,
+            event_type="result",
+            payload="{}",
+            timestamp="2024-01-01T00:00:04Z",
+        )
+        await session.commit()
 
     await ws_manager.restore_seq_counters(db)
 
@@ -389,7 +459,9 @@ async def test_broadcast_event_multiple_sessions_independent_seq(ws_manager):
 
 
 @pytest.mark.asyncio
-async def test_broadcast_event_includes_original_message_fields(ws_manager, mock_websocket):
+async def test_broadcast_event_includes_original_message_fields(
+    ws_manager, mock_websocket
+):
     """broadcast_event가 원본 메시지 필드를 유지하는지 확인."""
     session_id = "test-session"
     ws_manager.register(session_id, mock_websocket)

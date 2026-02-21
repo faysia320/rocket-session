@@ -63,7 +63,7 @@ def write_jsonl(path: Path, content: list[dict]):
     with open(path, "w", encoding="utf-8") as f:
         for obj in content:
             # Write without spaces after colons to match scanner's string matching
-            f.write(json.dumps(obj, ensure_ascii=False, separators=(',', ':')) + "\n")
+            f.write(json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n")
 
 
 class TestValidateSafePath:
@@ -142,9 +142,9 @@ class TestExtractMetadata:
 
         # Write valid and invalid lines
         with open(jsonl_path, "w", encoding="utf-8") as f:
-            f.write(json.dumps(sample_jsonl_content[0], separators=(',', ':')) + "\n")
+            f.write(json.dumps(sample_jsonl_content[0], separators=(",", ":")) + "\n")
             f.write("invalid json line\n")
-            f.write(json.dumps(sample_jsonl_content[1], separators=(',', ':')) + "\n")
+            f.write(json.dumps(sample_jsonl_content[1], separators=(",", ":")) + "\n")
 
         result = scanner._extract_metadata(jsonl_path, "test-project", set())
 
@@ -390,7 +390,9 @@ class TestScan:
         ):
             results = await scanner.scan(project_dir="project1")
 
-        imported = next((r for r in results if r.session_id == "imported_session"), None)
+        imported = next(
+            (r for r in results if r.session_id == "imported_session"), None
+        )
         new = next((r for r in results if r.session_id == "new_session"), None)
 
         assert imported is not None
@@ -434,11 +436,11 @@ class TestImportSession:
         assert session["work_dir"] == "/home/user/project"
 
         # Verify messages were imported
-        messages = await db.conn.execute(
-            "SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp",
-            (response.dashboard_session_id,),
-        )
-        messages = await messages.fetchall()
+        from app.repositories.message_repo import MessageRepository
+
+        async with db.session() as sess:
+            msg_repo = MessageRepository(sess)
+            messages = await msg_repo.get_by_session(response.dashboard_session_id)
         assert len(messages) == 3
 
     @pytest.mark.asyncio
@@ -450,9 +452,7 @@ class TestImportSession:
 
         # Create existing session
         existing_session = await session_manager.create(work_dir="/test")
-        await session_manager.update_claude_session_id(
-            existing_session["id"], "abc123"
-        )
+        await session_manager.update_claude_session_id(existing_session["id"], "abc123")
 
         project_dir = temp_projects_dir / "test-project"
         project_dir.mkdir()
@@ -485,7 +485,9 @@ class TestImportSession:
             "app.services.local_session_scanner._get_claude_projects_dir",
             return_value=temp_projects_dir,
         ):
-            with pytest.raises(FileNotFoundError, match="JSONL 파일을 찾을 수 없습니다"):
+            with pytest.raises(
+                FileNotFoundError, match="JSONL 파일을 찾을 수 없습니다"
+            ):
                 await scanner.import_session(
                     "nonexistent", "test-project", session_manager
                 )
