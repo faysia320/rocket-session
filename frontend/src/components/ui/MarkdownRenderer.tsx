@@ -1,4 +1,4 @@
-import { memo, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { memo, useDeferredValue, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -135,20 +135,29 @@ const components: Record<
   },
 };
 
+// remarkPlugins/rehypePlugins 배열을 모듈 레벨에서 고정 (매 렌더마다 재생성 방지)
+const remarkPlugins = [remarkGfm];
+// hljs에 등록된 언어만 사용하도록 subset 지정
+const rehypeHighlightOptions = { detect: false };
+const rehypePlugins: [typeof rehypeHighlight, typeof rehypeHighlightOptions][] = [[rehypeHighlight, rehypeHighlightOptions]];
+
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   className,
 }: MarkdownRendererProps) {
-  if (!content) return null;
+  // 스트리밍 중 빈번한 content 업데이트 시 React가 마크다운 파싱을 지연하여 프레임 드롭 방지
+  const deferredContent = useDeferredValue(content);
+
+  if (!deferredContent) return null;
 
   return (
     <div className={cn("prose-chat", className)}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
+        remarkPlugins={remarkPlugins}
+        rehypePlugins={rehypePlugins}
         components={components}
       >
-        {content}
+        {deferredContent}
       </ReactMarkdown>
     </div>
   );

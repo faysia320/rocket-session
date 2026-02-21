@@ -490,9 +490,11 @@ export function useClaudeSocket(sessionId: string) {
     [],
   );
 
-  // 대규모 대화(300+ 메시지) 시 오래된 메시지 텍스트 압축 (idle 시에만)
+  // 대규모 대화(300+ 메시지) 시 오래된 메시지 텍스트 압축 (idle 전환 시에만)
   useEffect(() => {
-    dispatch({ type: "TRUNCATE_OLD_MESSAGES", maxFull: 300 });
+    if (state.status === "idle" && state.messages.length > 300) {
+      dispatch({ type: "TRUNCATE_OLD_MESSAGES", maxFull: 300 });
+    }
   }, [state.status, state.messages.length]);
 
   return {

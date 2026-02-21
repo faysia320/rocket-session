@@ -240,16 +240,24 @@ export function claudeSocketReducer(
 
     case "WS_STATUS": {
       if (action.status === "idle" || action.status === "error") {
-        return {
-          ...state,
-          status: action.status,
-          activeTools: [],
-          messages: state.messages.map((msg) =>
-            msg.type === "tool_use" && msg.status === "running"
-              ? ({ ...msg, status: "done" as const } as Message)
-              : msg,
-          ),
-        };
+        // running tool_use만 찾아서 done으로 변경 (전체 map 대신 타겟 인덱스만 복사)
+        const runningIndices: number[] = [];
+        for (let i = state.messages.length - 1; i >= 0; i--) {
+          const m = state.messages[i];
+          // user_message/result를 만나면 더 이전에는 running이 없을 것
+          if (m.type === "user_message" || m.type === "result") break;
+          if (m.type === "tool_use" && m.status === "running") {
+            runningIndices.push(i);
+          }
+        }
+        if (runningIndices.length === 0) {
+          return { ...state, status: action.status, activeTools: [] };
+        }
+        const updated = [...state.messages];
+        for (const idx of runningIndices) {
+          updated[idx] = { ...updated[idx], status: "done" as const } as Message;
+        }
+        return { ...state, status: action.status, activeTools: [], messages: updated };
       }
       return { ...state, status: action.status };
     }
@@ -286,27 +294,45 @@ export function claudeSocketReducer(
         activeTools: [...state.activeTools, action.data],
       };
 
-    case "WS_TOOL_RESULT":
+    case "WS_TOOL_RESULT": {
+      // 역방향 검색: tool_use는 보통 배열 끝 부근에 있으므로 O(1)에 가까움
+      const msgs = state.messages;
+      let targetIdx = -1;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i];
+        if (m.type === "tool_use" && m.tool_use_id === action.toolUseId && m.status === "running") {
+          targetIdx = i;
+          break;
+        }
+      }
+      if (targetIdx < 0) return { ...state, activeTools: state.activeTools.filter((t) => t.tool_use_id !== action.toolUseId) };
+      const updatedMsgs = [...msgs];
+      updatedMsgs[targetIdx] = {
+        ...msgs[targetIdx],
+        status: action.isError ? "error" : "done",
+        output: action.output,
+        is_error: action.isError,
+        is_truncated: action.isTruncated,
+        full_length: action.fullLength,
+        completed_at: action.timestamp,
+      } as Message;
       return {
         ...state,
-        messages: state.messages.map((msg) =>
-          msg.type === "tool_use" && msg.tool_use_id === action.toolUseId && msg.status === "running"
-            ? ({
-                ...msg,
-                status: action.isError ? "error" : "done",
-                output: action.output,
-                is_error: action.isError,
-                is_truncated: action.isTruncated,
-                full_length: action.fullLength,
-                completed_at: action.timestamp,
-              } as Message)
-            : msg,
-        ),
+        messages: updatedMsgs,
         activeTools: state.activeTools.filter((t) => t.tool_use_id !== action.toolUseId),
       };
+    }
 
-    case "WS_FILE_CHANGE":
-      return { ...state, fileChanges: [...state.fileChanges, action.change] };
+    case "WS_FILE_CHANGE": {
+      const MAX_FILE_CHANGES = 500;
+      const newChanges = [...state.fileChanges, action.change];
+      return {
+        ...state,
+        fileChanges: newChanges.length > MAX_FILE_CHANGES
+          ? newChanges.slice(newChanges.length - MAX_FILE_CHANGES)
+          : newChanges,
+      };
+    }
 
     case "WS_RESULT": {
       const prev = state.messages;
