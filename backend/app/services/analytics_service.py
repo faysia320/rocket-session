@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import PurePosixPath
 
 from app.core.database import Database
+from app.repositories.analytics_repo import AnalyticsRepository
 from app.schemas.analytics import (
     AnalyticsPeriod,
     AnalyticsResponse,
@@ -26,12 +27,14 @@ class AnalyticsService:
     ) -> AnalyticsResponse:
         start, end = self._resolve_period(period)
 
-        summary_raw, daily_raw, sessions_raw, projects_raw = await asyncio.gather(
-            self._db.get_analytics_summary(start, end),
-            self._db.get_daily_token_usage(start, end),
-            self._db.get_session_token_ranking(start, end, limit=20),
-            self._db.get_project_token_usage(start, end),
-        )
+        async with self._db.session() as session:
+            repo = AnalyticsRepository(session)
+            summary_raw, daily_raw, sessions_raw, projects_raw = await asyncio.gather(
+                repo.get_summary(start, end),
+                repo.get_daily_usage(start, end),
+                repo.get_session_ranking(start, end, limit=20),
+                repo.get_project_usage(start, end),
+            )
 
         total_tokens = (
             summary_raw.get("total_input_tokens", 0)
@@ -54,11 +57,7 @@ class AnalyticsService:
         )
 
         daily_usage = [DailyTokenUsage(**row) for row in daily_raw]
-
-        session_ranking = [
-            SessionTokenRanking(**row) for row in sessions_raw
-        ]
-
+        session_ranking = [SessionTokenRanking(**row) for row in sessions_raw]
         project_usage = [
             ProjectTokenUsage(
                 work_dir=row["work_dir"],
@@ -84,7 +83,6 @@ class AnalyticsService:
 
     @staticmethod
     def _resolve_period(period: AnalyticsPeriod) -> tuple[str, str]:
-        """AnalyticsPeriod → (start_iso, end_iso) 변환."""
         now = datetime.now(timezone.utc)
         end_of_today = (now + timedelta(days=1)).replace(
             hour=0, minute=0, second=0, microsecond=0
@@ -97,7 +95,7 @@ class AnalyticsService:
             start_dt = end_of_today - timedelta(days=7)
         elif period == AnalyticsPeriod.MONTH:
             start_dt = end_of_today - timedelta(days=30)
-        else:  # ALL
+        else:
             start_dt = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
         return start_dt.isoformat(), end

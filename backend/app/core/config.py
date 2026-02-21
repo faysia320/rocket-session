@@ -1,7 +1,6 @@
 """애플리케이션 환경 설정."""
 
 import os
-from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
@@ -22,8 +21,8 @@ class Settings(BaseSettings):
 
     upload_dir: str = ""
 
-    database_path: str = str(
-        Path(__file__).resolve().parent.parent.parent / "data" / "sessions.db"
+    database_url: str = (
+        "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session"
     )
 
     model_config = {
@@ -33,7 +32,6 @@ class Settings(BaseSettings):
 
     @property
     def all_cors_origins(self) -> list[str]:
-        """기본 + 추가 CORS origin 목록."""
         origins = list(self.cors_origins)
         if self.cors_extra_origins:
             for origin in self.cors_extra_origins.split(","):
@@ -44,9 +42,16 @@ class Settings(BaseSettings):
 
     @property
     def resolved_upload_dir(self) -> str:
-        """업로드 디렉토리. 설정되지 않으면 시스템 임시 디렉토리 사용."""
         if self.upload_dir:
             return self.upload_dir
         import tempfile
+        from pathlib import Path
 
         return str(Path(tempfile.gettempdir()) / "rocket-session-uploads")
+
+    @property
+    def sync_database_url(self) -> str:
+        """Alembic 등 동기 실행용 URL (asyncpg -> psycopg2)."""
+        return self.database_url.replace(
+            "postgresql+asyncpg", "postgresql+psycopg2"
+        ).replace("postgresql://", "postgresql+psycopg2://")

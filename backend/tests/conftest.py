@@ -3,7 +3,6 @@
 import asyncio
 import os
 import tempfile
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,7 +10,10 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 # Set test environment variables before imports
-os.environ["DATABASE_PATH"] = ":memory:"
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session_test",
+)
 os.environ["CLAUDE_WORK_DIR"] = tempfile.gettempdir()
 
 from app.core.config import Settings
@@ -36,15 +38,17 @@ def settings():
     return Settings(
         claude_work_dir=tempfile.gettempdir(),
         claude_allowed_tools="Read,Write",
-        database_path=":memory:",
     )
 
 
 @pytest_asyncio.fixture
-async def db(tmp_path):
-    """SQLite database fixture (임시 파일 기반, Alembic 호환)."""
-    db_path = str(tmp_path / "test_sessions.db")
-    database = Database(db_path)
+async def db():
+    """PostgreSQL database fixture. 테스트용 DB 사용."""
+    database_url = os.environ.get(
+        "DATABASE_URL",
+        "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session_test",
+    )
+    database = Database(database_url)
     await database.initialize()
     yield database
     await database.close()
@@ -52,7 +56,7 @@ async def db(tmp_path):
 
 @pytest_asyncio.fixture
 async def session_manager(db):
-    """SessionManager fixture with in-memory database."""
+    """SessionManager fixture with test database."""
     return SessionManager(db)
 
 

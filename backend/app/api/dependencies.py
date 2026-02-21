@@ -154,7 +154,7 @@ async def init_dependencies():
 
     # WebSocketManager를 DB 초기화 전에 인스턴스 생성
     _ws_manager = WebSocketManager()
-    _database = Database(settings.database_path)
+    _database = Database(settings.database_url)
     await _database.initialize()
     _ws_manager.set_database(_database)
     _session_manager = SessionManager(
@@ -172,16 +172,23 @@ async def init_dependencies():
     _jsonl_watcher = JsonlWatcher(_session_manager, _ws_manager)
 
     # 서버 재시작 시 프로세스/task가 없는 stale running 세션을 idle로 복구
-    await _database.conn.execute(
-        "UPDATE sessions SET status = 'idle' WHERE status = 'running'"
-    )
-    await _database.conn.commit()
+    from app.repositories.session_repo import SessionRepository
+
+    async with _database.session() as session:
+        repo = SessionRepository(session)
+        await repo.reset_stale_running()
+        await session.commit()
 
     # seq 카운터를 DB에서 복원 (재시작 후에도 seq 이어서 사용)
     await _ws_manager.restore_seq_counters(_database)
 
     # 오래된 이벤트 정리 (24시간 이전)
-    await _database.cleanup_old_events(max_age_hours=24)
+    from app.repositories.event_repo import EventRepository
+
+    async with _database.session() as session:
+        event_repo = EventRepository(session)
+        await event_repo.cleanup_old_events(max_age_hours=24)
+        await session.commit()
 
 
 async def shutdown_dependencies():

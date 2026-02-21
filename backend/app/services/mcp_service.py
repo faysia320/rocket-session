@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.core.database import Database
+from app.models.mcp_server import McpServer
+from app.repositories.mcp_server_repo import McpServerRepository
 from app.schemas.mcp import McpServerInfo
 
 logger = logging.getLogger(__name__)
@@ -22,41 +24,36 @@ class McpService:
         self._db = db
 
     @staticmethod
-    def _row_to_info(row: dict) -> McpServerInfo:
-        """DB row → McpServerInfo 변환 (JSON 필드 파싱)."""
-
-        def _parse_json(val: str | None, default=None):
-            if not val:
-                return default
-            try:
-                return json.loads(val)
-            except (json.JSONDecodeError, TypeError):
-                return default
-
+    def _entity_to_info(server: McpServer) -> McpServerInfo:
+        """McpServer ORM 엔티티 → McpServerInfo 변환. JSONB는 이미 Python 객체."""
         return McpServerInfo(
-            id=row["id"],
-            name=row["name"],
-            transport_type=row["transport_type"],
-            command=row.get("command"),
-            args=_parse_json(row.get("args")),
-            url=row.get("url"),
-            headers=_parse_json(row.get("headers")),
-            env=_parse_json(row.get("env")),
-            enabled=bool(row.get("enabled", 1)),
-            source=row.get("source", "manual"),
-            created_at=row["created_at"],
-            updated_at=row["updated_at"],
+            id=server.id,
+            name=server.name,
+            transport_type=server.transport_type,
+            command=server.command,
+            args=server.args,
+            url=server.url,
+            headers=server.headers,
+            env=server.env,
+            enabled=server.enabled,
+            source=server.source,
+            created_at=server.created_at,
+            updated_at=server.updated_at,
         )
 
     # ── CRUD ─────────────────────────────────────────────────
 
     async def list_servers(self) -> list[McpServerInfo]:
-        rows = await self._db.list_mcp_servers()
-        return [self._row_to_info(r) for r in rows]
+        async with self._db.session() as session:
+            repo = McpServerRepository(session)
+            servers = await repo.list_all()
+            return [self._entity_to_info(s) for s in servers]
 
     async def get_server(self, server_id: str) -> McpServerInfo | None:
-        row = await self._db.get_mcp_server(server_id)
-        return self._row_to_info(row) if row else None
+        async with self._db.session() as session:
+            repo = McpServerRepository(session)
+            server = await repo.get_by_id(server_id)
+            return self._entity_to_info(server) if server else None
 
     async def create_server(
         self,
@@ -72,20 +69,25 @@ class McpService:
     ) -> McpServerInfo:
         server_id = str(uuid.uuid4())[:16]
         now = datetime.now(timezone.utc).isoformat()
-        row = await self._db.create_mcp_server(
-            server_id=server_id,
-            name=name,
-            transport_type=transport_type,
-            created_at=now,
-            command=command,
-            args=json.dumps(args) if args else None,
-            url=url,
-            headers=json.dumps(headers) if headers else None,
-            env=json.dumps(env) if env else None,
-            enabled=enabled,
-            source=source,
-        )
-        return self._row_to_info(row)
+        async with self._db.session() as session:
+            repo = McpServerRepository(session)
+            server = McpServer(
+                id=server_id,
+                name=name,
+                transport_type=transport_type,
+                command=command,
+                args=args,
+                url=url,
+                headers=headers,
+                env=env,
+                enabled=enabled,
+                source=source,
+                created_at=now,
+                updated_at=now,
+            )
+            await repo.add(server)
+            await session.commit()
+            return self._entity_to_info(server)
 
     async def update_server(
         self,
@@ -108,20 +110,27 @@ class McpService:
         if command is not None:
             kwargs["command"] = command
         if args is not None:
-            kwargs["args"] = json.dumps(args)
+            kwargs["args"] = args
         if url is not None:
             kwargs["url"] = url
         if headers is not None:
-            kwargs["headers"] = json.dumps(headers)
+            kwargs["headers"] = headers
         if env is not None:
-            kwargs["env"] = json.dumps(env)
+            kwargs["env"] = env
         if enabled is not None:
             kwargs["enabled"] = enabled
-        row = await self._db.update_mcp_server(server_id, **kwargs)
-        return self._row_to_info(row) if row else None
+        async with self._db.session() as session:
+            repo = McpServerRepository(session)
+            server = await repo.update_server(server_id, **kwargs)
+            await session.commit()
+            return self._entity_to_info(server) if server else None
 
     async def delete_server(self, server_id: str) -> bool:
-        return await self._db.delete_mcp_server(server_id)
+        async with self._db.session() as session:
+            repo = McpServerRepository(session)
+            deleted = await repo.delete_by_id(server_id)
+            await session.commit()
+            return deleted
 
     # ── 시스템 MCP 서버 (~/.claude/settings.json) ──────────
 
@@ -137,28 +146,30 @@ class McpService:
 
         mcp_servers = data.get("mcpServers", {})
         result = []
-        for name, config in mcp_servers.items():
-            # transport type 추론
-            if config.get("command"):
-                transport = "stdio"
-            elif config.get("url"):
-                transport = config.get("type", "sse")
-            else:
-                transport = "stdio"
+        async with self._db.session() as session:
+            repo = McpServerRepository(session)
+            for name, config in mcp_servers.items():
+                # transport type 추론
+                if config.get("command"):
+                    transport = "stdio"
+                elif config.get("url"):
+                    transport = config.get("type", "sse")
+                else:
+                    transport = "stdio"
 
-            # 이미 import 했는지 확인
-            existing = await self._db.get_mcp_server_by_name(name)
+                # 이미 import 했는지 확인
+                existing = await repo.get_by_name(name)
 
-            result.append({
-                "name": name,
-                "transport_type": transport,
-                "command": config.get("command"),
-                "args": config.get("args"),
-                "url": config.get("url"),
-                "headers": config.get("headers"),
-                "env": config.get("env"),
-                "already_imported": existing is not None,
-            })
+                result.append({
+                    "name": name,
+                    "transport_type": transport,
+                    "command": config.get("command"),
+                    "args": config.get("args"),
+                    "url": config.get("url"),
+                    "headers": config.get("headers"),
+                    "env": config.get("env"),
+                    "already_imported": existing is not None,
+                })
         return result
 
     async def import_from_system(self, names: list[str] | None = None) -> list[McpServerInfo]:
@@ -198,26 +209,28 @@ class McpService:
         mcp_servers: dict[str, dict] = {}
 
         if server_ids:
-            rows = await self._db.get_mcp_servers_by_ids(server_ids)
-            for row in rows:
-                if not row.get("enabled", 1):
-                    continue
-                info = self._row_to_info(row)
-                entry: dict = {}
-                if info.transport_type == "stdio":
-                    if info.command:
-                        entry["command"] = info.command
-                    if info.args:
-                        entry["args"] = info.args
-                else:
-                    if info.url:
-                        entry["url"] = info.url
-                    if info.headers:
-                        entry["headers"] = info.headers
-                    entry["type"] = info.transport_type
-                if info.env:
-                    entry["env"] = info.env
-                mcp_servers[info.name] = entry
+            async with self._db.session() as session:
+                repo = McpServerRepository(session)
+                entities = await repo.get_by_ids(server_ids)
+                for server in entities:
+                    if not server.enabled:
+                        continue
+                    info = self._entity_to_info(server)
+                    entry: dict = {}
+                    if info.transport_type == "stdio":
+                        if info.command:
+                            entry["command"] = info.command
+                        if info.args:
+                            entry["args"] = info.args
+                    else:
+                        if info.url:
+                            entry["url"] = info.url
+                        if info.headers:
+                            entry["headers"] = info.headers
+                        entry["type"] = info.transport_type
+                    if info.env:
+                        entry["env"] = info.env
+                    mcp_servers[info.name] = entry
 
         if permission_mcp_dict:
             mcp_servers.update(permission_mcp_dict)

@@ -1,11 +1,7 @@
-"""initial_schema
+"""initial_postgresql_schema
 
-현재 database.py의 _SCHEMA + migrations + ddl_migrations + fts_triggers를
-통합한 초기 마이그레이션.
-
-기존 DB 사용자: database.py의 _stamp_existing_db_if_needed()가 자동으로
-alembic stamp head를 수행하여 이 마이그레이션을 건너뛴다.
-신규 DB: 이 마이그레이션으로 전체 스키마가 생성된다.
+PostgreSQL 초기 스키마 마이그레이션.
+SQLAlchemy ORM 모델 기반 + tsvector 트리거/함수 수동 추가.
 
 Revision ID: 0001
 Revises:
@@ -16,6 +12,8 @@ from typing import Sequence, Union
 
 from alembic import op
 from sqlalchemy import text
+import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 
 revision: str = "0001"
 down_revision: Union[str, None] = None
@@ -24,234 +22,231 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # ── 1. Core 테이블 ───────────────────────────────────
+    # ── 1. sessions 테이블 ──────────────────────────────────
+    op.create_table(
+        "sessions",
+        sa.Column("id", sa.String(), primary_key=True),
+        sa.Column("claude_session_id", sa.String(), nullable=True),
+        sa.Column("work_dir", sa.Text(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False, server_default="idle"),
+        sa.Column("created_at", sa.Text(), nullable=False),
+        sa.Column("allowed_tools", sa.Text(), nullable=True),
+        sa.Column("system_prompt", sa.Text(), nullable=True),
+        sa.Column("timeout_seconds", sa.Integer(), nullable=True),
+        sa.Column("mode", sa.String(), nullable=False, server_default="normal"),
+        sa.Column("permission_mode", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column("permission_required_tools", JSONB(), nullable=True),
+        sa.Column("name", sa.Text(), nullable=True),
+        sa.Column("jsonl_path", sa.Text(), nullable=True),
+        sa.Column("model", sa.String(), nullable=True),
+        sa.Column("max_turns", sa.Integer(), nullable=True),
+        sa.Column("max_budget_usd", sa.Float(), nullable=True),
+        sa.Column("system_prompt_mode", sa.String(), nullable=False, server_default="replace"),
+        sa.Column("disallowed_tools", sa.Text(), nullable=True),
+        sa.Column("mcp_server_ids", JSONB(), nullable=True),
+        sa.Column("search_vector", TSVECTOR(), nullable=True),
+    )
 
+    # ── 2. messages 테이블 ──────────────────────────────────
+    op.create_table(
+        "messages",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("session_id", sa.String(), sa.ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("role", sa.String(), nullable=False),
+        sa.Column("content", sa.Text(), nullable=False),
+        sa.Column("cost", sa.Float(), nullable=True),
+        sa.Column("duration_ms", sa.Integer(), nullable=True),
+        sa.Column("timestamp", sa.Text(), nullable=False),
+        sa.Column("is_error", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column("input_tokens", sa.Integer(), nullable=True),
+        sa.Column("output_tokens", sa.Integer(), nullable=True),
+        sa.Column("cache_creation_tokens", sa.Integer(), nullable=True),
+        sa.Column("cache_read_tokens", sa.Integer(), nullable=True),
+        sa.Column("model", sa.String(), nullable=True),
+    )
+
+    # ── 3. file_changes 테이블 ──────────────────────────────
+    op.create_table(
+        "file_changes",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("session_id", sa.String(), sa.ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("tool", sa.String(), nullable=False),
+        sa.Column("file", sa.Text(), nullable=False),
+        sa.Column("timestamp", sa.Text(), nullable=False),
+    )
+
+    # ── 4. events 테이블 ────────────────────────────────────
+    op.create_table(
+        "events",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("session_id", sa.String(), sa.ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("seq", sa.Integer(), nullable=False),
+        sa.Column("event_type", sa.String(), nullable=False),
+        sa.Column("payload", JSONB(), nullable=False),
+        sa.Column("timestamp", sa.Text(), nullable=False),
+    )
+
+    # ── 5. global_settings 테이블 ───────────────────────────
+    op.create_table(
+        "global_settings",
+        sa.Column("id", sa.String(), primary_key=True, server_default="default"),
+        sa.Column("work_dir", sa.Text(), nullable=True),
+        sa.Column("allowed_tools", sa.Text(), nullable=True),
+        sa.Column("system_prompt", sa.Text(), nullable=True),
+        sa.Column("timeout_seconds", sa.Integer(), nullable=True),
+        sa.Column("mode", sa.String(), nullable=True, server_default="normal"),
+        sa.Column("permission_mode", sa.Boolean(), server_default="false"),
+        sa.Column("permission_required_tools", JSONB(), nullable=True),
+        sa.Column("model", sa.String(), nullable=True),
+        sa.Column("max_turns", sa.Integer(), nullable=True),
+        sa.Column("max_budget_usd", sa.Float(), nullable=True),
+        sa.Column("system_prompt_mode", sa.String(), nullable=True, server_default="replace"),
+        sa.Column("disallowed_tools", sa.Text(), nullable=True),
+        sa.Column("mcp_server_ids", JSONB(), nullable=True),
+    )
+
+    # ── 6. mcp_servers 테이블 ───────────────────────────────
+    op.create_table(
+        "mcp_servers",
+        sa.Column("id", sa.String(), primary_key=True),
+        sa.Column("name", sa.String(), unique=True, nullable=False),
+        sa.Column("transport_type", sa.String(), nullable=False, server_default="stdio"),
+        sa.Column("command", sa.Text(), nullable=True),
+        sa.Column("args", JSONB(), nullable=True),
+        sa.Column("url", sa.Text(), nullable=True),
+        sa.Column("headers", JSONB(), nullable=True),
+        sa.Column("env", JSONB(), nullable=True),
+        sa.Column("enabled", sa.Boolean(), nullable=False, server_default="true"),
+        sa.Column("source", sa.String(), nullable=False, server_default="manual"),
+        sa.Column("created_at", sa.Text(), nullable=False),
+        sa.Column("updated_at", sa.Text(), nullable=False),
+    )
+
+    # ── 7. tags 테이블 ──────────────────────────────────────
+    op.create_table(
+        "tags",
+        sa.Column("id", sa.String(), primary_key=True),
+        sa.Column("name", sa.String(), unique=True, nullable=False),
+        sa.Column("color", sa.String(), nullable=False, server_default="#6366f1"),
+        sa.Column("created_at", sa.Text(), nullable=False),
+    )
+
+    # ── 8. session_tags 테이블 ──────────────────────────────
+    op.create_table(
+        "session_tags",
+        sa.Column("session_id", sa.String(), sa.ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("tag_id", sa.String(), sa.ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column("created_at", sa.Text(), nullable=False),
+    )
+
+    # ── 9. session_templates 테이블 ─────────────────────────
+    op.create_table(
+        "session_templates",
+        sa.Column("id", sa.String(), primary_key=True),
+        sa.Column("name", sa.String(), unique=True, nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("work_dir", sa.Text(), nullable=True),
+        sa.Column("system_prompt", sa.Text(), nullable=True),
+        sa.Column("allowed_tools", sa.Text(), nullable=True),
+        sa.Column("disallowed_tools", sa.Text(), nullable=True),
+        sa.Column("timeout_seconds", sa.Integer(), nullable=True),
+        sa.Column("mode", sa.String(), server_default="normal"),
+        sa.Column("permission_mode", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column("permission_required_tools", JSONB(), nullable=True),
+        sa.Column("model", sa.String(), nullable=True),
+        sa.Column("max_turns", sa.Integer(), nullable=True),
+        sa.Column("max_budget_usd", sa.Float(), nullable=True),
+        sa.Column("system_prompt_mode", sa.String(), server_default="replace"),
+        sa.Column("mcp_server_ids", JSONB(), nullable=True),
+        sa.Column("created_at", sa.Text(), nullable=False),
+        sa.Column("updated_at", sa.Text(), nullable=False),
+    )
+
+    # ── 10. 인덱스 ──────────────────────────────────────────
+    op.create_index("idx_sessions_created_at", "sessions", ["created_at"])
+    op.create_index("idx_sessions_claude_session_id", "sessions", ["claude_session_id"])
+    op.create_index("idx_sessions_status", "sessions", ["status"])
+    op.create_index("idx_sessions_model", "sessions", ["model"])
+    op.create_index("idx_sessions_work_dir", "sessions", ["work_dir"])
+    op.create_index("idx_sessions_search_vector", "sessions", ["search_vector"], postgresql_using="gin")
+
+    op.create_index("idx_messages_session_id", "messages", ["session_id"])
+    op.create_index("idx_messages_session_timestamp", "messages", ["session_id", "timestamp"])
+    op.create_index("idx_messages_timestamp", "messages", ["timestamp"])
+    op.create_index("idx_messages_model", "messages", ["model"])
+
+    op.create_index("idx_file_changes_session_id", "file_changes", ["session_id"])
+
+    op.create_index("idx_events_session_seq", "events", ["session_id", "seq"])
+    op.create_index("idx_events_timestamp", "events", ["timestamp"])
+
+    op.create_index("idx_session_tags_tag_id", "session_tags", ["tag_id"])
+    op.create_index("idx_session_tags_session_id", "session_tags", ["session_id"])
+
+    # ── 11. tsvector 트리거/함수 (FTS5 대체) ────────────────
+
+    # sessions의 search_vector 갱신 함수
     op.execute(text("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            id TEXT PRIMARY KEY,
-            claude_session_id TEXT,
-            work_dir TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'idle',
-            created_at TEXT NOT NULL,
-            allowed_tools TEXT,
-            system_prompt TEXT,
-            timeout_seconds INTEGER,
-            mode TEXT NOT NULL DEFAULT 'normal',
-            permission_mode INTEGER NOT NULL DEFAULT 0,
-            permission_required_tools TEXT,
-            name TEXT,
-            jsonl_path TEXT,
-            model TEXT,
-            max_turns INTEGER,
-            max_budget_usd REAL,
-            system_prompt_mode TEXT NOT NULL DEFAULT 'replace',
-            disallowed_tools TEXT,
-            mcp_server_ids TEXT
-        )
+        CREATE OR REPLACE FUNCTION update_session_search_vector()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.search_vector :=
+                setweight(to_tsvector('simple', COALESCE(NEW.name, '')), 'A') ||
+                setweight(to_tsvector('simple', COALESCE(NEW.work_dir, '')), 'B');
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
     """))
 
     op.execute(text("""
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            role TEXT NOT NULL,
-            content TEXT NOT NULL,
-            cost REAL,
-            duration_ms INTEGER,
-            timestamp TEXT NOT NULL,
-            is_error INTEGER NOT NULL DEFAULT 0,
-            input_tokens INTEGER,
-            output_tokens INTEGER,
-            cache_creation_tokens INTEGER,
-            cache_read_tokens INTEGER,
-            model TEXT,
-            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-        )
+        CREATE TRIGGER trg_sessions_search_vector
+        BEFORE INSERT OR UPDATE OF name, work_dir ON sessions
+        FOR EACH ROW
+        EXECUTE FUNCTION update_session_search_vector();
+    """))
+
+    # messages INSERT 시 부모 session의 search_vector 갱신
+    op.execute(text("""
+        CREATE OR REPLACE FUNCTION update_session_search_on_message()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            UPDATE sessions SET search_vector =
+                setweight(to_tsvector('simple', COALESCE(name, '')), 'A') ||
+                setweight(to_tsvector('simple', COALESCE(work_dir, '')), 'B') ||
+                setweight(to_tsvector('simple', NEW.content), 'C')
+            WHERE id = NEW.session_id;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
     """))
 
     op.execute(text("""
-        CREATE TABLE IF NOT EXISTS file_changes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            tool TEXT NOT NULL,
-            file TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-        )
-    """))
-
-    op.execute(text("""
-        CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            seq INTEGER NOT NULL,
-            event_type TEXT NOT NULL,
-            payload TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-        )
-    """))
-
-    op.execute(text("""
-        CREATE TABLE IF NOT EXISTS global_settings (
-            id TEXT PRIMARY KEY DEFAULT 'default',
-            work_dir TEXT,
-            allowed_tools TEXT,
-            system_prompt TEXT,
-            timeout_seconds INTEGER,
-            mode TEXT DEFAULT 'normal',
-            permission_mode INTEGER DEFAULT 0,
-            permission_required_tools TEXT,
-            model TEXT,
-            max_turns INTEGER,
-            max_budget_usd REAL,
-            system_prompt_mode TEXT DEFAULT 'replace',
-            disallowed_tools TEXT,
-            mcp_server_ids TEXT
-        )
-    """))
-
-    op.execute(text("""
-        CREATE TABLE IF NOT EXISTS mcp_servers (
-            id TEXT PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            transport_type TEXT NOT NULL DEFAULT 'stdio',
-            command TEXT,
-            args TEXT,
-            url TEXT,
-            headers TEXT,
-            env TEXT,
-            enabled INTEGER NOT NULL DEFAULT 1,
-            source TEXT NOT NULL DEFAULT 'manual',
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )
-    """))
-
-    op.execute(text("""
-        CREATE TABLE IF NOT EXISTS tags (
-            id TEXT PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            color TEXT NOT NULL DEFAULT '#6366f1',
-            created_at TEXT NOT NULL
-        )
-    """))
-
-    op.execute(text("""
-        CREATE TABLE IF NOT EXISTS session_tags (
-            session_id TEXT NOT NULL,
-            tag_id TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            PRIMARY KEY (session_id, tag_id),
-            FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
-            FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-        )
-    """))
-
-    op.execute(text("""
-        CREATE TABLE IF NOT EXISTS session_templates (
-            id TEXT PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            description TEXT,
-            work_dir TEXT,
-            system_prompt TEXT,
-            allowed_tools TEXT,
-            disallowed_tools TEXT,
-            timeout_seconds INTEGER,
-            mode TEXT DEFAULT 'normal',
-            permission_mode INTEGER NOT NULL DEFAULT 0,
-            permission_required_tools TEXT,
-            model TEXT,
-            max_turns INTEGER,
-            max_budget_usd REAL,
-            system_prompt_mode TEXT DEFAULT 'replace',
-            mcp_server_ids TEXT,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        )
-    """))
-
-    # ── 2. 인덱스 ────────────────────────────────────────
-
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_file_changes_session_id ON file_changes(session_id)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_events_session_seq ON events(session_id, seq)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_claude_session_id ON sessions(claude_session_id)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_model ON sessions(model)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_sessions_work_dir ON sessions(work_dir)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_session_tags_tag_id ON session_tags(tag_id)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_session_tags_session_id ON session_tags(session_id)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_session_timestamp ON messages(session_id, timestamp)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)"))
-    op.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_model ON messages(model)"))
-
-    # ── 3. FTS5 가상 테이블 ──────────────────────────────
-
-    op.execute(text("""
-        CREATE VIRTUAL TABLE IF NOT EXISTS sessions_fts USING fts5(
-            session_id UNINDEXED,
-            name,
-            content,
-            tokenize='unicode61'
-        )
-    """))
-
-    # ── 4. FTS5 트리거 ───────────────────────────────────
-
-    op.execute(text("""
-        CREATE TRIGGER IF NOT EXISTS trg_messages_fts_insert
+        CREATE TRIGGER trg_messages_search_vector
         AFTER INSERT ON messages
-        BEGIN
-            INSERT INTO sessions_fts(session_id, name, content)
-            VALUES (NEW.session_id, '', NEW.content);
-        END
+        FOR EACH ROW
+        EXECUTE FUNCTION update_session_search_on_message();
     """))
 
-    op.execute(text("""
-        CREATE TRIGGER IF NOT EXISTS trg_sessions_fts_name_update
-        AFTER UPDATE OF name ON sessions
-        WHEN NEW.name IS NOT NULL AND NEW.name != ''
-        BEGIN
-            DELETE FROM sessions_fts WHERE session_id = NEW.id AND content = '';
-            INSERT OR REPLACE INTO sessions_fts(session_id, name, content)
-            VALUES (NEW.id, NEW.name, '');
-        END
-    """))
-
-    op.execute(text("""
-        CREATE TRIGGER IF NOT EXISTS trg_sessions_fts_delete
-        AFTER DELETE ON sessions
-        BEGIN
-            DELETE FROM sessions_fts WHERE session_id = OLD.id;
-        END
-    """))
-
-    # ── 5. 글로벌 설정 기본 행 ────────────────────────────
-
+    # ── 12. 글로벌 설정 기본 행 ─────────────────────────────
     op.execute(text(
-        "INSERT OR IGNORE INTO global_settings (id) VALUES ('default')"
+        "INSERT INTO global_settings (id) VALUES ('default') ON CONFLICT (id) DO NOTHING"
     ))
 
 
 def downgrade() -> None:
-    # FTS 트리거 삭제
-    op.execute(text("DROP TRIGGER IF EXISTS trg_sessions_fts_delete"))
-    op.execute(text("DROP TRIGGER IF EXISTS trg_sessions_fts_name_update"))
-    op.execute(text("DROP TRIGGER IF EXISTS trg_messages_fts_insert"))
+    # 트리거/함수 삭제
+    op.execute(text("DROP TRIGGER IF EXISTS trg_messages_search_vector ON messages"))
+    op.execute(text("DROP FUNCTION IF EXISTS update_session_search_on_message"))
+    op.execute(text("DROP TRIGGER IF EXISTS trg_sessions_search_vector ON sessions"))
+    op.execute(text("DROP FUNCTION IF EXISTS update_session_search_vector"))
 
-    # FTS5 테이블 삭제
-    op.execute(text("DROP TABLE IF EXISTS sessions_fts"))
-
-    # 테이블 삭제 (FK 순서 고려: 자식 → 부모)
-    op.execute(text("DROP TABLE IF EXISTS session_tags"))
-    op.execute(text("DROP TABLE IF EXISTS session_templates"))
-    op.execute(text("DROP TABLE IF EXISTS tags"))
-    op.execute(text("DROP TABLE IF EXISTS mcp_servers"))
-    op.execute(text("DROP TABLE IF EXISTS global_settings"))
-    op.execute(text("DROP TABLE IF EXISTS events"))
-    op.execute(text("DROP TABLE IF EXISTS file_changes"))
-    op.execute(text("DROP TABLE IF EXISTS messages"))
-    op.execute(text("DROP TABLE IF EXISTS sessions"))
+    # 테이블 삭제 (FK 순서: 자식 -> 부모)
+    op.drop_table("session_tags")
+    op.drop_table("session_templates")
+    op.drop_table("tags")
+    op.drop_table("mcp_servers")
+    op.drop_table("global_settings")
+    op.drop_table("events")
+    op.drop_table("file_changes")
+    op.drop_table("messages")
+    op.drop_table("sessions")

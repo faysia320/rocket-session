@@ -1,23 +1,25 @@
-"""세션 생명주기 관리 (CRUD, 프로세스 종료) - SQLite 영속성."""
+"""세션 생명주기 관리 (CRUD, 프로세스 종료) - PostgreSQL 영속성."""
 
 import asyncio
-import json
 import logging
 import shutil
 import uuid
-from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 from app.core.database import Database
-from app.models.session import SessionStatus
+from app.models.session import Session, SessionStatus
+from app.repositories.event_repo import EventRepository
+from app.repositories.file_change_repo import FileChangeRepository
+from app.repositories.message_repo import MessageRepository
+from app.repositories.session_repo import SessionRepository, _session_to_dict
 from app.schemas.session import SessionInfo
 
 logger = logging.getLogger(__name__)
 
 
 class SessionManager:
-    """SQLite 기반 세션 저장소 및 관리."""
+    """PostgreSQL 기반 세션 저장소 및 관리."""
 
     def __init__(self, db: Database, upload_dir: str = ""):
         self._db = db
@@ -44,51 +46,56 @@ class SessionManager:
     ) -> dict:
         sid = str(uuid.uuid4())[:16]
         created_at = datetime.now(timezone.utc).isoformat()
-        perm_tools_json = (
-            json.dumps(permission_required_tools) if permission_required_tools else None
-        )
-        mcp_ids_json = json.dumps(mcp_server_ids) if mcp_server_ids else None
-        session = await self._db.create_session(
-            session_id=sid,
-            work_dir=work_dir,
-            created_at=created_at,
-            allowed_tools=allowed_tools,
-            system_prompt=system_prompt,
-            timeout_seconds=timeout_seconds,
-            permission_mode=permission_mode,
-            permission_required_tools=perm_tools_json,
-            model=model,
-            max_turns=max_turns,
-            max_budget_usd=max_budget_usd,
-            system_prompt_mode=system_prompt_mode,
-            disallowed_tools=disallowed_tools,
-            mcp_server_ids=mcp_ids_json,
-        )
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            entity = Session(
+                id=sid,
+                work_dir=work_dir,
+                created_at=created_at,
+                allowed_tools=allowed_tools,
+                system_prompt=system_prompt,
+                timeout_seconds=timeout_seconds,
+                permission_mode=permission_mode,
+                permission_required_tools=permission_required_tools,
+                model=model,
+                max_turns=max_turns,
+                max_budget_usd=max_budget_usd,
+                system_prompt_mode=system_prompt_mode,
+                disallowed_tools=disallowed_tools,
+                mcp_server_ids=mcp_server_ids,
+            )
+            await repo.add(entity)
+            await session.commit()
+            result = _session_to_dict(entity)
         logger.info("세션 생성: %s", sid)
-        return session
+        return result
 
     async def get(self, session_id: str) -> dict | None:
-        session = await self._db.get_session(session_id)
-        if not session:
-            logger.warning("세션 조회 실패: %s", session_id)
-        return session
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            entity = await repo.get_by_id(session_id)
+            if not entity:
+                logger.warning("세션 조회 실패: %s", session_id)
+                return None
+            return _session_to_dict(entity)
 
     async def get_with_counts(self, session_id: str) -> dict | None:
         """message_count, file_changes_count를 포함한 단일 세션 조회."""
-        return await self._db.get_session_with_counts(session_id)
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            return await repo.get_with_counts(session_id)
 
     async def list_all(self) -> list[dict]:
-        return await self._db.list_sessions()
-
-    @asynccontextmanager
-    async def transaction(self):
-        """DB 트랜잭션 컨텍스트 매니저."""
-        async with self._db.transaction():
-            yield
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            return await repo.list_with_counts()
 
     async def delete(self, session_id: str) -> bool:
         await self.kill_process(session_id)
-        deleted = await self._db.delete_session(session_id)
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            deleted = await repo.delete_by_id(session_id)
+            await session.commit()
         if deleted:
             # 업로드 디렉토리 정리
             if self._upload_dir:
@@ -125,7 +132,7 @@ class SessionManager:
                     "세션 %s 프로세스 종료 중 오류", session_id, exc_info=True
                 )
         self._processes.pop(session_id, None)
-        await self._db.update_session_status(session_id, SessionStatus.IDLE)
+        await self.update_status(session_id, SessionStatus.IDLE)
 
     def set_process(self, session_id: str, process: asyncio.subprocess.Process):
         self._processes[session_id] = process
@@ -153,14 +160,23 @@ class SessionManager:
         self._runner_tasks.pop(session_id, None)
 
     async def update_status(self, session_id: str, status: str):
-        await self._db.update_session_status(session_id, status)
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            await repo.update_status(session_id, status)
+            await session.commit()
 
     async def update_claude_session_id(self, session_id: str, claude_session_id: str):
-        await self._db.update_claude_session_id(session_id, claude_session_id)
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            await repo.update_claude_session_id(session_id, claude_session_id)
+            await session.commit()
 
     async def find_by_claude_session_id(self, claude_session_id: str) -> dict | None:
         """claude_session_id로 세션 조회."""
-        return await self._db.find_session_by_claude_id(claude_session_id)
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            entity = await repo.find_by_claude_id(claude_session_id)
+            return _session_to_dict(entity) if entity else None
 
     async def add_message(
         self,
@@ -177,43 +193,60 @@ class SessionManager:
         cache_read_tokens: int | None = None,
         model: str | None = None,
     ):
-        await self._db.add_message(
-            session_id=session_id,
-            role=role,
-            content=content,
-            timestamp=timestamp,
-            cost=cost,
-            duration_ms=duration_ms,
-            is_error=is_error,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cache_creation_tokens=cache_creation_tokens,
-            cache_read_tokens=cache_read_tokens,
-            model=model,
-        )
+        async with self._db.session() as session:
+            repo = MessageRepository(session)
+            await repo.add_message(
+                session_id=session_id,
+                role=role,
+                content=content,
+                timestamp=timestamp,
+                cost=cost,
+                duration_ms=duration_ms,
+                is_error=is_error,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_creation_tokens=cache_creation_tokens,
+                cache_read_tokens=cache_read_tokens,
+                model=model,
+            )
+            await session.commit()
 
     async def get_history(self, session_id: str) -> list[dict]:
-        return await self._db.get_messages(session_id)
+        async with self._db.session() as session:
+            repo = MessageRepository(session)
+            return await repo.get_by_session(session_id)
 
     async def clear_history(self, session_id: str):
         """세션의 대화 기록, 파일 변경, 이벤트를 모두 삭제."""
-        await self._db.delete_messages(session_id)
-        await self._db.delete_file_changes(session_id)
-        await self._db.delete_events(session_id)
+        async with self._db.session() as session:
+            msg_repo = MessageRepository(session)
+            fc_repo = FileChangeRepository(session)
+            evt_repo = EventRepository(session)
+            await msg_repo.delete_by_session(session_id)
+            await fc_repo.delete_by_session(session_id)
+            await evt_repo.delete_by_session(session_id)
+            await session.commit()
 
     async def add_file_change(
         self, session_id: str, tool: str, file: str, timestamp: str
     ):
-        await self._db.add_file_change(
-            session_id=session_id, tool=tool, file=file, timestamp=timestamp
-        )
+        async with self._db.session() as session:
+            repo = FileChangeRepository(session)
+            await repo.add_file_change(
+                session_id=session_id, tool=tool, file=file, timestamp=timestamp
+            )
+            await session.commit()
 
     async def get_file_changes(self, session_id: str) -> list[dict]:
-        return await self._db.get_file_changes(session_id)
+        async with self._db.session() as session:
+            repo = FileChangeRepository(session)
+            return await repo.get_by_session(session_id)
 
     async def get_session_stats(self, session_id: str) -> dict | None:
         """세션별 누적 통계."""
-        return await self._db.get_session_stats(session_id)
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            return await repo.get_stats(session_id)
 
     async def update_settings(
         self,
@@ -232,47 +265,57 @@ class SessionManager:
         disallowed_tools: str | None = None,
         mcp_server_ids: list[str] | None = None,
     ) -> dict | None:
-        perm_tools_json = (
-            json.dumps(permission_required_tools)
-            if permission_required_tools is not None
-            else None
-        )
-        mcp_ids_json = (
-            json.dumps(mcp_server_ids)
-            if mcp_server_ids is not None
-            else None
-        )
-        return await self._db.update_session_settings(
-            session_id=session_id,
-            allowed_tools=allowed_tools,
-            system_prompt=system_prompt,
-            timeout_seconds=timeout_seconds,
-            mode=mode,
-            permission_mode=permission_mode,
-            permission_required_tools=perm_tools_json,
-            name=name,
-            model=model,
-            max_turns=max_turns,
-            max_budget_usd=max_budget_usd,
-            system_prompt_mode=system_prompt_mode,
-            disallowed_tools=disallowed_tools,
-            mcp_server_ids=mcp_ids_json,
-        )
+        kwargs = {}
+        if allowed_tools is not None:
+            kwargs["allowed_tools"] = allowed_tools
+        if system_prompt is not None:
+            kwargs["system_prompt"] = system_prompt
+        if timeout_seconds is not None:
+            kwargs["timeout_seconds"] = timeout_seconds
+        if mode is not None:
+            kwargs["mode"] = mode
+        if permission_mode is not None:
+            kwargs["permission_mode"] = permission_mode
+        if permission_required_tools is not None:
+            kwargs["permission_required_tools"] = permission_required_tools
+        if name is not None:
+            kwargs["name"] = name
+        if model is not None:
+            kwargs["model"] = model
+        if max_turns is not None:
+            kwargs["max_turns"] = max_turns
+        if max_budget_usd is not None:
+            kwargs["max_budget_usd"] = max_budget_usd
+        if system_prompt_mode is not None:
+            kwargs["system_prompt_mode"] = system_prompt_mode
+        if disallowed_tools is not None:
+            kwargs["disallowed_tools"] = disallowed_tools
+        if mcp_server_ids is not None:
+            kwargs["mcp_server_ids"] = mcp_server_ids
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            entity = await repo.update_settings(session_id, **kwargs)
+            await session.commit()
+            return _session_to_dict(entity) if entity else None
 
     @staticmethod
     def to_info(session: dict) -> SessionInfo:
-        perm_tools_raw = session.get("permission_required_tools")
-        perm_tools = None
-        if perm_tools_raw:
+        # JSONB 필드는 이미 Python 객체이므로 json.loads 불필요
+        # 하위 호환성: 문자열로 들어올 경우 fallback 처리
+        perm_tools = session.get("permission_required_tools")
+        if isinstance(perm_tools, str):
+            import json
+
             try:
-                perm_tools = json.loads(perm_tools_raw)
+                perm_tools = json.loads(perm_tools)
             except (json.JSONDecodeError, TypeError):
                 perm_tools = None
-        mcp_ids_raw = session.get("mcp_server_ids")
-        mcp_ids = None
-        if mcp_ids_raw:
+        mcp_ids = session.get("mcp_server_ids")
+        if isinstance(mcp_ids, str):
+            import json
+
             try:
-                mcp_ids = json.loads(mcp_ids_raw)
+                mcp_ids = json.loads(mcp_ids)
             except (json.JSONDecodeError, TypeError):
                 mcp_ids = None
         return SessionInfo(
@@ -287,7 +330,7 @@ class SessionManager:
             system_prompt=session.get("system_prompt"),
             timeout_seconds=session.get("timeout_seconds"),
             mode=session.get("mode", "normal"),
-            permission_mode=bool(session.get("permission_mode", 0)),
+            permission_mode=bool(session.get("permission_mode", False)),
             permission_required_tools=perm_tools,
             name=session.get("name"),
             model=session.get("model"),

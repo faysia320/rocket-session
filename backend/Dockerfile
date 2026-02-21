@@ -1,8 +1,8 @@
 FROM python:3.11-slim AS base
 
-# Node.js 22 LTS 설치 (Claude Code CLI 필요)
+# Node.js 22 LTS 설치 (Claude Code CLI 필요) + asyncpg 빌드 의존성 (libpq-dev)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates git && \
+    curl ca-certificates git libpq-dev gcc && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
@@ -31,9 +31,6 @@ COPY app/ app/
 # Alembic 마이그레이션 파일 복사
 COPY alembic.ini ./
 COPY migrations/ migrations/
-
-# 데이터 디렉토리 생성
-RUN mkdir -p /app/data
 
 # entrypoint 스크립트 복사 (CRLF→LF 변환 + 실행 권한)
 COPY entrypoint.sh /entrypoint.sh

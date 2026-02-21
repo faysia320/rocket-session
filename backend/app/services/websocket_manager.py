@@ -37,9 +37,7 @@ class WebSocketManager:
         self._event_buffers: dict[str, deque[BufferedEvent]] = {}
         self._seq_counters: dict[str, int] = {}
         self._db: Database | None = None
-        self._event_queue: asyncio.Queue[tuple[str, int, str, str, str]] = (
-            asyncio.Queue()
-        )
+        self._event_queue: asyncio.Queue[dict] = asyncio.Queue()
         self._flush_task: asyncio.Task | None = None
         self._heartbeat_task: asyncio.Task | None = None
 
@@ -75,8 +73,8 @@ class WebSocketManager:
             await self._flush_events()
 
     async def _flush_events(self):
-        """큐의 이벤트를 한번에 executemany로 저장."""
-        batch: list[tuple[str, int, str, str, str]] = []
+        """큐의 이벤트를 한번에 배치로 저장."""
+        batch: list[dict] = []
         while not self._event_queue.empty():
             try:
                 batch.append(self._event_queue.get_nowait())
@@ -84,17 +82,21 @@ class WebSocketManager:
                 break
         if batch and self._db:
             try:
-                await self._db.add_events_batch(batch)
+                from app.repositories.event_repo import EventRepository
+
+                async with self._db.session() as session:
+                    repo = EventRepository(session)
+                    await repo.add_batch(batch)
+                    await session.commit()
             except Exception as e:
                 logger.warning("이벤트 배치 DB 저장 실패 (%d건): %s", len(batch), e)
 
     async def flush_events(self):
-        """외부에서 호출 가능한 이벤트 flush. 큐의 모든 이벤트를 즉시 DB에 저장."""
+        """외부에서 호출 가능한 이벤트 flush."""
         await self._flush_events()
 
     async def _heartbeat_loop(self):
         """30초 간격 ping으로 dead 연결 감지."""
-        # ping 페이로드를 루프 외부에서 한 번만 직렬화
         ping_payload = json.dumps({"type": "ping"})
         while True:
             await asyncio.sleep(30)
@@ -128,26 +130,22 @@ class WebSocketManager:
             ws_list.remove(ws)
 
     def has_connections(self, session_id: str) -> bool:
-        """세션에 활성 연결이 있는지 확인."""
         return bool(self._connections.get(session_id))
 
     def _next_seq(self, session_id: str) -> int:
-        """세션별 다음 시퀀스 번호 반환."""
         seq = self._seq_counters.get(session_id, 0) + 1
         self._seq_counters[session_id] = seq
         return seq
 
     def get_latest_seq(self, session_id: str) -> int:
-        """세션의 현재 최신 시퀀스 번호."""
         return self._seq_counters.get(session_id, 0)
 
     async def broadcast_event(self, session_id: str, message: dict) -> int:
-        """이벤트에 seq 부여 + 버퍼 저장 + DB 저장 + broadcast. seq 반환."""
+        """이벤트에 seq 부여 + 버퍼 저장 + DB 저장 + broadcast."""
         seq = self._next_seq(session_id)
         event_type = message.get("type", "unknown")
         ts = datetime.now(timezone.utc).isoformat()
 
-        # 메시지에 seq 부여
         message_with_seq = {**message, "seq": seq}
 
         # 인메모리 버퍼 저장
@@ -159,19 +157,16 @@ class WebSocketManager:
             )
         )
 
-        # DB 저장: 큐에 enqueue (배치 writer가 주기적으로 flush)
+        # DB 저장: 큐에 enqueue (JSONB이므로 dict 그대로 저장)
         if self._db:
-            self._event_queue.put_nowait(
-                (
-                    session_id,
-                    seq,
-                    event_type,
-                    json.dumps(message_with_seq, ensure_ascii=False),
-                    ts,
-                )
-            )
+            self._event_queue.put_nowait({
+                "session_id": session_id,
+                "seq": seq,
+                "event_type": event_type,
+                "payload": message_with_seq,
+                "timestamp": ts,
+            })
 
-        # 연결된 클라이언트에 broadcast
         await self.broadcast(session_id, message_with_seq)
         return seq
 
@@ -181,7 +176,6 @@ class WebSocketManager:
         if not ws_list:
             return
 
-        # JSON 한 번만 직렬화 (다수 클라이언트가 연결된 경우 직렬화 비용 절감)
         payload = json.dumps(message, ensure_ascii=False)
 
         async def _safe_send(ws: WebSocket) -> WebSocket | None:
@@ -206,7 +200,6 @@ class WebSocketManager:
         buffer = self._event_buffers.get(session_id)
 
         if buffer:
-            # 인메모리 버퍼에서 조회
             first_buffered_seq = buffer[0].seq if buffer else 0
             if after_seq >= first_buffered_seq:
                 return [e.payload for e in buffer if e.seq > after_seq]
@@ -214,24 +207,20 @@ class WebSocketManager:
         # DB fallback
         if self._db:
             try:
-                rows = await self._db.get_events_after(session_id, after_seq)
-                results = []
-                for row in rows:
-                    try:
-                        results.append(json.loads(row["payload"]))
-                    except (json.JSONDecodeError, KeyError):
-                        continue
-                return results
+                from app.repositories.event_repo import EventRepository
+
+                async with self._db.session() as session:
+                    repo = EventRepository(session)
+                    rows = await repo.get_after(session_id, after_seq)
+                    # JSONB payload는 이미 dict
+                    return [row["payload"] for row in rows]
             except Exception as e:
                 logger.warning("이벤트 DB 조회 실패 (세션 %s): %s", session_id, e)
 
         return []
 
     async def get_current_turn_events(self, session_id: str) -> list[dict]:
-        """현재 턴(마지막 user_message 이후)의 이벤트 목록 반환.
-        인메모리 버퍼 우선, 비어있으면 DB fallback.
-        """
-        # 1단계: 인메모리 버퍼 조회
+        """현재 턴(마지막 user_message 이후)의 이벤트 목록 반환."""
         buffer = self._event_buffers.get(session_id)
         if buffer:
             last_user_seq = 0
@@ -241,17 +230,14 @@ class WebSocketManager:
             if last_user_seq > 0:
                 return [e.payload for e in buffer if e.seq > last_user_seq]
 
-        # 2단계: DB fallback (인메모리 비어있거나 user_message 없는 경우)
         if self._db:
             try:
-                rows = await self._db.get_current_turn_events(session_id)
-                results = []
-                for row in rows:
-                    try:
-                        results.append(json.loads(row["payload"]))
-                    except (json.JSONDecodeError, KeyError):
-                        continue
-                return results
+                from app.repositories.event_repo import EventRepository
+
+                async with self._db.session() as session:
+                    repo = EventRepository(session)
+                    rows = await repo.get_current_turn_events(session_id)
+                    return [row["payload"] for row in rows]
             except Exception as e:
                 logger.warning(
                     "현재 턴 이벤트 DB 조회 실패 (세션 %s): %s", session_id, e
@@ -260,19 +246,11 @@ class WebSocketManager:
         return []
 
     def get_current_activity(self, session_id: str) -> dict | None:
-        """세션의 현재 활동 요약 반환.
-
-        인메모리 버퍼에서 마지막 tool_use 이벤트 중 아직 tool_result가
-        오지 않은 것(= 현재 실행 중인 도구)을 추출.
-
-        Returns:
-            {"tool": "Write", "input": {"file_path": "src/App.tsx"}} 또는 None
-        """
+        """세션의 현재 활동 요약 반환."""
         buffer = self._event_buffers.get(session_id)
         if not buffer:
             return None
 
-        # 완료된 tool_use_id 수집
         completed_ids: set[str] = set()
         for evt in buffer:
             if evt.event_type == "tool_result":
@@ -280,7 +258,6 @@ class WebSocketManager:
                 if tid:
                     completed_ids.add(tid)
 
-        # 역순으로 미완료 tool_use 찾기
         for evt in reversed(buffer):
             if evt.event_type == "tool_use":
                 tid = evt.payload.get("tool_use_id", "")
@@ -290,7 +267,6 @@ class WebSocketManager:
                         "input": evt.payload.get("input", {}),
                     }
 
-        # 활성 도구 없으면 텍스트 생성 중인지 확인
         for evt in reversed(buffer):
             if evt.event_type == "assistant_text":
                 return {"tool": "__thinking__", "input": {}}
@@ -300,21 +276,23 @@ class WebSocketManager:
         return None
 
     def clear_buffer(self, session_id: str):
-        """세션의 인메모리 버퍼 정리."""
         self._event_buffers.pop(session_id, None)
 
     async def restore_seq_counters(self, db: "Database"):
         """서버 재시작 시 DB에서 세션별 최대 seq를 복원."""
         try:
-            seq_map = await db.get_max_seq_per_session()
-            for session_id, max_seq in seq_map.items():
-                self._seq_counters[session_id] = max_seq
-            if seq_map:
-                logger.info("seq 카운터 복원 완료: %d개 세션", len(seq_map))
+            from app.repositories.event_repo import EventRepository
+
+            async with db.session() as session:
+                repo = EventRepository(session)
+                seq_map = await repo.get_max_seq_per_session()
+                for session_id, max_seq in seq_map.items():
+                    self._seq_counters[session_id] = max_seq
+                if seq_map:
+                    logger.info("seq 카운터 복원 완료: %d개 세션", len(seq_map))
         except Exception as e:
             logger.warning("seq 카운터 복원 실패: %s", e)
 
     def reset_session(self, session_id: str):
-        """세션의 버퍼 + 시퀀스 카운터 초기화."""
         self._event_buffers.pop(session_id, None)
         self._seq_counters.pop(session_id, None)

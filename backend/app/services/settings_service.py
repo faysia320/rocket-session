@@ -1,9 +1,9 @@
 """글로벌 설정 관리 서비스."""
 
-import json
 import logging
 
 from app.core.database import Database
+from app.repositories.settings_repo import SettingsRepository
 
 logger = logging.getLogger(__name__)
 
@@ -15,28 +15,28 @@ class SettingsService:
         self._db = db
 
     async def get(self) -> dict:
-        """글로벌 설정을 딕셔너리로 반환. permission_mode는 bool, JSON 필드는 파싱."""
-        row = await self._db.get_global_settings()
-        if not row:
-            return {}
-        result = dict(row)
-        # permission_mode: int → bool
-        result["permission_mode"] = bool(result.get("permission_mode", 0))
-        # permission_required_tools: JSON string → list
-        prt = result.get("permission_required_tools")
-        if prt and isinstance(prt, str):
-            try:
-                result["permission_required_tools"] = json.loads(prt)
-            except (json.JSONDecodeError, TypeError):
-                result["permission_required_tools"] = None
-        # mcp_server_ids: JSON string → list
-        mcp_ids = result.get("mcp_server_ids")
-        if mcp_ids and isinstance(mcp_ids, str):
-            try:
-                result["mcp_server_ids"] = json.loads(mcp_ids)
-            except (json.JSONDecodeError, TypeError):
-                result["mcp_server_ids"] = None
-        return result
+        """글로벌 설정을 딕셔너리로 반환. JSONB 필드는 이미 Python 객체."""
+        async with self._db.session() as session:
+            repo = SettingsRepository(session)
+            entity = await repo.get_default()
+            if not entity:
+                return {}
+            return {
+                "id": entity.id,
+                "work_dir": entity.work_dir,
+                "allowed_tools": entity.allowed_tools,
+                "system_prompt": entity.system_prompt,
+                "timeout_seconds": entity.timeout_seconds,
+                "mode": entity.mode,
+                "permission_mode": entity.permission_mode,
+                "permission_required_tools": entity.permission_required_tools,
+                "model": entity.model,
+                "max_turns": entity.max_turns,
+                "max_budget_usd": entity.max_budget_usd,
+                "system_prompt_mode": entity.system_prompt_mode,
+                "disallowed_tools": entity.disallowed_tools,
+                "mcp_server_ids": entity.mcp_server_ids,
+            }
 
     async def update(
         self,
@@ -54,7 +54,7 @@ class SettingsService:
         disallowed_tools: str | None = None,
         mcp_server_ids: list[str] | None = None,
     ) -> dict:
-        """글로벌 설정 업데이트 후 최신 상태 반환."""
+        """글로벌 설정 업데이트 후 최신 상태 반환. JSONB 필드는 직접 저장."""
         kwargs: dict = {}
         if work_dir is not None:
             kwargs["work_dir"] = work_dir
@@ -67,9 +67,9 @@ class SettingsService:
         if mode is not None:
             kwargs["mode"] = mode
         if permission_mode is not None:
-            kwargs["permission_mode"] = int(permission_mode)
+            kwargs["permission_mode"] = permission_mode
         if permission_required_tools is not None:
-            kwargs["permission_required_tools"] = json.dumps(permission_required_tools)
+            kwargs["permission_required_tools"] = permission_required_tools
         if model is not None:
             kwargs["model"] = model
         if max_turns is not None:
@@ -81,6 +81,9 @@ class SettingsService:
         if disallowed_tools is not None:
             kwargs["disallowed_tools"] = disallowed_tools
         if mcp_server_ids is not None:
-            kwargs["mcp_server_ids"] = json.dumps(mcp_server_ids)
-        await self._db.update_global_settings(**kwargs)
+            kwargs["mcp_server_ids"] = mcp_server_ids
+        async with self._db.session() as session:
+            repo = SettingsRepository(session)
+            await repo.update_settings(**kwargs)
+            await session.commit()
         return await self.get()

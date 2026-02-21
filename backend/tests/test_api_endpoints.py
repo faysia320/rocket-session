@@ -1,10 +1,11 @@
 """
 Integration tests for REST API endpoints.
 
-Tests all REST API endpoints with real FastAPI app and in-memory database.
+Tests all REST API endpoints with real FastAPI app and PostgreSQL test database.
 Uses httpx.AsyncClient for async requests and overrides dependencies for testing.
 """
 
+import os
 import tempfile
 from datetime import datetime, timezone
 
@@ -25,19 +26,22 @@ from app.services.websocket_manager import WebSocketManager
 
 
 @pytest_asyncio.fixture
-async def test_client(tmp_path):
+async def test_client():
     """
-    Create httpx AsyncClient with file-based test database.
+    Create httpx AsyncClient with PostgreSQL test database.
 
     Overrides FastAPI dependencies to use test database and services.
     """
-    db = Database(str(tmp_path / "test_api.db"))
+    database_url = os.environ.get(
+        "DATABASE_URL",
+        "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session_test",
+    )
+    db = Database(database_url)
     await db.initialize()
 
     # Create test services
     test_settings = Settings(
         claude_work_dir=tempfile.gettempdir(),
-        database_path=":memory:",
     )
     sm = SessionManager(db)
     wm = WebSocketManager()

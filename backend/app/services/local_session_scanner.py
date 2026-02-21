@@ -6,6 +6,8 @@ import logging
 from pathlib import Path
 
 from app.core.database import Database
+from app.repositories.message_repo import MessageRepository
+from app.repositories.session_repo import SessionRepository
 from app.schemas.local_session import (
     ImportLocalSessionResponse,
     LocalSessionMeta,
@@ -162,11 +164,9 @@ class LocalSessionScanner:
 
     async def _get_imported_session_ids(self) -> set[str]:
         """DB에서 이미 import된 claude_session_id 목록 조회."""
-        cursor = await self._db.conn.execute(
-            "SELECT claude_session_id FROM sessions WHERE claude_session_id IS NOT NULL"
-        )
-        rows = await cursor.fetchall()
-        return {row["claude_session_id"] for row in rows}
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            return await repo.get_all_claude_session_ids()
 
     def _extract_metadata(
         self, jsonl_path: Path, project_dir: str, imported_ids: set[str]
@@ -306,7 +306,10 @@ class LocalSessionScanner:
         await session_manager.update_claude_session_id(dashboard_id, session_id)
 
         # JSONL 파일 경로 저장 (실시간 감시용)
-        await self._db.update_session_jsonl_path(dashboard_id, str(jsonl_path))
+        async with self._db.session() as db_session:
+            repo = SessionRepository(db_session)
+            await repo.update_jsonl_path(dashboard_id, str(jsonl_path))
+            await db_session.commit()
 
         # root JSONL + continuation JSONL 순서대로 메시지 파싱
         all_jsonl_paths = [jsonl_path]
@@ -322,23 +325,26 @@ class LocalSessionScanner:
 
         if all_messages:
             batch = [
-                (
-                    dashboard_id,
-                    msg["role"],
-                    msg["content"],
-                    msg["timestamp"],
-                    None,  # cost
-                    None,  # duration_ms
-                    False,  # is_error
-                    None,  # input_tokens
-                    None,  # output_tokens
-                    None,  # cache_creation_tokens
-                    None,  # cache_read_tokens
-                    None,  # model
-                )
+                {
+                    "session_id": dashboard_id,
+                    "role": msg["role"],
+                    "content": msg["content"],
+                    "timestamp": msg["timestamp"],
+                    "cost": None,
+                    "duration_ms": None,
+                    "is_error": False,
+                    "input_tokens": None,
+                    "output_tokens": None,
+                    "cache_creation_tokens": None,
+                    "cache_read_tokens": None,
+                    "model": None,
+                }
                 for msg in all_messages
             ]
-            await self._db.add_messages_batch(batch)
+            async with self._db.session() as db_session:
+                msg_repo = MessageRepository(db_session)
+                await msg_repo.add_batch(batch)
+                await db_session.commit()
 
         return ImportLocalSessionResponse(
             dashboard_session_id=dashboard_id,
