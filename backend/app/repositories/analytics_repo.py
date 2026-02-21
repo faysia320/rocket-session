@@ -56,9 +56,7 @@ class AnalyticsRepository:
         stmt = (
             select(
                 date_col,
-                func.coalesce(func.sum(Message.input_tokens), 0).label(
-                    "input_tokens"
-                ),
+                func.coalesce(func.sum(Message.input_tokens), 0).label("input_tokens"),
                 func.coalesce(func.sum(Message.output_tokens), 0).label(
                     "output_tokens"
                 ),
@@ -68,9 +66,7 @@ class AnalyticsRepository:
                 func.coalesce(func.sum(Message.cache_creation_tokens), 0).label(
                     "cache_creation_tokens"
                 ),
-                func.count(func.distinct(Message.session_id)).label(
-                    "active_sessions"
-                ),
+                func.count(func.distinct(Message.session_id)).label("active_sessions"),
             )
             .where(
                 Message.role == "assistant",
@@ -105,18 +101,16 @@ class AnalyticsRepository:
             .subquery()
         )
         # ROW_NUMBER()로 세션별 최다 모델 선택
-        top_model_sub = (
-            select(
-                model_sub.c.session_id,
-                model_sub.c.model,
-                func.row_number()
-                .over(
-                    partition_by=model_sub.c.session_id,
-                    order_by=model_sub.c.model_cnt.desc(),
-                )
-                .label("rn"),
-            ).subquery()
-        )
+        top_model_sub = select(
+            model_sub.c.session_id,
+            model_sub.c.model,
+            func.row_number()
+            .over(
+                partition_by=model_sub.c.session_id,
+                order_by=model_sub.c.model_cnt.desc(),
+            )
+            .label("rn"),
+        ).subquery()
         top_model = (
             select(top_model_sub.c.session_id, top_model_sub.c.model)
             .where(top_model_sub.c.rn == 1)
@@ -128,9 +122,7 @@ class AnalyticsRepository:
                 Message.session_id,
                 Session.name.label("session_name"),
                 Session.work_dir,
-                func.coalesce(func.sum(Message.input_tokens), 0).label(
-                    "input_tokens"
-                ),
+                func.coalesce(func.sum(Message.input_tokens), 0).label("input_tokens"),
                 func.coalesce(func.sum(Message.output_tokens), 0).label(
                     "output_tokens"
                 ),
@@ -170,9 +162,7 @@ class AnalyticsRepository:
         stmt = (
             select(
                 Session.work_dir,
-                func.coalesce(func.sum(Message.input_tokens), 0).label(
-                    "input_tokens"
-                ),
+                func.coalesce(func.sum(Message.input_tokens), 0).label("input_tokens"),
                 func.coalesce(func.sum(Message.output_tokens), 0).label(
                     "output_tokens"
                 ),

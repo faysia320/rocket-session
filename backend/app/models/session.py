@@ -30,30 +30,45 @@ class Session(Base):
     system_prompt: Mapped[str | None] = mapped_column(Text, default=None)
     timeout_seconds: Mapped[int | None] = mapped_column(Integer, default=None)
     mode: Mapped[str] = mapped_column(String, nullable=False, default="normal")
-    permission_mode: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    permission_required_tools: Mapped[dict | list | None] = mapped_column(JSONB, default=None)
+    permission_mode: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    permission_required_tools: Mapped[dict | list | None] = mapped_column(
+        JSONB, default=None
+    )
     name: Mapped[str | None] = mapped_column(Text, default=None)
     jsonl_path: Mapped[str | None] = mapped_column(Text, default=None)
     model: Mapped[str | None] = mapped_column(String, default=None)
     max_turns: Mapped[int | None] = mapped_column(Integer, default=None)
     max_budget_usd: Mapped[float | None] = mapped_column(Float, default=None)
-    system_prompt_mode: Mapped[str] = mapped_column(String, nullable=False, default="replace")
+    system_prompt_mode: Mapped[str] = mapped_column(
+        String, nullable=False, default="replace"
+    )
     disallowed_tools: Mapped[str | None] = mapped_column(Text, default=None)
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, default=None)
 
     # Relationships
     messages: Mapped[list["Message"]] = relationship(
-        "Message", back_populates="session", cascade="all, delete-orphan", lazy="selectin"
+        "Message",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
     file_changes: Mapped[list["FileChange"]] = relationship(
-        "FileChange", back_populates="session", cascade="all, delete-orphan", lazy="selectin"
+        "FileChange",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
     events: Mapped[list["Event"]] = relationship(
         "Event", back_populates="session", cascade="all, delete-orphan", lazy="selectin"
     )
     tags: Mapped[list["SessionTag"]] = relationship(
-        "SessionTag", back_populates="session", cascade="all, delete-orphan", lazy="selectin"
+        "SessionTag",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     __table_args__ = (

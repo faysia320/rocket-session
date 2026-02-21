@@ -13,16 +13,12 @@ class TagRepository(BaseRepository[Tag]):
 
     async def get_by_name(self, name: str) -> Tag | None:
         """태그 이름으로 조회."""
-        result = await self._session.execute(
-            select(Tag).where(Tag.name == name)
-        )
+        result = await self._session.execute(select(Tag).where(Tag.name == name))
         return result.scalar_one_or_none()
 
     async def list_all(self) -> list[Tag]:
         """전체 태그 목록 (이름순)."""
-        result = await self._session.execute(
-            select(Tag).order_by(Tag.name.asc())
-        )
+        result = await self._session.execute(select(Tag).order_by(Tag.name.asc()))
         return list(result.scalars().all())
 
     async def update_tag(self, tag_id: str, **kwargs) -> Tag | None:

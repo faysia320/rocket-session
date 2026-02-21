@@ -69,7 +69,9 @@ class TagService:
             await session.commit()
             return deleted
 
-    async def add_tags_to_session(self, session_id: str, tag_ids: list[str]) -> list[TagInfo]:
+    async def add_tags_to_session(
+        self, session_id: str, tag_ids: list[str]
+    ) -> list[TagInfo]:
         now = datetime.now(timezone.utc).isoformat()
         async with self._db.session() as session:
             repo = TagRepository(session)
@@ -92,11 +94,12 @@ class TagService:
             rows = await repo.get_session_tags(session_id)
             return [self._dict_to_info(r) for r in rows]
 
-    async def get_tags_for_sessions(self, session_ids: list[str]) -> dict[str, list[TagInfo]]:
+    async def get_tags_for_sessions(
+        self, session_ids: list[str]
+    ) -> dict[str, list[TagInfo]]:
         async with self._db.session() as session:
             repo = TagRepository(session)
             raw = await repo.get_tags_for_sessions(session_ids)
             return {
-                sid: [self._dict_to_info(r) for r in tags]
-                for sid, tags in raw.items()
+                sid: [self._dict_to_info(r) for r in tags] for sid, tags in raw.items()
             }

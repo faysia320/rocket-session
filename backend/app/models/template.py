@@ -21,7 +21,9 @@ class SessionTemplate(Base):
     disallowed_tools: Mapped[str | None] = mapped_column(Text, default=None)
     timeout_seconds: Mapped[int | None] = mapped_column(Integer, default=None)
     mode: Mapped[str] = mapped_column(String, default="normal")
-    permission_mode: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    permission_mode: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     permission_required_tools: Mapped[list | None] = mapped_column(JSONB, default=None)
     model: Mapped[str | None] = mapped_column(String, default=None)
     max_turns: Mapped[int | None] = mapped_column(Integer, default=None)

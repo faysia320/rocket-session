@@ -52,9 +52,7 @@ async def import_template(
     service: TemplateService = Depends(get_template_service),
 ):
     if data.version != 1:
-        raise HTTPException(
-            status_code=400, detail="지원하지 않는 템플릿 버전입니다"
-        )
+        raise HTTPException(status_code=400, detail="지원하지 않는 템플릿 버전입니다")
     return await service.import_template(data.template)
 
 
@@ -85,9 +83,7 @@ async def get_template(
 ):
     template = await service.get_template(template_id)
     if not template:
-        raise HTTPException(
-            status_code=404, detail="템플릿을 찾을 수 없습니다"
-        )
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
     return template
 
 
@@ -116,9 +112,7 @@ async def update_template(
         mcp_server_ids=req.mcp_server_ids,
     )
     if not updated:
-        raise HTTPException(
-            status_code=404, detail="템플릿을 찾을 수 없습니다"
-        )
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
     return updated
 
 
@@ -129,9 +123,7 @@ async def delete_template(
 ):
     deleted = await service.delete_template(template_id)
     if not deleted:
-        raise HTTPException(
-            status_code=404, detail="템플릿을 찾을 수 없습니다"
-        )
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
     return {"status": "deleted"}
 
 
@@ -142,7 +134,5 @@ async def export_template(
 ):
     result = await service.export_template(template_id)
     if not result:
-        raise HTTPException(
-            status_code=404, detail="템플릿을 찾을 수 없습니다"
-        )
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
     return result

@@ -36,9 +36,8 @@ class AnalyticsService:
                 repo.get_project_usage(start, end),
             )
 
-        total_tokens = (
-            summary_raw.get("total_input_tokens", 0)
-            + summary_raw.get("total_output_tokens", 0)
+        total_tokens = summary_raw.get("total_input_tokens", 0) + summary_raw.get(
+            "total_output_tokens", 0
         )
         total_sessions = summary_raw.get("total_sessions", 0)
 

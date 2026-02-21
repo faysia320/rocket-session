@@ -93,8 +93,12 @@ class SessionRepository(BaseRepository[Session]):
             func.count().label("total_messages"),
             func.coalesce(func.sum(Message.cost), 0).label("total_cost"),
             func.coalesce(func.sum(Message.duration_ms), 0).label("total_duration_ms"),
-            func.coalesce(func.sum(Message.input_tokens), 0).label("total_input_tokens"),
-            func.coalesce(func.sum(Message.output_tokens), 0).label("total_output_tokens"),
+            func.coalesce(func.sum(Message.input_tokens), 0).label(
+                "total_input_tokens"
+            ),
+            func.coalesce(func.sum(Message.output_tokens), 0).label(
+                "total_output_tokens"
+            ),
             func.coalesce(func.sum(Message.cache_creation_tokens), 0).label(
                 "total_cache_creation_tokens"
             ),
@@ -116,7 +120,9 @@ class SessionRepository(BaseRepository[Session]):
     async def update_jsonl_path(self, session_id: str, jsonl_path: str) -> None:
         """JSONL 파일 경로 업데이트."""
         stmt = (
-            update(Session).where(Session.id == session_id).values(jsonl_path=jsonl_path)
+            update(Session)
+            .where(Session.id == session_id)
+            .values(jsonl_path=jsonl_path)
         )
         await self._session.execute(stmt)
 

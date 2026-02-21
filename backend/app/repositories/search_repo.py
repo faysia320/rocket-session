@@ -83,9 +83,7 @@ class SearchRepository:
         elif q:
             # LIKE 부분 일치 검색 (이름 또는 ID)
             like_q = f"%{q}%"
-            filters.append(
-                (Session.name.ilike(like_q)) | (Session.id.ilike(like_q))
-            )
+            filters.append((Session.name.ilike(like_q)) | (Session.id.ilike(like_q)))
 
         if status:
             filters.append(Session.status == status)

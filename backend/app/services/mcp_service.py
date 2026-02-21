@@ -160,19 +160,23 @@ class McpService:
                 # 이미 import 했는지 확인
                 existing = await repo.get_by_name(name)
 
-                result.append({
-                    "name": name,
-                    "transport_type": transport,
-                    "command": config.get("command"),
-                    "args": config.get("args"),
-                    "url": config.get("url"),
-                    "headers": config.get("headers"),
-                    "env": config.get("env"),
-                    "already_imported": existing is not None,
-                })
+                result.append(
+                    {
+                        "name": name,
+                        "transport_type": transport,
+                        "command": config.get("command"),
+                        "args": config.get("args"),
+                        "url": config.get("url"),
+                        "headers": config.get("headers"),
+                        "env": config.get("env"),
+                        "already_imported": existing is not None,
+                    }
+                )
         return result
 
-    async def import_from_system(self, names: list[str] | None = None) -> list[McpServerInfo]:
+    async def import_from_system(
+        self, names: list[str] | None = None
+    ) -> list[McpServerInfo]:
         """시스템 MCP 서버를 DB에 import. names가 None이면 전체 import."""
         system_servers = await self.read_system_servers()
         imported = []

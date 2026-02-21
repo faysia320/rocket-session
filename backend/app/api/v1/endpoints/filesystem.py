@@ -56,7 +56,9 @@ async def get_git_status(
 @router.get("/git-diff", response_class=PlainTextResponse)
 async def get_git_diff(
     path: str = Query(..., description="Git 저장소 경로"),
-    file: str = Query(..., description="diff를 조회할 파일 경로 (저장소 루트 기준 상대 경로)"),
+    file: str = Query(
+        ..., description="diff를 조회할 파일 경로 (저장소 루트 기준 상대 경로)"
+    ),
     fs: FilesystemService = Depends(get_filesystem_service),
 ):
     try:

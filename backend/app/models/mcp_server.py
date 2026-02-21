@@ -1,6 +1,6 @@
 """MCP 서버 모델."""
 
-from sqlalchemy import Boolean, Index, String, Text
+from sqlalchemy import Boolean, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
