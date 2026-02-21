@@ -15,6 +15,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                  API Layer (FastAPI)                         │
 │  Sessions · Files · Filesystem · Usage · Permissions · WS   │
+│  Settings · MCP · Templates · Tags · Analytics              │
 └─────────────────────────────────────────────────────────────┘
                     │ subprocess (asyncio)
 ┌─────────────────────────────────────────────────────────────┐
@@ -24,8 +25,9 @@
 └─────────────────────────────────────────────────────────────┘
                     │
 ┌─────────────────────────────────────────────────────────────┐
-│              SQLite (aiosqlite)                              │
+│              PostgreSQL (asyncpg + SQLAlchemy ORM)            │
 │  sessions · messages · file_changes · events                 │
+│  global_settings · mcp_servers · tags · session_templates     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -43,6 +45,16 @@
 - **슬래시 명령어** — `/` 입력 시 커스텀 스킬 자동완성
 - **WebSocket 재연결** — 네트워크 끊김 후 놓친 이벤트 자동 복구
 - **활동 상태바** — 실행 중인 도구, 비용, 시간 실시간 표시
+- **MCP 서버 관리** — MCP 서버 설정, 활성화/비활성화, 세션별 연결
+- **세션 템플릿** — 자주 사용하는 설정을 템플릿으로 저장/재사용
+- **세션 태그** — 태그로 세션 분류 및 필터링
+- **분석 대시보드** — 토큰 사용량, 비용, 모델별 통계
+- **명령 팔레트** — Ctrl+K로 빠른 명령 실행 (세션/Git/채팅)
+- **알림 시스템** — 세션 완료/오류 알림 + 사운드
+- **Git 모니터** — Git 상태 추적, 커밋, PR 생성, Rebase
+- **전문 검색** — PostgreSQL TSVECTOR 기반 세션 전문 검색
+- **글로벌 설정** — 새 세션의 기본값을 일괄 관리
+- **JSONL 실시간 감시** — 로컬 Claude 세션 파일 변경 자동 감지
 
 ## UI 구조 (컴포넌트 맵)
 
@@ -276,15 +288,18 @@ MessageBubble 컴포넌트가 `message.type`에 따라 다른 UI를 렌더링합
 |------|------|
 | 언어 | Python 3.10+ |
 | 프레임워크 | FastAPI 0.115 |
-| 데이터베이스 | SQLite (aiosqlite) |
+| 데이터베이스 | PostgreSQL (asyncpg) + SQLAlchemy ORM |
+| 마이그레이션 | Alembic |
+| HTTP 클라이언트 | httpx |
 | WebSocket | websockets 14.1 |
 | 설정 관리 | Pydantic Settings 2.x |
-| 테스트 | pytest + pytest-asyncio |
+| 테스트 | pytest + pytest-asyncio + testcontainers |
 | 패키지 매니저 | **uv** |
 
 ## 사전 요구사항
 
 - Python 3.10+
+- PostgreSQL 16+ (또는 Docker로 자동 실행)
 - [uv](https://docs.astral.sh/uv/) (Python 패키지 매니저)
 - Node.js 18+
 - [pnpm](https://pnpm.io/) (Node 패키지 매니저)
@@ -298,8 +313,16 @@ MessageBubble 컴포넌트가 `message.type`에 따라 다른 UI를 렌더링합
 ```bash
 # Backend
 cd backend
-cp .env.example .env   # CLAUDE_WORK_DIR 수정
+cp .env.example .env   # DATABASE_URL, CLAUDE_WORK_DIR 수정
 uv sync
+
+# PostgreSQL 시작 (Docker 사용 시)
+docker run -d --name rocket-pg \
+  -e POSTGRES_DB=rocket_session \
+  -e POSTGRES_USER=rocket \
+  -e POSTGRES_PASSWORD=rocket_secret \
+  -p 5432:5432 postgres:16-alpine
+
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8101 --reload
 
 # Frontend (별도 터미널)
@@ -327,12 +350,13 @@ http://localhost:8100 에서 접속
 `backend/.env` 파일:
 
 ```env
+DATABASE_URL=postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session  # PostgreSQL 연결 URL
 CLAUDE_WORK_DIR=/path/to/your/project    # Claude 작업 디렉토리
-CLAUDE_ALLOWED_TOOLS=Read,Write,Edit,Bash # 허용 도구
-CLAUDE_PLAN=Max                           # 플랜 (Max/Pro)
+CLAUDE_ALLOWED_TOOLS=Read,Write,Edit,MultiEdit,Bash,Glob,Grep,WebFetch,WebSearch,TodoRead,TodoWrite  # 허용 도구
 BACKEND_HOST=0.0.0.0                      # 서버 호스트
 BACKEND_PORT=8101                         # 서버 포트
-DATABASE_PATH=data/sessions.db            # DB 경로
+UPLOAD_DIR=/tmp/rocket-session-uploads    # 파일 업로드 디렉토리
+CORS_ORIGINS=http://localhost:8100,http://localhost:8101  # CORS 허용 출처
 ```
 
 ## 프로젝트 구조
@@ -344,7 +368,7 @@ rocket-session/
 │   │   ├── main.py                    # FastAPI 앱 팩토리 + CORS + 라이프사이클
 │   │   ├── core/
 │   │   │   ├── config.py              # Pydantic BaseSettings
-│   │   │   └── database.py            # SQLite 비동기 DB + 스키마 + 마이그레이션
+│   │   │   └── database.py            # PostgreSQL + SQLAlchemy 엔진 + Alembic 마이그레이션
 │   │   ├── api/
 │   │   │   ├── dependencies.py        # DI 싱글턴 프로바이더
 │   │   │   └── v1/
@@ -357,12 +381,45 @@ rocket-session/
 │   │   │           ├── local_sessions.py  # 로컬 세션 스캔/import
 │   │   │           ├── permissions.py # Permission 요청/응답
 │   │   │           ├── usage.py       # 사용량 조회 (ccusage)
-│   │   │           └── ws.py          # WebSocket 엔드포인트
+│   │   │           ├── ws.py          # WebSocket 엔드포인트
+│   │   │           ├── settings.py    # 글로벌 설정
+│   │   │           ├── mcp.py         # MCP 서버 관리
+│   │   │           ├── templates.py   # 세션 템플릿
+│   │   │           ├── tags.py        # 세션 태그
+│   │   │           └── analytics.py   # 분석 데이터
+│   │   ├── models/
+│   │   │   ├── base.py              # SQLAlchemy Base 클래스
+│   │   │   ├── session.py           # Session ORM 모델
+│   │   │   ├── message.py           # Message ORM 모델
+│   │   │   ├── file_change.py       # FileChange ORM 모델
+│   │   │   ├── event.py             # Event ORM 모델
+│   │   │   ├── global_settings.py   # GlobalSettings ORM 모델
+│   │   │   ├── mcp_server.py        # McpServer ORM 모델
+│   │   │   ├── tag.py               # Tag + SessionTag ORM 모델
+│   │   │   └── template.py          # SessionTemplate ORM 모델
+│   │   ├── repositories/
+│   │   │   ├── base.py              # BaseRepository
+│   │   │   ├── session_repo.py      # SessionRepository
+│   │   │   ├── message_repo.py      # MessageRepository
+│   │   │   ├── file_change_repo.py  # FileChangeRepository
+│   │   │   ├── event_repo.py        # EventRepository
+│   │   │   ├── settings_repo.py     # SettingsRepository
+│   │   │   ├── mcp_server_repo.py   # McpServerRepository
+│   │   │   ├── tag_repo.py          # TagRepository
+│   │   │   ├── template_repo.py     # TemplateRepository
+│   │   │   ├── search_repo.py       # SearchRepository
+│   │   │   └── analytics_repo.py    # AnalyticsRepository
 │   │   ├── schemas/                   # Pydantic 스키마
 │   │   │   ├── session.py
 │   │   │   ├── usage.py
 │   │   │   ├── filesystem.py
-│   │   │   └── local_session.py
+│   │   │   ├── local_session.py
+│   │   │   ├── settings.py           # 글로벌 설정 스키마
+│   │   │   ├── mcp.py               # MCP 서버 스키마
+│   │   │   ├── template.py           # 템플릿 스키마
+│   │   │   ├── tag.py                # 태그 스키마
+│   │   │   ├── analytics.py          # 분석 스키마
+│   │   │   └── search.py             # 검색 스키마
 │   │   ├── services/
 │   │   │   ├── session_manager.py     # 세션 생명주기 관리
 │   │   │   ├── claude_runner.py       # Claude CLI subprocess + JSON 스트림 파싱
@@ -370,8 +427,19 @@ rocket-session/
 │   │   │   ├── usage_service.py       # ccusage CLI 사용량 조회
 │   │   │   ├── filesystem_service.py  # 파일시스템 + Git 워크트리
 │   │   │   ├── local_session_scanner.py # 로컬 세션 스캐너
+│   │   │   ├── settings_service.py    # 글로벌 설정 관리
+│   │   │   ├── mcp_service.py         # MCP 서버 관리
+│   │   │   ├── template_service.py    # 세션 템플릿 관리
+│   │   │   ├── tag_service.py         # 태그 관리
+│   │   │   ├── search_service.py      # 전문 검색 (TSVECTOR)
+│   │   │   ├── analytics_service.py   # 분석 데이터 집계
+│   │   │   ├── jsonl_watcher.py       # JSONL 세션 실시간 감시
+│   │   │   ├── event_handler.py       # 이벤트 처리
 │   │   │   └── permission_mcp_server.py # Permission MCP 서버
-│   │   └── models/session.py          # 도메인 모델
+│   │   └── alembic/                      # Alembic 마이그레이션
+│   │       ├── versions/                 # 마이그레이션 버전 파일
+│   │       └── env.py
+│   ├── alembic.ini                   # Alembic 설정
 │   ├── tests/
 │   ├── Dockerfile
 │   └── pyproject.toml
@@ -387,7 +455,11 @@ rocket-session/
 │   │   │   ├── message.ts             # Message, FileChange, WebSocketEvent
 │   │   │   ├── usage.ts              # Usage 타입
 │   │   │   ├── filesystem.ts         # FileSystem, Git 타입
-│   │   │   └── local-session.ts      # LocalSession 타입
+│   │   │   ├── local-session.ts      # LocalSession 타입
+│   │   │   ├── mcp.ts                # MCP 서버 타입
+│   │   │   ├── tag.ts                # 태그 타입
+│   │   │   ├── settings.ts           # 설정 타입
+│   │   │   └── notification.ts       # 알림 타입
 │   │   ├── store/                     # Zustand 스토어
 │   │   ├── routes/                    # TanStack Router (파일 기반)
 │   │   │   ├── __root.tsx             # 루트 레이아웃
@@ -401,7 +473,12 @@ rocket-session/
 │   │   │   ├── chat/                  # 채팅 (ChatPanel, MessageBubble, Input, Permission, Plan)
 │   │   │   ├── files/                 # 파일 (FilePanel, FileViewer, DiffViewer)
 │   │   │   ├── directory/             # 디렉토리 (Browser, Picker, Git, Worktree)
-│   │   │   └── usage/                 # 사용량 (UsageFooter)
+│   │   │   ├── usage/                 # 사용량 (UsageFooter)
+│   │   │   ├── git-monitor/           # Git 상태 모니터링 (커밋, PR, Rebase)
+│   │   │   ├── mcp/                   # MCP 서버 관리 (설정, 연결)
+│   │   │   ├── settings/              # 글로벌 설정
+│   │   │   ├── notification/          # 알림 시스템 (사운드, 설정)
+│   │   │   └── command-palette/       # 명령 팔레트 (Ctrl+K)
 │   │   └── lib/api/                   # API 클라이언트
 │   ├── design-system/                 # 디자인 토큰 + ESLint + Tailwind 플러그인
 │   ├── Dockerfile
@@ -454,23 +531,62 @@ rocket-session/
 | `GET` | `/api/v1/usage/` | 사용량 조회 |
 | `WS` | `/ws/{session_id}` | 실시간 스트리밍 |
 
+### Settings
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/settings/` | 글로벌 설정 조회 |
+| `PATCH` | `/api/v1/settings/` | 글로벌 설정 수정 |
+
+### MCP
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/mcp/servers` | MCP 서버 목록 |
+| `POST` | `/api/v1/mcp/servers` | MCP 서버 추가 |
+| `PATCH` | `/api/v1/mcp/servers/{id}` | MCP 서버 수정 |
+| `DELETE` | `/api/v1/mcp/servers/{id}` | MCP 서버 삭제 |
+
+### Templates
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/templates/` | 템플릿 목록 |
+| `POST` | `/api/v1/templates/` | 템플릿 생성 |
+| `PATCH` | `/api/v1/templates/{id}` | 템플릿 수정 |
+| `DELETE` | `/api/v1/templates/{id}` | 템플릿 삭제 |
+
+### Tags
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/tags/` | 태그 목록 |
+| `POST` | `/api/v1/tags/` | 태그 생성 |
+| `DELETE` | `/api/v1/tags/{id}` | 태그 삭제 |
+
+### Analytics
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/analytics/summary` | 분석 요약 |
+
 ## 데이터베이스 스키마
 
-SQLite (`backend/data/sessions.db`):
+PostgreSQL + SQLAlchemy ORM, 마이그레이션: Alembic:
 
 | 테이블 | 설명 |
 |--------|------|
-| `sessions` | 세션 메타데이터 (id, status, work_dir, mode, permission_mode, name 등) |
-| `messages` | 대화 기록 (role, content, cost, duration_ms) |
+| `sessions` | 세션 메타데이터 (id, status, work_dir, mode, model, max_turns, mcp_server_ids, search_vector 등) |
+| `messages` | 대화 기록 (role, content, cost, duration_ms, input_tokens, output_tokens, model) |
 | `file_changes` | 파일 변경 기록 (tool, file, timestamp) |
-| `events` | WebSocket 이벤트 버퍼 (seq, event_type, payload) — 재연결 복구용 |
+| `events` | WebSocket 이벤트 버퍼 (seq, event_type, payload -- JSONB) -- 재연결 복구용 |
+| `global_settings` | 글로벌 기본 설정 (모든 세션 옵션의 기본값) |
+| `mcp_servers` | MCP 서버 설정 (name, transport_type, command, url, env) |
+| `tags` | 태그 정의 (name, color) |
+| `session_tags` | 세션-태그 다대다 연결 |
+| `session_templates` | 세션 템플릿 (name, description, 모든 세션 옵션) |
 
 ## 동작 방식
 
 1. FastAPI 백엔드가 Claude Code CLI를 subprocess로 실행 (`--output-format stream-json`)
 2. JSON 스트림을 파싱하여 메시지/도구 사용/파일 변경 이벤트를 추출
 3. WebSocket으로 프론트엔드에 실시간 브로드캐스트
-4. 모든 대화 기록과 이벤트는 SQLite에 영속 저장
+4. 모든 대화 기록과 이벤트는 PostgreSQL에 영속 저장 (SQLAlchemy ORM + Alembic 마이그레이션)
 5. 프론트엔드 재연결 시 `last_seq` 파라미터로 놓친 이벤트 복구
 
 ## 접속 정보
