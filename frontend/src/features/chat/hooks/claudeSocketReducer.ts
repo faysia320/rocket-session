@@ -107,7 +107,7 @@ export type ClaudeSocketAction =
   | { type: "RECONNECT_FAILED"; attempt: number }
   | { type: "RECONNECT_RESET" }
   // WebSocket message actions
-  | { type: "WS_SESSION_STATE"; session: SessionState; isRunning: boolean; isReconnect: boolean; history: HistoryItem[] | null; latestSeq: number | undefined; currentTurnEvents: Record<string, unknown>[] | null }
+  | { type: "WS_SESSION_STATE"; session: SessionState; isRunning: boolean; isReconnect: boolean; history: HistoryItem[] | null; latestSeq: number | undefined; currentTurnEvents: Record<string, unknown>[] | null; pendingInteractions: { permission?: { permission_id: string; tool_name: string; tool_input: Record<string, unknown> } } | null }
   | { type: "WS_SESSION_INFO"; claudeSessionId: string }
   | { type: "WS_STATUS"; status: "idle" | "running" | "error" }
   | { type: "WS_USER_MESSAGE"; data: Record<string, unknown> }
@@ -222,6 +222,18 @@ export function claudeSocketReducer(
         };
       }
 
+      // 백엔드에서 전달된 대기 중인 permission 복원 (네비게이션 후 복귀 시)
+      let newPendingPermission = state.pendingPermission;
+      if (action.pendingInteractions?.permission) {
+        const p = action.pendingInteractions.permission;
+        newPendingPermission = {
+          permission_id: p.permission_id,
+          tool_name: p.tool_name,
+          tool_input: p.tool_input,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
       return {
         ...state,
         sessionInfo: action.session,
@@ -229,6 +241,7 @@ export function claudeSocketReducer(
         status: newStatus,
         messages: newMessages,
         tokenUsage: newTokenUsage,
+        pendingPermission: newPendingPermission,
       };
     }
 
@@ -336,6 +349,34 @@ export function claudeSocketReducer(
 
     case "WS_RESULT": {
       const prev = state.messages;
+
+      // history에서 복원된 result 메시지를 mode/planFileContent로 업그레이드
+      // (네비게이션 후 돌아올 때 current_turn_events 재생으로 호출됨)
+      const lastMsg = prev.length > 0 ? prev[prev.length - 1] : null;
+      if (
+        lastMsg &&
+        lastMsg.type === "result" &&
+        lastMsg.id.startsWith("hist-") &&
+        !(lastMsg as ResultMsg).mode
+      ) {
+        const text = action.data.text || (lastMsg as ResultMsg).text;
+        const planFileContent = action.mode === "plan"
+          ? extractPlanFileContent(prev.slice(0, -1), text)
+          : undefined;
+
+        const upgraded = {
+          ...lastMsg,
+          mode: action.mode,
+          planFileContent,
+        } as Message;
+
+        return {
+          ...state,
+          messages: [...prev.slice(0, -1), upgraded],
+          // tokenUsage는 history 로딩 시 이미 계산됨 — 이중 계산 방지
+        };
+      }
+
       let lastAssistantIdx = -1;
       for (let i = prev.length - 1; i >= 0; i--) {
         if (prev[i].type === "user_message" || prev[i].type === "result") break;

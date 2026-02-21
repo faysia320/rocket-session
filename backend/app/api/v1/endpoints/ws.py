@@ -16,7 +16,7 @@ from app.api.dependencies import (
     get_settings_service,
     get_ws_manager,
 )
-from app.api.v1.endpoints.permissions import respond_permission
+from app.api.v1.endpoints.permissions import get_pending, respond_permission
 from app.models.event_types import WsEventType
 from app.services.claude_runner import ClaudeRunner
 from app.services.session_manager import SessionManager
@@ -280,6 +280,24 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
             current_turn = await ws_manager.get_current_turn_events(session_id)
             if current_turn:
                 state_msg["current_turn_events"] = current_turn
+
+            # 대기 중인 인터랙션 (permission 등) 상태 전달
+            # 프론트엔드가 네비게이션 후 돌아왔을 때 질문 UI를 복구하는 권위적 소스
+            pending_interactions: dict = {}
+            for perm_id, entry in get_pending().items():
+                if (
+                    entry.get("session_id") == session_id
+                    and entry.get("response") is None
+                ):
+                    pending_interactions["permission"] = {
+                        "permission_id": perm_id,
+                        "tool_name": entry["tool_name"],
+                        "tool_input": entry["tool_input"],
+                    }
+                    break
+            if pending_interactions:
+                state_msg["pending_interactions"] = pending_interactions
+
             await ws.send_json(state_msg)
 
         while True:

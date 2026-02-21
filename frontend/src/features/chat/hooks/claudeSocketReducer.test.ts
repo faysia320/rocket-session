@@ -222,6 +222,7 @@ describe("claudeSocketReducer", () => {
       ],
       latestSeq: undefined,
       currentTurnEvents: null,
+      pendingInteractions: null,
     });
     expect(result.loading).toBe(false);
     expect(result.messages).toHaveLength(2);

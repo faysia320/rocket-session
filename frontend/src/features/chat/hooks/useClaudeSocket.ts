@@ -71,6 +71,9 @@ export function useClaudeSocket(sessionId: string) {
             : null,
           latestSeq: typeof data.latest_seq === "number" ? data.latest_seq : undefined,
           currentTurnEvents: null, // current_turn_events는 아래에서 별도 처리
+          pendingInteractions: (!data.is_reconnect && data.pending_interactions)
+            ? data.pending_interactions as { permission?: { permission_id: string; tool_name: string; tool_input: Record<string, unknown> } }
+            : null,
         };
         dispatch(action);
 
@@ -80,10 +83,10 @@ export function useClaudeSocket(sessionId: string) {
           const turnEvents = data.current_turn_events as Record<string, unknown>[];
           for (const event of turnEvents) {
             // user_message: history에 이미 포함
-            // result: history의 마지막 assistant 메시지와 중복
-            if (event.type !== "user_message" && event.type !== "result") {
-              handleMessage(event);
-            }
+            // permission_response: pending_interactions가 권위적 소스이므로 재생 건너뜀
+            if (event.type === "user_message" || event.type === "permission_response") continue;
+            // result: history의 마지막 메시지와 중복 시 reducer에서 업그레이드 처리
+            handleMessage(event);
           }
         }
 
