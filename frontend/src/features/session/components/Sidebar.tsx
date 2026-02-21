@@ -77,6 +77,7 @@ export const Sidebar = memo(function Sidebar({
   const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
   const isHome = location.pathname === "/";
   const isAnalytics = location.pathname === "/analytics";
+  const isHistory = location.pathname === "/history";
   const collapsed = isMobileOverlay ? false : sidebarCollapsed;
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const [importOpen, setImportOpen] = useState(false);
@@ -119,8 +120,102 @@ export const Sidebar = memo(function Sidebar({
           (collapsed ? "w-16 min-w-16" : "w-[260px] min-w-[260px]"),
       )}
     >
+      {/* Navigation */}
+      <nav
+        className={cn(
+          "px-3 pt-3",
+          collapsed ? "pb-1" : "pb-0",
+        )}
+      >
+        {collapsed ? (
+          <div className="flex flex-col gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("w-full h-8", isHome && "bg-muted")}
+                  onClick={() => navigate({ to: "/" })}
+                  aria-label="Dashboard"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Dashboard</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("w-full h-8", isHistory && "bg-muted")}
+                  onClick={() => navigate({ to: "/history" })}
+                  aria-label="History"
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">History</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("w-full h-8", isAnalytics && "bg-muted")}
+                  onClick={() => navigate({ to: "/analytics" })}
+                  aria-label="Analytics"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Analytics</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : (
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              className={cn(
+                "flex-1 h-8 gap-1.5 font-mono text-xs",
+                isHome && "bg-muted",
+              )}
+              onClick={() => navigate({ to: "/" })}
+              aria-label="Dashboard"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Dashboard
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn(
+                "flex-1 h-8 gap-1.5 font-mono text-xs",
+                isHistory && "bg-muted",
+              )}
+              onClick={() => navigate({ to: "/history" })}
+              aria-label="History"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              History
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn(
+                "flex-1 h-8 gap-1.5 font-mono text-xs",
+                isAnalytics && "bg-muted",
+              )}
+              onClick={() => navigate({ to: "/analytics" })}
+              aria-label="Analytics"
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              Analytics
+            </Button>
+          </div>
+        )}
+      </nav>
+
       {/* New Session */}
-      <div className="px-3 pt-3">
+      <div className="px-3 pt-2">
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -294,7 +389,7 @@ export const Sidebar = memo(function Sidebar({
         )}
       </ScrollArea>
 
-      {/* Footer: 설정, 테마, Split View, 접기 */}
+      {/* Footer: 설정 · 레이아웃 */}
       <div
         className={cn(
           "py-3 border-t border-border",
@@ -303,10 +398,11 @@ export const Sidebar = memo(function Sidebar({
       >
         <div
           className={cn(
-            "flex items-center gap-1",
-            collapsed ? "flex-col" : "justify-center",
+            "flex items-center",
+            collapsed ? "flex-col gap-1" : "justify-center gap-1",
           )}
         >
+          {/* 설정 그룹: 알림, 설정, 템플릿 */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -364,57 +460,20 @@ export const Sidebar = memo(function Sidebar({
               </TooltipContent>
             </Tooltip>
           </TemplateListDialog>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => navigate({ to: "/history" })}
-                aria-label="세션 히스토리"
-              >
-                <Clock className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side={collapsed ? "right" : "top"}>
-              History
-            </TooltipContent>
-          </Tooltip>
+
+          {/* 그룹 구분선 */}
+          {isMobileOverlay ? null : (
+            collapsed ? (
+              <div className="h-px w-5 bg-border my-1 self-center" />
+            ) : (
+              <div className="w-px h-5 bg-border mx-1" />
+            )
+          )}
+
+          {/* 레이아웃 그룹: 테마, 분할 뷰, 사이드바 토글 */}
           <ThemeToggle />
           {isMobileOverlay ? null : (
             <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn("h-8 w-8", isHome && "bg-muted")}
-                    onClick={() => navigate({ to: "/" })}
-                    aria-label="대시보드"
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side={collapsed ? "right" : "top"}>
-                  Dashboard
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn("h-8 w-8", isAnalytics && "bg-muted")}
-                    onClick={() => navigate({ to: "/analytics" })}
-                    aria-label="토큰 분석"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side={collapsed ? "right" : "top"}>
-                  Token Analytics
-                </TooltipContent>
-              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
