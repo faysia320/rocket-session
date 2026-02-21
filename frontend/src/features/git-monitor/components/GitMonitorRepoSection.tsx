@@ -49,7 +49,6 @@ export function GitMonitorRepoSection({
 
   const { createSession } = useCreateSession();
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt);
-  const clearPendingPrompt = useSessionStore((s) => s.clearPendingPrompt);
   const [isCreating, setIsCreating] = useState(false);
 
   const isGitRepo = gitInfo?.is_git_repo ?? false;
@@ -60,14 +59,13 @@ export function GitMonitorRepoSection({
   const handleCommit = useCallback(async () => {
     if (isCreating) return;
     setIsCreating(true);
-    setPendingPrompt("/git-commit");
     try {
-      await createSession(path);
+      const session = await createSession(path);
+      setPendingPrompt("/git-commit", session.id);
     } catch {
-      clearPendingPrompt();
       setIsCreating(false);
     }
-  }, [createSession, path, setPendingPrompt, clearPendingPrompt, isCreating]);
+  }, [createSession, path, setPendingPrompt, isCreating]);
 
   return (
     <div className="flex flex-col h-full min-w-[280px] w-[320px] shrink-0 border-r border-border last:border-r-0">
