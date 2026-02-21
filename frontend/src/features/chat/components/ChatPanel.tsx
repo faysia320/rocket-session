@@ -24,7 +24,7 @@ import type { SlashCommand } from "../constants/slashCommands";
 import { toast } from "sonner";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
-import { useSessions } from "@/features/session/hooks/useSessions";
+import { useSessionMutations } from "@/features/session/hooks/useSessions";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import {
   computeEstimateSize,
@@ -63,18 +63,26 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
   const isInitialLoad = useRef(true);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [mode, setMode] = useState<SessionMode>("normal");
 
-  const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const splitView = useSessionStore((s) => s.splitView);
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
   const pendingPrompt = useSessionStore((s) => s.pendingPrompt);
+  const pendingPromptSessionId = useSessionStore(
+    (s) => s.pendingPromptSessionId,
+  );
   const clearPendingPrompt = useSessionStore((s) => s.clearPendingPrompt);
   const queryClient = useQueryClient();
-  const { archiveSession, unarchiveSession } = useSessions();
+  const { archiveSession, unarchiveSession } = useSessionMutations();
+
+  const handleArchive = useCallback(() => archiveSession(sessionId), [archiveSession, sessionId]);
+  const handleUnarchive = useCallback(() => unarchiveSession(sessionId), [unarchiveSession, sessionId]);
+
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? "");
 
@@ -91,12 +99,17 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const hasAutoSentRef = useRef(false);
 
   useEffect(() => {
-    if (connected && pendingPrompt && !hasAutoSentRef.current) {
+    if (
+      connected &&
+      pendingPrompt &&
+      pendingPromptSessionId === sessionId &&
+      !hasAutoSentRef.current
+    ) {
       hasAutoSentRef.current = true;
       sendPrompt(pendingPrompt, { mode: "normal" });
       clearPendingPrompt();
     }
-  }, [connected, pendingPrompt, sendPrompt, clearPendingPrompt]);
+  }, [connected, pendingPrompt, pendingPromptSessionId, sessionId, sendPrompt, clearPendingPrompt]);
 
   useEffect(() => {
     hasAutoSentRef.current = false;
@@ -195,20 +208,25 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     prevGapsRef.current = messageGaps;
   }, [messageGaps]);
 
-  // 커맨드 팔레트 이벤트 리스너
+  // 커맨드 팔레트 이벤트 리스너 — ref로 최신 값 참조하여 리스너 재등록 방지
+  const cmdPaletteRef = useRef({ clearMessages, handleToggleSearch, cycleMode, sendPrompt, mode, sessionId });
+  cmdPaletteRef.current = { clearMessages, handleToggleSearch, cycleMode, sendPrompt, mode, sessionId };
+
   useEffect(() => {
     const forThis = (e: Event, fn: () => void) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.sessionId && detail.sessionId !== sessionId) return;
+      const { sessionId: sid } = cmdPaletteRef.current;
+      if (detail?.sessionId && detail.sessionId !== sid) return;
       fn();
     };
 
     const handlers: Record<string, (e: Event) => void> = {
       "command-palette:clear-messages": (e) =>
-        forThis(e, () => clearMessages()),
+        forThis(e, () => cmdPaletteRef.current.clearMessages()),
       "command-palette:toggle-search": (e) =>
-        forThis(e, () => handleToggleSearch()),
-      "command-palette:toggle-mode": (e) => forThis(e, () => cycleMode()),
+        forThis(e, () => cmdPaletteRef.current.handleToggleSearch()),
+      "command-palette:toggle-mode": (e) =>
+        forThis(e, () => cmdPaletteRef.current.cycleMode()),
       "command-palette:open-settings": (e) =>
         forThis(e, () => setSettingsOpen(true)),
       "command-palette:toggle-files": (e) =>
@@ -216,12 +234,12 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       "command-palette:send-slash": (e) =>
         forThis(e, () => {
           const data = (e as CustomEvent).detail?.data;
-          if (data) sendPrompt(data, { mode });
+          if (data) cmdPaletteRef.current.sendPrompt(data, { mode: cmdPaletteRef.current.mode });
         }),
       "command-palette:send-prompt": (e) =>
         forThis(e, () => {
           const data = (e as CustomEvent).detail?.data;
-          if (data) sendPrompt(data, { mode });
+          if (data) cmdPaletteRef.current.sendPrompt(data, { mode: cmdPaletteRef.current.mode });
         }),
     };
 
@@ -233,7 +251,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         window.removeEventListener(event, handler);
       }
     };
-  }, [clearMessages, handleToggleSearch, cycleMode, sendPrompt, mode, sessionId]);
+  }, []); // 의존성 없음: ref를 통해 항상 최신 값 참조
 
   const handleFileClick = useCallback((change: FileChange) => {
     setSelectedFile(change);
@@ -292,15 +310,16 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     [sendPrompt, mode],
   );
 
-  // 에러 메시지에서 직전 user 메시지를 찾아 재전송
+  // 에러 메시지에서 직전 user 메시지를 찾아 재전송 — messagesRef로 messages 의존성 제거
   const handleRetryFromError = useCallback(
     (errorMsgId: string) => {
-      const idx = messages.findIndex((m) => m.id === errorMsgId);
+      const msgs = messagesRef.current;
+      const idx = msgs.findIndex((m) => m.id === errorMsgId);
       if (idx < 0) return;
       // 에러 직전 user_message 역탐색
       for (let i = idx - 1; i >= 0; i--) {
-        if (messages[i].type === "user_message") {
-          const userMsg = messages[i] as UserMsg;
+        if (msgs[i].type === "user_message") {
+          const userMsg = msgs[i] as UserMsg;
           const msg = userMsg.message as Record<string, string> | undefined;
           const text =
             msg?.content ||
@@ -313,7 +332,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         }
       }
     },
-    [messages, sendPrompt, mode],
+    [sendPrompt, mode],
   );
 
   const navigate = useNavigate();
@@ -348,17 +367,17 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         filesOpen={filesOpen}
         onFilesOpenChange={setFilesOpen}
         onRetryConnect={reconnect}
-        onMenuToggle={() => setSidebarMobileOpen(true)}
         currentModel={sessionInfo?.model as string | undefined}
         portalContainer={panelRef.current}
         onSendPrompt={handleSendPrompt}
         onRemoveWorktree={handleRemoveWorktree}
         isArchived={sessionInfo?.status === "archived"}
-        onArchive={() => archiveSession(sessionId)}
-        onUnarchive={() => unarchiveSession(sessionId)}
+        onArchive={handleArchive}
+        onUnarchive={handleUnarchive}
       />
       <SessionStatsBar
         sessionId={sessionId}
+        isRunning={status === "running"}
         tokenUsage={tokenUsage}
         messageCount={messages.length}
       />

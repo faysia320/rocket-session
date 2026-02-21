@@ -246,6 +246,44 @@ export function useSessions() {
   };
 }
 
+/**
+ * 세션 mutation 전용 훅 (목록 구독 없이 archive/unarchive만 사용).
+ * ChatPanel 등 자식 컴포넌트에서 useSessions() 중복 호출(+ 5초 polling 다중 생성)을 방지.
+ */
+export function useSessionMutations() {
+  const queryClient = useQueryClient();
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => sessionsApi.archive(id),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+    },
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: (id: string) => sessionsApi.unarchive(id),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+    },
+  });
+
+  const archiveSession = useCallback(
+    async (id: string) => {
+      await archiveMutation.mutateAsync(id);
+    },
+    [archiveMutation],
+  );
+
+  const unarchiveSession = useCallback(
+    async (id: string) => {
+      await unarchiveMutation.mutateAsync(id);
+    },
+    [unarchiveMutation],
+  );
+
+  return { archiveSession, unarchiveSession };
+}
+
 function extractSessionIdFromPath(pathname: string): string | null {
   const match = pathname.match(/\/session\/([^/]+)/);
   if (!match || match[1] === "new") return null;

@@ -11,6 +11,7 @@ import { ContextWindowBar } from "@/features/chat/components/ContextWindowBar";
 
 interface SessionStatsBarProps {
   sessionId: string;
+  isRunning?: boolean;
   tokenUsage?: {
     inputTokens: number;
     outputTokens: number;
@@ -31,10 +32,11 @@ function formatDuration(ms: number): string {
 
 export const SessionStatsBar = memo(function SessionStatsBar({
   sessionId,
+  isRunning = false,
   tokenUsage,
   messageCount,
 }: SessionStatsBarProps) {
-  const { data: stats } = useSessionStats(sessionId);
+  const { data: stats } = useSessionStats(sessionId, isRunning);
 
   if (!stats || stats.total_messages === 0) return null;
 
