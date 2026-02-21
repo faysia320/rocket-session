@@ -111,7 +111,21 @@ export function GitMonitorRepoSection({
                 {gitInfo.behind}
               </span>
             ) : null}
-            {changeCount > 0 ? (
+            {status?.error ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="destructive" className="font-mono text-2xs px-1 py-0 shrink-0">
+                    <AlertCircle className="h-2 w-2 mr-0.5" />
+                    오류
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs max-w-[240px]">
+                  {status.error === "timeout"
+                    ? "Git 상태 조회 시간 초과 (대형 레포)"
+                    : `Git 오류: ${status.error}`}
+                </TooltipContent>
+              </Tooltip>
+            ) : changeCount > 0 ? (
               <Badge variant="secondary" className="font-mono text-2xs px-1 py-0 shrink-0">
                 {changeCount}
               </Badge>

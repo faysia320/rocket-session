@@ -64,6 +64,7 @@ class GitStatusResponse(BaseModel):
     repo_root: Optional[str] = None
     files: list[GitStatusFile] = []
     total_count: int = 0
+    error: Optional[str] = None
 
 
 class SkillInfo(BaseModel):

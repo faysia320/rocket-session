@@ -58,6 +58,7 @@ export interface GitStatusResponse {
   repo_root: string | null;
   files: GitStatusFile[];
   total_count: number;
+  error?: string | null;
 }
 
 export interface SkillInfo {

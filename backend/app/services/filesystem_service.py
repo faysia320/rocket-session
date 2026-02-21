@@ -424,6 +424,7 @@ class FilesystemService:
         """git status --porcelain=v1 결과를 파싱하여 변경 파일 목록 반환."""
         validated_path = self._validate_path(path)
         cwd = str(validated_path)
+        start = time.monotonic()
 
         # git 저장소 여부 확인
         rc, _, _ = await self._run_git_command(
@@ -432,18 +433,37 @@ class FilesystemService:
         if rc != 0:
             return GitStatusResponse(is_git_repo=False)
 
+        # stat 캐시 사전 갱신: cross-platform(Windows↔WSL2) 환경에서
+        # stale 타임스탬프로 인한 false positive 방지
+        await self._run_git_command(
+            "update-index", "--refresh", "-q", cwd=cwd, timeout=30.0
+        )
+
         # repo 루트 + status 병렬 실행
         # -u 플래그 미사용: 기본값(--untracked-files=normal)으로
         # untracked 디렉토리를 단일 항목으로 표시 (재귀 확장 방지)
-        (rc_root, root_out, _), (rc_status, status_out, _) = await asyncio.gather(
+        (rc_root, root_out, _), (rc_status, status_out, stderr) = await asyncio.gather(
             self._run_git_command("rev-parse", "--show-toplevel", cwd=cwd),
-            self._run_git_command("status", "--porcelain=v1", cwd=cwd),
+            self._run_git_command("status", "--porcelain=v1", cwd=cwd, timeout=30.0),
         )
 
         repo_root = root_out if rc_root == 0 else None
+
+        # git status 실패/타임아웃 시 에러 반환
+        if rc_status != 0:
+            error_msg = (
+                "timeout" if stderr == "timeout" else f"git error: {stderr}"
+            )
+            logger.error(
+                "git status 실패: path=%s, rc=%d, error=%s", path, rc_status, error_msg
+            )
+            return GitStatusResponse(
+                is_git_repo=True, repo_root=repo_root, error=error_msg
+            )
+
         files: list[GitStatusFile] = []
 
-        if rc_status == 0 and status_out:
+        if status_out:
             for line in status_out.split("\n"):
                 if len(line) < 3:
                     continue
@@ -462,6 +482,15 @@ class FilesystemService:
                         is_untracked=(x == "?" and y == "?"),
                     )
                 )
+
+        elapsed = time.monotonic() - start
+        if len(files) > 100 or elapsed > 5.0:
+            logger.warning(
+                "git status 대형 결과: path=%s, files=%d, elapsed=%.1fs",
+                path,
+                len(files),
+                elapsed,
+            )
 
         return GitStatusResponse(
             is_git_repo=True,
