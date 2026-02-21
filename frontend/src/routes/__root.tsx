@@ -39,7 +39,7 @@ function RootComponent() {
     selectSession,
     refreshSessions,
   } = useSessions();
-  const splitView = useSessionStore((s) => s.splitView);
+  const viewMode = useSessionStore((s) => s.viewMode);
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
   const setFocusedSessionId = useSessionStore((s) => s.setFocusedSessionId);
   const sidebarMobileOpen = useSessionStore((s) => s.sidebarMobileOpen);
@@ -51,8 +51,9 @@ function RootComponent() {
     [sessions],
   );
 
-  // 사이드바는 세션 라우트에서만 표시
-  const isOnSessionRoute = location.pathname.startsWith("/session");
+  // 사이드바는 세션 영역(홈 + 세션 라우트)에서 표시
+  const isSessionArea =
+    location.pathname === "/" || location.pathname.startsWith("/session");
 
   // Split View는 세션 라우트(/session/:id)에서만 활성화
   const isSessionDetailRoute =
@@ -83,19 +84,19 @@ function RootComponent() {
 
   // 페이지 전환 시 focusedSessionId가 현재 페이지에 없으면 첫 번째 세션으로 이동
   useEffect(() => {
-    if (!splitView || pagedSessions.length === 0) return;
+    if (viewMode !== "split" || pagedSessions.length === 0) return;
     if (!pagedSessions.some((s) => s.id === focusedSessionId)) {
       setFocusedSessionId(pagedSessions[0].id);
     }
-  }, [splitView, pagedSessions, focusedSessionId, setFocusedSessionId]);
+  }, [viewMode, pagedSessions, focusedSessionId, setFocusedSessionId]);
 
   const handleSelect = useCallback(
     (id: string) => {
       selectSession(id);
-      if (splitView) setFocusedSessionId(id);
+      if (viewMode === "split") setFocusedSessionId(id);
       if (isMobile) setSidebarMobileOpen(false);
     },
-    [selectSession, splitView, setFocusedSessionId, isMobile, setSidebarMobileOpen],
+    [selectSession, viewMode, setFocusedSessionId, isMobile, setSidebarMobileOpen],
   );
 
   const handleNew = useCallback(() => {
@@ -127,6 +128,8 @@ function RootComponent() {
     />
   );
 
+  const isSplitView = viewMode === "split";
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
       {/* 글로벌 Top Bar */}
@@ -134,8 +137,8 @@ function RootComponent() {
 
       {/* 사이드바 + 콘텐츠 영역 */}
       <div className="flex flex-1 overflow-hidden">
-        {/* 사이드바: 세션 라우트에서만 표시 */}
-        {isOnSessionRoute ? (
+        {/* 사이드바: 세션 영역(홈 + 세션 라우트)에서 표시 */}
+        {isSessionArea ? (
           isMobile ? (
             <Sheet open={sidebarMobileOpen} onOpenChange={setSidebarMobileOpen}>
               <SheetContent
@@ -155,7 +158,7 @@ function RootComponent() {
 
         <div className="flex flex-col flex-1 overflow-hidden">
           <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
-            {!isMobile && splitView && activeSessions.length > 0 && isSessionDetailRoute ? (
+            {!isMobile && isSplitView && activeSessions.length > 0 && isSessionDetailRoute ? (
               <Suspense fallback={<LoadingSkeleton />}>
                 {pagedSessions.map((s) => (
                   <SplitViewPane
@@ -172,7 +175,7 @@ function RootComponent() {
           </main>
           <UsageFooter
             centerSlot={
-              splitView && !isMobile && totalSplitPages > 1 ? (
+              isSplitView && !isMobile && totalSplitPages > 1 ? (
                 <SplitViewPagination
                   currentPage={splitPage}
                   totalPages={totalSplitPages}

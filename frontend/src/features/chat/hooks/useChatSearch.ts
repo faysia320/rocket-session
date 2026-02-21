@@ -6,7 +6,7 @@ import { computeSearchMatches } from "../utils/chatComputations";
 interface UseChatSearchParams {
   messages: Message[];
   virtualizer: Virtualizer<HTMLDivElement, Element>;
-  splitView: boolean;
+  isSplitView: boolean;
   focusedSessionId: string | null;
   sessionId: string;
 }
@@ -14,7 +14,7 @@ interface UseChatSearchParams {
 export function useChatSearch({
   messages,
   virtualizer,
-  splitView,
+  isSplitView,
   focusedSessionId,
   sessionId,
 }: UseChatSearchParams) {
@@ -50,14 +50,14 @@ export function useChatSearch({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-        if (splitView && focusedSessionId !== sessionId) return;
+        if (isSplitView && focusedSessionId !== sessionId) return;
         e.preventDefault();
         handleToggleSearch();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleToggleSearch, splitView, focusedSessionId, sessionId]);
+  }, [handleToggleSearch, isSplitView, focusedSessionId, sessionId]);
 
   return {
     searchOpen,

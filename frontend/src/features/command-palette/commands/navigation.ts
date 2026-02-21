@@ -12,12 +12,12 @@ export function createNavigationCommands(deps: {
   const staticCommands: PaletteCommand[] = [
     {
       id: "nav:home",
-      label: "대시보드",
+      label: "세션 홈",
       description: "세션 대시보드 화면",
       category: "navigation",
       icon: LayoutGrid,
       action: () => navigate({ to: "/" }),
-      keywords: ["home", "메인", "대시보드", "dashboard"],
+      keywords: ["home", "메인", "대시보드", "dashboard", "세션"],
     },
     {
       id: "nav:analytics",

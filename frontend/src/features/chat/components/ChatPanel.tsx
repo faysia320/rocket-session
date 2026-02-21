@@ -70,7 +70,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [mode, setMode] = useState<SessionMode>("normal");
 
-  const splitView = useSessionStore((s) => s.splitView);
+  const isSplitView = useSessionStore((s) => s.viewMode === "split");
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
   const pendingPrompt = useSessionStore((s) => s.pendingPrompt);
   const pendingPromptSessionId = useSessionStore(
@@ -185,7 +185,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const {
     searchOpen, searchQuery, searchMatchIndex, searchMatches,
     setSearchQuery, setSearchMatchIndex, handleToggleSearch,
-  } = useChatSearch({ messages, virtualizer, splitView, focusedSessionId, sessionId });
+  } = useChatSearch({ messages, virtualizer, isSplitView, focusedSessionId, sessionId });
 
   // Plan 승인 대기 상태 감지
   const waitingForPlanApproval = useMemo(() => {

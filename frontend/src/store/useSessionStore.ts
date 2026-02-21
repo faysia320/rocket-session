@@ -4,17 +4,18 @@ import { toast } from "sonner";
 
 const MAX_GIT_MONITOR_PATHS = 10;
 
+export type ViewMode = "dashboard" | "single" | "split";
+
 interface SessionState {
   activeSessionId: string | null;
   focusedSessionId: string | null;
-  splitView: boolean;
+  viewMode: ViewMode;
   sidebarCollapsed: boolean;
   sidebarMobileOpen: boolean;
   gitMonitorPaths: string[];
   setActiveSessionId: (id: string | null) => void;
   setFocusedSessionId: (id: string | null) => void;
-  setSplitView: (v: boolean) => void;
-  toggleSplitView: () => void;
+  setViewMode: (mode: ViewMode) => void;
   toggleSidebar: () => void;
   setSidebarMobileOpen: (open: boolean) => void;
   addGitMonitorPath: (path: string) => void;
@@ -30,15 +31,13 @@ export const useSessionStore = create<SessionState>()(
     (set) => ({
       activeSessionId: null,
       focusedSessionId: null,
-      splitView: false,
+      viewMode: "dashboard" as ViewMode,
       sidebarCollapsed: false,
       sidebarMobileOpen: false,
       gitMonitorPaths: [],
       setActiveSessionId: (id) => set({ activeSessionId: id }),
       setFocusedSessionId: (id) => set({ focusedSessionId: id }),
-      setSplitView: (v) => set({ splitView: v }),
-      toggleSplitView: () =>
-        set((state) => ({ splitView: !state.splitView })),
+      setViewMode: (mode) => set({ viewMode: mode }),
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarMobileOpen: (open) => set({ sidebarMobileOpen: open }),
@@ -65,7 +64,7 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: "rocket-session-store",
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version === 0) {
@@ -81,11 +80,20 @@ export const useSessionStore = create<SessionState>()(
           const { dashboardView, costView, ...rest } = state;
           return rest;
         }
+        if (version === 2) {
+          // v2→v3: splitView boolean → viewMode enum
+          const wasSplit = state.splitView as boolean | undefined;
+          return {
+            ...state,
+            viewMode: wasSplit ? "split" : "dashboard",
+            splitView: undefined,
+          };
+        }
         return state;
       },
       partialize: (s) => ({
         sidebarCollapsed: s.sidebarCollapsed,
-        splitView: s.splitView,
+        viewMode: s.viewMode,
         gitMonitorPaths: s.gitMonitorPaths,
       }),
     },

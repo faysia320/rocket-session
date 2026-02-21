@@ -2,7 +2,6 @@ import { memo } from "react";
 import { useTheme } from "next-themes";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import {
-  LayoutGrid,
   Clock,
   BarChart3,
   MessageSquare,
@@ -12,7 +11,6 @@ import {
   Bell,
   BellOff,
   Settings,
-  FileStack,
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
@@ -37,12 +35,10 @@ import { useSessionStore } from "@/store";
 import { useCommandPaletteStore } from "@/store";
 import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
 import { GlobalSettingsDialog } from "@/features/settings/components/GlobalSettingsDialog";
-import { TemplateListDialog } from "@/features/template/components/TemplateListDialog";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 
 const NAV_ITEMS = [
-  { to: "/" as const, label: "Dashboard", icon: LayoutGrid },
-  { to: "/session" as const, label: "Sessions", icon: MessageSquare },
+  { to: "/" as const, label: "Sessions", icon: MessageSquare },
   { to: "/history" as const, label: "History", icon: Clock },
   { to: "/analytics" as const, label: "Analytics", icon: BarChart3 },
 ] as const;
@@ -55,7 +51,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
   const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
-  const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const setViewMode = useSessionStore((s) => s.setViewMode);
 
   const openPalette = useCommandPaletteStore((s) => s.open);
 
@@ -65,20 +61,23 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
     requestDesktopPermission,
   } = useNotificationCenter();
 
+  // Sessions 탭은 / 와 /session 모두에서 활성
   const isActive = (to: string) => {
-    if (to === "/") return location.pathname === "/";
+    if (to === "/") {
+      return location.pathname === "/" || location.pathname.startsWith("/session");
+    }
     return location.pathname.startsWith(to);
   };
 
-  const isOnSessionRoute = location.pathname.startsWith("/session");
+  // 세션 영역: 홈(/) + 세션 라우트
+  const isSessionArea =
+    location.pathname === "/" || location.pathname.startsWith("/session");
 
   const handleNavClick = (to: string) => {
-    if (to === "/session") {
-      if (activeSessionId) {
-        navigate({ to: "/session/$sessionId", params: { sessionId: activeSessionId } });
-      } else {
-        navigate({ to: "/session/new" });
-      }
+    if (to === "/") {
+      // Sessions 클릭 → 세션 홈(대시보드 뷰)으로 이동
+      setViewMode("dashboard");
+      navigate({ to: "/" });
     } else {
       navigate({ to });
     }
@@ -103,7 +102,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
     <header className="h-10 shrink-0 flex items-center px-2 bg-sidebar border-b border-sidebar-border gap-2 z-40">
       {/* 좌측: 사이드바 토글 + 앱 타이틀 */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {isOnSessionRoute ? (
+        {isSessionArea ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -222,23 +221,6 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
             <TooltipContent side="bottom">설정</TooltipContent>
           </Tooltip>
         </GlobalSettingsDialog>
-
-        {/* 템플릿 */}
-        <TemplateListDialog>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 hidden sm:inline-flex"
-                aria-label="세션 템플릿"
-              >
-                <FileStack className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">템플릿</TooltipContent>
-          </Tooltip>
-        </TemplateListDialog>
 
         {/* 테마 토글 */}
         <ThemeToggle />

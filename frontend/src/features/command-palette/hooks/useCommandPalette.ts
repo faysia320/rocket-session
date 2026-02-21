@@ -37,8 +37,8 @@ export function useCommandPalette() {
 
   const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
-  const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
-  const splitView = useSessionStore((s) => s.splitView);
+  const viewMode = useSessionStore((s) => s.viewMode);
+  const setViewMode = useSessionStore((s) => s.setViewMode);
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
 
   const recentCommandIds = useCommandPaletteStore((s) => s.recentCommandIds);
@@ -52,7 +52,7 @@ export function useCommandPalette() {
   });
 
   const urlSessionId = extractSessionIdFromPath(location.pathname);
-  const activeSessionId = splitView ? focusedSessionId : urlSessionId;
+  const activeSessionId = viewMode === "split" ? focusedSessionId : urlSessionId;
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
   const workDir = activeSession?.work_dir ?? "";
@@ -69,6 +69,10 @@ export function useCommandPalette() {
     },
     [navigate],
   );
+
+  const navigateHome = useCallback(() => {
+    navigate({ to: "/" });
+  }, [navigate]);
 
   const stopSession = useCallback(async (id: string) => {
     try {
@@ -103,7 +107,8 @@ export function useCommandPalette() {
     const chatCmds = createChatCommands({ activeSessionId });
     const uiCmds = createUICommands({
       toggleSidebar,
-      toggleSplitView,
+      setViewMode,
+      navigateHome,
       toggleTheme,
       isDark,
       sidebarCollapsed,
@@ -121,7 +126,8 @@ export function useCommandPalette() {
     deleteSession,
     exportSession,
     toggleSidebar,
-    toggleSplitView,
+    setViewMode,
+    navigateHome,
     toggleTheme,
     isDark,
     sidebarCollapsed,

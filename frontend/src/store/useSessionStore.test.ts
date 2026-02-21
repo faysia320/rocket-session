@@ -5,7 +5,7 @@ describe("useSessionStore", () => {
     // Zustand persist 스토어 초기화
     useSessionStore.setState({
       activeSessionId: null,
-      splitView: false,
+      viewMode: "dashboard",
       sidebarCollapsed: false,
     });
   });
@@ -13,7 +13,7 @@ describe("useSessionStore", () => {
   it("has correct initial values", () => {
     const state = useSessionStore.getState();
     expect(state.activeSessionId).toBeNull();
-    expect(state.splitView).toBe(false);
+    expect(state.viewMode).toBe("dashboard");
     expect(state.sidebarCollapsed).toBe(false);
   });
 
@@ -25,14 +25,17 @@ describe("useSessionStore", () => {
     expect(useSessionStore.getState().activeSessionId).toBeNull();
   });
 
-  it("toggleSplitView toggles splitView", () => {
-    expect(useSessionStore.getState().splitView).toBe(false);
+  it("setViewMode updates viewMode", () => {
+    expect(useSessionStore.getState().viewMode).toBe("dashboard");
 
-    useSessionStore.getState().toggleSplitView();
-    expect(useSessionStore.getState().splitView).toBe(true);
+    useSessionStore.getState().setViewMode("single");
+    expect(useSessionStore.getState().viewMode).toBe("single");
 
-    useSessionStore.getState().toggleSplitView();
-    expect(useSessionStore.getState().splitView).toBe(false);
+    useSessionStore.getState().setViewMode("split");
+    expect(useSessionStore.getState().viewMode).toBe("split");
+
+    useSessionStore.getState().setViewMode("dashboard");
+    expect(useSessionStore.getState().viewMode).toBe("dashboard");
   });
 
   it("toggleSidebar toggles sidebarCollapsed", () => {

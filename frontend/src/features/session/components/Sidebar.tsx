@@ -1,7 +1,11 @@
 import { useState, useRef, useCallback, useMemo, memo } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Columns2,
   Download,
+  FileStack,
+  LayoutGrid,
+  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -29,6 +33,7 @@ import {
 import { cn, truncatePath } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { ImportLocalDialog } from "./ImportLocalDialog";
+import { TemplateListDialog } from "@/features/template/components/TemplateListDialog";
 import { useSessionStore } from "@/store";
 
 interface SidebarProps {
@@ -56,8 +61,9 @@ export const Sidebar = memo(function Sidebar({
   isLoading,
   isError,
 }: SidebarProps) {
-  const splitView = useSessionStore((s) => s.splitView);
-  const toggleSplitView = useSessionStore((s) => s.toggleSplitView);
+  const navigate = useNavigate();
+  const viewMode = useSessionStore((s) => s.viewMode);
+  const setViewMode = useSessionStore((s) => s.setViewMode);
   const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
   const collapsed = isMobileOverlay ? false : sidebarCollapsed;
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
@@ -99,20 +105,37 @@ export const Sidebar = memo(function Sidebar({
       {/* New Session */}
       <div className="px-3 pt-3">
         {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="default"
-                size="icon"
-                className="w-full h-9"
-                onClick={onNew}
-                aria-label="새 세션"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">새 세션</TooltipContent>
-          </Tooltip>
+          <div className="flex flex-col gap-1.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="w-full h-9"
+                  onClick={onNew}
+                  aria-label="새 세션"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">새 세션</TooltipContent>
+            </Tooltip>
+            <TemplateListDialog>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="w-full h-9"
+                    aria-label="세션 템플릿"
+                  >
+                    <FileStack className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">템플릿</TooltipContent>
+              </Tooltip>
+            </TemplateListDialog>
+          </div>
         ) : (
           <div className="flex flex-col gap-1.5">
             <Button
@@ -132,6 +155,16 @@ export const Sidebar = memo(function Sidebar({
               <Download className="h-3.5 w-3.5" />
               Import Local
             </Button>
+            <TemplateListDialog>
+              <Button
+                variant="outline"
+                className="w-full flex items-center gap-2 px-3 py-2 font-mono text-xs"
+                aria-label="세션 템플릿"
+              >
+                <FileStack className="h-3.5 w-3.5" />
+                Templates
+              </Button>
+            </TemplateListDialog>
           </div>
         )}
       </div>
@@ -271,7 +304,7 @@ export const Sidebar = memo(function Sidebar({
         )}
       </ScrollArea>
 
-      {/* Footer: 분할뷰 + 사이드바 토글 */}
+      {/* Footer: 뷰 모드 스위처 + 사이드바 토글 */}
       {isMobileOverlay ? null : (
         <div
           className={cn(
@@ -290,15 +323,18 @@ export const Sidebar = memo(function Sidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-8 w-8", splitView && "bg-muted")}
-                  onClick={toggleSplitView}
-                  aria-label={splitView ? "단일 뷰로 전환" : "분할 뷰로 전환"}
+                  className={cn("h-7 w-7", viewMode === "dashboard" && "bg-muted")}
+                  onClick={() => {
+                    setViewMode("dashboard");
+                    navigate({ to: "/" });
+                  }}
+                  aria-label="대시보드 뷰"
                 >
-                  <Columns2 className="h-4 w-4" />
+                  <LayoutGrid className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side={collapsed ? "right" : "top"}>
-                Split View
+                Dashboard
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -306,14 +342,46 @@ export const Sidebar = memo(function Sidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className={cn("h-7 w-7", viewMode === "single" && "bg-muted")}
+                  onClick={() => setViewMode("single")}
+                  aria-label="단일 뷰"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side={collapsed ? "right" : "top"}>
+                Single
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-7 w-7", viewMode === "split" && "bg-muted")}
+                  onClick={() => setViewMode("split")}
+                  aria-label="분할 뷰"
+                >
+                  <Columns2 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side={collapsed ? "right" : "top"}>
+                Split
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
                   onClick={toggleSidebar}
                   aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
                 >
                   {collapsed ? (
-                    <PanelLeftOpen className="h-4 w-4" />
+                    <PanelLeftOpen className="h-3.5 w-3.5" />
                   ) : (
-                    <PanelLeftClose className="h-4 w-4" />
+                    <PanelLeftClose className="h-3.5 w-3.5" />
                   )}
                 </Button>
               </TooltipTrigger>

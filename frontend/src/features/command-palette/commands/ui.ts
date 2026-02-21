@@ -2,21 +2,26 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Columns2,
+  LayoutGrid,
+  MessageSquare,
   Sun,
   Moon,
 } from "lucide-react";
 import type { PaletteCommand } from "../types";
+import type { ViewMode } from "@/store/useSessionStore";
 
 export function createUICommands(deps: {
   toggleSidebar: () => void;
-  toggleSplitView: () => void;
+  setViewMode: (mode: ViewMode) => void;
+  navigateHome: () => void;
   toggleTheme: () => void;
   isDark: boolean;
   sidebarCollapsed: boolean;
 }): PaletteCommand[] {
   const {
     toggleSidebar,
-    toggleSplitView,
+    setViewMode,
+    navigateHome,
     toggleTheme,
     isDark,
     sidebarCollapsed,
@@ -34,13 +39,34 @@ export function createUICommands(deps: {
       keywords: ["sidebar", "사이드바", "토글"],
     },
     {
-      id: "ui:toggle-split",
-      label: "분할 뷰 전환",
+      id: "ui:view-dashboard",
+      label: "대시보드 뷰",
+      description: "세션 카드 그리드 + Git 모니터",
+      category: "ui",
+      icon: LayoutGrid,
+      action: () => {
+        setViewMode("dashboard");
+        navigateHome();
+      },
+      keywords: ["dashboard", "대시보드", "view", "뷰", "홈"],
+    },
+    {
+      id: "ui:view-single",
+      label: "단일 뷰",
+      description: "하나의 세션에 집중",
+      category: "ui",
+      icon: MessageSquare,
+      action: () => setViewMode("single"),
+      keywords: ["single", "단일", "view", "뷰"],
+    },
+    {
+      id: "ui:view-split",
+      label: "분할 뷰",
       description: "여러 세션을 나란히 표시",
       category: "ui",
       icon: Columns2,
-      action: toggleSplitView,
-      keywords: ["split", "분할", "view"],
+      action: () => setViewMode("split"),
+      keywords: ["split", "분할", "view", "뷰"],
     },
     {
       id: "ui:toggle-theme",
