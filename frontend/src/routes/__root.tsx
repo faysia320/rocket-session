@@ -26,7 +26,38 @@ export const Route = createRootRoute({
   component: RootComponent,
 });
 
+/**
+ * RootComponent: 순수 레이아웃 쉘.
+ * useSessions() 등 데이터 구독은 SessionLayout에 격리되어
+ * 5초 폴링으로 세션 목록이 변경되어도 이 컴포넌트는 리렌더되지 않음.
+ */
 function RootComponent() {
+  const location = useLocation();
+
+  // 사이드바는 세션 영역(홈 + 세션 라우트)에서 표시
+  const isSessionArea =
+    location.pathname === "/" || location.pathname.startsWith("/session");
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
+      {/* 글로벌 Top Bar */}
+      <GlobalTopBar />
+
+      {/* 사이드바 + 콘텐츠 영역 */}
+      <div className="flex flex-1 overflow-hidden">
+        {isSessionArea ? <SessionLayout /> : <Outlet />}
+      </div>
+      <CommandPaletteProvider />
+    </div>
+  );
+}
+
+/**
+ * SessionLayout: useSessions()를 구독하는 격리된 영역.
+ * 세션 목록 폴링 변경은 이 컴포넌트 트리 내에서만 리렌더를 유발하며,
+ * 부모 RootComponent(GlobalTopBar, CommandPaletteProvider 포함)에는 영향 없음.
+ */
+function SessionLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -50,10 +81,6 @@ function RootComponent() {
     () => sessions.filter((s) => s.status !== "archived"),
     [sessions],
   );
-
-  // 사이드바는 세션 영역(홈 + 세션 라우트)에서 표시
-  const isSessionArea =
-    location.pathname === "/" || location.pathname.startsWith("/session");
 
   // Split View는 세션 라우트(/session/:id)에서만 활성화
   const isSessionDetailRoute =
@@ -131,63 +158,53 @@ function RootComponent() {
   const isSplitView = viewMode === "split";
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
-      {/* 글로벌 Top Bar */}
-      <GlobalTopBar />
+    <>
+      {isMobile ? (
+        <Sheet open={sidebarMobileOpen} onOpenChange={setSidebarMobileOpen}>
+          <SheetContent
+            side="left"
+            className="p-0 w-[280px]"
+            aria-describedby={undefined}
+            hideClose
+          >
+            <SheetTitle className="sr-only">세션 목록</SheetTitle>
+            {sidebarElement}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        sidebarElement
+      )}
 
-      {/* 사이드바 + 콘텐츠 영역 */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* 사이드바: 세션 영역(홈 + 세션 라우트)에서 표시 */}
-        {isSessionArea ? (
-          isMobile ? (
-            <Sheet open={sidebarMobileOpen} onOpenChange={setSidebarMobileOpen}>
-              <SheetContent
-                side="left"
-                className="p-0 w-[280px]"
-                aria-describedby={undefined}
-                hideClose
-              >
-                <SheetTitle className="sr-only">세션 목록</SheetTitle>
-                {sidebarElement}
-              </SheetContent>
-            </Sheet>
-          ) : (
-            sidebarElement
-          )
-        ) : null}
-
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
-            {!isMobile && isSplitView && activeSessions.length > 0 && isSessionDetailRoute ? (
-              <Suspense fallback={<LoadingSkeleton />}>
-                {pagedSessions.map((s) => (
-                  <SplitViewPane
-                    key={s.id}
-                    sessionId={s.id}
-                    isFocused={focusedSessionId === s.id}
-                    onFocus={setFocusedSessionId}
-                  />
-                ))}
-              </Suspense>
-            ) : (
-              <Outlet />
-            )}
-          </main>
-          <UsageFooter
-            centerSlot={
-              isSplitView && !isMobile && totalSplitPages > 1 ? (
-                <SplitViewPagination
-                  currentPage={splitPage}
-                  totalPages={totalSplitPages}
-                  onPageChange={setSplitPage}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <main className="flex-1 flex overflow-hidden transition-all duration-200 ease-in-out">
+          {!isMobile && isSplitView && activeSessions.length > 0 && isSessionDetailRoute ? (
+            <Suspense fallback={<LoadingSkeleton />}>
+              {pagedSessions.map((s) => (
+                <SplitViewPane
+                  key={s.id}
+                  sessionId={s.id}
+                  isFocused={focusedSessionId === s.id}
+                  onFocus={setFocusedSessionId}
                 />
-              ) : undefined
-            }
-          />
-        </div>
+              ))}
+            </Suspense>
+          ) : (
+            <Outlet />
+          )}
+        </main>
+        <UsageFooter
+          centerSlot={
+            isSplitView && !isMobile && totalSplitPages > 1 ? (
+              <SplitViewPagination
+                currentPage={splitPage}
+                totalPages={totalSplitPages}
+                onPageChange={setSplitPage}
+              />
+            ) : undefined
+          }
+        />
       </div>
-      <CommandPaletteProvider />
-    </div>
+    </>
   );
 }
 

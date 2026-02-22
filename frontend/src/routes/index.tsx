@@ -1,7 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useSessions } from "@/features/session/hooks/useSessions";
+import { sessionsApi } from "@/lib/api/sessions.api";
+import { sessionKeys } from "@/features/session/hooks/sessionKeys";
+import { useSessionStore } from "@/store";
+import type { SessionInfo } from "@/types";
 
 const DashboardGrid = lazy(() =>
   import("@/features/dashboard/components/DashboardGrid").then((m) => ({
@@ -13,11 +17,25 @@ export const Route = createFileRoute("/")({
   component: IndexPage,
 });
 
+/**
+ * IndexPage: SessionLayout(부모)에서 이미 useSessions()로 세션 목록을
+ * 구독(5초 폴링)하므로, 여기서는 TanStack Query 캐시만 읽어옵니다.
+ * staleTime: Infinity로 설정하여 중복 fetch/polling을 방지합니다.
+ */
 function IndexPage() {
   const navigate = useNavigate();
-  const { sessions, activeSessionId, selectSession } = useSessions();
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
 
-  const activeSessions = sessions.filter((s) => s.status !== "archived");
+  const { data: sessions = [] } = useQuery<SessionInfo[]>({
+    queryKey: sessionKeys.list(),
+    queryFn: () => sessionsApi.list(),
+    staleTime: Infinity, // 부모 SessionLayout이 이미 폴링 중이므로 캐시만 사용
+  });
+
+  const activeSessions = useMemo(
+    () => sessions.filter((s) => s.status !== "archived"),
+    [sessions],
+  );
 
   if (activeSessions.length === 0) {
     return (
@@ -42,7 +60,6 @@ function IndexPage() {
           sessions={activeSessions}
           activeSessionId={activeSessionId}
           onSelect={(id) => {
-            selectSession(id);
             navigate({ to: "/session/$sessionId", params: { sessionId: id } });
           }}
           onNew={() => navigate({ to: "/session/new" })}

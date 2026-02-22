@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
@@ -26,12 +25,12 @@ import { AVAILABLE_TOOLS } from "@/features/session/constants/tools";
 const PERMISSION_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"] as const;
 
 interface GlobalSettingsDialogProps {
-  children: ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 /** 글로벌 설정 다이얼로그 컴포넌트 */
-export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
-  const [open, setOpen] = useState(false);
+export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialogProps) {
   const { data: settings } = useGlobalSettings();
   const updateMutation = useUpdateGlobalSettings();
 
@@ -98,15 +97,14 @@ export function GlobalSettingsDialog({ children }: GlobalSettingsDialogProps) {
           disallowedTools.length > 0 ? disallowedTools.join(",") : null,
       });
       toast.success("글로벌 설정이 저장되었습니다.");
-      setOpen(false);
+      onOpenChange(false);
     } catch {
       toast.error("설정 저장에 실패했습니다.");
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle className="font-mono text-sm font-semibold">

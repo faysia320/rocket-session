@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState, useCallback, lazy, Suspense } from "react";
 import { useTheme } from "next-themes";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import {
@@ -34,8 +34,13 @@ import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/store";
 import { useCommandPaletteStore } from "@/store";
 import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
-import { GlobalSettingsDialog } from "@/features/settings/components/GlobalSettingsDialog";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+
+const GlobalSettingsDialog = lazy(() =>
+  import("@/features/settings/components/GlobalSettingsDialog").then((m) => ({
+    default: m.GlobalSettingsDialog,
+  })),
+);
 
 const NAV_ITEMS = [
   { to: "/" as const, label: "Sessions", icon: MessageSquare },
@@ -47,6 +52,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
@@ -62,41 +68,51 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
   } = useNotificationCenter();
 
   // Sessions 탭은 / 와 /session 모두에서 활성
-  const isActive = (to: string) => {
-    if (to === "/") {
-      return location.pathname === "/" || location.pathname.startsWith("/session");
-    }
-    return location.pathname.startsWith(to);
-  };
+  const isActive = useCallback(
+    (to: string) => {
+      if (to === "/") {
+        return location.pathname === "/" || location.pathname.startsWith("/session");
+      }
+      return location.pathname.startsWith(to);
+    },
+    [location.pathname],
+  );
 
   // 세션 영역: 홈(/) + 세션 라우트
   const isSessionArea =
     location.pathname === "/" || location.pathname.startsWith("/session");
 
-  const handleNavClick = (to: string) => {
-    if (to === "/") {
-      // Sessions 클릭 → 세션 홈(대시보드 뷰)으로 이동
-      setViewMode("dashboard");
-      navigate({ to: "/" });
-    } else {
-      navigate({ to });
-    }
-  };
+  const handleNavClick = useCallback(
+    (to: string) => {
+      if (to === "/") {
+        // Sessions 클릭 → 세션 홈(대시보드 뷰)으로 이동
+        setViewMode("dashboard");
+        navigate({ to: "/" });
+      } else {
+        navigate({ to });
+      }
+    },
+    [setViewMode, navigate],
+  );
 
-  const handleSidebarToggle = () => {
+  const handleSidebarToggle = useCallback(() => {
     if (isMobile) {
       setSidebarMobileOpen(true);
     } else {
       toggleSidebar();
     }
-  };
+  }, [isMobile, setSidebarMobileOpen, toggleSidebar]);
 
-  const handleNotificationToggle = async () => {
+  const handleNotificationToggle = useCallback(async () => {
     if (!notificationSettings.enabled) {
       await requestDesktopPermission();
     }
     toggleNotifications();
-  };
+  }, [notificationSettings.enabled, requestDesktopPermission, toggleNotifications]);
+
+  const handleSettingsOpen = useCallback(() => {
+    setSettingsOpen(true);
+  }, []);
 
   return (
     <header className="h-10 shrink-0 flex items-center px-2 bg-sidebar border-b border-sidebar-border gap-2 z-40">
@@ -206,21 +222,30 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
         </Tooltip>
 
         {/* 글로벌 설정 */}
-        <GlobalSettingsDialog>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 hidden sm:inline-flex"
-                aria-label="글로벌 설정"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">설정</TooltipContent>
-          </Tooltip>
-        </GlobalSettingsDialog>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hidden sm:inline-flex"
+              onClick={handleSettingsOpen}
+              aria-label="글로벌 설정"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">설정</TooltipContent>
+        </Tooltip>
+
+        {/* GlobalSettingsDialog: 열릴 때만 lazy load */}
+        {settingsOpen ? (
+          <Suspense fallback={null}>
+            <GlobalSettingsDialog
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
+            />
+          </Suspense>
+        ) : null}
 
         {/* 테마 토글 */}
         <ThemeToggle />
