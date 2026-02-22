@@ -1,14 +1,5 @@
 import { useState, useRef } from "react";
-import {
-  FileStack,
-  Plus,
-  Pencil,
-  Trash2,
-  Download,
-  Upload,
-  Check,
-  X,
-} from "lucide-react";
+import { FileStack, Plus, Pencil, Trash2, Download, Upload, Check, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,11 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -99,9 +86,7 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
       }
       toast.success(`"${tpl.name}" 템플릿을 내보냈습니다`);
     } catch (err) {
-      toast.error(
-        `내보내기 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      toast.error(`내보내기 실패: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -118,9 +103,7 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
         }
         await importMutation.mutateAsync(data);
       } catch (err) {
-        toast.error(
-          `불러오기 실패: ${err instanceof Error ? err.message : String(err)}`,
-        );
+        toast.error(`불러오기 실패: ${err instanceof Error ? err.message : String(err)}`);
       }
     };
     reader.readAsText(file);
@@ -147,8 +130,7 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
             className="font-mono text-xs gap-1.5"
             onClick={() => setCreating(true)}
           >
-            <Plus className="h-3.5 w-3.5" />
-            새 템플릿
+            <Plus className="h-3.5 w-3.5" />새 템플릿
           </Button>
           <Button
             variant="outline"
@@ -255,9 +237,7 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
                           size="sm"
                           className="font-mono text-xs gap-1"
                           onClick={() => handleUpdate(tpl.id)}
-                          disabled={
-                            !editName.trim() || updateMutation.isPending
-                          }
+                          disabled={!editName.trim() || updateMutation.isPending}
                         >
                           <Check className="h-3 w-3" />
                           저장
@@ -328,9 +308,7 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent className="font-mono text-xs">
-                            수정
-                          </TooltipContent>
+                          <TooltipContent className="font-mono text-xs">수정</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -344,9 +322,7 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
                               <Download className="h-3.5 w-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent className="font-mono text-xs">
-                            내보내기
-                          </TooltipContent>
+                          <TooltipContent className="font-mono text-xs">내보내기</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -360,9 +336,7 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent className="font-mono text-xs">
-                            삭제
-                          </TooltipContent>
+                          <TooltipContent className="font-mono text-xs">삭제</TooltipContent>
                         </Tooltip>
                       </div>
                     </>

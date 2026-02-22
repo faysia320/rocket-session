@@ -115,21 +115,57 @@ export type ClaudeSocketAction =
   | { type: "RECONNECT_FAILED"; attempt: number }
   | { type: "RECONNECT_RESET" }
   // WebSocket message actions
-  | { type: "WS_SESSION_STATE"; session: SessionState; isRunning: boolean; isReconnect: boolean; history: HistoryItem[] | null; latestSeq: number | undefined; currentTurnEvents: Record<string, unknown>[] | null; pendingInteractions: { permission?: { permission_id: string; tool_name: string; tool_input: Record<string, unknown> } } | null }
+  | {
+      type: "WS_SESSION_STATE";
+      session: SessionState;
+      isRunning: boolean;
+      isReconnect: boolean;
+      history: HistoryItem[] | null;
+      latestSeq: number | undefined;
+      currentTurnEvents: Record<string, unknown>[] | null;
+      pendingInteractions: {
+        permission?: {
+          permission_id: string;
+          tool_name: string;
+          tool_input: Record<string, unknown>;
+        };
+      } | null;
+    }
   | { type: "WS_SESSION_INFO"; claudeSessionId: string }
   | { type: "WS_STATUS"; status: "idle" | "running" | "error" }
   | { type: "WS_USER_MESSAGE"; data: Record<string, unknown> }
   | { type: "WS_ASSISTANT_TEXT"; data: AssistantTextMsg }
   | { type: "WS_TOOL_USE"; data: ToolUseMsg }
-  | { type: "WS_TOOL_RESULT"; toolUseId: string; output: string; isError: boolean; isTruncated: boolean | undefined; fullLength: number | undefined; timestamp: string }
+  | {
+      type: "WS_TOOL_RESULT";
+      toolUseId: string;
+      output: string;
+      isError: boolean;
+      isTruncated: boolean | undefined;
+      fullLength: number | undefined;
+      timestamp: string;
+    }
   | { type: "WS_FILE_CHANGE"; change: FileChange }
-  | { type: "WS_RESULT"; data: ResultMsg; mode: "normal" | "plan"; inputTokens: number; outputTokens: number; cacheCreationTokens: number; cacheReadTokens: number }
+  | {
+      type: "WS_RESULT";
+      data: ResultMsg;
+      mode: "normal" | "plan";
+      inputTokens: number;
+      outputTokens: number;
+      cacheCreationTokens: number;
+      cacheReadTokens: number;
+    }
   | { type: "WS_ERROR"; data: Record<string, unknown>; isSessionNotFound: boolean }
   | { type: "WS_STDERR"; text: string }
   | { type: "WS_STOPPED" }
   | { type: "WS_THINKING"; data: Record<string, unknown> }
   | { type: "WS_EVENT"; event: Record<string, unknown> }
-  | { type: "WS_ASK_USER_QUESTION"; questions: AskUserQuestionItem[]; toolUseId: string; timestamp: string }
+  | {
+      type: "WS_ASK_USER_QUESTION";
+      questions: AskUserQuestionItem[];
+      toolUseId: string;
+      timestamp: string;
+    }
   | { type: "WS_PERMISSION_REQUEST"; permData: PermissionRequestData }
   | { type: "WS_PERMISSION_RESPONSE"; reason: string | undefined }
   | { type: "WS_MODE_CHANGE"; fromMode: string; toMode: SessionMode }
@@ -197,14 +233,22 @@ export function claudeSocketReducer(
       return {
         ...state,
         connected: false,
-        reconnectState: { status: "reconnecting", attempt: action.attempt, maxAttempts: RECONNECT_MAX_ATTEMPTS },
+        reconnectState: {
+          status: "reconnecting",
+          attempt: action.attempt,
+          maxAttempts: RECONNECT_MAX_ATTEMPTS,
+        },
       };
 
     case "RECONNECT_FAILED":
       return {
         ...state,
         connected: false,
-        reconnectState: { status: "failed", attempt: action.attempt, maxAttempts: RECONNECT_MAX_ATTEMPTS },
+        reconnectState: {
+          status: "failed",
+          attempt: action.attempt,
+          maxAttempts: RECONNECT_MAX_ATTEMPTS,
+        },
       };
 
     case "RECONNECT_RESET":
@@ -218,7 +262,7 @@ export function claudeSocketReducer(
     case "WS_SESSION_STATE": {
       let newMessages = state.messages;
       let newTokenUsage = state.tokenUsage;
-      const newStatus = action.isRunning ? "running" as const : state.status;
+      const newStatus = action.isRunning ? ("running" as const) : state.status;
 
       if (!action.isReconnect && action.history) {
         // tool_result를 tool_use_id로 인덱싱 (tool_use 메시지에 병합용)
@@ -278,7 +322,10 @@ export function claudeSocketReducer(
           });
 
         // 토큰 집계: text 메시지(result)만 대상 (tool 메시지 제외)
-        let totalIn = 0, totalOut = 0, totalCacheCreate = 0, totalCacheRead = 0;
+        let totalIn = 0,
+          totalOut = 0,
+          totalCacheCreate = 0,
+          totalCacheRead = 0;
         for (const h of action.history) {
           if (!h.message_type) {
             totalIn += h.input_tokens || 0;
@@ -352,16 +399,21 @@ export function claudeSocketReducer(
 
     case "WS_USER_MESSAGE": {
       // 백엔드 user_message 형태: { type: "user_message", message: { role, content, timestamp } }
-      const userMsg = action.data.message as { content?: string; prompt?: string; timestamp?: string } | undefined;
+      const userMsg = action.data.message as
+        | { content?: string; prompt?: string; timestamp?: string }
+        | undefined;
       return {
         ...state,
-        messages: [...state.messages, {
-          id: generateMessageId(),
-          type: "user_message" as const,
-          content: userMsg?.content || String(action.data.prompt || ""),
-          timestamp: userMsg?.timestamp || new Date().toISOString(),
-          message: userMsg,
-        }],
+        messages: [
+          ...state.messages,
+          {
+            id: generateMessageId(),
+            type: "user_message" as const,
+            content: userMsg?.content || String(action.data.prompt || ""),
+            timestamp: userMsg?.timestamp || new Date().toISOString(),
+            message: userMsg,
+          },
+        ],
       };
     }
 
@@ -370,8 +422,12 @@ export function claudeSocketReducer(
       let lastIdx = -1;
       for (let i = prev.length - 1; i >= 0; i--) {
         const t = prev[i].type;
-        if (t === "user_message" || t === "result" || t === "tool_use" || t === "tool_result") break;
-        if (t === "assistant_text") { lastIdx = i; break; }
+        if (t === "user_message" || t === "result" || t === "tool_use" || t === "tool_result")
+          break;
+        if (t === "assistant_text") {
+          lastIdx = i;
+          break;
+        }
       }
       if (lastIdx >= 0) {
         // F#9: 텍스트가 동일하면 배열 복사 건너뛰기 (RAF 배치에서 중복 이벤트 방지)
@@ -395,7 +451,10 @@ export function claudeSocketReducer(
     case "WS_TOOL_USE":
       return {
         ...state,
-        messages: [...state.messages, { ...action.data, id: generateMessageId(), status: "running" as const }],
+        messages: [
+          ...state.messages,
+          { ...action.data, id: generateMessageId(), status: "running" as const },
+        ],
         activeTools: [...state.activeTools, action.data],
       };
 
@@ -410,7 +469,11 @@ export function claudeSocketReducer(
           break;
         }
       }
-      if (targetIdx < 0) return { ...state, activeTools: state.activeTools.filter((t) => t.tool_use_id !== action.toolUseId) };
+      if (targetIdx < 0)
+        return {
+          ...state,
+          activeTools: state.activeTools.filter((t) => t.tool_use_id !== action.toolUseId),
+        };
       const updatedMsgs = [...msgs];
       updatedMsgs[targetIdx] = {
         ...msgs[targetIdx],
@@ -433,9 +496,10 @@ export function claudeSocketReducer(
       const newChanges = [...state.fileChanges, action.change];
       return {
         ...state,
-        fileChanges: newChanges.length > MAX_FILE_CHANGES
-          ? newChanges.slice(newChanges.length - MAX_FILE_CHANGES)
-          : newChanges,
+        fileChanges:
+          newChanges.length > MAX_FILE_CHANGES
+            ? newChanges.slice(newChanges.length - MAX_FILE_CHANGES)
+            : newChanges,
       };
     }
 
@@ -452,9 +516,8 @@ export function claudeSocketReducer(
         !(lastMsg as ResultMsg).mode
       ) {
         const text = action.data.text || (lastMsg as ResultMsg).text;
-        const planFileContent = action.mode === "plan"
-          ? extractPlanFileContent(prev.slice(0, -1), text)
-          : undefined;
+        const planFileContent =
+          action.mode === "plan" ? extractPlanFileContent(prev.slice(0, -1), text) : undefined;
 
         const upgraded = {
           ...lastMsg,
@@ -472,35 +535,45 @@ export function claudeSocketReducer(
       let lastAssistantIdx = -1;
       for (let i = prev.length - 1; i >= 0; i--) {
         if (prev[i].type === "user_message" || prev[i].type === "result") break;
-        if (prev[i].type === "assistant_text") { lastAssistantIdx = i; break; }
+        if (prev[i].type === "assistant_text") {
+          lastAssistantIdx = i;
+          break;
+        }
       }
-      const assistantText = lastAssistantIdx >= 0
-        ? (prev[lastAssistantIdx] as AssistantTextMsg).text
-        : undefined;
-      const cleaned = lastAssistantIdx >= 0
-        ? [...prev.slice(0, lastAssistantIdx), ...prev.slice(lastAssistantIdx + 1)]
-        : prev;
+      const assistantText =
+        lastAssistantIdx >= 0 ? (prev[lastAssistantIdx] as AssistantTextMsg).text : undefined;
+      const cleaned =
+        lastAssistantIdx >= 0
+          ? [...prev.slice(0, lastAssistantIdx), ...prev.slice(lastAssistantIdx + 1)]
+          : prev;
       const text = action.data.text || assistantText;
 
       // Plan 모드: Write tool_use에서 plan 파일 content 추출
-      const planFileContent = action.mode === "plan"
-        ? extractPlanFileContent(cleaned, text)
-        : undefined;
+      const planFileContent =
+        action.mode === "plan" ? extractPlanFileContent(cleaned, text) : undefined;
 
-      const newTokenUsage = (action.inputTokens || action.outputTokens)
-        ? {
-            inputTokens: state.tokenUsage.inputTokens + action.inputTokens,
-            outputTokens: state.tokenUsage.outputTokens + action.outputTokens,
-            cacheCreationTokens: state.tokenUsage.cacheCreationTokens + action.cacheCreationTokens,
-            cacheReadTokens: state.tokenUsage.cacheReadTokens + action.cacheReadTokens,
-          }
-        : state.tokenUsage;
+      const newTokenUsage =
+        action.inputTokens || action.outputTokens
+          ? {
+              inputTokens: state.tokenUsage.inputTokens + action.inputTokens,
+              outputTokens: state.tokenUsage.outputTokens + action.outputTokens,
+              cacheCreationTokens:
+                state.tokenUsage.cacheCreationTokens + action.cacheCreationTokens,
+              cacheReadTokens: state.tokenUsage.cacheReadTokens + action.cacheReadTokens,
+            }
+          : state.tokenUsage;
 
       return {
         ...state,
         messages: [
           ...cleaned,
-          { ...action.data, text, planFileContent, id: generateMessageId(), mode: action.mode } as Message,
+          {
+            ...action.data,
+            text,
+            planFileContent,
+            id: generateMessageId(),
+            mode: action.mode,
+          } as Message,
         ],
         tokenUsage: newTokenUsage,
       };
@@ -509,7 +582,10 @@ export function claudeSocketReducer(
     case "WS_ERROR":
       return {
         ...state,
-        messages: [...state.messages, { ...(action.data as unknown as Message), id: generateMessageId() }],
+        messages: [
+          ...state.messages,
+          { ...(action.data as unknown as Message), id: generateMessageId() },
+        ],
         // 세션 미발견이 아닌 경우 방어적으로 error 상태 설정
         // (백엔드 finally에서 STATUS 이벤트가 후속 전송되지만, 네트워크 문제로 누락될 수 있음)
         status: action.isSessionNotFound ? state.status : "error",
@@ -518,7 +594,10 @@ export function claudeSocketReducer(
     case "WS_STDERR":
       return {
         ...state,
-        messages: [...state.messages, { id: generateMessageId(), type: "stderr", text: action.text }],
+        messages: [
+          ...state.messages,
+          { id: generateMessageId(), type: "stderr", text: action.text },
+        ],
       };
 
     case "WS_STOPPED": {
@@ -532,7 +611,11 @@ export function claudeSocketReducer(
           runningIndices.push(i);
         }
       }
-      const systemMsg = { id: generateMessageId(), type: "system" as const, text: "Session stopped by user." };
+      const systemMsg = {
+        id: generateMessageId(),
+        type: "system" as const,
+        text: "Session stopped by user.",
+      };
       if (runningIndices.length === 0) {
         return {
           ...state,
@@ -558,8 +641,12 @@ export function claudeSocketReducer(
       let lastIdx = -1;
       for (let i = prev.length - 1; i >= 0; i--) {
         const t = prev[i].type;
-        if (t === "user_message" || t === "result" || t === "tool_use" || t === "tool_result") break;
-        if (t === "thinking") { lastIdx = i; break; }
+        if (t === "user_message" || t === "result" || t === "tool_use" || t === "tool_result")
+          break;
+        if (t === "thinking") {
+          lastIdx = i;
+          break;
+        }
       }
       if (lastIdx >= 0) {
         const updated = [...prev];
@@ -575,7 +662,10 @@ export function claudeSocketReducer(
     case "WS_EVENT":
       return {
         ...state,
-        messages: [...state.messages, { id: generateMessageId(), type: "event", event: action.event }],
+        messages: [
+          ...state.messages,
+          { id: generateMessageId(), type: "event", event: action.event },
+        ],
       };
 
     case "WS_ASK_USER_QUESTION":
@@ -617,7 +707,10 @@ export function claudeSocketReducer(
       // 가장 최근의 미처리 permission_request 메시지를 resolved로 마킹
       let msgs = state.messages;
       for (let i = msgs.length - 1; i >= 0; i--) {
-        if (msgs[i].type === "permission_request" && !(msgs[i] as import("@/types").PermissionRequestMsg).resolved) {
+        if (
+          msgs[i].type === "permission_request" &&
+          !(msgs[i] as import("@/types").PermissionRequestMsg).resolved
+        ) {
           const updated = [...msgs];
           updated[i] = {
             ...msgs[i],
@@ -629,7 +722,14 @@ export function claudeSocketReducer(
         }
       }
       if (action.reason) {
-        msgs = [...msgs, { id: generateMessageId(), type: "system" as const, text: `Permission: ${action.reason}` }];
+        msgs = [
+          ...msgs,
+          {
+            id: generateMessageId(),
+            type: "system" as const,
+            text: `Permission: ${action.reason}`,
+          },
+        ];
       }
       return { ...state, pendingPermission: null, messages: msgs };
     }
@@ -639,7 +739,11 @@ export function claudeSocketReducer(
         ...state,
         messages: [
           ...state.messages,
-          { id: generateMessageId(), type: "system" as const, text: `Mode: ${action.fromMode} → ${action.toMode}` },
+          {
+            id: generateMessageId(),
+            type: "system" as const,
+            text: `Mode: ${action.fromMode} → ${action.toMode}`,
+          },
         ],
         sessionInfo: state.sessionInfo
           ? { ...state.sessionInfo, mode: action.toMode }
@@ -649,7 +753,10 @@ export function claudeSocketReducer(
     case "WS_RAW":
       return {
         ...state,
-        messages: [...state.messages, { id: generateMessageId(), type: "stderr", text: action.text }],
+        messages: [
+          ...state.messages,
+          { id: generateMessageId(), type: "stderr", text: action.text },
+        ],
       };
 
     // ----- User actions -----
@@ -719,7 +826,10 @@ export function claudeSocketReducer(
     case "ADD_SYSTEM_MESSAGE":
       return {
         ...state,
-        messages: [...state.messages, { id: generateMessageId(), type: "system" as const, text: action.text }],
+        messages: [
+          ...state.messages,
+          { id: generateMessageId(), type: "system" as const, text: action.text },
+        ],
       };
 
     case "UPDATE_MESSAGE":
@@ -735,7 +845,10 @@ export function claudeSocketReducer(
       let msgs = state.messages;
       if (action.behavior) {
         for (let i = msgs.length - 1; i >= 0; i--) {
-          if (msgs[i].type === "permission_request" && !(msgs[i] as import("@/types").PermissionRequestMsg).resolved) {
+          if (
+            msgs[i].type === "permission_request" &&
+            !(msgs[i] as import("@/types").PermissionRequestMsg).resolved
+          ) {
             const updated = [...msgs];
             updated[i] = { ...msgs[i], resolved: true, resolution: action.behavior } as Message;
             msgs = updated;
@@ -764,7 +877,8 @@ export function claudeSocketReducer(
           changed = true;
           return {
             ...m,
-            text: mText.slice(0, 200) + "\n\n\u2026 (이전 메시지, 전체 내용은 내보내기를 사용하세요)",
+            text:
+              mText.slice(0, 200) + "\n\n\u2026 (이전 메시지, 전체 내용은 내보내기를 사용하세요)",
             _truncated: true,
           } as Message;
         }

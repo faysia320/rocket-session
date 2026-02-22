@@ -58,8 +58,7 @@ export const PlanResultCard = memo(function PlanResultCard({
     setFeedback("");
   };
 
-  const hasMetadata =
-    message.duration_ms || message.model || message.input_tokens;
+  const hasMetadata = message.duration_ms || message.model || message.input_tokens;
 
   return (
     <div className="animate-[slideInLeft_0.2s_ease]">
@@ -72,9 +71,7 @@ export const PlanResultCard = memo(function PlanResultCard({
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">
           <span className="text-primary text-xs">{"◆"}</span>
-          <span className="font-mono text-xs font-semibold text-foreground">
-            Claude
-          </span>
+          <span className="font-mono text-xs font-semibold text-foreground">Claude</span>
           <span
             className={cn(
               "px-1.5 py-0.5 rounded-md text-[9px] font-bold border",
@@ -115,9 +112,7 @@ export const PlanResultCard = memo(function PlanResultCard({
               <MarkdownRenderer content={message.planFileContent} />
               {message.text ? (
                 <div className="mt-3 pt-2 border-t border-border/20">
-                  <p className="font-mono text-2xs text-muted-foreground italic">
-                    {message.text}
-                  </p>
+                  <p className="font-mono text-2xs text-muted-foreground italic">{message.text}</p>
                 </div>
               ) : null}
             </>

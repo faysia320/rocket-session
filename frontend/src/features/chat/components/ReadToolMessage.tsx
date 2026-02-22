@@ -1,11 +1,7 @@
 import { useState, memo, useMemo } from "react";
 import { FileText, ChevronRight, ChevronDown } from "lucide-react";
 import { CodeBlock } from "@/components/ui/CodeBlock";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
 import { ToolStatusIcon } from "./ToolStatusIcon";
@@ -40,18 +36,13 @@ function getFileColor(filePath: string): string {
   return colorMap[ext] || "text-info";
 }
 
-export const ReadToolMessage = memo(function ReadToolMessage({
-  message,
-}: ReadToolMessageProps) {
+export const ReadToolMessage = memo(function ReadToolMessage({ message }: ReadToolMessageProps) {
   const [expanded, setExpanded] = useState(false);
   const input = (message.input || {}) as Record<string, unknown>;
   const toolStatus = message.status || "running";
   const filePath = String(input.file_path ?? input.path ?? "");
   const fileName = useMemo(() => getFileName(filePath), [filePath]);
-  const language = useMemo(
-    () => (filePath ? getLanguageFromPath(filePath) : "text"),
-    [filePath],
-  );
+  const language = useMemo(() => (filePath ? getLanguageFromPath(filePath) : "text"), [filePath]);
   const fileColor = useMemo(() => getFileColor(filePath), [filePath]);
 
   const borderColor =
@@ -66,9 +57,8 @@ export const ReadToolMessage = memo(function ReadToolMessage({
   // line offset/limit 정보
   const offset = input.offset ? Number(input.offset) : null;
   const limit = input.limit ? Number(input.limit) : null;
-  const rangeInfo = offset || limit
-    ? `L${offset || 1}${limit ? `–${(offset || 1) + limit - 1}` : "+"}`
-    : null;
+  const rangeInfo =
+    offset || limit ? `L${offset || 1}${limit ? `–${(offset || 1) + limit - 1}` : "+"}` : null;
 
   return (
     <Collapsible
@@ -86,9 +76,7 @@ export const ReadToolMessage = memo(function ReadToolMessage({
           <div className="flex items-center gap-2">
             <ToolStatusIcon status={toolStatus} />
             <FileText className={cn("h-3.5 w-3.5 shrink-0", fileColor)} />
-            <span className="font-mono text-xs font-semibold text-foreground">
-              {fileName}
-            </span>
+            <span className="font-mono text-xs font-semibold text-foreground">{fileName}</span>
             {fileName !== filePath ? (
               <span className="font-mono text-2xs text-muted-foreground/50 flex-1 truncate">
                 {filePath}
@@ -116,11 +104,7 @@ export const ReadToolMessage = memo(function ReadToolMessage({
         <CollapsibleContent>
           <div className="mt-1.5 min-w-0 overflow-hidden">
             {message.output ? (
-              <CodeBlock
-                language={language}
-                raw={message.output}
-                className="my-0"
-              >
+              <CodeBlock language={language} raw={message.output} className="my-0">
                 {message.output}
               </CodeBlock>
             ) : (
@@ -130,8 +114,8 @@ export const ReadToolMessage = memo(function ReadToolMessage({
             )}
             {message.is_truncated && message.full_length ? (
               <div className="font-mono text-2xs text-warning mt-1">
-                ({message.output?.length.toLocaleString()}/
-                {message.full_length.toLocaleString()}자 표시)
+                ({message.output?.length.toLocaleString()}/{message.full_length.toLocaleString()}자
+                표시)
               </div>
             ) : null}
           </div>

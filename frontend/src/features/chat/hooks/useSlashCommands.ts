@@ -8,11 +8,7 @@ interface UseSlashCommandsOptions {
   skills?: SkillInfo[];
 }
 
-export function useSlashCommands({
-  connected,
-  isRunning,
-  skills,
-}: UseSlashCommandsOptions) {
+export function useSlashCommands({ connected, isRunning, skills }: UseSlashCommandsOptions) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [filterText, setFilterText] = useState("");
@@ -70,15 +66,11 @@ export function useSlashCommands({
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
-          setActiveIndex((prev) =>
-            prev < filteredCommands.length - 1 ? prev + 1 : 0,
-          );
+          setActiveIndex((prev) => (prev < filteredCommands.length - 1 ? prev + 1 : 0));
           return null;
         case "ArrowUp":
           e.preventDefault();
-          setActiveIndex((prev) =>
-            prev > 0 ? prev - 1 : filteredCommands.length - 1,
-          );
+          setActiveIndex((prev) => (prev > 0 ? prev - 1 : filteredCommands.length - 1));
           return null;
         case "Enter":
           if (filteredCommands.length > 0) {

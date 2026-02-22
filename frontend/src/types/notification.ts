@@ -64,24 +64,22 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 };
 
 /** 카테고리 표시 정보 */
-export const CATEGORY_LABELS: Record<
-  NotificationCategory,
-  { label: string; description: string }
-> = {
-  "task.complete": {
-    label: "작업 완료",
-    description: "세션이 실행 완료되었을 때",
-  },
-  "task.error": {
-    label: "에러 발생",
-    description: "세션에서 에러가 발생했을 때",
-  },
-  "input.required": {
-    label: "입력 필요",
-    description: "Permission 승인이 필요할 때",
-  },
-  "session.start": {
-    label: "세션 시작",
-    description: "세션이 실행을 시작했을 때",
-  },
-};
+export const CATEGORY_LABELS: Record<NotificationCategory, { label: string; description: string }> =
+  {
+    "task.complete": {
+      label: "작업 완료",
+      description: "세션이 실행 완료되었을 때",
+    },
+    "task.error": {
+      label: "에러 발생",
+      description: "세션에서 에러가 발생했을 때",
+    },
+    "input.required": {
+      label: "입력 필요",
+      description: "Permission 승인이 필요할 때",
+    },
+    "session.start": {
+      label: "세션 시작",
+      description: "세션이 실행을 시작했을 때",
+    },
+  };

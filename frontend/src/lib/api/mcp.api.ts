@@ -14,16 +14,14 @@ export const mcpApi = {
 
   get: (id: string) => api.get<McpServerInfo>(`/api/mcp/${id}`),
 
-  create: (data: CreateMcpServerRequest) =>
-    api.post<McpServerInfo>("/api/mcp/", data),
+  create: (data: CreateMcpServerRequest) => api.post<McpServerInfo>("/api/mcp/", data),
 
   update: (id: string, data: UpdateMcpServerRequest) =>
     api.patch<McpServerInfo>(`/api/mcp/${id}`, data),
 
   delete: (id: string) => api.delete<void>(`/api/mcp/${id}`),
 
-  systemServers: () =>
-    api.get<SystemMcpServer[]>("/api/mcp/system-servers"),
+  systemServers: () => api.get<SystemMcpServer[]>("/api/mcp/system-servers"),
 
   importSystem: (names?: string[]) =>
     api.post<McpServerInfo[]>("/api/mcp/import-system", { names: names ?? null }),

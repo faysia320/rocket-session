@@ -1,9 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   Download,
   Loader2,
@@ -47,19 +43,13 @@ function getYesterdayISO(): string {
   return d.toISOString();
 }
 
-export function ImportLocalDialog({
-  open,
-  onOpenChange,
-  onImported,
-}: ImportLocalDialogProps) {
+export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLocalDialogProps) {
   const [sessions, setSessions] = useState<LocalSessionMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hideImported, setHideImported] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
-    new Set(),
-  );
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,11 +71,7 @@ export function ImportLocalDialog({
         project_dir: meta.project_dir,
       });
       setSessions((prev) =>
-        prev.map((s) =>
-          s.session_id === meta.session_id
-            ? { ...s, already_imported: true }
-            : s,
-        ),
+        prev.map((s) => (s.session_id === meta.session_id ? { ...s, already_imported: true } : s)),
       );
       onImported(result.dashboard_session_id);
     } catch (e) {
@@ -96,9 +82,7 @@ export function ImportLocalDialog({
   };
 
   const filtered = useMemo(() => {
-    const base = hideImported
-      ? sessions.filter((s) => !s.already_imported)
-      : sessions;
+    const base = hideImported ? sessions.filter((s) => !s.already_imported) : sessions;
     return base.reduce<Record<string, LocalSessionMeta[]>>((acc, s) => {
       const key = s.cwd || s.project_dir;
       if (!acc[key]) acc[key] = [];
@@ -121,9 +105,7 @@ export function ImportLocalDialog({
 
   const allGroupKeys = useMemo(() => Object.keys(filtered), [filtered]);
 
-  const allCollapsed =
-    allGroupKeys.length > 0 &&
-    allGroupKeys.every((k) => collapsedGroups.has(k));
+  const allCollapsed = allGroupKeys.length > 0 && allGroupKeys.every((k) => collapsedGroups.has(k));
 
   const toggleAll = useCallback(() => {
     if (allCollapsed) {
@@ -171,9 +153,7 @@ export function ImportLocalDialog({
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="py-8 text-center font-mono text-xs text-destructive">
-            {error}
-          </div>
+          <div className="py-8 text-center font-mono text-xs text-destructive">{error}</div>
         ) : sessions.length === 0 ? (
           <div className="py-8 text-center font-mono text-xs text-muted-foreground">
             No local sessions found
@@ -206,10 +186,7 @@ export function ImportLocalDialog({
               ) : null}
             </div>
             <div ref={parentRef} className="flex-1 -mx-6 px-6 overflow-auto">
-              <div
-                className="relative"
-                style={{ height: `${virtualizer.getTotalSize()}px` }}
-              >
+              <div className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
                 {virtualizer.getVirtualItems().map((vItem) => {
                   const item = flatItems[vItem.index];
                   return (
@@ -240,12 +217,11 @@ export function ImportLocalDialog({
                                 {truncateCwd(item.cwd)}
                               </span>
                             </TooltipTrigger>
-                            <TooltipContent className="font-mono text-xs">{item.cwd}</TooltipContent>
+                            <TooltipContent className="font-mono text-xs">
+                              {item.cwd}
+                            </TooltipContent>
                           </Tooltip>
-                          <Badge
-                            variant="secondary"
-                            className="font-mono text-[9px] ml-auto"
-                          >
+                          <Badge variant="secondary" className="font-mono text-[9px] ml-auto">
                             {item.count}
                           </Badge>
                         </button>
@@ -302,10 +278,7 @@ function SessionRow({
             {displayName}
           </span>
           {meta.already_imported ? (
-            <Badge
-              variant="secondary"
-              className="font-mono text-[9px] shrink-0"
-            >
+            <Badge variant="secondary" className="font-mono text-[9px] shrink-0">
               Imported
             </Badge>
           ) : null}
@@ -321,11 +294,7 @@ function SessionRow({
             <MessageSquare className="h-2.5 w-2.5" />
             {meta.message_count}
           </span>
-          {date ? (
-            <span className="font-mono text-[9px] text-muted-foreground">
-              {date}
-            </span>
-          ) : null}
+          {date ? <span className="font-mono text-[9px] text-muted-foreground">{date}</span> : null}
         </div>
       </div>
       <Button

@@ -7,6 +7,5 @@ export const settingsApi = {
   get: () => api.get<GlobalSettings>("/api/settings/"),
 
   /** 글로벌 설정 업데이트 */
-  update: (data: UpdateGlobalSettingsRequest) =>
-    api.patch<GlobalSettings>("/api/settings/", data),
+  update: (data: UpdateGlobalSettingsRequest) => api.patch<GlobalSettings>("/api/settings/", data),
 };

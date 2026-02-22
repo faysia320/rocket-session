@@ -27,9 +27,7 @@ export function GitMonitorPage() {
   const addGitMonitorPath = useSessionStore((s) => s.addGitMonitorPath);
   const removeGitMonitorPath = useSessionStore((s) => s.removeGitMonitorPath);
 
-  const [selectedPath, setSelectedPath] = useState<string | null>(
-    gitMonitorPaths[0] ?? null,
-  );
+  const [selectedPath, setSelectedPath] = useState<string | null>(gitMonitorPaths[0] ?? null);
   const [browserOpen, setBrowserOpen] = useState(false);
   const isMobile = useIsMobile();
 
@@ -37,7 +35,7 @@ export function GitMonitorPage() {
   const effectivePath =
     selectedPath && gitMonitorPaths.includes(selectedPath)
       ? selectedPath
-      : gitMonitorPaths[0] ?? null;
+      : (gitMonitorPaths[0] ?? null);
 
   const handleAdd = useCallback(() => setBrowserOpen(true), []);
   const handleSelect = useCallback((path: string) => setSelectedPath(path), []);
@@ -57,9 +55,7 @@ export function GitMonitorPage() {
       <div className="shrink-0 border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-mono text-lg font-semibold text-foreground">
-              Git Monitor
-            </h1>
+            <h1 className="font-mono text-lg font-semibold text-foreground">Git Monitor</h1>
             <p className="font-mono text-xs text-muted-foreground">
               {gitMonitorPaths.length > 0
                 ? `${gitMonitorPaths.length}개 저장소 모니터링 중`
@@ -92,8 +88,7 @@ export function GitMonitorPage() {
             className="font-mono text-xs"
             aria-label="첫 저장소 추가"
           >
-            <Plus className="h-3 w-3 mr-1" />
-            첫 저장소 추가
+            <Plus className="h-3 w-3 mr-1" />첫 저장소 추가
           </Button>
         </div>
       ) : (
@@ -114,20 +109,13 @@ export function GitMonitorPage() {
             {/* 모바일: 저장소 선택 셀렉트 */}
             {isMobile ? (
               <div className="px-4 py-2 border-b border-border shrink-0">
-                <Select
-                  value={effectivePath ?? ""}
-                  onValueChange={handleSelect}
-                >
+                <Select value={effectivePath ?? ""} onValueChange={handleSelect}>
                   <SelectTrigger className="h-8 font-mono text-xs">
                     <SelectValue placeholder="저장소 선택" />
                   </SelectTrigger>
                   <SelectContent>
                     {gitMonitorPaths.map((p) => (
-                      <SelectItem
-                        key={p}
-                        value={p}
-                        className="font-mono text-xs"
-                      >
+                      <SelectItem key={p} value={p} className="font-mono text-xs">
                         {getFolderName(p)}
                       </SelectItem>
                     ))}
@@ -138,49 +126,28 @@ export function GitMonitorPage() {
 
             {/* 탭: Status / Commits / Pull Requests */}
             {effectivePath ? (
-              <Tabs
-                defaultValue="status"
-                className="flex-1 flex flex-col min-h-0"
-              >
+              <Tabs defaultValue="status" className="flex-1 flex flex-col min-h-0">
                 <TabsList className="mx-4 mt-3 shrink-0">
-                  <TabsTrigger
-                    value="status"
-                    className="gap-1.5 font-mono text-xs"
-                  >
+                  <TabsTrigger value="status" className="gap-1.5 font-mono text-xs">
                     Status
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="commits"
-                    className="gap-1.5 font-mono text-xs"
-                  >
+                  <TabsTrigger value="commits" className="gap-1.5 font-mono text-xs">
                     Commits
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="prs"
-                    className="gap-1.5 font-mono text-xs"
-                  >
+                  <TabsTrigger value="prs" className="gap-1.5 font-mono text-xs">
                     Pull Requests
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent
-                  value="status"
-                  className="flex-1 overflow-auto px-4 py-3 m-0"
-                >
+                <TabsContent value="status" className="flex-1 overflow-auto px-4 py-3 m-0">
                   <GitRepoStatusTab repoPath={effectivePath} />
                 </TabsContent>
 
-                <TabsContent
-                  value="commits"
-                  className="flex-1 overflow-auto px-4 py-3 m-0"
-                >
+                <TabsContent value="commits" className="flex-1 overflow-auto px-4 py-3 m-0">
                   <GitCommitHistoryTab repoPath={effectivePath} />
                 </TabsContent>
 
-                <TabsContent
-                  value="prs"
-                  className="flex-1 overflow-auto px-4 py-3 m-0"
-                >
+                <TabsContent value="prs" className="flex-1 overflow-auto px-4 py-3 m-0">
                   <GitHubPRTab repoPath={effectivePath} />
                 </TabsContent>
               </Tabs>

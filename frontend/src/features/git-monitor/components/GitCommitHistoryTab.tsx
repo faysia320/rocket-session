@@ -99,11 +99,7 @@ export function GitCommitHistoryTab({ repoPath }: GitCommitHistoryTabProps) {
           {/* 커밋 목록 */}
           <div className="space-y-1">
             {data?.commits.map((commit) => (
-              <GitCommitItem
-                key={commit.full_hash}
-                repoPath={repoPath}
-                commit={commit}
-              />
+              <GitCommitItem key={commit.full_hash} repoPath={repoPath} commit={commit} />
             ))}
           </div>
 

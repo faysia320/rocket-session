@@ -2,14 +2,10 @@ import { GitCommitHorizontal, GitPullRequest, GitMerge } from "lucide-react";
 import type { PaletteCommand } from "../types";
 
 function dispatchPrompt(prompt: string) {
-  window.dispatchEvent(
-    new CustomEvent("command-palette:send-prompt", { detail: prompt }),
-  );
+  window.dispatchEvent(new CustomEvent("command-palette:send-prompt", { detail: prompt }));
 }
 
-export function createGitCommands(deps: {
-  hasChanges: boolean;
-}): PaletteCommand[] {
+export function createGitCommands(deps: { hasChanges: boolean }): PaletteCommand[] {
   const { hasChanges } = deps;
 
   return [

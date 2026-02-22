@@ -20,16 +20,11 @@ function NewSessionPage() {
     <Suspense
       fallback={
         <div className="flex-1 flex items-center justify-center">
-          <span className="font-mono text-sm text-muted-foreground animate-pulse">
-            로딩 중…
-          </span>
+          <span className="font-mono text-sm text-muted-foreground animate-pulse">로딩 중…</span>
         </div>
       }
     >
-      <SessionSetupPanel
-        onCreate={createSession}
-        onCancel={() => navigate({ to: "/" })}
-      />
+      <SessionSetupPanel onCreate={createSession} onCancel={() => navigate({ to: "/" })} />
     </Suspense>
   );
 }

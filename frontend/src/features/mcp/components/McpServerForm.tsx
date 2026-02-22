@@ -3,11 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Save } from "lucide-react";
-import type {
-  McpTransportType,
-  McpServerInfo,
-  CreateMcpServerRequest,
-} from "@/types";
+import type { McpTransportType, McpServerInfo, CreateMcpServerRequest } from "@/types";
 
 interface KeyValueEntry {
   key: string;
@@ -32,12 +28,7 @@ function fromEntries(entries: KeyValueEntry[]): Record<string, string> | null {
   return Object.fromEntries(filtered.map((e) => [e.key, e.value]));
 }
 
-export function McpServerForm({
-  initial,
-  onSubmit,
-  onCancel,
-  isPending,
-}: McpServerFormProps) {
+export function McpServerForm({ initial, onSubmit, onCancel, isPending }: McpServerFormProps) {
   const [name, setName] = useState(initial?.name ?? "");
   const [transportType, setTransportType] = useState<McpTransportType>(
     initial?.transport_type ?? "stdio",
@@ -45,12 +36,8 @@ export function McpServerForm({
   const [command, setCommand] = useState(initial?.command ?? "");
   const [args, setArgs] = useState(initial?.args?.join(" ") ?? "");
   const [url, setUrl] = useState(initial?.url ?? "");
-  const [envEntries, setEnvEntries] = useState<KeyValueEntry[]>(
-    toEntries(initial?.env),
-  );
-  const [headerEntries, setHeaderEntries] = useState<KeyValueEntry[]>(
-    toEntries(initial?.headers),
-  );
+  const [envEntries, setEnvEntries] = useState<KeyValueEntry[]>(toEntries(initial?.env));
+  const [headerEntries, setHeaderEntries] = useState<KeyValueEntry[]>(toEntries(initial?.headers));
 
   useEffect(() => {
     if (initial) {
@@ -84,9 +71,7 @@ export function McpServerForm({
     onSubmit(data);
   };
 
-  const addEntry = (
-    setter: React.Dispatch<React.SetStateAction<KeyValueEntry[]>>,
-  ) => {
+  const addEntry = (setter: React.Dispatch<React.SetStateAction<KeyValueEntry[]>>) => {
     setter((prev) => [...prev, { key: "", value: "" }]);
   };
 
@@ -103,9 +88,7 @@ export function McpServerForm({
     field: "key" | "value",
     val: string,
   ) => {
-    setter((prev) =>
-      prev.map((e, i) => (i === index ? { ...e, [field]: val } : e)),
-    );
+    setter((prev) => prev.map((e, i) => (i === index ? { ...e, [field]: val } : e)));
   };
 
   const renderKeyValueEditor = (
@@ -217,9 +200,7 @@ export function McpServerForm({
               value={args}
               onChange={(e) => setArgs(e.target.value)}
             />
-            <p className="font-mono text-2xs text-muted-foreground/70">
-              공백으로 구분됩니다.
-            </p>
+            <p className="font-mono text-2xs text-muted-foreground/70">공백으로 구분됩니다.</p>
           </div>
         </>
       ) : (
@@ -252,11 +233,7 @@ export function McpServerForm({
           <Save className="h-3.5 w-3.5 mr-1.5" />
           {isPending ? "저장 중…" : initial ? "수정" : "추가"}
         </Button>
-        <Button
-          variant="outline"
-          className="font-mono text-xs"
-          onClick={onCancel}
-        >
+        <Button variant="outline" className="font-mono text-xs" onClick={onCancel}>
           취소
         </Button>
       </div>

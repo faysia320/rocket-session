@@ -18,10 +18,7 @@ interface SaveAsTemplateDialogProps {
   children: React.ReactNode;
 }
 
-export function SaveAsTemplateDialog({
-  sessionId,
-  children,
-}: SaveAsTemplateDialogProps) {
+export function SaveAsTemplateDialog({ sessionId, children }: SaveAsTemplateDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -68,9 +65,7 @@ export function SaveAsTemplateDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground">
-              설명
-            </Label>
+            <Label className="font-mono text-xs font-semibold text-muted-foreground">설명</Label>
             <Textarea
               className="font-mono text-xs min-h-[60px]"
               placeholder="이 템플릿의 용도를 설명하세요"
@@ -79,8 +74,7 @@ export function SaveAsTemplateDialog({
             />
           </div>
           <p className="font-mono text-2xs text-muted-foreground/70">
-            현재 세션의 작업 디렉토리, 시스템 프롬프트, 도구 설정 등이 템플릿에
-            저장됩니다.
+            현재 세션의 작업 디렉토리, 시스템 프롬프트, 도구 설정 등이 템플릿에 저장됩니다.
           </p>
           <Button
             className="w-full font-mono text-xs gap-1.5"

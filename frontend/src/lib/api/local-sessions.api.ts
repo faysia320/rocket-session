@@ -11,13 +11,10 @@ import type {
 export const localSessionsApi = {
   scan: (options?: { projectDir?: string; since?: string }) => {
     const searchParams = new URLSearchParams();
-    if (options?.projectDir)
-      searchParams.set("project_dir", options.projectDir);
+    if (options?.projectDir) searchParams.set("project_dir", options.projectDir);
     if (options?.since) searchParams.set("since", options.since);
     const qs = searchParams.toString();
-    return api.get<LocalSessionMeta[]>(
-      `/api/local-sessions/${qs ? `?${qs}` : ""}`,
-    );
+    return api.get<LocalSessionMeta[]>(`/api/local-sessions/${qs ? `?${qs}` : ""}`);
   },
 
   import: (req: ImportLocalSessionRequest) =>

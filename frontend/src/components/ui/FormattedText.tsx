@@ -9,8 +9,7 @@ export function FormattedText({ text }: { text?: string }) {
         if (part.startsWith("```") && part.endsWith("```")) {
           const lines = part.slice(3, -3);
           const firstNewline = lines.indexOf("\n");
-          const lang =
-            firstNewline > 0 ? lines.slice(0, firstNewline).trim() : "";
+          const lang = firstNewline > 0 ? lines.slice(0, firstNewline).trim() : "";
           const code = firstNewline > 0 ? lines.slice(firstNewline + 1) : lines;
           return (
             <pre

@@ -43,15 +43,10 @@ export const TokenSummaryCards = memo(function TokenSummaryCards({
       {cards.map((card) => {
         const value = card.getValue(summary);
         return (
-          <div
-            key={card.label}
-            className="rounded-lg border border-border bg-card p-3"
-          >
+          <div key={card.label} className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-center gap-1.5 mb-1">
               <card.icon className={`h-3.5 w-3.5 ${card.iconClass}`} />
-              <span className="font-mono text-2xs text-muted-foreground">
-                {card.label}
-              </span>
+              <span className="font-mono text-2xs text-muted-foreground">{card.label}</span>
             </div>
             <p className="font-mono text-lg font-semibold text-foreground">
               {"raw" in card ? String(value) : formatTokens(value)}

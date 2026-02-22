@@ -86,9 +86,7 @@ export function useSessions() {
     mutationFn: (id: string) => sessionsApi.delete(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(
-        sessionKeys.list(),
-      );
+      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
       queryClient.setQueryData<SessionInfo[]>(
         sessionKeys.list(),
         (old) => old?.filter((s) => s.id !== id) ?? [],
@@ -124,13 +122,10 @@ export function useSessions() {
   );
 
   const renameMutation = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) =>
-      sessionsApi.update(id, { name }),
+    mutationFn: ({ id, name }: { id: string; name: string }) => sessionsApi.update(id, { name }),
     onMutate: async ({ id, name }) => {
       await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(
-        sessionKeys.list(),
-      );
+      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
       queryClient.setQueryData<SessionInfo[]>(
         sessionKeys.list(),
         (old) => old?.map((s) => (s.id === id ? { ...s, name } : s)) ?? [],
@@ -159,17 +154,11 @@ export function useSessions() {
     mutationFn: (id: string) => sessionsApi.archive(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(
-        sessionKeys.list(),
-      );
+      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
       queryClient.setQueryData<SessionInfo[]>(
         sessionKeys.list(),
         (old) =>
-          old?.map((s) =>
-            s.id === id
-              ? { ...s, status: "archived" as SessionStatus }
-              : s,
-          ) ?? [],
+          old?.map((s) => (s.id === id ? { ...s, status: "archived" as SessionStatus } : s)) ?? [],
       );
       return { previous };
     },
@@ -198,17 +187,11 @@ export function useSessions() {
     mutationFn: (id: string) => sessionsApi.unarchive(id),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(
-        sessionKeys.list(),
-      );
+      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
       queryClient.setQueryData<SessionInfo[]>(
         sessionKeys.list(),
         (old) =>
-          old?.map((s) =>
-            s.id === id
-              ? { ...s, status: "idle" as SessionStatus }
-              : s,
-          ) ?? [],
+          old?.map((s) => (s.id === id ? { ...s, status: "idle" as SessionStatus } : s)) ?? [],
       );
       return { previous };
     },

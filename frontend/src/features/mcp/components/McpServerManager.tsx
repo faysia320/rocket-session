@@ -2,12 +2,7 @@ import { useState } from "react";
 import { Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { McpServerForm } from "./McpServerForm";
 import { McpServerList } from "./McpServerList";
@@ -39,9 +34,7 @@ export function McpServerManager() {
       toast.success(`MCP 서버 "${data.name}" 추가됨`);
       setFormOpen(false);
     } catch (e) {
-      toast.error(
-        `추가 실패: ${e instanceof Error ? e.message : "알 수 없는 오류"}`,
-      );
+      toast.error(`추가 실패: ${e instanceof Error ? e.message : "알 수 없는 오류"}`);
     }
   };
 
@@ -53,9 +46,7 @@ export function McpServerManager() {
       setEditTarget(null);
       setFormOpen(false);
     } catch (e) {
-      toast.error(
-        `수정 실패: ${e instanceof Error ? e.message : "알 수 없는 오류"}`,
-      );
+      toast.error(`수정 실패: ${e instanceof Error ? e.message : "알 수 없는 오류"}`);
     }
   };
 
@@ -64,9 +55,7 @@ export function McpServerManager() {
       await deleteMutation.mutateAsync(id);
       toast.success("MCP 서버 삭제됨");
     } catch (e) {
-      toast.error(
-        `삭제 실패: ${e instanceof Error ? e.message : "알 수 없는 오류"}`,
-      );
+      toast.error(`삭제 실패: ${e instanceof Error ? e.message : "알 수 없는 오류"}`);
     }
   };
 
@@ -90,15 +79,11 @@ export function McpServerManager() {
         toast.info("가져올 새 서버가 없습니다.");
         return;
       }
-      const result = await importMutation.mutateAsync(
-        importable.map((s) => s.name),
-      );
+      const result = await importMutation.mutateAsync(importable.map((s) => s.name));
       toast.success(`${result.length}개 MCP 서버 가져오기 완료`);
       setImportOpen(false);
     } catch (e) {
-      toast.error(
-        `가져오기 실패: ${e instanceof Error ? e.message : "알 수 없는 오류"}`,
-      );
+      toast.error(`가져오기 실패: ${e instanceof Error ? e.message : "알 수 없는 오류"}`);
     }
   };
 
@@ -133,8 +118,7 @@ export function McpServerManager() {
         </div>
       </div>
       <p className="font-mono text-2xs text-muted-foreground/70">
-        Claude CLI에서 사용할 MCP 서버를 관리합니다. 세션 설정에서 사용할
-        서버를 선택합니다.
+        Claude CLI에서 사용할 MCP 서버를 관리합니다. 세션 설정에서 사용할 서버를 선택합니다.
       </p>
 
       <McpServerList
@@ -205,30 +189,23 @@ export function McpServerManager() {
                       </span>
                     </div>
                     {s.already_imported ? (
-                      <span className="font-mono text-2xs text-success">
-                        가져옴
-                      </span>
+                      <span className="font-mono text-2xs text-success">가져옴</span>
                     ) : (
-                      <span className="font-mono text-2xs text-warning">
-                        새 항목
-                      </span>
+                      <span className="font-mono text-2xs text-warning">새 항목</span>
                     )}
                   </div>
                 ))
               )}
             </div>
           ) : (
-            <p className="font-mono text-xs text-muted-foreground/60 text-center py-4">
-              로딩 중…
-            </p>
+            <p className="font-mono text-xs text-muted-foreground/60 text-center py-4">로딩 중…</p>
           )}
           <div className="flex gap-2 pt-2">
             <Button
               className="flex-1 font-mono text-xs font-semibold"
               onClick={handleImportAll}
               disabled={
-                importMutation.isPending ||
-                !systemServers?.some((s) => !s.already_imported)
+                importMutation.isPending || !systemServers?.some((s) => !s.already_imported)
               }
             >
               <Download className="h-3.5 w-3.5 mr-1.5" />

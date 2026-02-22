@@ -1,10 +1,6 @@
 import { memo, useState, useRef, useCallback, useEffect } from "react";
 import { Send, Square, Image, X, ClipboardList } from "lucide-react";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,9 +66,7 @@ export const ChatInput = memo(function ChatInput({
   // 언마운트 시 URL.createObjectURL 메모리 해제
   useEffect(() => {
     return () => {
-      pendingImagesRef.current.forEach((img) =>
-        URL.revokeObjectURL(img.preview),
-      );
+      pendingImagesRef.current.forEach((img) => URL.revokeObjectURL(img.preview));
     };
   }, []);
 
@@ -88,16 +82,12 @@ export const ChatInput = memo(function ChatInput({
   }, []);
 
   const addImages = useCallback((files: File[]) => {
-    const validFiles = files.filter((f) =>
-      ACCEPTED_IMAGE_TYPES.includes(f.type),
-    );
+    const validFiles = files.filter((f) => ACCEPTED_IMAGE_TYPES.includes(f.type));
     if (validFiles.length === 0) return;
 
     const oversized = validFiles.filter((f) => f.size > MAX_IMAGE_SIZE);
     if (oversized.length > 0) {
-      toast.error(
-        `이미지 크기가 10MB를 초과합니다: ${oversized.map((f) => f.name).join(", ")}`,
-      );
+      toast.error(`이미지 크기가 10MB를 초과합니다: ${oversized.map((f) => f.name).join(", ")}`);
     }
 
     const acceptable = validFiles.filter((f) => f.size <= MAX_IMAGE_SIZE);
@@ -123,10 +113,7 @@ export const ChatInput = memo(function ChatInput({
 
   const handleSubmit = useCallback(async () => {
     const prompt = input.trim();
-    if (
-      (!prompt && pendingImages.length === 0 && pendingAnswerCount === 0) ||
-      isEffectivelyRunning
-    )
+    if ((!prompt && pendingImages.length === 0 && pendingAnswerCount === 0) || isEffectivelyRunning)
       return;
 
     // 이미지가 있으면 업로드 먼저
@@ -143,9 +130,7 @@ export const ChatInput = memo(function ChatInput({
       }
 
       if (imagePaths.length === 0 && pendingImages.length > 0) {
-        toast.error(
-          "모든 이미지 업로드에 실패했습니다. 메시지를 전송하지 않습니다.",
-        );
+        toast.error("모든 이미지 업로드에 실패했습니다. 메시지를 전송하지 않습니다.");
         return;
       }
       onSubmit(
@@ -156,7 +141,15 @@ export const ChatInput = memo(function ChatInput({
       onSubmit(prompt || "위 질문에 대한 답변입니다.");
     }
     resetTextarea();
-  }, [input, pendingImages, pendingAnswerCount, isEffectivelyRunning, sessionId, onSubmit, resetTextarea]);
+  }, [
+    input,
+    pendingImages,
+    pendingAnswerCount,
+    isEffectivelyRunning,
+    sessionId,
+    onSubmit,
+    resetTextarea,
+  ]);
 
   const executeSlashCommand = useCallback(
     (cmd: SlashCommand) => {
@@ -194,15 +187,7 @@ export const ChatInput = memo(function ChatInput({
         handleSubmit();
       }
     },
-    [
-      slashCommands,
-      status,
-      onStop,
-      resetTextarea,
-      onModeToggle,
-      handleSubmit,
-      executeSlashCommand,
-    ],
+    [slashCommands, status, onStop, resetTextarea, onModeToggle, handleSubmit, executeSlashCommand],
   );
 
   const handleTextareaInput = useCallback(
@@ -269,9 +254,7 @@ export const ChatInput = memo(function ChatInput({
           <SlashCommandPopup
             commands={slashCommands.filteredCommands}
             activeIndex={slashCommands.activeIndex}
-            onSelect={(cmd) =>
-              executeSlashCommand(slashCommands.selectCommand(cmd))
-            }
+            onSelect={(cmd) => executeSlashCommand(slashCommands.selectCommand(cmd))}
             onHover={slashCommands.setActiveIndex}
           />
         ) : null}
@@ -412,9 +395,7 @@ export const ChatInput = memo(function ChatInput({
                     size="icon"
                     onClick={handleSubmit}
                     disabled={
-                      (!input.trim() &&
-                        pendingImages.length === 0 &&
-                        pendingAnswerCount === 0) ||
+                      (!input.trim() && pendingImages.length === 0 && pendingAnswerCount === 0) ||
                       !connected
                     }
                     className="h-8 w-8 shrink-0"

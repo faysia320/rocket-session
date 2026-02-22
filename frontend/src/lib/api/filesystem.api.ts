@@ -18,17 +18,13 @@ import type {
 
 export const filesystemApi = {
   listDirectory: (path: string = "~") =>
-    api.get<DirectoryListResponse>(
-      `/api/fs/list?path=${encodeURIComponent(path)}`,
-    ),
+    api.get<DirectoryListResponse>(`/api/fs/list?path=${encodeURIComponent(path)}`),
 
   getGitInfo: (path: string) =>
     api.get<GitInfo>(`/api/fs/git-info?path=${encodeURIComponent(path)}`),
 
   getGitStatus: (path: string) =>
-    api.get<GitStatusResponse>(
-      `/api/fs/git-status?path=${encodeURIComponent(path)}`,
-    ),
+    api.get<GitStatusResponse>(`/api/fs/git-status?path=${encodeURIComponent(path)}`),
 
   getGitDiff: (repoPath: string, filePath: string) =>
     api.getText(
@@ -36,12 +32,9 @@ export const filesystemApi = {
     ),
 
   listWorktrees: (path: string) =>
-    api.get<WorktreeListResponse>(
-      `/api/fs/worktrees?path=${encodeURIComponent(path)}`,
-    ),
+    api.get<WorktreeListResponse>(`/api/fs/worktrees?path=${encodeURIComponent(path)}`),
 
-  createWorktree: (req: CreateWorktreeRequest) =>
-    api.post<WorktreeInfo>("/api/fs/worktrees", req),
+  createWorktree: (req: CreateWorktreeRequest) => api.post<WorktreeInfo>("/api/fs/worktrees", req),
 
   removeWorktree: (path: string, force = false) =>
     api.delete<{ ok: boolean }>(
@@ -49,9 +42,7 @@ export const filesystemApi = {
     ),
 
   listSkills: (path: string) =>
-    api.get<SkillListResponse>(
-      `/api/fs/skills?path=${encodeURIComponent(path)}`,
-    ),
+    api.get<SkillListResponse>(`/api/fs/skills?path=${encodeURIComponent(path)}`),
 
   getGitLog: (
     path: string,
@@ -80,9 +71,7 @@ export const filesystemApi = {
     ),
 
   getGhStatus: (path: string) =>
-    api.get<GitHubCLIStatus>(
-      `/api/fs/gh-status?path=${encodeURIComponent(path)}`,
-    ),
+    api.get<GitHubCLIStatus>(`/api/fs/gh-status?path=${encodeURIComponent(path)}`),
 
   getGitHubPRs: (path: string, state = "open", limit = 20) =>
     api.get<GitHubPRListResponse>(
@@ -95,7 +84,5 @@ export const filesystemApi = {
     ),
 
   getGitHubPRDiff: (path: string, number: number) =>
-    api.getText(
-      `/api/fs/gh-pr-diff?path=${encodeURIComponent(path)}&number=${number}`,
-    ),
+    api.getText(`/api/fs/gh-pr-diff?path=${encodeURIComponent(path)}&number=${number}`),
 };

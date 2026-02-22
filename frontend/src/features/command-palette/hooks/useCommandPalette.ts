@@ -12,11 +12,7 @@ import { useSessions } from "@/features/session/hooks/useSessions";
 import type { SessionInfo } from "@/types";
 import type { PaletteCommand, CommandCategory } from "../types";
 import { CATEGORY_ORDER } from "../types";
-import {
-  filterCommandsByContext,
-  resolveRouteZone,
-  type RuntimeContext,
-} from "../registry";
+import { filterCommandsByContext, resolveRouteZone, type RuntimeContext } from "../registry";
 import {
   createNavigationCommands,
   createSessionCommands,
@@ -93,15 +89,18 @@ export function useCommandPalette() {
     }
   }, []);
 
-  const forkSession = useCallback(async (id: string) => {
-    try {
-      const forked = await sessionsApi.fork(id);
-      toast.success(`세션이 포크되었습니다: ${forked.name || forked.id}`);
-      navigate({ to: "/session/$sessionId", params: { sessionId: forked.id } });
-    } catch {
-      toast.error("세션 포크에 실패했습니다");
-    }
-  }, [navigate]);
+  const forkSession = useCallback(
+    async (id: string) => {
+      try {
+        const forked = await sessionsApi.fork(id);
+        toast.success(`세션이 포크되었습니다: ${forked.name || forked.id}`);
+        navigate({ to: "/session/$sessionId", params: { sessionId: forked.id } });
+      } catch {
+        toast.error("세션 포크에 실패했습니다");
+      }
+    },
+    [navigate],
+  );
 
   const allCommands = useMemo(() => {
     const navCmds = createNavigationCommands({

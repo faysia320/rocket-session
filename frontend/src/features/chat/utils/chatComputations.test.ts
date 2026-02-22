@@ -1,9 +1,5 @@
 import type { Message } from "@/types";
-import {
-  computeEstimateSize,
-  computeMessageGaps,
-  computeSearchMatches,
-} from "./chatComputations";
+import { computeEstimateSize, computeMessageGaps, computeSearchMatches } from "./chatComputations";
 
 // 테스트용 Message 생성 헬퍼
 function makeMsg(overrides: Record<string, unknown> = {}): Message {

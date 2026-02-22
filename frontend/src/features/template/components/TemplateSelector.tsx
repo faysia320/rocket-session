@@ -43,16 +43,10 @@ export function TemplateSelector({ onSelect }: TemplateSelectorProps) {
           </SelectItem>
         ) : null}
         {templates?.map((tpl) => (
-          <SelectItem
-            key={tpl.id}
-            value={tpl.id}
-            className="font-mono text-xs"
-          >
+          <SelectItem key={tpl.id} value={tpl.id} className="font-mono text-xs">
             <span>{tpl.name}</span>
             {tpl.description ? (
-              <span className="ml-2 text-muted-foreground">
-                — {tpl.description}
-              </span>
+              <span className="ml-2 text-muted-foreground">— {tpl.description}</span>
             ) : null}
           </SelectItem>
         ))}

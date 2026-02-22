@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  claudeSocketReducer,
-  initialState,
-  type ClaudeSocketState,
-} from "./claudeSocketReducer";
+import { claudeSocketReducer, initialState, type ClaudeSocketState } from "./claudeSocketReducer";
 import { resetMessageIdCounter } from "./useClaudeSocket.utils";
 
 // 테스트 간 메시지 ID 카운터 리셋

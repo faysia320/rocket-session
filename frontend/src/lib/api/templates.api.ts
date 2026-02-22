@@ -16,8 +16,7 @@ export const templatesApi = {
   get: (id: string) => api.get<TemplateInfo>(`/api/templates/${id}`),
 
   /** 새 템플릿 생성 */
-  create: (data: CreateTemplateRequest) =>
-    api.post<TemplateInfo>("/api/templates/", data),
+  create: (data: CreateTemplateRequest) => api.post<TemplateInfo>("/api/templates/", data),
 
   /** 템플릿 수정 */
   update: (id: string, data: UpdateTemplateRequest) =>
@@ -34,6 +33,5 @@ export const templatesApi = {
   export: (id: string) => api.get<TemplateExport>(`/api/templates/${id}/export`),
 
   /** 템플릿 JSON import */
-  import: (data: TemplateExport) =>
-    api.post<TemplateInfo>("/api/templates/import", data),
+  import: (data: TemplateExport) => api.post<TemplateInfo>("/api/templates/import", data),
 };

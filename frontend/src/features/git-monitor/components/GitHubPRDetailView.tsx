@@ -12,12 +12,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { DiffViewer } from "@/features/files/components/DiffViewer";
@@ -36,9 +31,13 @@ function getStateBadge(state: string) {
     case "OPEN":
       return <Badge className="bg-success/20 text-success border-success/30">Open</Badge>;
     case "CLOSED":
-      return <Badge className="bg-destructive/20 text-destructive border-destructive/30">Closed</Badge>;
+      return (
+        <Badge className="bg-destructive/20 text-destructive border-destructive/30">Closed</Badge>
+      );
     case "MERGED":
-      return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">Merged</Badge>;
+      return (
+        <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">Merged</Badge>
+      );
     default:
       return <Badge variant="secondary">{state}</Badge>;
   }
@@ -114,9 +113,7 @@ export function GitHubPRDetailView({
                 <span className="font-mono text-2xs text-muted-foreground">
                   {pr.branch} → {pr.base}
                 </span>
-                <span className="font-mono text-2xs text-muted-foreground">
-                  by {pr.author}
-                </span>
+                <span className="font-mono text-2xs text-muted-foreground">by {pr.author}</span>
                 {pr.url ? (
                   <a
                     href={pr.url}
@@ -139,11 +136,7 @@ export function GitHubPRDetailView({
               {pr.labels.length > 0 ? (
                 <div className="flex items-center gap-1 mt-1 flex-wrap">
                   {pr.labels.map((label) => (
-                    <Badge
-                      key={label}
-                      variant="outline"
-                      className="font-mono text-2xs"
-                    >
+                    <Badge key={label} variant="outline" className="font-mono text-2xs">
                       {label}
                     </Badge>
                   ))}
@@ -158,17 +151,11 @@ export function GitHubPRDetailView({
               className="flex-1 flex flex-col min-h-0"
             >
               <TabsList className="mx-4 mt-2 shrink-0">
-                <TabsTrigger
-                  value="overview"
-                  className="gap-1.5 font-mono text-xs"
-                >
+                <TabsTrigger value="overview" className="gap-1.5 font-mono text-xs">
                   <MessageSquare className="h-3 w-3" />
                   Overview
                 </TabsTrigger>
-                <TabsTrigger
-                  value="diff"
-                  className="gap-1.5 font-mono text-xs"
-                >
+                <TabsTrigger value="diff" className="gap-1.5 font-mono text-xs">
                   <FileText className="h-3 w-3" />
                   Diff
                 </TabsTrigger>
@@ -184,9 +171,7 @@ export function GitHubPRDetailView({
                     <MarkdownRenderer content={pr.body} />
                   </div>
                 ) : (
-                  <div className="font-mono text-xs text-muted-foreground italic">
-                    설명 없음
-                  </div>
+                  <div className="font-mono text-xs text-muted-foreground italic">설명 없음</div>
                 )}
 
                 {/* 리뷰 */}
@@ -202,9 +187,7 @@ export function GitHubPRDetailView({
                           className="border border-border rounded-md p-3 space-y-1"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-mono text-xs font-medium">
-                              {review.author}
-                            </span>
+                            <span className="font-mono text-xs font-medium">{review.author}</span>
                             {getReviewStateBadge(review.state)}
                           </div>
                           {review.body ? (
@@ -231,9 +214,7 @@ export function GitHubPRDetailView({
                           className="border border-border rounded-md p-3 space-y-1"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-medium">
-                              {comment.author}
-                            </span>
+                            <span className="font-mono text-xs font-medium">{comment.author}</span>
                             {comment.path ? (
                               <span className="font-mono text-2xs text-muted-foreground truncate">
                                 {comment.path}
@@ -251,10 +232,7 @@ export function GitHubPRDetailView({
                 ) : null}
               </TabsContent>
 
-              <TabsContent
-                value="diff"
-                className="flex-1 overflow-auto m-0"
-              >
+              <TabsContent value="diff" className="flex-1 overflow-auto m-0">
                 {diffLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

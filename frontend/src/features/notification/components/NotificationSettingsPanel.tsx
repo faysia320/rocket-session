@@ -53,10 +53,7 @@ export function NotificationSettingsPanel() {
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "h-7 px-2 font-mono text-xs gap-1.5",
-            settings.enabled && "text-primary",
-          )}
+          className={cn("h-7 px-2 font-mono text-xs gap-1.5", settings.enabled && "text-primary")}
           onClick={handleToggleEnabled}
         >
           {settings.enabled ? (
@@ -68,8 +65,8 @@ export function NotificationSettingsPanel() {
         </Button>
       </div>
       <p className="font-mono text-2xs text-muted-foreground/70">
-        CESP 기반 알림 시스템입니다. 카테고리별로 사운드, 데스크톱 알림,
-        토스트를 개별 제어할 수 있습니다.
+        CESP 기반 알림 시스템입니다. 카테고리별로 사운드, 데스크톱 알림, 토스트를 개별 제어할 수
+        있습니다.
       </p>
 
       {settings.enabled ? (
@@ -127,9 +124,7 @@ export function NotificationSettingsPanel() {
                   key={category}
                   className={cn(
                     "rounded-md border p-3 space-y-2 transition-colors",
-                    config.enabled
-                      ? "border-border bg-card"
-                      : "border-transparent bg-muted/30",
+                    config.enabled ? "border-border bg-card" : "border-transparent bg-muted/30",
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -158,15 +153,10 @@ export function NotificationSettingsPanel() {
                   {config.enabled ? (
                     <div className="flex gap-3 pl-6">
                       {CHANNELS.map((ch) => (
-                        <label
-                          key={ch.id}
-                          className="flex items-center gap-1.5 cursor-pointer"
-                        >
+                        <label key={ch.id} className="flex items-center gap-1.5 cursor-pointer">
                           <Checkbox
                             checked={config.channels[ch.id]}
-                            onCheckedChange={() =>
-                              toggleChannel(category, ch.id)
-                            }
+                            onCheckedChange={() => toggleChannel(category, ch.id)}
                           />
                           <span className="font-mono text-2xs text-muted-foreground">
                             {ch.label}

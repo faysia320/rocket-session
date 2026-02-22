@@ -23,11 +23,7 @@ interface PermissionDialogProps {
   onDeny: (permissionId: string) => void;
 }
 
-export function PermissionDialog({
-  request,
-  onAllow,
-  onDeny,
-}: PermissionDialogProps) {
+export function PermissionDialog({ request, onAllow, onDeny }: PermissionDialogProps) {
   const [remaining, setRemaining] = useState(TIMEOUT_SECONDS);
 
   useEffect(() => {

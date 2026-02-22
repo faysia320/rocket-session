@@ -29,11 +29,8 @@ export function useChatNotifications({
     if (prev === status) return;
 
     // 세션 목록 캐시에 상태를 실시간 반영 (사이드바 동기화)
-    queryClient.setQueryData<SessionInfo[]>(
-      sessionKeys.list(),
-      (old) => old?.map((s) =>
-        s.id === sessionId ? { ...s, status } : s,
-      ),
+    queryClient.setQueryData<SessionInfo[]>(sessionKeys.list(), (old) =>
+      old?.map((s) => (s.id === sessionId ? { ...s, status } : s)),
     );
 
     // running → idle: 작업 완료

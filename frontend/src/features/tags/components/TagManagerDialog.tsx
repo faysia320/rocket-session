@@ -14,12 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-  useTags,
-  useCreateTag,
-  useUpdateTag,
-  useDeleteTag,
-} from "../hooks/useTags";
+import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from "../hooks/useTags";
 import type { TagInfo } from "@/types";
 
 const TAG_COLOR_PRESETS = [
@@ -68,17 +63,9 @@ function TagManagerContent() {
         ) : null}
         {tags.map((tag: TagInfo) =>
           editingId === tag.id ? (
-            <EditTagRow
-              key={tag.id}
-              tag={tag}
-              onDone={() => setEditingId(null)}
-            />
+            <EditTagRow key={tag.id} tag={tag} onDone={() => setEditingId(null)} />
           ) : (
-            <TagRow
-              key={tag.id}
-              tag={tag}
-              onEdit={() => setEditingId(tag.id)}
-            />
+            <TagRow key={tag.id} tag={tag} onEdit={() => setEditingId(tag.id)} />
           ),
         )}
       </div>
@@ -134,10 +121,7 @@ function TagRow({ tag, onEdit }: { tag: TagInfo; onEdit: () => void }) {
 
   return (
     <div className="group flex items-center gap-2 rounded-md px-2 py-1.5">
-      <span
-        className="h-3 w-3 shrink-0 rounded-full"
-        style={{ backgroundColor: tag.color }}
-      />
+      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: tag.color }} />
       <span className="flex-1 truncate text-sm">{tag.name}</span>
       <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <Button
@@ -207,13 +191,7 @@ function EditTagRow({ tag, onDone }: { tag: TagInfo; onDone: () => void }) {
       >
         <Check className="h-3.5 w-3.5" />
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-6 w-6 p-0"
-        onClick={onDone}
-        aria-label="취소"
-      >
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onDone} aria-label="취소">
         <X className="h-3.5 w-3.5" />
       </Button>
     </div>
@@ -250,9 +228,7 @@ function ColorPicker({
               }}
               className={cn(
                 "h-6 w-6 rounded-full border-2 transition-transform hover:scale-110",
-                selected === preset.color
-                  ? "border-foreground"
-                  : "border-transparent",
+                selected === preset.color ? "border-foreground" : "border-transparent",
               )}
               style={{ backgroundColor: preset.color }}
               aria-label={preset.name}

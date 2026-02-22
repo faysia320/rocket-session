@@ -19,7 +19,11 @@ export function createSessionCommands(deps: {
       category: "session",
       icon: Square,
       action: () => deps.stopSession(activeSessionId),
-      context: { requiresActiveSession: true, requiresRunning: true, allowedZones: ["session-workspace"] },
+      context: {
+        requiresActiveSession: true,
+        requiresRunning: true,
+        allowedZones: ["session-workspace"],
+      },
       keywords: ["stop", "중지", "정지"],
     },
     {

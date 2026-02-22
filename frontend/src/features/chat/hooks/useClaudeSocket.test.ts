@@ -1,10 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { useClaudeSocket } from "./useClaudeSocket";
 import { MockWebSocket } from "@/test/mockWebSocket";
-import {
-  resetMessageIdCounter,
-  RECONNECT_MAX_ATTEMPTS,
-} from "./useClaudeSocket.utils";
+import { resetMessageIdCounter, RECONNECT_MAX_ATTEMPTS } from "./useClaudeSocket.utils";
 
 // @/config/env mock
 vi.mock("@/config/env", () => ({
@@ -325,16 +322,12 @@ describe("handleMessage: status", () => {
         seq: 1,
       });
     });
-    expect(
-      result.current.messages.find((m) => m.type === "tool_use")?.status,
-    ).toBe("running");
+    expect(result.current.messages.find((m) => m.type === "tool_use")?.status).toBe("running");
 
     act(() => {
       MockWebSocket.latest.simulateMessage({ type: "status", status: "idle" });
     });
-    expect(
-      result.current.messages.find((m) => m.type === "tool_use")?.status,
-    ).toBe("done");
+    expect(result.current.messages.find((m) => m.type === "tool_use")?.status).toBe("done");
   });
 });
 
@@ -438,9 +431,7 @@ describe("handleMessage: assistant_text", () => {
     expect(result.current.messages[2].type).toBe("assistant_text");
     expect((result.current.messages[2] as any).text).toBe("After tool");
     // 서로 다른 ID
-    expect(result.current.messages[0].id).not.toBe(
-      result.current.messages[2].id,
-    );
+    expect(result.current.messages[0].id).not.toBe(result.current.messages[2].id);
   });
 
   it("after tool_result, new assistant_text creates NEW message", () => {
@@ -785,18 +776,14 @@ describe("handleMessage: stopped", () => {
       });
     });
     // 두 tool_use 모두 running
-    expect(
-      result.current.messages.filter((m) => (m as any).status === "running"),
-    ).toHaveLength(2);
+    expect(result.current.messages.filter((m) => (m as any).status === "running")).toHaveLength(2);
 
     act(() => {
       MockWebSocket.latest.simulateMessage({ type: "stopped", seq: 3 });
     });
 
     // 모든 tool_use가 done으로 전환
-    const toolMessages = result.current.messages.filter(
-      (m) => m.type === "tool_use",
-    );
+    const toolMessages = result.current.messages.filter((m) => m.type === "tool_use");
     expect(toolMessages.every((m) => m.status === "done")).toBe(true);
 
     // 시스템 메시지가 추가됨

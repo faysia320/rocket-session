@@ -1,17 +1,9 @@
 import { memo, useState, useCallback, useMemo } from "react";
 import { ChevronRight, Maximize2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DiffViewer } from "./DiffViewer";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { cn, formatTime } from "@/lib/utils";
@@ -74,9 +66,7 @@ export const FilePanel = memo(function FilePanel({
     <div className="flex flex-col overflow-hidden flex-1 min-h-0">
       <div className="flex items-center gap-2 px-3.5 pr-12 py-2.5 border-b border-border">
         <span className="text-sm">{"\u{1F4C1}"}</span>
-        <span className="font-mono text-xs font-semibold text-foreground flex-1">
-          File Changes
-        </span>
+        <span className="font-mono text-xs font-semibold text-foreground flex-1">File Changes</span>
         <Badge variant="secondary" className="font-mono text-2xs">
           {uniqueCount === fileChanges.length
             ? fileChanges.length
@@ -130,11 +120,7 @@ interface MergedFileChangeItemProps {
   onFullView?: (change: FileChange) => void;
 }
 
-function MergedFileChangeItem({
-  sessionId,
-  item,
-  onFullView,
-}: MergedFileChangeItemProps) {
+function MergedFileChangeItem({ sessionId, item, onFullView }: MergedFileChangeItemProps) {
   const [open, setOpen] = useState(false);
   const [diff, setDiff] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -234,9 +220,7 @@ function MergedFileChangeItem({
                 <DiffViewer diff={diff} />
               ) : (
                 <div className="flex items-center justify-center py-4">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    변경사항 없음
-                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">변경사항 없음</span>
                 </div>
               )
             ) : null}

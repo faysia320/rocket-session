@@ -5,11 +5,7 @@
 import { useState } from "react";
 import { Tag, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useTags, useCreateTag } from "../hooks/useTags";
@@ -32,11 +28,7 @@ interface TagPickerProps {
   triggerClassName?: string;
 }
 
-export function TagPicker({
-  selectedTagIds,
-  onToggle,
-  triggerClassName,
-}: TagPickerProps) {
+export function TagPicker({ selectedTagIds, onToggle, triggerClassName }: TagPickerProps) {
   const [open, setOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
@@ -47,8 +39,7 @@ export function TagPicker({
     const name = newTagName.trim();
     if (!name) return;
 
-    const randomColor =
-      TAG_COLOR_PRESETS[Math.floor(Math.random() * TAG_COLOR_PRESETS.length)];
+    const randomColor = TAG_COLOR_PRESETS[Math.floor(Math.random() * TAG_COLOR_PRESETS.length)];
 
     try {
       const newTag = await createTag.mutateAsync({
@@ -79,9 +70,7 @@ export function TagPicker({
       <PopoverContent className="w-56 p-2" align="start">
         <div className="space-y-1">
           {tags.length === 0 && !showCreate ? (
-            <p className="px-2 py-1.5 text-xs text-muted-foreground">
-              태그가 없습니다
-            </p>
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">태그가 없습니다</p>
           ) : null}
           {tags.map((tag: TagInfo) => {
             const isSelected = selectedTagIds.includes(tag.id);
@@ -97,9 +86,7 @@ export function TagPicker({
                   style={{ backgroundColor: tag.color }}
                 />
                 <span className="flex-1 truncate text-left">{tag.name}</span>
-                {isSelected ? (
-                  <Check className="h-3.5 w-3.5 text-primary" />
-                ) : null}
+                {isSelected ? <Check className="h-3.5 w-3.5 text-primary" /> : null}
               </button>
             );
           })}

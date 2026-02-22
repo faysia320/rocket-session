@@ -13,12 +13,8 @@ interface TodoWriteMessageProps {
   message: ToolUseMsg;
 }
 
-export const TodoWriteMessage = memo(function TodoWriteMessage({
-  message,
-}: TodoWriteMessageProps) {
-  const todos = Array.isArray(message.input?.todos)
-    ? (message.input.todos as TodoItem[])
-    : [];
+export const TodoWriteMessage = memo(function TodoWriteMessage({ message }: TodoWriteMessageProps) {
+  const todos = Array.isArray(message.input?.todos) ? (message.input.todos as TodoItem[]) : [];
 
   const completedCount = todos.filter((t) => t.status === "completed").length;
   const totalCount = todos.length;
@@ -28,9 +24,7 @@ export const TodoWriteMessage = memo(function TodoWriteMessage({
       <div className="px-3 py-2.5 bg-secondary border border-border rounded-sm border-l-[3px] border-l-primary/60">
         <div className="flex items-center gap-2 mb-2">
           <ListTodo className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span className="font-mono text-xs font-semibold text-foreground">
-            Todo
-          </span>
+          <span className="font-mono text-xs font-semibold text-foreground">Todo</span>
           {totalCount > 0 ? (
             <span className="font-mono text-2xs text-muted-foreground ml-auto">
               {completedCount}/{totalCount}
@@ -70,9 +64,7 @@ function TodoItemRow({ todo }: { todo: TodoItem }) {
               : "text-muted-foreground",
         )}
       >
-        {todo.status === "in_progress"
-          ? (todo.activeForm ?? todo.content)
-          : todo.content}
+        {todo.status === "in_progress" ? (todo.activeForm ?? todo.content) : todo.content}
       </span>
     </div>
   );
@@ -80,12 +72,7 @@ function TodoItemRow({ todo }: { todo: TodoItem }) {
 
 function TodoStatusIcon({ status }: { status: TodoItem["status"] }) {
   if (status === "completed") {
-    return (
-      <CheckCircle2
-        className="h-3.5 w-3.5 text-success shrink-0 mt-0.5"
-        aria-label="완료"
-      />
-    );
+    return <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" aria-label="완료" />;
   }
   if (status === "in_progress") {
     return (
@@ -96,9 +83,6 @@ function TodoStatusIcon({ status }: { status: TodoItem["status"] }) {
     );
   }
   return (
-    <Circle
-      className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 mt-0.5"
-      aria-label="대기"
-    />
+    <Circle className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 mt-0.5" aria-label="대기" />
   );
 }

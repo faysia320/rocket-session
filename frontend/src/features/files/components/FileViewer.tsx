@@ -1,11 +1,7 @@
 import { useState, useEffect } from "react";
 import { FileCode, Loader2, ArrowLeftRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -52,26 +48,20 @@ export function FileViewer({
     setDiff(null);
 
     // 두 요청을 병렬로 수행
-    const fetchContent = sessionsApi
-      .fileContent(sessionId, filePath)
-      .catch(() => null);
-    const fetchDiff = sessionsApi
-      .fileDiff(sessionId, filePath)
-      .catch(() => null);
+    const fetchContent = sessionsApi.fileContent(sessionId, filePath).catch(() => null);
+    const fetchDiff = sessionsApi.fileDiff(sessionId, filePath).catch(() => null);
 
-    Promise.all([fetchContent, fetchDiff]).then(
-      ([contentResult, diffResult]) => {
-        if (contentResult === null && diffResult === null) {
-          setError("파일 내용과 diff를 모두 가져올 수 없습니다.");
-        } else {
-          setContent(contentResult);
-          setDiff(diffResult);
-          // diff가 있으면 diff 탭, 없으면 content 탭
-          setActiveTab(diffResult ? "diff" : "content");
-        }
-        setLoading(false);
-      },
-    );
+    Promise.all([fetchContent, fetchDiff]).then(([contentResult, diffResult]) => {
+      if (contentResult === null && diffResult === null) {
+        setError("파일 내용과 diff를 모두 가져올 수 없습니다.");
+      } else {
+        setContent(contentResult);
+        setDiff(diffResult);
+        // diff가 있으면 diff 탭, 없으면 content 탭
+        setActiveTab(diffResult ? "diff" : "content");
+      }
+      setLoading(false);
+    });
   }, [sessionId, filePath, open]);
 
   const fileName = filePath.split(/[/\\]/).pop() ?? filePath;
@@ -158,9 +148,7 @@ export function FileViewer({
                 <div className="font-mono text-xs text-destructive mb-1">
                   파일을 불러올 수 없습니다
                 </div>
-                <div className="font-mono text-2xs text-muted-foreground">
-                  {error}
-                </div>
+                <div className="font-mono text-2xs text-muted-foreground">{error}</div>
               </div>
             ) : activeTab === "diff" ? (
               diff ? (

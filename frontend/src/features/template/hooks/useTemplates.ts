@@ -28,9 +28,7 @@ export function useCreateTemplate() {
       toast.success("템플릿이 생성되었습니다");
     },
     onError: (err) => {
-      toast.error(
-        `템플릿 생성 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      toast.error(`템플릿 생성 실패: ${err instanceof Error ? err.message : String(err)}`);
     },
   });
 }
@@ -46,9 +44,7 @@ export function useUpdateTemplate() {
       toast.success("템플릿이 수정되었습니다");
     },
     onError: (err) => {
-      toast.error(
-        `템플릿 수정 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      toast.error(`템플릿 수정 실패: ${err instanceof Error ? err.message : String(err)}`);
     },
   });
 }
@@ -63,9 +59,7 @@ export function useDeleteTemplate() {
       toast.success("템플릿이 삭제되었습니다");
     },
     onError: (err) => {
-      toast.error(
-        `템플릿 삭제 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      toast.error(`템플릿 삭제 실패: ${err instanceof Error ? err.message : String(err)}`);
     },
   });
 }
@@ -86,9 +80,7 @@ export function useCreateTemplateFromSession() {
       toast.success("세션 설정이 템플릿으로 저장되었습니다");
     },
     onError: (err) => {
-      toast.error(
-        `템플릿 저장 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      toast.error(`템플릿 저장 실패: ${err instanceof Error ? err.message : String(err)}`);
     },
   });
 }
@@ -103,9 +95,7 @@ export function useImportTemplate() {
       toast.success("템플릿을 불러왔습니다");
     },
     onError: (err) => {
-      toast.error(
-        `템플릿 불러오기 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      toast.error(`템플릿 불러오기 실패: ${err instanceof Error ? err.message : String(err)}`);
     },
   });
 }

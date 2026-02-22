@@ -38,8 +38,7 @@ export const useSessionStore = create<SessionState>()(
       setActiveSessionId: (id) => set({ activeSessionId: id }),
       setFocusedSessionId: (id) => set({ focusedSessionId: id }),
       setViewMode: (mode) => set({ viewMode: mode }),
-      toggleSidebar: () =>
-        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarMobileOpen: (open) => set({ sidebarMobileOpen: open }),
       addGitMonitorPath: (path) =>
         set((s) => {
@@ -59,8 +58,7 @@ export const useSessionStore = create<SessionState>()(
       pendingPromptSessionId: null,
       setPendingPrompt: (prompt, sessionId) =>
         set({ pendingPrompt: prompt, pendingPromptSessionId: sessionId }),
-      clearPendingPrompt: () =>
-        set({ pendingPrompt: null, pendingPromptSessionId: null }),
+      clearPendingPrompt: () => set({ pendingPrompt: null, pendingPromptSessionId: null }),
     }),
     {
       name: "rocket-session-store",
@@ -77,7 +75,7 @@ export const useSessionStore = create<SessionState>()(
         }
         if (version === 1) {
           // v1→v2: 라우트 기반으로 전환된 뷰 boolean 제거
-          const { dashboardView, costView, ...rest } = state;
+          const { dashboardView: _dashboardView, costView: _costView, ...rest } = state;
           return rest;
         }
         if (version === 2) {

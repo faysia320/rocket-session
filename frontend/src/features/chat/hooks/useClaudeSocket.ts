@@ -10,11 +10,7 @@ import type {
   AskUserQuestionItem,
   MessageUpdate,
 } from "@/types";
-import {
-  getWsUrl,
-  getBackoffDelay,
-  RECONNECT_MAX_ATTEMPTS,
-} from "./useClaudeSocket.utils";
+import { getWsUrl, getBackoffDelay, RECONNECT_MAX_ATTEMPTS } from "./useClaudeSocket.utils";
 import {
   claudeSocketReducer,
   initialState,
@@ -66,14 +62,19 @@ export function useClaudeSocket(sessionId: string) {
           session: data.session as SessionState,
           isRunning: Boolean(data.is_running),
           isReconnect: Boolean(data.is_reconnect),
-          history: (!data.is_reconnect && data.history)
-            ? data.history as HistoryItem[]
-            : null,
+          history: !data.is_reconnect && data.history ? (data.history as HistoryItem[]) : null,
           latestSeq: typeof data.latest_seq === "number" ? data.latest_seq : undefined,
           currentTurnEvents: null, // current_turn_events는 아래에서 별도 처리
-          pendingInteractions: (!data.is_reconnect && data.pending_interactions)
-            ? data.pending_interactions as { permission?: { permission_id: string; tool_name: string; tool_input: Record<string, unknown> } }
-            : null,
+          pendingInteractions:
+            !data.is_reconnect && data.pending_interactions
+              ? (data.pending_interactions as {
+                  permission?: {
+                    permission_id: string;
+                    tool_name: string;
+                    tool_input: Record<string, unknown>;
+                  };
+                })
+              : null,
         };
         dispatch(action);
 
@@ -86,7 +87,12 @@ export function useClaudeSocket(sessionId: string) {
             // permission_response: pending_interactions가 권위적 소스이므로 재생 건너뜀
             // status: SESSION_STATE의 is_running이 권위적 소스이므로 재생 건너뜀
             //   (과거의 "status: running" 이벤트가 재생되어 idle 세션이 running으로 보이는 버그 방지)
-            if (event.type === "user_message" || event.type === "permission_response" || event.type === "status") continue;
+            if (
+              event.type === "user_message" ||
+              event.type === "permission_response" ||
+              event.type === "status"
+            )
+              continue;
             // assistant_text: RAF 배치를 우회하여 직접 dispatch (재생은 동기적으로 빠르게
             // 발생하므로, RAF 경유 시 마지막 이벤트만 반영될 수 있음)
             if (event.type === "assistant_text") {
@@ -99,10 +105,7 @@ export function useClaudeSocket(sessionId: string) {
         }
 
         // latest_seq 업데이트는 모든 이벤트 재생 후 (seq 중복 방지 메커니즘 회피)
-        if (
-          typeof data.latest_seq === "number" &&
-          data.latest_seq > lastSeqRef.current
-        ) {
+        if (typeof data.latest_seq === "number" && data.latest_seq > lastSeqRef.current) {
           lastSeqRef.current = data.latest_seq;
         }
         break;
@@ -409,7 +412,7 @@ export function useClaudeSocket(sessionId: string) {
         );
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- messagesRef로 안정적 참조, 함수 재생성 방지
+
     [],
   );
 

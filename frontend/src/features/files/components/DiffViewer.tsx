@@ -139,9 +139,7 @@ export const DiffViewer = memo(function DiffViewer({ diff }: DiffViewerProps) {
   if (!diff.trim()) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="font-mono text-xs text-muted-foreground">
-          변경사항이 없습니다
-        </div>
+        <div className="font-mono text-xs text-muted-foreground">변경사항이 없습니다</div>
       </div>
     );
   }

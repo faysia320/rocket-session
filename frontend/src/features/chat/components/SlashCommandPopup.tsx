@@ -32,8 +32,7 @@ export const SlashCommandPopup = memo(function SlashCommandPopup({
         <ScrollArea className="max-h-[240px]" viewportClassName="max-h-[240px]">
           <div ref={listRef} role="listbox" className="p-1">
             {commands.map((cmd, idx) => {
-              const Icon =
-                cmd.icon ?? (cmd.source === "skill" ? Sparkles : Terminal);
+              const Icon = cmd.icon ?? (cmd.source === "skill" ? Sparkles : Terminal);
               return (
                 <div
                   key={cmd.id}
@@ -42,9 +41,7 @@ export const SlashCommandPopup = memo(function SlashCommandPopup({
                   data-active={idx === activeIndex}
                   className={cn(
                     "flex items-center gap-2.5 px-2.5 py-2 rounded-sm cursor-pointer transition-colors",
-                    idx === activeIndex
-                      ? "bg-accent text-accent-foreground"
-                      : "hover:bg-muted",
+                    idx === activeIndex ? "bg-accent text-accent-foreground" : "hover:bg-muted",
                   )}
                   onClick={() => onSelect(cmd)}
                   onMouseEnter={() => onHover(idx)}
@@ -52,9 +49,7 @@ export const SlashCommandPopup = memo(function SlashCommandPopup({
                   <Icon
                     className={cn(
                       "h-3.5 w-3.5 shrink-0",
-                      idx === activeIndex
-                        ? "text-accent-foreground/70"
-                        : "text-muted-foreground",
+                      idx === activeIndex ? "text-accent-foreground/70" : "text-muted-foreground",
                     )}
                   />
                   <div className="flex-1 min-w-0">
@@ -76,9 +71,7 @@ export const SlashCommandPopup = memo(function SlashCommandPopup({
                     <div
                       className={cn(
                         "font-mono text-2xs truncate",
-                        idx === activeIndex
-                          ? "text-accent-foreground/70"
-                          : "text-muted-foreground",
+                        idx === activeIndex ? "text-accent-foreground/70" : "text-muted-foreground",
                       )}
                     >
                       {cmd.description}

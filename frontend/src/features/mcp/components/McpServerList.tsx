@@ -15,12 +15,7 @@ const TRANSPORT_ICONS: Record<McpTransportType, typeof Terminal> = {
   "streamable-http": Server,
 };
 
-export function McpServerList({
-  servers,
-  onEdit,
-  onDelete,
-  onToggleEnabled,
-}: McpServerListProps) {
+export function McpServerList({ servers, onEdit, onDelete, onToggleEnabled }: McpServerListProps) {
   if (servers.length === 0) {
     return (
       <p className="font-mono text-xs text-muted-foreground/60 text-center py-4">
@@ -56,14 +51,12 @@ export function McpServerList({
               <p className="font-mono text-2xs text-muted-foreground/70 truncate">
                 {server.transport_type === "stdio"
                   ? `${server.command ?? ""} ${server.args?.join(" ") ?? ""}`
-                  : server.url ?? ""}
+                  : (server.url ?? "")}
               </p>
             </div>
             <Switch
               checked={server.enabled}
-              onCheckedChange={(checked) =>
-                onToggleEnabled(server.id, checked)
-              }
+              onCheckedChange={(checked) => onToggleEnabled(server.id, checked)}
               className="shrink-0"
               aria-label={`${server.name} 활성화 토글`}
             />

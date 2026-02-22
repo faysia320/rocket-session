@@ -1,9 +1,5 @@
 import { memo, useMemo } from "react";
-import {
-  FolderOpen,
-  GitBranch,
-  RefreshCw,
-} from "lucide-react";
+import { FolderOpen, GitBranch, RefreshCw } from "lucide-react";
 import { GitDropdownMenu } from "./GitDropdownMenu";
 import { SessionDropdownMenu } from "./SessionDropdownMenu";
 import { SessionSettings } from "@/features/session/components/SessionSettings";
@@ -18,11 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { FileChange, GitInfo, ToolUseMsg } from "@/types";
 import type { ReconnectState } from "../hooks/useClaudeSocket";
@@ -104,14 +96,16 @@ export const ChatHeader = memo(function ChatHeader({
                     : "bg-success shadow-[0_0_8px_hsl(var(--success))]",
             )}
           />
-          <span className={cn(
-            "font-mono text-xs",
-            isEffectivelyRunning && connected
-              ? "text-primary font-semibold"
-              : status === "error" && connected
-                ? "text-destructive font-semibold"
-                : "text-muted-foreground",
-          )}>
+          <span
+            className={cn(
+              "font-mono text-xs",
+              isEffectivelyRunning && connected
+                ? "text-primary font-semibold"
+                : status === "error" && connected
+                  ? "text-destructive font-semibold"
+                  : "text-muted-foreground",
+            )}
+          >
             {!connected
               ? reconnectState?.status === "reconnecting"
                 ? `Reconnecting (${reconnectState.attempt}/${reconnectState.maxAttempts})`
@@ -182,18 +176,19 @@ export const ChatHeader = memo(function ChatHeader({
           connected={connected}
           onSendPrompt={onSendPrompt}
           onRemoveWorktree={onRemoveWorktree}
-          onConvertToWorktree={onConvertToWorktree}
         />
 
         <ButtonGroup>
           <SessionDropdownMenu
             sessionId={sessionId}
             isArchived={isArchived}
+            gitInfo={gitInfo}
             onOpenSettings={() => onSettingsOpenChange(true)}
             onArchive={onArchive}
             onUnarchive={onUnarchive}
             onDelete={onDelete}
             onFork={onFork}
+            onConvertToWorktree={onConvertToWorktree}
           />
           <Sheet open={filesOpen} onOpenChange={onFilesOpenChange} modal={!portalContainer}>
             <Tooltip>

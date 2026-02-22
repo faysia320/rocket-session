@@ -31,9 +31,7 @@ export const SessionRankingTable = memo(function SessionRankingTable({
   if (data.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card p-4">
-        <h3 className="font-mono text-xs font-medium text-foreground mb-3">
-          세션별 토큰 랭킹
-        </h3>
+        <h3 className="font-mono text-xs font-medium text-foreground mb-3">세션별 토큰 랭킹</h3>
         <div className="flex items-center justify-center h-[120px] text-muted-foreground text-xs font-mono">
           데이터가 없습니다
         </div>
@@ -43,9 +41,7 @@ export const SessionRankingTable = memo(function SessionRankingTable({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 overflow-hidden">
-      <h3 className="font-mono text-xs font-medium text-foreground mb-3">
-        세션별 토큰 랭킹
-      </h3>
+      <h3 className="font-mono text-xs font-medium text-foreground mb-3">세션별 토큰 랭킹</h3>
       <div className="overflow-auto max-h-[280px]">
         <table className="w-full text-left">
           <thead>
@@ -53,9 +49,7 @@ export const SessionRankingTable = memo(function SessionRankingTable({
               <th className="pb-2 pr-2">#</th>
               <th className="pb-2 pr-2">세션</th>
               <th className="pb-2 pr-2 text-right">토큰</th>
-              <th className="pb-2 pr-2 text-right hidden sm:table-cell">
-                메시지
-              </th>
+              <th className="pb-2 pr-2 text-right hidden sm:table-cell">메시지</th>
               <th className="pb-2 text-right hidden sm:table-cell">모델</th>
             </tr>
           </thead>
@@ -66,9 +60,7 @@ export const SessionRankingTable = memo(function SessionRankingTable({
                 className="border-b border-border/50 hover:bg-muted/30 cursor-pointer transition-colors"
                 onClick={() => handleClick(row.session_id)}
               >
-                <td className="py-1.5 pr-2 font-mono text-2xs text-muted-foreground">
-                  {i + 1}
-                </td>
+                <td className="py-1.5 pr-2 font-mono text-2xs text-muted-foreground">{i + 1}</td>
                 <td className="py-1.5 pr-2">
                   <div className="font-mono text-xs text-foreground truncate max-w-[180px]">
                     {row.session_name ?? truncatePath(row.work_dir, 30)}

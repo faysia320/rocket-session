@@ -9,7 +9,8 @@ describe("cn", () => {
   });
 
   it("조건부 클래스를 처리합니다", () => {
-    const result = cn("base", false && "hidden", "visible");
+    const hide = false;
+    const result = cn("base", hide && "hidden", "visible");
     expect(result).toBe("base visible");
   });
 

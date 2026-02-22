@@ -16,11 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,9 +75,7 @@ export const Sidebar = memo(function Sidebar({
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        (s) =>
-          (s.name || s.id).toLowerCase().includes(q) ||
-          s.work_dir.toLowerCase().includes(q),
+        (s) => (s.name || s.id).toLowerCase().includes(q) || s.work_dir.toLowerCase().includes(q),
       );
     }
     if (statusFilter === "all") {
@@ -99,8 +93,7 @@ export const Sidebar = memo(function Sidebar({
         isMobileOverlay
           ? "w-[280px]"
           : "border-r border-sidebar-border transition-[width,min-width] duration-200 ease-in-out",
-        !isMobileOverlay &&
-          (collapsed ? "w-16 min-w-16" : "w-[260px] min-w-[260px]"),
+        !isMobileOverlay && (collapsed ? "w-16 min-w-16" : "w-[260px] min-w-[260px]"),
       )}
     >
       {/* New Session */}
@@ -178,9 +171,7 @@ export const Sidebar = memo(function Sidebar({
           </span>
           <Badge variant="secondary" className="font-mono text-2xs">
             {filteredSessions.length}
-            {filteredSessions.length !== sessions.length
-              ? `/${sessions.length}`
-              : ""}
+            {filteredSessions.length !== sessions.length ? `/${sessions.length}` : ""}
           </Badge>
         </div>
       )}
@@ -221,7 +212,11 @@ export const Sidebar = memo(function Sidebar({
                 )}
                 onClick={() => setStatusFilter(f)}
               >
-                {{ all: "All", running: "Run", idle: "Idle", error: "Err", archived: "Archived" }[f]}
+                {
+                  { all: "All", running: "Run", idle: "Idle", error: "Err", archived: "Archived" }[
+                    f
+                  ]
+                }
               </button>
             ))}
           </div>
@@ -229,9 +224,7 @@ export const Sidebar = memo(function Sidebar({
       )}
 
       {/* Sessions list */}
-      <ScrollArea
-        className={cn("flex-1 min-h-0", collapsed ? "px-1 pt-3" : "px-2")}
-      >
+      <ScrollArea className={cn("flex-1 min-h-0", collapsed ? "px-1 pt-3" : "px-2")}>
         {isLoading ? (
           <div className="px-2 pt-2 space-y-2">
             {[1, 2, 3].map((i) => (
@@ -264,8 +257,7 @@ export const Sidebar = memo(function Sidebar({
                   <button
                     className={cn(
                       "w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-colors border border-transparent",
-                      s.id === activeSessionId &&
-                        "bg-muted border-[hsl(var(--border-bright))]",
+                      s.id === activeSessionId && "bg-muted border-[hsl(var(--border-bright))]",
                     )}
                     onClick={() => onSelect(s.id)}
                     aria-label={`세션 ${s.id}`}
@@ -307,12 +299,7 @@ export const Sidebar = memo(function Sidebar({
 
       {/* Footer: 뷰 모드 스위처 + 사이드바 토글 */}
       {isMobileOverlay ? null : (
-        <div
-          className={cn(
-            "py-3 border-t border-border",
-            collapsed ? "px-2" : "px-4",
-          )}
-        >
+        <div className={cn("py-3 border-t border-border", collapsed ? "px-2" : "px-4")}>
           <div
             className={cn(
               "flex items-center",
@@ -334,9 +321,7 @@ export const Sidebar = memo(function Sidebar({
                   <LayoutGrid className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side={collapsed ? "right" : "top"}>
-                Dashboard
-              </TooltipContent>
+              <TooltipContent side={collapsed ? "right" : "top"}>Dashboard</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -358,9 +343,7 @@ export const Sidebar = memo(function Sidebar({
                   <MessageSquare className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side={collapsed ? "right" : "top"}>
-                Single
-              </TooltipContent>
+              <TooltipContent side={collapsed ? "right" : "top"}>Single</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -382,9 +365,7 @@ export const Sidebar = memo(function Sidebar({
                   <Columns2 className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side={collapsed ? "right" : "top"}>
-                Split
-              </TooltipContent>
+              <TooltipContent side={collapsed ? "right" : "top"}>Split</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -470,9 +451,7 @@ const SessionItem = memo(function SessionItem({
             "w-1.5 h-1.5 rounded-full shrink-0",
             s.status === "running" && "bg-success",
             s.status === "error" && "bg-destructive",
-            s.status !== "running" &&
-              s.status !== "error" &&
-              "bg-muted-foreground",
+            s.status !== "running" && s.status !== "error" && "bg-muted-foreground",
           )}
         />
         {editing ? (
@@ -524,24 +503,19 @@ const SessionItem = memo(function SessionItem({
         >
           {"×"}
         </Button>
-        <AlertDialog
-          open={deleteConfirmOpen}
-          onOpenChange={setDeleteConfirmOpen}
-        >
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
           <AlertDialogContent onClick={(e) => e.stopPropagation()}>
             <AlertDialogHeader>
               <AlertDialogTitle className="font-mono text-sm">
                 세션을 삭제하시겠습니까?
               </AlertDialogTitle>
               <AlertDialogDescription className="font-mono text-xs">
-                "{s.name || s.id}" 세션의 모든 대화 기록과 파일 변경 이력이
-                영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+                "{s.name || s.id}" 세션의 모든 대화 기록과 파일 변경 이력이 영구적으로 삭제됩니다.
+                이 작업은 되돌릴 수 없습니다.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="font-mono text-xs">
-                취소
-              </AlertDialogCancel>
+              <AlertDialogCancel className="font-mono text-xs">취소</AlertDialogCancel>
               <AlertDialogAction
                 className="font-mono text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={() => onDelete(s.id)}
@@ -553,12 +527,8 @@ const SessionItem = memo(function SessionItem({
         </AlertDialog>
       </div>
       <div className="flex items-center gap-1 mb-0.5">
-        <span className="font-mono text-2xs text-muted-foreground">
-          {s.message_count} msgs
-        </span>
-        <span className="font-mono text-2xs text-muted-foreground/70">
-          {"·"}
-        </span>
+        <span className="font-mono text-2xs text-muted-foreground">{s.message_count} msgs</span>
+        <span className="font-mono text-2xs text-muted-foreground/70">{"·"}</span>
         <span className="font-mono text-2xs text-muted-foreground">
           {s.file_changes_count} changes
         </span>

@@ -54,15 +54,10 @@ export function GitCommitItem({ repoPath, commit }: GitCommitItemProps) {
             expanded && "rotate-90",
           )}
         />
-        <Badge
-          variant="secondary"
-          className="font-mono text-2xs px-1.5 py-0 shrink-0"
-        >
+        <Badge variant="secondary" className="font-mono text-2xs px-1.5 py-0 shrink-0">
           {commit.hash}
         </Badge>
-        <span className="font-mono text-xs text-foreground truncate flex-1">
-          {commit.message}
-        </span>
+        <span className="font-mono text-xs text-foreground truncate flex-1">{commit.message}</span>
         <span className="flex items-center gap-1 text-muted-foreground shrink-0">
           <User className="h-2.5 w-2.5" />
           <span className="font-mono text-2xs">{commit.author_name}</span>

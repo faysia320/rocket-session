@@ -1,9 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import type {
-  NotificationSettings,
-  NotificationCategory,
-  NotificationChannel,
-} from "@/types";
+import type { NotificationSettings, NotificationCategory, NotificationChannel } from "@/types";
 import { DEFAULT_NOTIFICATION_SETTINGS } from "@/types";
 
 const STORAGE_KEY = "notification-settings";

@@ -26,10 +26,7 @@ import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { useSessionMutations } from "@/features/session/hooks/useSessions";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
-import {
-  computeEstimateSize,
-  computeMessageGaps,
-} from "../utils/chatComputations";
+import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
 
 interface ChatPanelProps {
   sessionId: string;
@@ -78,17 +75,17 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const isSplitView = useSessionStore((s) => s.viewMode === "split");
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
   const pendingPrompt = useSessionStore((s) => s.pendingPrompt);
-  const pendingPromptSessionId = useSessionStore(
-    (s) => s.pendingPromptSessionId,
-  );
+  const pendingPromptSessionId = useSessionStore((s) => s.pendingPromptSessionId);
   const clearPendingPrompt = useSessionStore((s) => s.clearPendingPrompt);
   const queryClient = useQueryClient();
   const { deleteSession, archiveSession, unarchiveSession } = useSessionMutations();
 
   const handleDelete = useCallback(() => deleteSession(sessionId), [deleteSession, sessionId]);
   const handleArchive = useCallback(() => archiveSession(sessionId), [archiveSession, sessionId]);
-  const handleUnarchive = useCallback(() => unarchiveSession(sessionId), [unarchiveSession, sessionId]);
-
+  const handleUnarchive = useCallback(
+    () => unarchiveSession(sessionId),
+    [unarchiveSession, sessionId],
+  );
 
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? "");
@@ -148,8 +145,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       scrollRafRef.current = 0;
       const el = scrollContainerRef.current;
       if (!el) return;
-      isNearBottom.current =
-        el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+      isNearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
     });
   }, []);
 
@@ -186,25 +182,24 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   useEffect(() => {
     if (messagesLength === 0) return;
     const lastMsg = messages[messagesLength - 1];
-    if (
-      lastMsg.type === "result" &&
-      lastMsg.mode === "plan" &&
-      !lastMsg.planExecuted
-    ) {
+    if (lastMsg.type === "result" && lastMsg.mode === "plan" && !lastMsg.planExecuted) {
       requestAnimationFrame(() => {
         virtualizer.scrollToIndex(messagesLength - 1, { align: "start" });
       });
     }
   }, [messagesLength, messages, virtualizer]);
 
-  const {
-    cycleMode, handleExecutePlan, handleContinuePlan,
-    handleDismissPlan, handleRevise,
-  } = usePlanActions({ sessionId, setMode, sendPrompt, updateMessage, updateSessionMode });
+  const { cycleMode, handleExecutePlan, handleContinuePlan, handleDismissPlan, handleRevise } =
+    usePlanActions({ sessionId, setMode, sendPrompt, updateMessage, updateSessionMode });
 
   const {
-    searchOpen, searchQuery, searchMatchIndex, searchMatches,
-    setSearchQuery, setSearchMatchIndex, handleToggleSearch,
+    searchOpen,
+    searchQuery,
+    searchMatchIndex,
+    searchMatches,
+    setSearchQuery,
+    setSearchMatchIndex,
+    handleToggleSearch,
   } = useChatSearch({ messages, virtualizer, isSplitView, focusedSessionId, sessionId });
 
   // Plan 승인 대기 상태 감지
@@ -229,8 +224,22 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   }, [messageGaps]);
 
   // 커맨드 팔레트 이벤트 리스너 — ref로 최신 값 참조하여 리스너 재등록 방지
-  const cmdPaletteRef = useRef({ clearMessages, handleToggleSearch, cycleMode, sendPrompt, mode, sessionId });
-  cmdPaletteRef.current = { clearMessages, handleToggleSearch, cycleMode, sendPrompt, mode, sessionId };
+  const cmdPaletteRef = useRef({
+    clearMessages,
+    handleToggleSearch,
+    cycleMode,
+    sendPrompt,
+    mode,
+    sessionId,
+  });
+  cmdPaletteRef.current = {
+    clearMessages,
+    handleToggleSearch,
+    cycleMode,
+    sendPrompt,
+    mode,
+    sessionId,
+  };
 
   useEffect(() => {
     const forThis = (e: Event, fn: () => void) => {
@@ -245,12 +254,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         forThis(e, () => cmdPaletteRef.current.clearMessages()),
       "command-palette:toggle-search": (e) =>
         forThis(e, () => cmdPaletteRef.current.handleToggleSearch()),
-      "command-palette:toggle-mode": (e) =>
-        forThis(e, () => cmdPaletteRef.current.cycleMode()),
-      "command-palette:open-settings": (e) =>
-        forThis(e, () => setSettingsOpen(true)),
-      "command-palette:toggle-files": (e) =>
-        forThis(e, () => setFilesOpen((p) => !p)),
+      "command-palette:toggle-mode": (e) => forThis(e, () => cmdPaletteRef.current.cycleMode()),
+      "command-palette:open-settings": (e) => forThis(e, () => setSettingsOpen(true)),
+      "command-palette:toggle-files": (e) => forThis(e, () => setFilesOpen((p) => !p)),
       "command-palette:send-slash": (e) =>
         forThis(e, () => {
           const data = (e as CustomEvent).detail?.data;
@@ -341,12 +347,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         if (msgs[i].type === "user_message") {
           const userMsg = msgs[i] as UserMsg;
           const msg = userMsg.message as Record<string, string> | undefined;
-          const text =
-            msg?.content ||
-            msg?.prompt ||
-            userMsg.content ||
-            userMsg.prompt ||
-            "";
+          const text = msg?.content || msg?.prompt || userMsg.content || userMsg.prompt || "";
           if (text) sendPrompt(text, { mode });
           break;
         }
@@ -365,32 +366,33 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       toast.success("워크트리가 삭제되었습니다.");
       navigate({ to: "/" });
     } catch (err) {
-      toast.error(
-        `워크트리 삭제 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      toast.error(`워크트리 삭제 실패: ${err instanceof Error ? err.message : String(err)}`);
     }
   }, [workDir, sessionId, queryClient, navigate]);
 
-  const handleConvertToWorktree = useCallback(async (branch: string) => {
-    if (!workDir) return;
-    try {
-      await sessionsApi.convertToWorktree(sessionId, { branch });
-      queryClient.invalidateQueries({ queryKey: ["git-info", workDir] });
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      toast.success(`워크트리로 전환되었습니다. 브랜치: ${branch}`);
-      reconnect();
-    } catch (err) {
-      toast.error(
-        `워크트리 전환 실패: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }, [workDir, sessionId, queryClient, reconnect]);
+  const handleConvertToWorktree = useCallback(
+    async (branch: string) => {
+      if (!workDir) return;
+      try {
+        await sessionsApi.convertToWorktree(sessionId, { branch });
+        queryClient.invalidateQueries({ queryKey: ["git-info", workDir] });
+        queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        toast.success(`워크트리로 전환되었습니다. 브랜치: ${branch}`);
+        reconnect();
+      } catch (err) {
+        toast.error(`워크트리 전환 실패: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+    [workDir, sessionId, queryClient, reconnect],
+  );
 
   const handleFork = useCallback(async () => {
     try {
       const forked = await sessionsApi.fork(sessionId);
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      toast.success("세션이 포크되었습니다. 이전 대화 기록은 참조용입니다. Claude는 새 대화로 시작합니다.");
+      toast.success(
+        "세션이 포크되었습니다. 이전 대화 기록은 참조용입니다. Claude는 새 대화로 시작합니다.",
+      );
       navigate({ to: "/session/$sessionId", params: { sessionId: forked.id } });
     } catch {
       toast.error("세션 포크에 실패했습니다");
@@ -577,7 +579,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           }}
         />
       ) : null}
-
     </div>
   );
 }

@@ -37,13 +37,13 @@ export function useUpdateTag() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateTagRequest }) =>
-      tagsApi.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateTagRequest }) => tagsApi.update(id, data),
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: tagKeys.list() });
       const previous = queryClient.getQueryData<TagInfo[]>(tagKeys.list());
-      queryClient.setQueryData<TagInfo[]>(tagKeys.list(), (old) =>
-        old?.map((t) => (t.id === id ? { ...t, ...data } : t)) ?? [],
+      queryClient.setQueryData<TagInfo[]>(
+        tagKeys.list(),
+        (old) => old?.map((t) => (t.id === id ? { ...t, ...data } : t)) ?? [],
       );
       return { previous };
     },
@@ -93,13 +93,8 @@ export function useAddTagsToSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      sessionId,
-      tagIds,
-    }: {
-      sessionId: string;
-      tagIds: string[];
-    }) => tagsApi.addToSession(sessionId, tagIds),
+    mutationFn: ({ sessionId, tagIds }: { sessionId: string; tagIds: string[] }) =>
+      tagsApi.addToSession(sessionId, tagIds),
     onSettled: (_data, _err, { sessionId }) => {
       queryClient.invalidateQueries({
         queryKey: tagKeys.forSession(sessionId),
@@ -117,13 +112,8 @@ export function useRemoveTagFromSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      sessionId,
-      tagId,
-    }: {
-      sessionId: string;
-      tagId: string;
-    }) => tagsApi.removeFromSession(sessionId, tagId),
+    mutationFn: ({ sessionId, tagId }: { sessionId: string; tagId: string }) =>
+      tagsApi.removeFromSession(sessionId, tagId),
     onSettled: (_data, _err, { sessionId }) => {
       queryClient.invalidateQueries({
         queryKey: tagKeys.forSession(sessionId),

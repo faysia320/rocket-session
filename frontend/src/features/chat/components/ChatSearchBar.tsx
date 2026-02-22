@@ -31,19 +31,14 @@ export const ChatSearchBar = memo(function ChatSearchBar({
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             onMatchIndexChange((prev) =>
-              searchMatchCount > 0
-                ? (prev + 1) % searchMatchCount
-                : 0,
+              searchMatchCount > 0 ? (prev + 1) % searchMatchCount : 0,
             );
           }
           if (e.key === "Escape") onClose();
         }}
         autoFocus
       />
-      <span
-        className="font-mono text-xs text-muted-foreground shrink-0"
-        aria-live="polite"
-      >
+      <span className="font-mono text-xs text-muted-foreground shrink-0" aria-live="polite">
         {searchMatchCount > 0
           ? `${searchMatchIndex + 1}/${searchMatchCount}`
           : searchQuery
@@ -53,11 +48,7 @@ export const ChatSearchBar = memo(function ChatSearchBar({
       <button
         type="button"
         className="font-mono text-xs text-muted-foreground hover:text-foreground px-1"
-        onClick={() =>
-          onMatchIndexChange((p) =>
-            p > 0 ? p - 1 : searchMatchCount - 1,
-          )
-        }
+        onClick={() => onMatchIndexChange((p) => (p > 0 ? p - 1 : searchMatchCount - 1))}
         disabled={searchMatchCount === 0}
         aria-label="이전 검색 결과"
       >
@@ -66,11 +57,7 @@ export const ChatSearchBar = memo(function ChatSearchBar({
       <button
         type="button"
         className="font-mono text-xs text-muted-foreground hover:text-foreground px-1"
-        onClick={() =>
-          onMatchIndexChange(
-            (p) => (p + 1) % Math.max(searchMatchCount, 1),
-          )
-        }
+        onClick={() => onMatchIndexChange((p) => (p + 1) % Math.max(searchMatchCount, 1))}
         disabled={searchMatchCount === 0}
         aria-label="다음 검색 결과"
       >

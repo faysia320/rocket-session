@@ -32,10 +32,7 @@ function IndexPage() {
     staleTime: Infinity, // 부모 SessionLayout이 이미 폴링 중이므로 캐시만 사용
   });
 
-  const activeSessions = useMemo(
-    () => sessions.filter((s) => s.status !== "archived"),
-    [sessions],
-  );
+  const activeSessions = useMemo(() => sessions.filter((s) => s.status !== "archived"), [sessions]);
 
   if (activeSessions.length === 0) {
     return (
@@ -50,9 +47,7 @@ function IndexPage() {
       <Suspense
         fallback={
           <div className="flex-1 flex items-center justify-center">
-            <span className="font-mono text-sm text-muted-foreground animate-pulse">
-              로딩 중…
-            </span>
+            <span className="font-mono text-sm text-muted-foreground animate-pulse">로딩 중…</span>
           </div>
         }
       >

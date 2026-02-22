@@ -16,11 +16,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -162,9 +158,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
                 notificationSettings.enabled && "text-primary",
               )}
               onClick={handleNotificationToggle}
-              aria-label={
-                notificationSettings.enabled ? "알림 비활성화" : "알림 활성화"
-              }
+              aria-label={notificationSettings.enabled ? "알림 비활성화" : "알림 활성화"}
             >
               {notificationSettings.enabled ? (
                 <Bell className="h-4 w-4" />
@@ -197,10 +191,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
         {/* GlobalSettingsDialog: 열릴 때만 lazy load */}
         {settingsOpen ? (
           <Suspense fallback={null}>
-            <GlobalSettingsDialog
-              open={settingsOpen}
-              onOpenChange={setSettingsOpen}
-            />
+            <GlobalSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
           </Suspense>
         ) : null}
 
@@ -210,12 +201,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
         {/* 모바일: 더보기 드롭다운 */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 md:hidden"
-              aria-label="더보기"
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8 md:hidden" aria-label="더보기">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -226,10 +212,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
             {NAV_ITEMS.map((item) => (
               <DropdownMenuItem
                 key={item.to}
-                className={cn(
-                  "gap-2",
-                  isActive(item.to) && "bg-muted",
-                )}
+                className={cn("gap-2", isActive(item.to) && "bg-muted")}
                 onClick={() => handleNavClick(item.to)}
               >
                 <item.icon className="h-4 w-4" />
@@ -240,17 +223,11 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
             <DropdownMenuLabel className="text-2xs text-muted-foreground">
               Actions
             </DropdownMenuLabel>
-            <DropdownMenuItem
-              className="gap-2 sm:hidden"
-              onClick={openPalette}
-            >
+            <DropdownMenuItem className="gap-2 sm:hidden" onClick={openPalette}>
               <Search className="h-4 w-4" />
               명령 팔레트
             </DropdownMenuItem>
-            <DropdownMenuItem
-              className="gap-2 sm:hidden"
-              onClick={handleNotificationToggle}
-            >
+            <DropdownMenuItem className="gap-2 sm:hidden" onClick={handleNotificationToggle}>
               {notificationSettings.enabled ? (
                 <Bell className="h-4 w-4" />
               ) : (
@@ -279,16 +256,10 @@ function ThemeToggle() {
           onClick={() => setTheme(isDark ? "light" : "dark")}
           aria-label="테마 변경"
         >
-          {isDark ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
+          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="bottom">
-        {isDark ? "라이트 모드" : "다크 모드"}
-      </TooltipContent>
+      <TooltipContent side="bottom">{isDark ? "라이트 모드" : "다크 모드"}</TooltipContent>
     </Tooltip>
   );
 }

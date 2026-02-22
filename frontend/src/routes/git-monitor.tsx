@@ -17,9 +17,7 @@ function GitMonitorPageWrapper() {
       <Suspense
         fallback={
           <div className="flex-1 flex items-center justify-center">
-            <span className="font-mono text-sm text-muted-foreground animate-pulse">
-              로딩 중…
-            </span>
+            <span className="font-mono text-sm text-muted-foreground animate-pulse">로딩 중…</span>
           </div>
         }
       >

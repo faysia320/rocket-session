@@ -27,19 +27,14 @@ interface SessionSetupPanelProps {
   onCancel: () => void;
 }
 
-export function SessionSetupPanel({
-  onCreate,
-  onCancel,
-}: SessionSetupPanelProps) {
+export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps) {
   const [workDir, setWorkDir] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [creating, setCreating] = useState(false);
   const [useWorktree, setUseWorktree] = useState(false);
   const [worktreeBranch, setWorktreeBranch] = useState("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    null,
-  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
   const [fallbackModel, setFallbackModel] = useState("");
   const { data: globalSettings } = useGlobalSettings();
@@ -116,10 +111,7 @@ export function SessionSetupPanel({
       if (fallbackModel.trim()) {
         options.fallback_model = fallbackModel.trim();
       }
-      onCreate(
-        targetDir,
-        Object.keys(options).length > 0 ? options : undefined,
-      );
+      onCreate(targetDir, Object.keys(options).length > 0 ? options : undefined);
     } catch {
       setCreating(false);
     }
@@ -134,9 +126,7 @@ export function SessionSetupPanel({
             <Rocket className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-mono text-lg font-semibold text-foreground">
-              New Session
-            </h2>
+            <h2 className="font-mono text-lg font-semibold text-foreground">New Session</h2>
             <p className="font-mono text-xs text-muted-foreground">
               Configure and launch a new Claude Code session
             </p>
@@ -173,18 +163,13 @@ export function SessionSetupPanel({
                 <GitBranch className="h-3.5 w-3.5" />
                 GIT WORKTREE
               </Label>
-              <Switch
-                id="worktree-toggle"
-                checked={useWorktree}
-                onCheckedChange={setUseWorktree}
-              />
+              <Switch id="worktree-toggle" checked={useWorktree} onCheckedChange={setUseWorktree} />
             </div>
             {useWorktree ? (
               <div className="space-y-2 pl-0.5">
                 <p className="font-mono text-2xs text-muted-foreground/70">
-                  현재 브랜치:{" "}
-                  <code className="text-info/80">{gitInfo.branch}</code>{" "}
-                  기준으로 새 워크트리를 생성합니다
+                  현재 브랜치: <code className="text-info/80">{gitInfo.branch}</code> 기준으로 새
+                  워크트리를 생성합니다
                 </p>
                 <Input
                   className="font-mono text-xs bg-input border-border"
@@ -223,9 +208,7 @@ export function SessionSetupPanel({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                onClick={() =>
-                  setAdditionalDirs(additionalDirs.filter((_, i) => i !== idx))
-                }
+                onClick={() => setAdditionalDirs(additionalDirs.filter((_, i) => i !== idx))}
                 aria-label="디렉토리 제거"
               >
                 <X className="h-3.5 w-3.5" />
@@ -299,11 +282,7 @@ export function SessionSetupPanel({
           <Button
             className="flex-1 font-mono text-sm font-semibold"
             onClick={handleCreate}
-            disabled={
-              creating ||
-              !workDir.trim() ||
-              (useWorktree && !worktreeBranch.trim())
-            }
+            disabled={creating || !workDir.trim() || (useWorktree && !worktreeBranch.trim())}
           >
             <Rocket className="h-4 w-4 mr-2" />
             {creating ? "Creating…" : "Create Session"}

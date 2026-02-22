@@ -1,11 +1,5 @@
 import { useState, useCallback } from "react";
-import {
-  Loader2,
-  AlertCircle,
-  GitPullRequest,
-  ExternalLink,
-  AlertTriangle,
-} from "lucide-react";
+import { Loader2, AlertCircle, GitPullRequest, ExternalLink, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGhStatus, useGitHubPRs } from "../hooks/useGitHubPRs";
@@ -30,13 +24,7 @@ function formatRelativeTime(dateStr: string): string {
   return `${Math.floor(diffDay / 30)}개월 전`;
 }
 
-function PRListItem({
-  pr,
-  onClick,
-}: {
-  pr: GitHubPREntry;
-  onClick: () => void;
-}) {
+function PRListItem({ pr, onClick }: { pr: GitHubPREntry; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -55,24 +43,19 @@ function PRListItem({
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="font-mono text-2xs text-muted-foreground shrink-0">
-            #{pr.number}
-          </span>
-          <span className="font-mono text-xs text-foreground truncate">
-            {pr.title}
-          </span>
+          <span className="font-mono text-2xs text-muted-foreground shrink-0">#{pr.number}</span>
+          <span className="font-mono text-xs text-foreground truncate">{pr.title}</span>
           {pr.draft ? (
-            <Badge
-              variant="outline"
-              className="font-mono text-2xs px-1 py-0 shrink-0"
-            >
+            <Badge variant="outline" className="font-mono text-2xs px-1 py-0 shrink-0">
               Draft
             </Badge>
           ) : null}
         </div>
         <div className="flex items-center gap-2 mt-0.5 font-mono text-2xs text-muted-foreground">
           <span>{pr.author}</span>
-          <span>{pr.branch} → {pr.base}</span>
+          <span>
+            {pr.branch} → {pr.base}
+          </span>
           <span className="text-success">+{pr.additions}</span>
           <span className="text-destructive">-{pr.deletions}</span>
           <span>{formatRelativeTime(pr.updated_at)}</span>
@@ -81,11 +64,7 @@ function PRListItem({
       {pr.labels.length > 0 ? (
         <div className="flex items-center gap-1 shrink-0">
           {pr.labels.slice(0, 2).map((label) => (
-            <Badge
-              key={label}
-              variant="outline"
-              className="font-mono text-2xs px-1 py-0"
-            >
+            <Badge key={label} variant="outline" className="font-mono text-2xs px-1 py-0">
               {label}
             </Badge>
           ))}
@@ -126,9 +105,7 @@ export function GitHubPRTab({ repoPath }: GitHubPRTabProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
         <AlertTriangle className="h-8 w-8 text-warning" />
-        <div className="font-mono text-sm text-center">
-          gh CLI가 설치되어 있지 않습니다
-        </div>
+        <div className="font-mono text-sm text-center">gh CLI가 설치되어 있지 않습니다</div>
         <div className="font-mono text-xs text-center max-w-sm">
           PR 리뷰 기능을 사용하려면 GitHub CLI를 설치하세요
         </div>
@@ -149,12 +126,8 @@ export function GitHubPRTab({ repoPath }: GitHubPRTabProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
         <AlertCircle className="h-8 w-8 text-warning" />
-        <div className="font-mono text-sm text-center">
-          GitHub 인증이 필요합니다
-        </div>
-        <code className="font-mono text-xs bg-muted px-2 py-1 rounded">
-          gh auth login
-        </code>
+        <div className="font-mono text-sm text-center">GitHub 인증이 필요합니다</div>
+        <code className="font-mono text-xs bg-muted px-2 py-1 rounded">gh auth login</code>
       </div>
     );
   }
@@ -197,11 +170,7 @@ export function GitHubPRTab({ repoPath }: GitHubPRTabProps) {
       ) : (
         <div className="space-y-1">
           {prData?.prs.map((pr) => (
-            <PRListItem
-              key={pr.number}
-              pr={pr}
-              onClick={() => handlePRClick(pr.number)}
-            />
+            <PRListItem key={pr.number} pr={pr} onClick={() => handlePRClick(pr.number)} />
           ))}
         </div>
       )}

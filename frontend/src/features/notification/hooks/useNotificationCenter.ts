@@ -11,21 +11,14 @@ interface NotifyOptions {
 }
 
 export function useNotificationCenter() {
-  const {
-    settings,
-    toggleEnabled,
-    setVolume,
-    setSoundPack,
-    toggleCategory,
-    toggleChannel,
-  } = useNotificationSettings();
+  const { settings, toggleEnabled, setVolume, setSoundPack, toggleCategory, toggleChannel } =
+    useNotificationSettings();
   const { playSound } = useSoundEngine();
   const permissionRequested = useRef(false);
 
   /** 데스크톱 알림 권한 요청 */
   const requestDesktopPermission = useCallback(async () => {
-    if (!("Notification" in window) || Notification.permission === "granted")
-      return true;
+    if (!("Notification" in window) || Notification.permission === "granted") return true;
     if (Notification.permission === "denied") return false;
     if (permissionRequested.current) return false;
     permissionRequested.current = true;

@@ -40,9 +40,7 @@ export function SessionSettings({
   const [permissionMode, setPermissionMode] = useState(false);
   const [permissionTools, setPermissionTools] = useState<string[]>([]);
   const [model, setModel] = useState("");
-  const [systemPromptMode, setSystemPromptMode] = useState<
-    "replace" | "append"
-  >("replace");
+  const [systemPromptMode, setSystemPromptMode] = useState<"replace" | "append">("replace");
   const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
@@ -53,19 +51,13 @@ export function SessionSettings({
     try {
       const s = await sessionsApi.get(sessionId);
       setSystemPrompt(s.system_prompt ?? "");
-      setTimeoutMinutes(
-        s.timeout_seconds ? String(Math.round(s.timeout_seconds / 60)) : "",
-      );
+      setTimeoutMinutes(s.timeout_seconds ? String(Math.round(s.timeout_seconds / 60)) : "");
       setPermissionMode(s.permission_mode ?? false);
       setPermissionTools(s.permission_required_tools ?? []);
       setModel(s.model ?? "");
-      setSystemPromptMode(
-        (s.system_prompt_mode as "replace" | "append") ?? "replace",
-      );
+      setSystemPromptMode((s.system_prompt_mode as "replace" | "append") ?? "replace");
       setDisallowedTools(
-        s.disallowed_tools
-          ? s.disallowed_tools.split(",").map((t) => t.trim())
-          : [],
+        s.disallowed_tools ? s.disallowed_tools.split(",").map((t) => t.trim()) : [],
       );
       setMcpServerIds(s.mcp_server_ids ?? []);
       setAdditionalDirs(s.additional_dirs ?? []);
@@ -82,9 +74,7 @@ export function SessionSettings({
   }, [open, loadSession]);
 
   const handlePermissionToolToggle = useCallback((tool: string, checked: boolean) => {
-    setPermissionTools((prev) =>
-      checked ? [...prev, tool] : prev.filter((t) => t !== tool),
-    );
+    setPermissionTools((prev) => (checked ? [...prev, tool] : prev.filter((t) => t !== tool)));
   }, []);
 
   const handleSave = async () => {
@@ -99,12 +89,12 @@ export function SessionSettings({
           permissionMode && permissionTools.length > 0 ? permissionTools : null,
         model: model || null,
         system_prompt_mode: systemPromptMode,
-        disallowed_tools:
-          disallowedTools.length > 0 ? disallowedTools.join(",") : null,
+        disallowed_tools: disallowedTools.length > 0 ? disallowedTools.join(",") : null,
         mcp_server_ids: mcpServerIds.length > 0 ? mcpServerIds : null,
-        additional_dirs: additionalDirs.filter((d) => d.trim()).length > 0
-          ? additionalDirs.filter((d) => d.trim())
-          : null,
+        additional_dirs:
+          additionalDirs.filter((d) => d.trim()).length > 0
+            ? additionalDirs.filter((d) => d.trim())
+            : null,
         fallback_model: fallbackModel || null,
       });
       toast.success("설정이 저장되었습니다.");
@@ -143,8 +133,7 @@ export function SessionSettings({
                 MODEL
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는 기본값을
-                사용합니다.
+                Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는 기본값을 사용합니다.
               </p>
               <select
                 className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
@@ -188,18 +177,14 @@ export function SessionSettings({
                     <DirectoryPicker
                       value={dir}
                       onChange={(v) =>
-                        setAdditionalDirs((prev) =>
-                          prev.map((d, i) => (i === idx ? v : d)),
-                        )
+                        setAdditionalDirs((prev) => prev.map((d, i) => (i === idx ? v : d)))
                       }
                     />
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0"
-                      onClick={() =>
-                        setAdditionalDirs((prev) => prev.filter((_, i) => i !== idx))
-                      }
+                      onClick={() => setAdditionalDirs((prev) => prev.filter((_, i) => i !== idx))}
                       aria-label="디렉토리 삭제"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -228,23 +213,16 @@ export function SessionSettings({
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {AVAILABLE_TOOLS.map((tool) => (
-                  <label
-                    key={`dis-${tool}`}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
+                  <label key={`dis-${tool}`} className="flex items-center gap-2 cursor-pointer">
                     <Checkbox
                       checked={disallowedTools.includes(tool)}
                       onCheckedChange={(checked) =>
                         setDisallowedTools((prev) =>
-                          checked === true
-                            ? [...prev, tool]
-                            : prev.filter((t) => t !== tool),
+                          checked === true ? [...prev, tool] : prev.filter((t) => t !== tool),
                         )
                       }
                     />
-                    <span className="font-mono text-xs text-foreground">
-                      {tool}
-                    </span>
+                    <span className="font-mono text-xs text-foreground">{tool}</span>
                   </label>
                 ))}
               </div>
@@ -277,18 +255,14 @@ export function SessionSettings({
                     checked={systemPromptMode === "replace"}
                     onCheckedChange={() => setSystemPromptMode("replace")}
                   />
-                  <span className="font-mono text-xs text-foreground">
-                    전체 대체
-                  </span>
+                  <span className="font-mono text-xs text-foreground">전체 대체</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={systemPromptMode === "append"}
                     onCheckedChange={() => setSystemPromptMode("append")}
                   />
-                  <span className="font-mono text-xs text-foreground">
-                    기본에 추가
-                  </span>
+                  <span className="font-mono text-xs text-foreground">기본에 추가</span>
                 </label>
               </div>
             </div>
@@ -301,9 +275,7 @@ export function SessionSettings({
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={permissionMode}
-                  onCheckedChange={(checked) =>
-                    setPermissionMode(checked === true)
-                  }
+                  onCheckedChange={(checked) => setPermissionMode(checked === true)}
                 />
                 <span className="font-mono text-xs text-foreground">
                   도구 실행 전 확인 요청 활성화
@@ -315,19 +287,14 @@ export function SessionSettings({
               {permissionMode ? (
                 <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-warning/30">
                   {PERMISSION_TOOLS.map((tool) => (
-                    <label
-                      key={tool}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
+                    <label key={tool} className="flex items-center gap-2 cursor-pointer">
                       <Checkbox
                         checked={permissionTools.includes(tool)}
                         onCheckedChange={(checked) =>
                           handlePermissionToolToggle(tool, checked === true)
                         }
                       />
-                      <span className="font-mono text-xs text-foreground">
-                        {tool}
-                      </span>
+                      <span className="font-mono text-xs text-foreground">{tool}</span>
                     </label>
                   ))}
                 </div>
@@ -335,10 +302,7 @@ export function SessionSettings({
             </div>
 
             {/* MCP Servers */}
-            <McpServerSelector
-              selectedIds={mcpServerIds}
-              onChange={setMcpServerIds}
-            />
+            <McpServerSelector selectedIds={mcpServerIds} onChange={setMcpServerIds} />
 
             {/* 타임아웃 */}
             <div className="space-y-2">
@@ -370,10 +334,7 @@ export function SessionSettings({
             {saving ? "Saving…" : "Save Settings"}
           </Button>
           <SaveAsTemplateDialog sessionId={sessionId}>
-            <Button
-              variant="outline"
-              className="w-full font-mono text-xs gap-1.5"
-            >
+            <Button variant="outline" className="w-full font-mono text-xs gap-1.5">
               <FileStack className="h-3.5 w-3.5" />
               템플릿으로 저장
             </Button>

@@ -28,9 +28,7 @@ const COLORS = {
   cacheCreation: "hsl(217, 33%, 50%)",
 };
 
-export const DailyTokenChart = memo(function DailyTokenChart({
-  data,
-}: DailyTokenChartProps) {
+export const DailyTokenChart = memo(function DailyTokenChart({ data }: DailyTokenChartProps) {
   const chartData = useMemo(
     () =>
       data.map((d) => ({
@@ -46,9 +44,7 @@ export const DailyTokenChart = memo(function DailyTokenChart({
   if (chartData.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card p-4">
-        <h3 className="font-mono text-xs font-medium text-foreground mb-3">
-          일별 토큰 사용량
-        </h3>
+        <h3 className="font-mono text-xs font-medium text-foreground mb-3">일별 토큰 사용량</h3>
         <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs font-mono">
           데이터가 없습니다
         </div>
@@ -58,9 +54,7 @@ export const DailyTokenChart = memo(function DailyTokenChart({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="font-mono text-xs font-medium text-foreground mb-3">
-        일별 토큰 사용량
-      </h3>
+      <h3 className="font-mono text-xs font-medium text-foreground mb-3">일별 토큰 사용량</h3>
       <ResponsiveContainer width="100%" height={240}>
         <AreaChart data={chartData}>
           <defs>
@@ -73,11 +67,7 @@ export const DailyTokenChart = memo(function DailyTokenChart({
               <stop offset="95%" stopColor={COLORS.output} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="hsl(217, 33%, 17%)"
-            vertical={false}
-          />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" vertical={false} />
           <XAxis
             dataKey="date"
             tick={{ fontSize: 10, fill: "hsl(215, 25%, 50%)" }}
@@ -104,9 +94,7 @@ export const DailyTokenChart = memo(function DailyTokenChart({
               typeof value === "number" ? [formatTokens(value)] : [String(value ?? 0)]
             }
           />
-          <Legend
-            wrapperStyle={{ fontSize: "10px", fontFamily: "monospace" }}
-          />
+          <Legend wrapperStyle={{ fontSize: "10px", fontFamily: "monospace" }} />
           <Area
             type="monotone"
             dataKey="Input"

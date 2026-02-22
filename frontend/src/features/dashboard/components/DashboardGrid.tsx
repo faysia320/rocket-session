@@ -22,10 +22,7 @@ export const DashboardGrid = memo(function DashboardGrid({
   onSelect,
   onNew,
 }: DashboardGridProps) {
-  const sortedSessions = useMemo(
-    () => sortSessionsByStatus(sessions),
-    [sessions],
-  );
+  const sortedSessions = useMemo(() => sortSessionsByStatus(sessions), [sessions]);
   const runningCount = useMemo(
     () => sessions.filter((s) => s.status === "running").length,
     [sessions],
@@ -36,19 +33,12 @@ export const DashboardGrid = memo(function DashboardGrid({
       <div className="flex-1 min-h-0 overflow-auto p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="font-mono text-lg font-semibold text-foreground">
-              Dashboard
-            </h1>
+            <h1 className="font-mono text-lg font-semibold text-foreground">Dashboard</h1>
             <p className="font-mono text-xs text-muted-foreground">
               {sessions.length}개 세션 ({runningCount}개 실행 중)
             </p>
           </div>
-          <Button
-            variant="default"
-            size="sm"
-            className="font-mono text-xs"
-            onClick={onNew}
-          >
+          <Button variant="default" size="sm" className="font-mono text-xs" onClick={onNew}>
             + New Session
           </Button>
         </div>

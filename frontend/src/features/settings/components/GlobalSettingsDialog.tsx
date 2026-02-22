@@ -5,20 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
 import { McpServerManager } from "@/features/mcp/components/McpServerManager";
 import { NotificationSettingsPanel } from "@/features/notification/components/NotificationSettingsPanel";
-import {
-  useGlobalSettings,
-  useUpdateGlobalSettings,
-} from "../hooks/useGlobalSettings";
+import { useGlobalSettings, useUpdateGlobalSettings } from "../hooks/useGlobalSettings";
 import { AVAILABLE_TOOLS } from "@/features/session/constants/tools";
 
 /** Permission 승인 대상 도구 목록 */
@@ -41,9 +33,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
   const [permissionMode, setPermissionMode] = useState(false);
   const [permissionTools, setPermissionTools] = useState<string[]>([]);
   const [model, setModel] = useState("");
-  const [systemPromptMode, setSystemPromptMode] = useState<
-    "replace" | "append"
-  >("replace");
+  const [systemPromptMode, setSystemPromptMode] = useState<"replace" | "append">("replace");
   const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
   const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
   const [fallbackModel, setFallbackModel] = useState("");
@@ -55,21 +45,15 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
       setWorkDir(settings.work_dir ?? "");
       setSystemPrompt(settings.system_prompt ?? "");
       setTimeoutMinutes(
-        settings.timeout_seconds
-          ? String(Math.round(settings.timeout_seconds / 60))
-          : "",
+        settings.timeout_seconds ? String(Math.round(settings.timeout_seconds / 60)) : "",
       );
       setMode(settings.mode ?? "normal");
       setPermissionMode(settings.permission_mode ?? false);
       setPermissionTools(settings.permission_required_tools ?? []);
       setModel(settings.model ?? "");
-      setSystemPromptMode(
-        (settings.system_prompt_mode as "replace" | "append") ?? "replace",
-      );
+      setSystemPromptMode((settings.system_prompt_mode as "replace" | "append") ?? "replace");
       setDisallowedTools(
-        settings.disallowed_tools
-          ? settings.disallowed_tools.split(",").map((t) => t.trim())
-          : [],
+        settings.disallowed_tools ? settings.disallowed_tools.split(",").map((t) => t.trim()) : [],
       );
       setAdditionalDirs(settings.additional_dirs ?? []);
       setFallbackModel(settings.fallback_model ?? "");
@@ -78,9 +62,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
   }, [open, settings]);
 
   const handlePermissionToolToggle = (tool: string, checked: boolean) => {
-    setPermissionTools((prev) =>
-      checked ? [...prev, tool] : prev.filter((t) => t !== tool),
-    );
+    setPermissionTools((prev) => (checked ? [...prev, tool] : prev.filter((t) => t !== tool)));
   };
 
   const handleSave = async () => {
@@ -99,11 +81,11 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
         max_turns: null,
         max_budget_usd: null,
         system_prompt_mode: systemPromptMode,
-        disallowed_tools:
-          disallowedTools.length > 0 ? disallowedTools.join(",") : null,
-        additional_dirs: additionalDirs.filter((d) => d.trim()) .length > 0
-          ? additionalDirs.filter((d) => d.trim())
-          : null,
+        disallowed_tools: disallowedTools.length > 0 ? disallowedTools.join(",") : null,
+        additional_dirs:
+          additionalDirs.filter((d) => d.trim()).length > 0
+            ? additionalDirs.filter((d) => d.trim())
+            : null,
         fallback_model: fallbackModel || null,
         globally_trusted_tools: globallyTrustedTools.length > 0 ? globallyTrustedTools : null,
       });
@@ -118,12 +100,9 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader className="shrink-0">
-          <DialogTitle className="font-mono text-sm font-semibold">
-            Global Settings
-          </DialogTitle>
+          <DialogTitle className="font-mono text-sm font-semibold">Global Settings</DialogTitle>
           <p className="font-mono text-xs text-muted-foreground">
-            모든 세션에 적용되는 기본 설정입니다. 세션에서 개별 설정 시 이 값이
-            덮어씌워집니다.
+            모든 세션에 적용되는 기본 설정입니다. 세션에서 개별 설정 시 이 값이 덮어씌워집니다.
           </p>
         </DialogHeader>
 
@@ -154,18 +133,14 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                     <DirectoryPicker
                       value={dir}
                       onChange={(v) =>
-                        setAdditionalDirs((prev) =>
-                          prev.map((d, i) => (i === idx ? v : d)),
-                        )
+                        setAdditionalDirs((prev) => prev.map((d, i) => (i === idx ? v : d)))
                       }
                     />
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0"
-                      onClick={() =>
-                        setAdditionalDirs((prev) => prev.filter((_, i) => i !== idx))
-                      }
+                      onClick={() => setAdditionalDirs((prev) => prev.filter((_, i) => i !== idx))}
                       aria-label="디렉토리 삭제"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -190,8 +165,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 MODEL
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                Claude CLI에 전달할 기본 모델입니다. 비워두면 전역 설정 또는
-                기본값을 사용합니다.
+                Claude CLI에 전달할 기본 모델입니다. 비워두면 전역 설정 또는 기본값을 사용합니다.
               </p>
               <select
                 className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
@@ -211,8 +185,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 FALLBACK MODEL
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                기본 모델 사용 불가 시 대체할 모델입니다. CLI --fallback-model 플래그로
-                전달됩니다.
+                기본 모델 사용 불가 시 대체할 모델입니다. CLI --fallback-model 플래그로 전달됩니다.
               </p>
               <Input
                 className="font-mono text-xs bg-input border-border"
@@ -228,8 +201,8 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 ALLOWED TOOLS
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                모든 도구가 기본적으로 허용됩니다. 특정 도구를 금지하려면 아래
-                DISALLOWED TOOLS에서 선택하세요.
+                모든 도구가 기본적으로 허용됩니다. 특정 도구를 금지하려면 아래 DISALLOWED TOOLS에서
+                선택하세요.
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {AVAILABLE_TOOLS.map((tool) => (
@@ -238,9 +211,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                     className="flex items-center gap-2 opacity-60 cursor-not-allowed"
                   >
                     <Checkbox checked={true} disabled />
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {tool}
-                    </span>
+                    <span className="font-mono text-xs text-muted-foreground">{tool}</span>
                   </label>
                 ))}
               </div>
@@ -252,28 +223,21 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 DISALLOWED TOOLS
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                Claude CLI에서 사용을 금지할 도구입니다. 세션에서 개별 설정 시
-                이 값이 덮어씌워집니다.
+                Claude CLI에서 사용을 금지할 도구입니다. 세션에서 개별 설정 시 이 값이
+                덮어씌워집니다.
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {AVAILABLE_TOOLS.map((tool) => (
-                  <label
-                    key={`dis-${tool}`}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
+                  <label key={`dis-${tool}`} className="flex items-center gap-2 cursor-pointer">
                     <Checkbox
                       checked={disallowedTools.includes(tool)}
                       onCheckedChange={(checked) =>
                         setDisallowedTools((prev) =>
-                          checked === true
-                            ? [...prev, tool]
-                            : prev.filter((t) => t !== tool),
+                          checked === true ? [...prev, tool] : prev.filter((t) => t !== tool),
                         )
                       }
                     />
-                    <span className="font-mono text-xs text-foreground">
-                      {tool}
-                    </span>
+                    <span className="font-mono text-xs text-foreground">{tool}</span>
                   </label>
                 ))}
               </div>
@@ -285,8 +249,8 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 SYSTEM PROMPT
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                모든 세션에 주입할 기본 시스템 지시사항입니다. 세션에서 개별
-                설정 시 이 값이 덮어씌워집니다.
+                모든 세션에 주입할 기본 시스템 지시사항입니다. 세션에서 개별 설정 시 이 값이
+                덮어씌워집니다.
               </p>
               <Textarea
                 className="font-mono text-xs min-h-[100px] bg-input border-border"
@@ -302,8 +266,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 SYSTEM PROMPT MODE
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                시스템 프롬프트 적용 방식입니다. 세션에서 개별 설정 시 이 값이
-                덮어씌워집니다.
+                시스템 프롬프트 적용 방식입니다. 세션에서 개별 설정 시 이 값이 덮어씌워집니다.
               </p>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -311,18 +274,14 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                     checked={systemPromptMode === "replace"}
                     onCheckedChange={() => setSystemPromptMode("replace")}
                   />
-                  <span className="font-mono text-xs text-foreground">
-                    전체 대체
-                  </span>
+                  <span className="font-mono text-xs text-foreground">전체 대체</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={systemPromptMode === "append"}
                     onCheckedChange={() => setSystemPromptMode("append")}
                   />
-                  <span className="font-mono text-xs text-foreground">
-                    기본에 추가
-                  </span>
+                  <span className="font-mono text-xs text-foreground">기본에 추가</span>
                 </label>
               </div>
             </div>
@@ -333,27 +292,16 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 MODE
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                기본 실행 모드입니다. Plan 모드에서는 계획만 수립하고 승인 후
-                실행합니다.
+                기본 실행 모드입니다. Plan 모드에서는 계획만 수립하고 승인 후 실행합니다.
               </p>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={mode === "normal"}
-                    onCheckedChange={() => setMode("normal")}
-                  />
-                  <span className="font-mono text-xs text-foreground">
-                    Normal
-                  </span>
+                  <Checkbox checked={mode === "normal"} onCheckedChange={() => setMode("normal")} />
+                  <span className="font-mono text-xs text-foreground">Normal</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={mode === "plan"}
-                    onCheckedChange={() => setMode("plan")}
-                  />
-                  <span className="font-mono text-xs text-foreground">
-                    Plan
-                  </span>
+                  <Checkbox checked={mode === "plan"} onCheckedChange={() => setMode("plan")} />
+                  <span className="font-mono text-xs text-foreground">Plan</span>
                 </label>
               </div>
             </div>
@@ -366,34 +314,27 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={permissionMode}
-                  onCheckedChange={(checked) =>
-                    setPermissionMode(checked === true)
-                  }
+                  onCheckedChange={(checked) => setPermissionMode(checked === true)}
                 />
                 <span className="font-mono text-xs text-foreground">
                   도구 실행 전 확인 요청 활성화
                 </span>
               </label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                활성화하면 아래 선택한 도구 실행 시 사용자 승인을 요청합니다.
-                세션에서 개별 설정 시 이 값이 덮어씌워집니다.
+                활성화하면 아래 선택한 도구 실행 시 사용자 승인을 요청합니다. 세션에서 개별 설정 시
+                이 값이 덮어씌워집니다.
               </p>
               {permissionMode ? (
                 <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-warning/30">
                   {PERMISSION_TOOLS.map((tool) => (
-                    <label
-                      key={tool}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
+                    <label key={tool} className="flex items-center gap-2 cursor-pointer">
                       <Checkbox
                         checked={permissionTools.includes(tool)}
                         onCheckedChange={(checked) =>
                           handlePermissionToolToggle(tool, checked === true)
                         }
                       />
-                      <span className="font-mono text-xs text-foreground">
-                        {tool}
-                      </span>
+                      <span className="font-mono text-xs text-foreground">{tool}</span>
                     </label>
                   ))}
                 </div>
@@ -407,8 +348,8 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 GLOBALLY TRUSTED TOOLS
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                "항상 허용"으로 승인된 도구 목록입니다. Permission 모드에서 이 도구들은
-                자동으로 승인됩니다.
+                "항상 허용"으로 승인된 도구 목록입니다. Permission 모드에서 이 도구들은 자동으로
+                승인됩니다.
               </p>
               {globallyTrustedTools.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
@@ -422,9 +363,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                         type="button"
                         className="hover:text-destructive"
                         onClick={() =>
-                          setGloballyTrustedTools((prev) =>
-                            prev.filter((t) => t !== tool),
-                          )
+                          setGloballyTrustedTools((prev) => prev.filter((t) => t !== tool))
                         }
                         aria-label={`${tool} 신뢰 해제`}
                       >
@@ -435,8 +374,8 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 </div>
               ) : (
                 <p className="font-mono text-2xs text-muted-foreground/50 italic">
-                  아직 글로벌 신뢰 도구가 없습니다. Permission 다이얼로그에서 "항상
-                  허용"을 선택하면 여기에 추가됩니다.
+                  아직 글로벌 신뢰 도구가 없습니다. Permission 다이얼로그에서 "항상 허용"을 선택하면
+                  여기에 추가됩니다.
                 </p>
               )}
             </div>
@@ -452,8 +391,8 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 TIMEOUT (분)
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                기본 프로세스 최대 실행 시간입니다. 비워두면 무제한입니다.
-                세션에서 개별 설정 시 이 값이 덮어씌워집니다.
+                기본 프로세스 최대 실행 시간입니다. 비워두면 무제한입니다. 세션에서 개별 설정 시 이
+                값이 덮어씌워집니다.
               </p>
               <Input
                 className="font-mono text-xs bg-input border-border w-28"

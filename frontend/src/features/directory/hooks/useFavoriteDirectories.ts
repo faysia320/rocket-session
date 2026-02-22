@@ -22,8 +22,7 @@ function loadFavorites(): FavoriteDirectory[] {
 }
 
 export function useFavoriteDirectories() {
-  const [favorites, setFavorites] =
-    useState<FavoriteDirectory[]>(loadFavorites);
+  const [favorites, setFavorites] = useState<FavoriteDirectory[]>(loadFavorites);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));

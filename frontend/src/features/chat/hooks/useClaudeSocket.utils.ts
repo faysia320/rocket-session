@@ -21,10 +21,7 @@ export function getWsUrl(sessionId: string, lastSeq?: number): string {
  * 지수 백오프 + jitter로 재연결 딜레이 계산.
  */
 export function getBackoffDelay(attempt: number): number {
-  const delay = Math.min(
-    RECONNECT_BASE_DELAY * Math.pow(2, attempt),
-    RECONNECT_MAX_DELAY,
-  );
+  const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, attempt), RECONNECT_MAX_DELAY);
   return delay * (0.8 + Math.random() * 0.4);
 }
 

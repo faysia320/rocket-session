@@ -1,10 +1,6 @@
 import { useState, memo, useMemo } from "react";
 import { Search, ChevronRight, ChevronDown } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
 import { ToolStatusIcon } from "./ToolStatusIcon";
@@ -67,10 +63,7 @@ export const SearchToolMessage = memo(function SearchToolMessage({
 
   const pattern = String(input.pattern ?? input.q ?? "");
   const searchPath = String(input.path ?? input.glob ?? "");
-  const headerText = [
-    pattern ? `"${pattern}"` : null,
-    searchPath ? `in ${searchPath}` : null,
-  ]
+  const headerText = [pattern ? `"${pattern}"` : null, searchPath ? `in ${searchPath}` : null]
     .filter(Boolean)
     .join(" ");
 
@@ -105,9 +98,7 @@ export const SearchToolMessage = memo(function SearchToolMessage({
           <div className="flex items-center gap-2">
             <ToolStatusIcon status={toolStatus} />
             <Search className="h-3.5 w-3.5 shrink-0 text-info" />
-            <span className="font-mono text-xs font-semibold text-foreground">
-              {toolName}
-            </span>
+            <span className="font-mono text-xs font-semibold text-foreground">{toolName}</span>
             <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
               {headerText}
             </span>
@@ -177,8 +168,8 @@ export const SearchToolMessage = memo(function SearchToolMessage({
 
             {message.is_truncated && message.full_length ? (
               <div className="font-mono text-2xs text-warning mt-1">
-                ({message.output?.length.toLocaleString()}/
-                {message.full_length.toLocaleString()}자 표시)
+                ({message.output?.length.toLocaleString()}/{message.full_length.toLocaleString()}자
+                표시)
               </div>
             ) : null}
           </div>

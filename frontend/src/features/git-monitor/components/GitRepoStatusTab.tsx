@@ -33,9 +33,7 @@ export function GitRepoStatusTab({ repoPath }: GitRepoStatusTabProps) {
   return (
     <div className="space-y-4">
       <GitInfoCard gitInfo={gitInfo} />
-      {status ? (
-        <GitStatusFileList repoPath={repoPath} files={status.files} />
-      ) : null}
+      {status ? <GitStatusFileList repoPath={repoPath} files={status.files} /> : null}
     </div>
   );
 }

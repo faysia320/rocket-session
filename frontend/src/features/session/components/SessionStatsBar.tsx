@@ -1,10 +1,6 @@
 import { memo } from "react";
 import { Zap, Clock } from "lucide-react";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { formatTokens } from "@/lib/utils";
 import { useSessionStats } from "../hooks/useSessionStats";
 import { ContextWindowBar } from "@/features/chat/components/ContextWindowBar";
@@ -49,9 +45,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
           <div className="flex items-center gap-1 cursor-default">
             <Zap className="h-3 w-3 text-info/70" />
             <span className="font-mono text-2xs text-muted-foreground">
-              {formatTokens(
-                stats.total_input_tokens + stats.total_output_tokens,
-              )}
+              {formatTokens(stats.total_input_tokens + stats.total_output_tokens)}
             </span>
           </div>
         </TooltipTrigger>
@@ -60,14 +54,10 @@ export const SessionStatsBar = memo(function SessionStatsBar({
             <div>Input: {formatTokens(stats.total_input_tokens)}</div>
             <div>Output: {formatTokens(stats.total_output_tokens)}</div>
             {stats.total_cache_read_tokens > 0 ? (
-              <div>
-                Cache Read: {formatTokens(stats.total_cache_read_tokens)}
-              </div>
+              <div>Cache Read: {formatTokens(stats.total_cache_read_tokens)}</div>
             ) : null}
             {stats.total_cache_creation_tokens > 0 ? (
-              <div>
-                Cache Write: {formatTokens(stats.total_cache_creation_tokens)}
-              </div>
+              <div>Cache Write: {formatTokens(stats.total_cache_creation_tokens)}</div>
             ) : null}
           </div>
         </TooltipContent>

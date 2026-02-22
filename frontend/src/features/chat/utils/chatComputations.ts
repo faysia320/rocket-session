@@ -30,18 +30,14 @@ export function computeEstimateSize(msg: Message | undefined): number {
  * 'normal' = 턴 경계
  * 'turn-start' = user_message 직전 (넉넉한 여백)
  */
-export function computeMessageGaps(
-  messages: Message[],
-): Array<"tight" | "normal" | "turn-start"> {
+export function computeMessageGaps(messages: Message[]): Array<"tight" | "normal" | "turn-start"> {
   return messages.map((msg, i) => {
     if (i === 0) return "normal" as const;
     const prev = messages[i - 1];
     // user_message 앞에 넉넉한 여백
-    if (msg.type === "user_message" && prev.type !== "user_message")
-      return "turn-start" as const;
+    if (msg.type === "user_message" && prev.type !== "user_message") return "turn-start" as const;
     const tightTypes = ["tool_use", "tool_result", "stderr"];
-    if (tightTypes.includes(msg.type) && tightTypes.includes(prev.type))
-      return "tight" as const;
+    if (tightTypes.includes(msg.type) && tightTypes.includes(prev.type)) return "tight" as const;
     return "normal" as const;
   });
 }
@@ -49,10 +45,7 @@ export function computeMessageGaps(
 /**
  * 검색 쿼리에 매칭되는 메시지의 인덱스 목록 반환.
  */
-export function computeSearchMatches(
-  messages: Message[],
-  query: string,
-): number[] {
+export function computeSearchMatches(messages: Message[], query: string): number[] {
   if (!query.trim()) return [];
   const q = query.toLowerCase();
   return messages

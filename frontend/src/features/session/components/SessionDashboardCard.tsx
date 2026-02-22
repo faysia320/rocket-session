@@ -1,11 +1,7 @@
 import { memo, useMemo } from "react";
 import { MessageSquare, FileText, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn, truncatePath } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { getActivityLabel } from "@/features/chat/utils/activityLabel";
@@ -95,14 +91,9 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
         <span
           className={cn(
             "font-mono text-2xs px-1.5 py-0.5 rounded-sm border",
-            s.status === "running" &&
-              !isStale &&
-              "bg-success/10 text-success border-success/20",
-            s.status === "running" &&
-              isStale &&
-              "bg-warning/10 text-warning border-warning/20",
-            s.status === "error" &&
-              "bg-destructive/10 text-destructive border-destructive/20",
+            s.status === "running" && !isStale && "bg-success/10 text-success border-success/20",
+            s.status === "running" && isStale && "bg-warning/10 text-warning border-warning/20",
+            s.status === "error" && "bg-destructive/10 text-destructive border-destructive/20",
             s.status !== "running" &&
               s.status !== "error" &&
               "bg-muted text-muted-foreground border-border",
@@ -125,9 +116,7 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
         {s.created_at ? (
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            <span className="font-mono text-2xs">
-              {formatRelativeTime(s.created_at)}
-            </span>
+            <span className="font-mono text-2xs">{formatRelativeTime(s.created_at)}</span>
           </div>
         ) : null}
       </div>
@@ -139,17 +128,11 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="font-mono text-2xs text-info/80 truncate">
-                {getActivityLabel(
-                  s.current_activity.tool,
-                  s.current_activity.input,
-                )}
+                {getActivityLabel(s.current_activity.tool, s.current_activity.input)}
               </span>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">
-              {getActivityLabel(
-                s.current_activity.tool,
-                s.current_activity.input,
-              )}
+              {getActivityLabel(s.current_activity.tool, s.current_activity.input)}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -166,10 +149,7 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
       </Tooltip>
 
       {/* 모델 표시 */}
-      {s.model ? (
-        <span className="font-mono text-2xs text-info/70">{s.model}</span>
-      ) : null}
-
+      {s.model ? <span className="font-mono text-2xs text-info/70">{s.model}</span> : null}
     </Card>
   );
 });

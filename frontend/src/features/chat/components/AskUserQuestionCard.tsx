@@ -18,9 +18,7 @@ export const AskUserQuestionCard = memo(function AskUserQuestionCard({
   const { questions, answers = {}, answered, sent } = message;
   const disabled = !!answered;
 
-  const allAnswered = questions.every(
-    (_, i) => (answers[i]?.length ?? 0) > 0,
-  );
+  const allAnswered = questions.every((_, i) => (answers[i]?.length ?? 0) > 0);
 
   return (
     <div className="animate-[slideInLeft_0.2s_ease]">
@@ -32,9 +30,7 @@ export const AskUserQuestionCard = memo(function AskUserQuestionCard({
       >
         <div className="flex items-center gap-2 mb-2">
           <MessageCircleQuestion className="h-3.5 w-3.5 text-info shrink-0" />
-          <span className="font-mono text-xs font-semibold text-foreground">
-            Answer questions
-          </span>
+          <span className="font-mono text-xs font-semibold text-foreground">Answer questions</span>
           {answered ? (
             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-success/15 text-success border border-success/30">
               <Check className="h-2.5 w-2.5" />
@@ -138,9 +134,7 @@ function QuestionItem({
           {question.header}
         </div>
       ) : null}
-      <div className="font-mono text-sm text-foreground mb-1.5">
-        {question.question}
-      </div>
+      <div className="font-mono text-sm text-foreground mb-1.5">{question.question}</div>
 
       {options.length > 0 ? (
         <div className="space-y-1">
@@ -195,9 +189,7 @@ function QuestionItem({
                 <span
                   className={cn(
                     "mt-0.5 w-3 h-3 rounded-full border-2 shrink-0 flex items-center justify-center",
-                    isSelected
-                      ? "border-primary bg-primary"
-                      : "border-muted-foreground",
+                    isSelected ? "border-primary bg-primary" : "border-muted-foreground",
                   )}
                 >
                   {isSelected ? (
@@ -205,9 +197,7 @@ function QuestionItem({
                   ) : null}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-mono text-xs font-semibold text-foreground">
-                    {opt.label}
-                  </div>
+                  <div className="font-mono text-xs font-semibold text-foreground">{opt.label}</div>
                   {opt.description ? (
                     <div className="font-mono text-2xs text-muted-foreground leading-tight">
                       {opt.description}
@@ -233,18 +223,12 @@ function QuestionItem({
               )}
             >
               {multiSelect ? (
-                <Checkbox
-                  checked={isCustom}
-                  disabled={disabled}
-                  className="mt-0.5"
-                />
+                <Checkbox checked={isCustom} disabled={disabled} className="mt-0.5" />
               ) : (
                 <span
                   className={cn(
                     "mt-0.5 w-3 h-3 rounded-full border-2 shrink-0 flex items-center justify-center",
-                    isCustom
-                      ? "border-primary bg-primary"
-                      : "border-muted-foreground",
+                    isCustom ? "border-primary bg-primary" : "border-muted-foreground",
                   )}
                 >
                   {isCustom ? (
@@ -252,9 +236,7 @@ function QuestionItem({
                   ) : null}
                 </span>
               )}
-              <span className="font-mono text-xs font-semibold text-foreground">
-                Other
-              </span>
+              <span className="font-mono text-xs font-semibold text-foreground">Other</span>
             </button>
             {isCustom ? (
               <div className="flex gap-1.5 mt-1 ml-5">
@@ -292,9 +274,7 @@ function QuestionItem({
             className="w-full font-mono text-xs bg-input border border-border rounded px-2.5 py-1.5 outline-none focus:border-primary/50 resize-none min-h-[60px]"
             placeholder="answer here"
             value={selected[0] || ""}
-            onChange={(e) =>
-              onAnswer(messageId, questionIndex, [e.target.value])
-            }
+            onChange={(e) => onAnswer(messageId, questionIndex, [e.target.value])}
             disabled={disabled}
           />
         </div>

@@ -1,9 +1,5 @@
 import { ClipboardList } from "lucide-react";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { SessionMode } from "@/types";
 
 interface ModeIndicatorProps {

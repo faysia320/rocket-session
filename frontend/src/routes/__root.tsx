@@ -1,9 +1,4 @@
-import {
-  createRootRoute,
-  Outlet,
-  useNavigate,
-  useLocation,
-} from "@tanstack/react-router";
+import { createRootRoute, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Sidebar } from "@/features/session/components/Sidebar";
@@ -35,8 +30,7 @@ function RootComponent() {
   const location = useLocation();
 
   // 사이드바는 세션 영역(홈 + 세션 라우트)에서 표시
-  const isSessionArea =
-    location.pathname === "/" || location.pathname.startsWith("/session");
+  const isSessionArea = location.pathname === "/" || location.pathname.startsWith("/session");
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
@@ -77,15 +71,11 @@ function SessionLayout() {
   const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const isMobile = useIsMobile();
 
-  const activeSessions = useMemo(
-    () => sessions.filter((s) => s.status !== "archived"),
-    [sessions],
-  );
+  const activeSessions = useMemo(() => sessions.filter((s) => s.status !== "archived"), [sessions]);
 
   // Split View는 세션 라우트(/session/:id)에서만 활성화
   const isSessionDetailRoute =
-    location.pathname.startsWith("/session/") &&
-    !location.pathname.endsWith("/new");
+    location.pathname.startsWith("/session/") && !location.pathname.endsWith("/new");
 
   // split view 페이징
   const SPLIT_PAGE_SIZE = 5;
@@ -101,11 +91,7 @@ function SessionLayout() {
 
   // 현재 페이지에 표시할 세션
   const pagedSessions = useMemo(
-    () =>
-      activeSessions.slice(
-        splitPage * SPLIT_PAGE_SIZE,
-        (splitPage + 1) * SPLIT_PAGE_SIZE,
-      ),
+    () => activeSessions.slice(splitPage * SPLIT_PAGE_SIZE, (splitPage + 1) * SPLIT_PAGE_SIZE),
     [activeSessions, splitPage],
   );
 
@@ -132,7 +118,15 @@ function SessionLayout() {
       }
       if (isMobile) setSidebarMobileOpen(false);
     },
-    [selectSession, viewMode, setFocusedSessionId, isMobile, setSidebarMobileOpen, activeSessions, splitPage],
+    [
+      selectSession,
+      viewMode,
+      setFocusedSessionId,
+      isMobile,
+      setSidebarMobileOpen,
+      activeSessions,
+      splitPage,
+    ],
   );
 
   const handleNew = useCallback(() => {
@@ -297,9 +291,7 @@ const SplitViewPagination = memo(function SplitViewPagination({
 function LoadingSkeleton() {
   return (
     <div className="flex-1 flex items-center justify-center">
-      <span className="font-mono text-sm text-muted-foreground animate-pulse">
-        로딩 중…
-      </span>
+      <span className="font-mono text-sm text-muted-foreground animate-pulse">로딩 중…</span>
     </div>
   );
 }

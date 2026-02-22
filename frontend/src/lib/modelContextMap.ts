@@ -46,10 +46,8 @@ export function getModelDisplayName(model?: string | null): string | null {
   if (lower.includes("opus-4")) return "Opus 4";
   if (lower.includes("opus")) return "Opus";
   if (lower.includes("sonnet-4")) return "Sonnet 4";
-  if (lower.includes("sonnet-3") || lower.includes("3-5-sonnet"))
-    return "Sonnet 3.5";
-  if (lower.includes("haiku-3") || lower.includes("3-5-haiku"))
-    return "Haiku 3.5";
+  if (lower.includes("sonnet-3") || lower.includes("3-5-sonnet")) return "Sonnet 3.5";
+  if (lower.includes("haiku-3") || lower.includes("3-5-haiku")) return "Haiku 3.5";
   if (lower.includes("haiku")) return "Haiku";
   if (lower.includes("sonnet")) return "Sonnet";
   return model;

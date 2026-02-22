@@ -1,8 +1,5 @@
 /** tool별 Badge 스타일 매핑 */
-export const TOOL_BADGE_STYLES: Record<
-  string,
-  { background: string; color: string }
-> = {
+export const TOOL_BADGE_STYLES: Record<string, { background: string; color: string }> = {
   Write: {
     background: "rgba(34,197,94,0.15)",
     color: "hsl(var(--success))",

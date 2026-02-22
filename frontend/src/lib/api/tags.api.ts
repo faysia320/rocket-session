@@ -9,8 +9,7 @@ export const tagsApi = {
 
   create: (data: CreateTagRequest) => api.post<TagInfo>("/api/tags/", data),
 
-  update: (id: string, data: UpdateTagRequest) =>
-    api.patch<TagInfo>(`/api/tags/${id}`, data),
+  update: (id: string, data: UpdateTagRequest) => api.patch<TagInfo>(`/api/tags/${id}`, data),
 
   delete: (id: string) => api.delete<void>(`/api/tags/${id}`),
 

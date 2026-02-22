@@ -17,20 +17,14 @@ export function resolveRouteZone(pathname: string): RouteZone {
   return "home";
 }
 
-function isCommandAvailable(
-  context: CommandContext | undefined,
-  runtime: RuntimeContext,
-): boolean {
+function isCommandAvailable(context: CommandContext | undefined, runtime: RuntimeContext): boolean {
   if (!context) return true;
 
-  if (context.allowedZones && !context.allowedZones.includes(runtime.routeZone))
-    return false;
+  if (context.allowedZones && !context.allowedZones.includes(runtime.routeZone)) return false;
 
   if (context.requiresActiveSession && !runtime.activeSessionId) return false;
-  if (context.requiresRunning === true && runtime.sessionStatus !== "running")
-    return false;
-  if (context.requiresRunning === false && runtime.sessionStatus === "running")
-    return false;
+  if (context.requiresRunning === true && runtime.sessionStatus !== "running") return false;
+  if (context.requiresRunning === false && runtime.sessionStatus === "running") return false;
   if (context.requiresGit && !runtime.isGitRepo) return false;
 
   return true;

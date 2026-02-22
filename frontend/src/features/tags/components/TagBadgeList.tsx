@@ -37,9 +37,7 @@ export function TagBadgeList({
           onRemove={onRemove ? () => onRemove(tag.id) : undefined}
         />
       ))}
-      {remaining > 0 ? (
-        <span className="text-xs text-muted-foreground">+{remaining}</span>
-      ) : null}
+      {remaining > 0 ? <span className="text-xs text-muted-foreground">+{remaining}</span> : null}
     </div>
   );
 }

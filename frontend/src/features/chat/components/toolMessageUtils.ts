@@ -1,13 +1,5 @@
 import { useMemo } from "react";
-import {
-  FileText,
-  Pencil,
-  Terminal,
-  Search,
-  Globe,
-  GitBranch,
-  Plug,
-} from "lucide-react";
+import { FileText, Pencil, Terminal, Search, Globe, GitBranch, Plug } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /** MCP 도구 이름 파싱 결과 */

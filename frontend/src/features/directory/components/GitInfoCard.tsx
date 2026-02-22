@@ -1,17 +1,6 @@
-import {
-  GitBranch,
-  Check,
-  AlertCircle,
-  ArrowUp,
-  ArrowDown,
-  FileText,
-} from "lucide-react";
+import { GitBranch, Check, AlertCircle, ArrowUp, ArrowDown, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { GitInfo } from "@/types";
 
 interface GitInfoCardProps {
@@ -25,10 +14,7 @@ export function GitInfoCard({ gitInfo }: GitInfoCardProps) {
     <div className="flex flex-col gap-1 px-2.5 py-2 bg-card/50 border border-border rounded-md">
       <div className="flex items-center gap-1.5 flex-wrap">
         <GitBranch className="h-3 w-3 text-info shrink-0" />
-        <Badge
-          variant="secondary"
-          className="font-mono text-2xs px-1.5 py-0"
-        >
+        <Badge variant="secondary" className="font-mono text-2xs px-1.5 py-0">
           {gitInfo.branch ?? "detached"}
         </Badge>
         {gitInfo.is_dirty ? (
@@ -63,7 +49,9 @@ export function GitInfoCard({ gitInfo }: GitInfoCardProps) {
               {gitInfo.last_commit_message}
             </div>
           </TooltipTrigger>
-          <TooltipContent className="font-mono text-xs">{gitInfo.last_commit_message}</TooltipContent>
+          <TooltipContent className="font-mono text-xs">
+            {gitInfo.last_commit_message}
+          </TooltipContent>
         </Tooltip>
       ) : null}
     </div>

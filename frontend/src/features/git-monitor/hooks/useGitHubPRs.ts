@@ -12,11 +12,7 @@ export function useGhStatus(repoPath: string) {
   });
 }
 
-export function useGitHubPRs(
-  repoPath: string,
-  state = "open",
-  enabled = true,
-) {
+export function useGitHubPRs(repoPath: string, state = "open", enabled = true) {
   return useQuery<GitHubPRListResponse>({
     queryKey: ["gh-prs", repoPath, state],
     queryFn: () => filesystemApi.getGitHubPRs(repoPath, state),

@@ -13,11 +13,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { useGitStatus } from "../hooks/useGitStatus";
 import { useCreateSession } from "@/features/session/hooks/useSessions";
@@ -36,16 +32,9 @@ function getFolderName(path: string): string {
   return segments[segments.length - 1] || path;
 }
 
-export function GitMonitorRepoSection({
-  path,
-  onRemove,
-}: GitMonitorRepoSectionProps) {
+export function GitMonitorRepoSection({ path, onRemove }: GitMonitorRepoSectionProps) {
   const { gitInfo, isLoading: gitInfoLoading } = useGitInfo(path);
-  const {
-    data: status,
-    isLoading: statusLoading,
-    refetch,
-  } = useGitStatus(path);
+  const { data: status, isLoading: statusLoading, refetch } = useGitStatus(path);
 
   const { createSession } = useCreateSession();
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt);
@@ -78,17 +67,12 @@ export function GitMonitorRepoSection({
               {getFolderName(path)}
             </span>
           </TooltipTrigger>
-          <TooltipContent className="font-mono text-xs">
-            {path}
-          </TooltipContent>
+          <TooltipContent className="font-mono text-xs">{path}</TooltipContent>
         </Tooltip>
 
         {isGitRepo ? (
           <>
-            <Badge
-              variant="secondary"
-              className="font-mono text-2xs px-1.5 py-0 shrink-0"
-            >
+            <Badge variant="secondary" className="font-mono text-2xs px-1.5 py-0 shrink-0">
               <GitBranch className="h-2.5 w-2.5 mr-0.5" />
               {gitInfo?.branch ?? "detached"}
             </Badge>
@@ -132,9 +116,7 @@ export function GitMonitorRepoSection({
         ) : gitInfoLoading ? (
           <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground shrink-0" />
         ) : (
-          <span className="font-mono text-2xs text-muted-foreground shrink-0">
-            Git 저장소 아님
-          </span>
+          <span className="font-mono text-2xs text-muted-foreground shrink-0">Git 저장소 아님</span>
         )}
 
         <div className="flex-1" />

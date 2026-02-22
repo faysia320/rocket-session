@@ -14,11 +14,7 @@ export function EmptyState({ onNew }: { onNew: () => void }) {
         <p className="text-muted-foreground text-[15px] mb-6">
           Create a session to start sending commands to Claude Code CLI
         </p>
-        <Button
-          size="lg"
-          onClick={onNew}
-          className="font-mono text-sm font-medium"
-        >
+        <Button size="lg" onClick={onNew} className="font-mono text-sm font-medium">
           + New Session
         </Button>
       </div>
@@ -53,9 +49,7 @@ export function EmptyState({ onNew }: { onNew: () => void }) {
             <h3 className="font-mono text-md font-semibold text-foreground mb-1.5">
               {feature.title}
             </h3>
-            <p className="text-xs text-muted-foreground leading-normal">
-              {feature.desc}
-            </p>
+            <p className="text-xs text-muted-foreground leading-normal">{feature.desc}</p>
           </Card>
         ))}
       </div>

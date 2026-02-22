@@ -4,12 +4,7 @@ export type CommandCategory = "navigation" | "session" | "chat" | "ui" | "git";
 
 /** 명령 팔레트의 라우트 기반 필터링을 위한 존 정의.
  *  새 라우트 추가 시 여기에 존을 추가하고 registry.ts의 resolveRouteZone도 갱신할 것 */
-export type RouteZone =
-  | "home"
-  | "session-workspace"
-  | "session-new"
-  | "history"
-  | "analytics";
+export type RouteZone = "home" | "session-workspace" | "session-new" | "history" | "analytics";
 
 export interface CommandContext {
   requiresActiveSession?: boolean;
@@ -42,10 +37,4 @@ export const CATEGORY_LABELS: Record<CommandCategory, string> = {
   git: "Git",
 };
 
-export const CATEGORY_ORDER: CommandCategory[] = [
-  "navigation",
-  "session",
-  "chat",
-  "ui",
-  "git",
-];
+export const CATEGORY_ORDER: CommandCategory[] = ["navigation", "session", "chat", "ui", "git"];

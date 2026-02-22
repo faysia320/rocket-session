@@ -15,18 +15,13 @@ const TRANSPORT_ICONS: Record<McpTransportType, typeof Terminal> = {
   "streamable-http": Server,
 };
 
-export function McpServerSelector({
-  selectedIds,
-  onChange,
-}: McpServerSelectorProps) {
+export function McpServerSelector({ selectedIds, onChange }: McpServerSelectorProps) {
   const { data: servers = [] } = useMcpServers();
 
   const enabledServers = servers.filter((s) => s.enabled);
 
   const handleToggle = (id: string, checked: boolean) => {
-    onChange(
-      checked ? [...selectedIds, id] : selectedIds.filter((s) => s !== id),
-    );
+    onChange(checked ? [...selectedIds, id] : selectedIds.filter((s) => s !== id));
   };
 
   if (enabledServers.length === 0) {
@@ -60,14 +55,10 @@ export function McpServerSelector({
             >
               <Checkbox
                 checked={selectedIds.includes(server.id)}
-                onCheckedChange={(checked) =>
-                  handleToggle(server.id, checked === true)
-                }
+                onCheckedChange={(checked) => handleToggle(server.id, checked === true)}
               />
               <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="font-mono text-xs text-foreground">
-                {server.name}
-              </span>
+              <span className="font-mono text-xs text-foreground">{server.name}</span>
               <span className="font-mono text-2xs text-muted-foreground/60 ml-auto">
                 {server.transport_type}
               </span>

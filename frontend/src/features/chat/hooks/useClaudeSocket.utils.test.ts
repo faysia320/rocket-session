@@ -116,8 +116,7 @@ describe("useClaudeSocket.utils", () => {
 
     it("config.WS_BASE_URL이 설정되면 그 값을 사용한다", async () => {
       const { config } = await import("@/config/env");
-      (config as { WS_BASE_URL: string }).WS_BASE_URL =
-        "ws://custom-server:9000";
+      (config as { WS_BASE_URL: string }).WS_BASE_URL = "ws://custom-server:9000";
 
       const url = getWsUrl("session-custom");
       expect(url).toBe("ws://custom-server:9000/ws/session-custom");
@@ -164,9 +163,7 @@ describe("useClaudeSocket.utils", () => {
       const largeAttempt = 20;
       const iterations = 50;
 
-      const delays = Array.from({ length: iterations }, () =>
-        getBackoffDelay(largeAttempt),
-      );
+      const delays = Array.from({ length: iterations }, () => getBackoffDelay(largeAttempt));
 
       delays.forEach((delay) => {
         expect(delay).toBeLessThanOrEqual(RECONNECT_MAX_DELAY * 1.2); // 지터 포함
@@ -182,9 +179,7 @@ describe("useClaudeSocket.utils", () => {
       );
       const iterations = 100;
 
-      const delays = Array.from({ length: iterations }, () =>
-        getBackoffDelay(attempt),
-      );
+      const delays = Array.from({ length: iterations }, () => getBackoffDelay(attempt));
 
       delays.forEach((delay) => {
         expect(delay).toBeGreaterThanOrEqual(expectedBase * 0.8);

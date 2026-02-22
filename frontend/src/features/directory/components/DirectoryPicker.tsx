@@ -63,9 +63,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
           <WorktreePanel repoPath={value} onChange={onChange} />
         </>
       ) : isLoading && value.length > 0 ? (
-        <div className="font-mono text-2xs text-muted-foreground/70 px-1">
-          Git 정보 로딩 중…
-        </div>
+        <div className="font-mono text-2xs text-muted-foreground/70 px-1">Git 정보 로딩 중…</div>
       ) : null}
 
       <DirectoryBrowser

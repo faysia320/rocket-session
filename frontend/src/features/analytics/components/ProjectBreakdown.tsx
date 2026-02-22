@@ -21,9 +21,7 @@ const COLORS = {
   output: "hsl(38, 92%, 50%)",
 };
 
-export const ProjectBreakdown = memo(function ProjectBreakdown({
-  data,
-}: ProjectBreakdownProps) {
+export const ProjectBreakdown = memo(function ProjectBreakdown({ data }: ProjectBreakdownProps) {
   const chartData = useMemo(
     () =>
       data.slice(0, 10).map((d) => ({
@@ -38,9 +36,7 @@ export const ProjectBreakdown = memo(function ProjectBreakdown({
   if (chartData.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card p-4">
-        <h3 className="font-mono text-xs font-medium text-foreground mb-3">
-          프로젝트별 토큰
-        </h3>
+        <h3 className="font-mono text-xs font-medium text-foreground mb-3">프로젝트별 토큰</h3>
         <div className="flex items-center justify-center h-[120px] text-muted-foreground text-xs font-mono">
           데이터가 없습니다
         </div>
@@ -50,16 +46,10 @@ export const ProjectBreakdown = memo(function ProjectBreakdown({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="font-mono text-xs font-medium text-foreground mb-3">
-        프로젝트별 토큰
-      </h3>
+      <h3 className="font-mono text-xs font-medium text-foreground mb-3">프로젝트별 토큰</h3>
       <ResponsiveContainer width="100%" height={Math.max(chartData.length * 36, 120)}>
         <BarChart data={chartData} layout="vertical" barGap={2}>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="hsl(217, 33%, 17%)"
-            horizontal={false}
-          />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" horizontal={false} />
           <XAxis
             type="number"
             tick={{ fontSize: 10, fill: "hsl(215, 25%, 50%)" }}
@@ -88,9 +78,7 @@ export const ProjectBreakdown = memo(function ProjectBreakdown({
               typeof value === "number" ? [formatTokens(value)] : [String(value ?? 0)]
             }
           />
-          <Legend
-            wrapperStyle={{ fontSize: "10px", fontFamily: "monospace" }}
-          />
+          <Legend wrapperStyle={{ fontSize: "10px", fontFamily: "monospace" }} />
           <Bar dataKey="Input" fill={COLORS.input} radius={[0, 3, 3, 0]} />
           <Bar dataKey="Output" fill={COLORS.output} radius={[0, 3, 3, 0]} />
         </BarChart>

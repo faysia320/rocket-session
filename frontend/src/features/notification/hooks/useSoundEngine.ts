@@ -51,10 +51,7 @@ function playSuccessChime(ctx: AudioContext, volume: number) {
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, ctx.currentTime);
     gain.gain.linearRampToValueAtTime(volume * 0.3, ctx.currentTime + i * 0.12);
-    gain.gain.exponentialRampToValueAtTime(
-      0.001,
-      ctx.currentTime + i * 0.12 + 0.3,
-    );
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.3);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(ctx.currentTime + i * 0.12);
@@ -69,10 +66,7 @@ function playErrorBuzz(ctx: AudioContext, volume: number) {
     osc.frequency.setValueAtTime(freq, ctx.currentTime);
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(volume * 0.15, ctx.currentTime + i * 0.2);
-    gain.gain.exponentialRampToValueAtTime(
-      0.001,
-      ctx.currentTime + i * 0.2 + 0.25,
-    );
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.2 + 0.25);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(ctx.currentTime + i * 0.2);
@@ -87,14 +81,8 @@ function playAttentionPing(ctx: AudioContext, volume: number) {
     osc.frequency.setValueAtTime(880, ctx.currentTime);
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-    gain.gain.linearRampToValueAtTime(
-      volume * 0.25,
-      ctx.currentTime + delay + 0.02,
-    );
-    gain.gain.exponentialRampToValueAtTime(
-      0.001,
-      ctx.currentTime + delay + 0.12,
-    );
+    gain.gain.linearRampToValueAtTime(volume * 0.25, ctx.currentTime + delay + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.12);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(ctx.currentTime + delay);

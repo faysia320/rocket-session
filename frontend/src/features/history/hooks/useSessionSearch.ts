@@ -6,8 +6,7 @@ import { sessionsApi, type SearchSessionsParams } from "@/lib/api/sessions.api";
 
 export const historyKeys = {
   all: ["history"] as const,
-  search: (params: SearchSessionsParams) =>
-    [...historyKeys.all, "search", params] as const,
+  search: (params: SearchSessionsParams) => [...historyKeys.all, "search", params] as const,
 };
 
 export function useSessionSearch(params: SearchSessionsParams) {

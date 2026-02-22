@@ -2,7 +2,14 @@
  * 세션 도메인 API 함수.
  */
 import { api } from "./client";
-import type { SessionInfo, UpdateSessionRequest, ConvertToWorktreeRequest, SessionStats, Message, FileChange } from "@/types";
+import type {
+  SessionInfo,
+  UpdateSessionRequest,
+  ConvertToWorktreeRequest,
+  SessionStats,
+  Message,
+  FileChange,
+} from "@/types";
 
 export interface SearchSessionsParams {
   q?: string;
@@ -63,14 +70,10 @@ export const sessionsApi = {
   files: (id: string) => api.get<FileChange[]>(`/api/sessions/${id}/files`),
 
   fileContent: (sessionId: string, filePath: string) =>
-    api.getText(
-      `/api/sessions/${sessionId}/file-content/${encodeURIComponent(filePath)}`,
-    ),
+    api.getText(`/api/sessions/${sessionId}/file-content/${encodeURIComponent(filePath)}`),
 
   fileDiff: (sessionId: string, filePath: string) =>
-    api.getText(
-      `/api/sessions/${sessionId}/file-diff/${encodeURIComponent(filePath)}`,
-    ),
+    api.getText(`/api/sessions/${sessionId}/file-diff/${encodeURIComponent(filePath)}`),
 
   exportMarkdown: async (sessionId: string): Promise<void> => {
     const blob = await api.getBlob(`/api/sessions/${sessionId}/export`);
@@ -102,10 +105,7 @@ export const sessionsApi = {
     }),
 
   convertToWorktree: (sessionId: string, req: ConvertToWorktreeRequest) =>
-    api.post<SessionInfo>(
-      `/api/sessions/${sessionId}/convert-to-worktree`,
-      req,
-    ),
+    api.post<SessionInfo>(`/api/sessions/${sessionId}/convert-to-worktree`, req),
 
   stats: (id: string) => api.get<SessionStats>(`/api/sessions/${id}/stats`),
 

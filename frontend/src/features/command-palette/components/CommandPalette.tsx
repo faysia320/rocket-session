@@ -18,8 +18,7 @@ export function CommandPalette() {
   const close = useCommandPaletteStore((s) => s.close);
   const addRecent = useCommandPaletteStore((s) => s.addRecent);
 
-  const { groupedCommands, recentCommands, categoryOrder } =
-    useCommandPalette();
+  const { groupedCommands, recentCommands, categoryOrder } = useCommandPalette();
 
   const handleSelect = useCallback(
     (cmd: PaletteCommand) => {
@@ -39,10 +38,7 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={isOpen} onOpenChange={handleOpenChange}>
-      <CommandInput
-        placeholder="명령어 검색…"
-        className="font-mono"
-      />
+      <CommandInput placeholder="명령어 검색…" className="font-mono" />
       <CommandList className="max-h-[400px]">
         <CommandEmpty className="font-mono text-sm py-6 text-center">
           일치하는 명령어가 없습니다
@@ -52,11 +48,7 @@ export function CommandPalette() {
           <>
             <CommandGroup heading="최근 사용">
               {recentCommands.map((cmd) => (
-                <CommandItemRow
-                  key={`recent:${cmd.id}`}
-                  cmd={cmd}
-                  onSelect={handleSelect}
-                />
+                <CommandItemRow key={`recent:${cmd.id}`} cmd={cmd} onSelect={handleSelect} />
               ))}
             </CommandGroup>
             <CommandSeparator />
@@ -67,16 +59,9 @@ export function CommandPalette() {
           const cmds = groupedCommands[cat];
           if (cmds.length === 0) return null;
           return (
-            <CommandGroup
-              key={cat}
-              heading={CATEGORY_LABELS[cat]}
-            >
+            <CommandGroup key={cat} heading={CATEGORY_LABELS[cat]}>
               {cmds.map((cmd) => (
-                <CommandItemRow
-                  key={cmd.id}
-                  cmd={cmd}
-                  onSelect={handleSelect}
-                />
+                <CommandItemRow key={cmd.id} cmd={cmd} onSelect={handleSelect} />
               ))}
             </CommandGroup>
           );
@@ -94,12 +79,7 @@ function CommandItemRow({
   onSelect: (cmd: PaletteCommand) => void;
 }) {
   const Icon = cmd.icon;
-  const searchValue = [
-    cmd.id,
-    cmd.label,
-    cmd.description,
-    ...(cmd.keywords || []),
-  ].join(" ");
+  const searchValue = [cmd.id, cmd.label, cmd.description, ...(cmd.keywords || [])].join(" ");
 
   return (
     <CommandItem

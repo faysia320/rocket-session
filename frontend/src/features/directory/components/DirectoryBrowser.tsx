@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { Folder, FolderGit2, ArrowUp, Star, X } from "lucide-react";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -34,8 +30,9 @@ export function DirectoryBrowser({
   initialPath,
   onSelect,
 }: DirectoryBrowserProps) {
-  const { currentPath, entries, parent, isLoading, navigateTo, goUp } =
-    useDirectoryBrowser(initialPath || "~");
+  const { currentPath, entries, parent, isLoading, navigateTo, goUp } = useDirectoryBrowser(
+    initialPath || "~",
+  );
   const [selected, setSelected] = useState<string | null>(null);
   const [pathInput, setPathInput] = useState("");
   const { favorites, removeFavorite } = useFavoriteDirectories();
@@ -122,9 +119,7 @@ export function DirectoryBrowser({
                         }}
                       >
                         <Star className="h-3.5 w-3.5 text-warning fill-warning shrink-0" />
-                        <span className="font-mono text-xs truncate">
-                          {fav.name}
-                        </span>
+                        <span className="font-mono text-xs truncate">{fav.name}</span>
                         <span className="font-mono text-[9px] text-muted-foreground/60 truncate ml-auto">
                           {fav.path}
                         </span>
@@ -150,9 +145,7 @@ export function DirectoryBrowser({
                   onClick={goUp}
                 >
                   <ArrowUp className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="font-mono text-xs text-muted-foreground">
-                    상위 디렉토리
-                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">상위 디렉토리</span>
                 </button>
               ) : null}
 
@@ -183,9 +176,7 @@ export function DirectoryBrowser({
                     ) : (
                       <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     )}
-                    <span className="font-mono text-xs truncate">
-                      {entry.name}
-                    </span>
+                    <span className="font-mono text-xs truncate">{entry.name}</span>
                     {entry.is_git_repo ? (
                       <span className="font-mono text-[9px] text-info/70 ml-auto shrink-0">
                         (git)
@@ -199,11 +190,7 @@ export function DirectoryBrowser({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             취소
           </Button>
           <Button size="sm" onClick={handleConfirm}>

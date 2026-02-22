@@ -1,10 +1,6 @@
 import { useState, memo, useRef, useCallback } from "react";
 import { Terminal, ChevronRight, ChevronDown, Copy, Check } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
 import { ToolStatusIcon } from "./ToolStatusIcon";
@@ -14,9 +10,7 @@ interface BashToolMessageProps {
   message: ToolUseMsg;
 }
 
-export const BashToolMessage = memo(function BashToolMessage({
-  message,
-}: BashToolMessageProps) {
+export const BashToolMessage = memo(function BashToolMessage({ message }: BashToolMessageProps) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -41,17 +35,20 @@ export const BashToolMessage = memo(function BashToolMessage({
       ? `${command.slice(0, 60)}\u2026`
       : command;
 
-  const handleCopy = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(command);
-      setCopied(true);
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
-      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard API 미지원 환경
-    }
-  }, [command]);
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(command);
+        setCopied(true);
+        if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+        copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // clipboard API 미지원 환경
+      }
+    },
+    [command],
+  );
 
   return (
     <Collapsible
@@ -69,9 +66,7 @@ export const BashToolMessage = memo(function BashToolMessage({
           <div className="flex items-center gap-2">
             <ToolStatusIcon status={toolStatus} />
             <Terminal className="h-3.5 w-3.5 shrink-0 text-warning" />
-            <span className="font-mono text-xs font-semibold text-foreground">
-              Bash
-            </span>
+            <span className="font-mono text-xs font-semibold text-foreground">Bash</span>
             <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
               {headerText}
             </span>
@@ -102,17 +97,11 @@ export const BashToolMessage = memo(function BashToolMessage({
                 onClick={handleCopy}
                 className={cn(
                   "shrink-0 p-2 transition-colors",
-                  copied
-                    ? "text-success"
-                    : "text-muted-foreground/50 hover:text-foreground",
+                  copied ? "text-success" : "text-muted-foreground/50 hover:text-foreground",
                 )}
                 aria-label={copied ? "복사됨" : "명령어 복사"}
               >
-                {copied ? (
-                  <Check className="h-3 w-3" />
-                ) : (
-                  <Copy className="h-3 w-3" />
-                )}
+                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </button>
             </div>
 
@@ -120,9 +109,7 @@ export const BashToolMessage = memo(function BashToolMessage({
             {message.output ? (
               <div className="rounded-b-md border border-t-0 border-border/50 bg-input/30">
                 <div className="flex items-center gap-2 px-2.5 pt-1.5">
-                  <span className="font-mono text-2xs text-muted-foreground/50">
-                    Output
-                  </span>
+                  <span className="font-mono text-2xs text-muted-foreground/50">Output</span>
                   {message.is_truncated && message.full_length ? (
                     <span className="font-mono text-2xs text-warning">
                       ({message.output.length.toLocaleString()}/
@@ -133,9 +120,7 @@ export const BashToolMessage = memo(function BashToolMessage({
                 <pre
                   className={cn(
                     "font-mono text-xs p-2.5 overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
-                    message.is_error
-                      ? "text-destructive"
-                      : "text-muted-foreground",
+                    message.is_error ? "text-destructive" : "text-muted-foreground",
                   )}
                 >
                   {message.output}

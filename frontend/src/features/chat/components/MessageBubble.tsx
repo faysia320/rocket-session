@@ -9,11 +9,7 @@ import {
   FileEdit,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn, highlightText, formatTokens } from "@/lib/utils";
 import type {
   Message,
@@ -52,11 +48,7 @@ interface MessageBubbleProps {
   onContinuePlan?: (messageId: string) => void;
   onDismissPlan?: (messageId: string) => void;
   onRevisePlan?: (messageId: string, feedback: string) => void;
-  onAnswerQuestion?: (
-    messageId: string,
-    questionIndex: number,
-    labels: string[],
-  ) => void;
+  onAnswerQuestion?: (messageId: string, questionIndex: number, labels: string[]) => void;
   onConfirmAnswers?: (messageId: string) => void;
 }
 
@@ -104,14 +96,11 @@ export const MessageBubble = memo(function MessageBubble({
       }
       return <ResultMessage message={message} animate={animate} />;
     case "tool_use":
-      if (message.tool === "TodoWrite")
-        return <TodoWriteMessage message={message} />;
+      if (message.tool === "TodoWrite") return <TodoWriteMessage message={message} />;
       if (["Edit", "MultiEdit", "Write"].includes(message.tool))
         return <EditToolMessage message={message} />;
-      if (message.tool === "Bash")
-        return <BashToolMessage message={message} />;
-      if (message.tool === "Read")
-        return <ReadToolMessage message={message} />;
+      if (message.tool === "Bash") return <BashToolMessage message={message} />;
+      if (message.tool === "Read") return <ReadToolMessage message={message} />;
       if (message.tool === "Grep" || message.tool === "Glob")
         return <SearchToolMessage message={message} />;
       if (message.tool === "WebFetch" || message.tool === "WebSearch")
@@ -149,17 +138,15 @@ export const MessageBubble = memo(function MessageBubble({
     default:
       return (
         <div className="px-2 py-0.5">
-          <span className="font-mono text-2xs text-muted-foreground/50">
-            [{type}]
-          </span>
+          <span className="font-mono text-2xs text-muted-foreground/50">[{type}]</span>
         </div>
       );
   }
 });
 
 /** fadeIn 애니메이션을 animate prop에 따라 조건부 적용하는 헬퍼 */
-const fadeIn = (animate: boolean) => animate ? "animate-[fadeIn_0.2s_ease]" : "";
-const slideIn = (animate: boolean) => animate ? "animate-[slideInLeft_0.2s_ease]" : "";
+const fadeIn = (animate: boolean) => (animate ? "animate-[fadeIn_0.2s_ease]" : "");
+const slideIn = (animate: boolean) => (animate ? "animate-[slideInLeft_0.2s_ease]" : "");
 
 // ─── Phase 1: Primary Messages ────────────────────────────────────────────────
 
@@ -177,8 +164,7 @@ function UserMessage({
   animate?: boolean;
 }) {
   const msg = message.message as Record<string, string> | undefined;
-  const text =
-    msg?.content || msg?.prompt || message.content || message.prompt || "";
+  const text = msg?.content || msg?.prompt || message.content || message.prompt || "";
   return (
     <div className={cn("flex justify-end", fadeIn(animate))}>
       <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-lg rounded-br-sm shadow-sm">
@@ -215,10 +201,7 @@ function formatModelName(model: string): string {
 }
 
 function ResultMessage({ message, animate = false }: { message: ResultMsg; animate?: boolean }) {
-  const hasMetadata =
-    message.duration_ms ||
-    message.model ||
-    message.input_tokens;
+  const hasMetadata = message.duration_ms || message.model || message.input_tokens;
 
   return (
     <div className={fadeIn(animate)}>
@@ -279,7 +262,9 @@ function getToolSummary(toolName: string, input: Record<string, unknown>): strin
     const pattern = input.pattern ? `"${String(input.pattern)}"` : null;
     const glob = input.glob ? String(input.glob) : null;
     const path = input.path ? String(input.path) : null;
-    const parts = [pattern, glob ? `in ${glob}` : null, !glob && path ? `in ${path}` : null].filter(Boolean);
+    const parts = [pattern, glob ? `in ${glob}` : null, !glob && path ? `in ${path}` : null].filter(
+      Boolean,
+    );
     return parts.length > 0 ? parts.join(" ") : null;
   }
   if (toolName === "Glob") {
@@ -289,10 +274,9 @@ function getToolSummary(toolName: string, input: Record<string, unknown>): strin
   if (toolName.startsWith("mcp__")) {
     const query = input.query ?? input.q ?? input.pattern ?? input.search ?? input.text;
     const path = input.path ?? input.file_path ?? input.repo ?? input.owner;
-    const parts = [
-      query ? `"${String(query)}"` : null,
-      path ? `in ${String(path)}` : null,
-    ].filter(Boolean);
+    const parts = [query ? `"${String(query)}"` : null, path ? `in ${String(path)}` : null].filter(
+      Boolean,
+    );
     return parts.length > 0 ? parts.join(" ") : null;
   }
   // Read 및 기타: file_path 또는 path
@@ -333,9 +317,7 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
         <CollapsibleTrigger asChild>
           <div className="flex items-center gap-2">
             <ToolStatusIcon status={toolStatus} />
-            {ToolIcon ? (
-              <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} />
-            ) : null}
+            {ToolIcon ? <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} /> : null}
             {mcpInfo.isMcp ? (
               <>
                 <span className="font-mono text-2xs px-1 py-0.5 rounded bg-violet-500/20 text-violet-400 shrink-0">
@@ -346,9 +328,7 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
                 </span>
               </>
             ) : (
-              <span className="font-mono text-xs font-semibold text-foreground">
-                {toolName}
-              </span>
+              <span className="font-mono text-xs font-semibold text-foreground">{toolName}</span>
             )}
             {summary ? (
               <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
@@ -371,9 +351,7 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
           <div className="mt-1.5 space-y-1.5 min-w-0 overflow-hidden">
             {/* Input JSON */}
             <div>
-              <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">
-                Input
-              </div>
+              <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">Input</div>
               <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
                 {JSON.stringify(input, null, 2)}
               </pre>
@@ -381,9 +359,7 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
             {message.output ? (
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-mono text-2xs text-muted-foreground/70">
-                    Output
-                  </span>
+                  <span className="font-mono text-2xs text-muted-foreground/70">Output</span>
                   {message.is_truncated && message.full_length ? (
                     <span className="font-mono text-2xs text-warning">
                       ({message.output.length.toLocaleString()}/
@@ -394,9 +370,7 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
                 <pre
                   className={cn(
                     "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
-                    message.is_error
-                      ? "text-destructive"
-                      : "text-muted-foreground",
+                    message.is_error ? "text-destructive" : "text-muted-foreground",
                   )}
                 >
                   {message.output}
@@ -410,7 +384,13 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
   );
 }
 
-function ThinkingMessage({ message, animate = false }: { message: ThinkingMsg; animate?: boolean }) {
+function ThinkingMessage({
+  message,
+  animate = false,
+}: {
+  message: ThinkingMsg;
+  animate?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   return (
     <Collapsible
@@ -442,7 +422,15 @@ function ThinkingMessage({ message, animate = false }: { message: ThinkingMsg; a
 
 // ─── Phase 3: Alert Messages ──────────────────────────────────────────────────
 
-function AssistantText({ message, isStreaming, animate = false }: { message: AssistantTextMsg; isStreaming?: boolean; animate?: boolean }) {
+function AssistantText({
+  message,
+  isStreaming,
+  animate = false,
+}: {
+  message: AssistantTextMsg;
+  isStreaming?: boolean;
+  animate?: boolean;
+}) {
   return (
     <div className={fadeIn(animate)}>
       <div
@@ -489,9 +477,7 @@ function ErrorMessage({
       <div className="flex items-center gap-2 px-3 py-2.5 bg-destructive/10 border border-destructive/30 rounded-md border-l-[3px] border-l-destructive">
         <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
         <span className="font-mono text-xs text-destructive flex-1">
-          {searchQuery
-            ? highlightText(String(errorText), searchQuery)
-            : errorText}
+          {searchQuery ? highlightText(String(errorText), searchQuery) : errorText}
         </span>
         {onRetry ? (
           <button
@@ -534,22 +520,16 @@ function PermissionRequestMessage({
         <ShieldAlert
           className={cn(
             "h-4 w-4 shrink-0",
-            resolved
-              ? isAllowed ? "text-success" : "text-destructive"
-              : "text-warning",
+            resolved ? (isAllowed ? "text-success" : "text-destructive") : "text-warning",
           )}
         />
         <span
           className={cn(
             "font-mono text-2xs font-semibold uppercase tracking-wider",
-            resolved
-              ? isAllowed ? "text-success" : "text-destructive"
-              : "text-warning",
+            resolved ? (isAllowed ? "text-success" : "text-destructive") : "text-warning",
           )}
         >
-          {resolved
-            ? isAllowed ? "Allowed" : "Denied"
-            : "Permission Required"}
+          {resolved ? (isAllowed ? "Allowed" : "Denied") : "Permission Required"}
         </span>
         <span className="font-mono text-xs text-foreground font-semibold bg-warning/10 px-1.5 py-0.5 rounded">
           {message.tool}
@@ -563,7 +543,13 @@ function PermissionRequestMessage({
 
 // FileChangeMessage: 현재 tool_use + file_change 이벤트에서 tool_use 경로로 표시되므로
 // 이 컴포넌트가 직접 사용되는 경우는 드물지만, 향후 활용을 위해 유지
-function FileChangeMessage({ message, animate = false }: { message: FileChangeMsg; animate?: boolean }) {
+function FileChangeMessage({
+  message,
+  animate = false,
+}: {
+  message: FileChangeMsg;
+  animate?: boolean;
+}) {
   return (
     <div className={cn("flex items-center gap-1.5 px-2 py-1", fadeIn(animate))}>
       <FileEdit className="h-3 w-3 text-primary/60 shrink-0" />
@@ -602,9 +588,7 @@ function SystemMessage({
     <div className={cn("flex items-center gap-3 px-4 py-2", fadeIn(animate))}>
       <div className="flex-1 h-px bg-border/50" />
       <span className="font-mono text-2xs text-muted-foreground/50 italic shrink-0">
-        {searchQuery
-          ? highlightText(message.text || "", searchQuery)
-          : message.text}
+        {searchQuery ? highlightText(message.text || "", searchQuery) : message.text}
       </span>
       <div className="flex-1 h-px bg-border/50" />
     </div>

@@ -18,14 +18,7 @@ export function createUICommands(deps: {
   isDark: boolean;
   sidebarCollapsed: boolean;
 }): PaletteCommand[] {
-  const {
-    toggleSidebar,
-    setViewMode,
-    navigateHome,
-    toggleTheme,
-    isDark,
-    sidebarCollapsed,
-  } = deps;
+  const { toggleSidebar, setViewMode, navigateHome, toggleTheme, isDark, sidebarCollapsed } = deps;
 
   return [
     {

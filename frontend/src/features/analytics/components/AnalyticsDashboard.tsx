@@ -25,12 +25,8 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard() {
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="font-mono text-lg font-semibold text-foreground">
-              Token Analytics
-            </h1>
-            <p className="font-mono text-xs text-muted-foreground">
-              토큰 사용량 분석
-            </p>
+            <h1 className="font-mono text-lg font-semibold text-foreground">Token Analytics</h1>
+            <p className="font-mono text-xs text-muted-foreground">토큰 사용량 분석</p>
           </div>
           {/* 기간 선택 탭 */}
           <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-0.5">

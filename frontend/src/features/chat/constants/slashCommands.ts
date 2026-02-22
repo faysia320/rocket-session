@@ -1,12 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  HelpCircle,
-  Trash2,
-  Minimize2,
-  Cpu,
-  Settings,
-  FolderOpen,
-} from "lucide-react";
+import { HelpCircle, Trash2, Minimize2, Cpu, Settings, FolderOpen } from "lucide-react";
 
 export interface SlashCommand {
   id: string;

@@ -48,11 +48,7 @@ export const CodeBlock = memo(function CodeBlock({
           )}
           aria-label={copied ? "복사됨" : "코드 복사"}
         >
-          {copied ? (
-            <Check className="h-3 w-3" />
-          ) : (
-            <Copy className="h-3 w-3" />
-          )}
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         </button>
       </div>
       <pre className="font-mono text-xs bg-input border border-t-0 border-border rounded-b-sm px-3 py-2.5 overflow-auto whitespace-pre leading-relaxed max-h-[500px]">

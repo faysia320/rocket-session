@@ -12,13 +12,7 @@ interface TagBadgeProps {
   className?: string;
 }
 
-export function TagBadge({
-  name,
-  color,
-  size = "sm",
-  onRemove,
-  className,
-}: TagBadgeProps) {
+export function TagBadge({ name, color, size = "sm", onRemove, className }: TagBadgeProps) {
   return (
     <span
       className={cn(

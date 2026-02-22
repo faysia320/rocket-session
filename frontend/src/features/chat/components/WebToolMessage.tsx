@@ -1,11 +1,7 @@
 import { useState, memo } from "react";
 import { Globe, ChevronRight, ChevronDown } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
 import { ToolStatusIcon } from "./ToolStatusIcon";
@@ -15,9 +11,7 @@ interface WebToolMessageProps {
   message: ToolUseMsg;
 }
 
-export const WebToolMessage = memo(function WebToolMessage({
-  message,
-}: WebToolMessageProps) {
+export const WebToolMessage = memo(function WebToolMessage({ message }: WebToolMessageProps) {
   const [expanded, setExpanded] = useState(false);
   const toolName = message.tool || "Web";
   const input = (message.input || {}) as Record<string, unknown>;
@@ -93,14 +87,15 @@ export const WebToolMessage = memo(function WebToolMessage({
               </div>
             ) : toolStatus === "running" ? (
               <div className="font-mono text-2xs text-muted-foreground/50 italic py-2">
-                {isSearch ? "검색 중" : "가져오는 중"}{"\u2026"}
+                {isSearch ? "검색 중" : "가져오는 중"}
+                {"\u2026"}
               </div>
             ) : null}
 
             {message.is_truncated && message.full_length ? (
               <div className="font-mono text-2xs text-warning">
-                ({message.output?.length.toLocaleString()}/
-                {message.full_length.toLocaleString()}자 표시)
+                ({message.output?.length.toLocaleString()}/{message.full_length.toLocaleString()}자
+                표시)
               </div>
             ) : null}
           </div>

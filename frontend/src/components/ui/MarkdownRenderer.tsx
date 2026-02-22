@@ -22,17 +22,12 @@ function extractText(node: ReactNode): string {
   if (!node) return "";
   if (Array.isArray(node)) return node.map(extractText).join("");
   if (typeof node === "object" && "props" in node) {
-    return extractText(
-      (node as { props: { children?: ReactNode } }).props.children,
-    );
+    return extractText((node as { props: { children?: ReactNode } }).props.children);
   }
   return "";
 }
 
-const components: Record<
-  string,
-  React.ComponentType<ComponentPropsWithoutRef<any>>
-> = {
+const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<any>>> = {
   pre({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
     // react-markdown wraps code blocks in <pre><code>...</code></pre>
     // Intercept <pre> to render our CodeBlock with copy button
@@ -53,9 +48,7 @@ const components: Record<
 
   code({ className, children, ...props }: ComponentPropsWithoutRef<"code">) {
     // Block code (inside pre) has hljs/language- classes - render as-is for CodeBlock
-    const isBlock =
-      className &&
-      (className.includes("hljs") || className.includes("language-"));
+    const isBlock = className && (className.includes("hljs") || className.includes("language-"));
     if (isBlock) {
       return (
         <code className={className} {...props}>
@@ -129,9 +122,7 @@ const components: Record<
   },
 
   hr(props: ComponentPropsWithoutRef<"hr">) {
-    return (
-      <hr className="border-none border-t border-border my-3" {...props} />
-    );
+    return <hr className="border-none border-t border-border my-3" {...props} />;
   },
 };
 
@@ -139,7 +130,9 @@ const components: Record<
 const remarkPlugins = [remarkGfm];
 // hljs에 등록된 언어만 사용하도록 subset 지정
 const rehypeHighlightOptions = { detect: false };
-const rehypePlugins: [typeof rehypeHighlight, typeof rehypeHighlightOptions][] = [[rehypeHighlight, rehypeHighlightOptions]];
+const rehypePlugins: [typeof rehypeHighlight, typeof rehypeHighlightOptions][] = [
+  [rehypeHighlight, rehypeHighlightOptions],
+];
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,

@@ -1,10 +1,6 @@
 import { useState, memo } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
 import { ToolStatusIcon } from "./ToolStatusIcon";
@@ -37,10 +33,12 @@ function extractEdits(message: ToolUseMsg): EditPair[] {
 
   // Edit
   if (input.old_string !== undefined || input.new_string !== undefined) {
-    return [{
-      oldString: String(input.old_string ?? ""),
-      newString: String(input.new_string ?? ""),
-    }];
+    return [
+      {
+        oldString: String(input.old_string ?? ""),
+        newString: String(input.new_string ?? ""),
+      },
+    ];
   }
   return [];
 }
@@ -76,9 +74,7 @@ function InlineDiff({ oldString, newString }: EditPair) {
   );
 }
 
-export const EditToolMessage = memo(function EditToolMessage({
-  message,
-}: EditToolMessageProps) {
+export const EditToolMessage = memo(function EditToolMessage({ message }: EditToolMessageProps) {
   const [expanded, setExpanded] = useState(false);
   const toolName = message.tool || "Edit";
   const input = (message.input || {}) as Record<string, unknown>;
@@ -114,12 +110,8 @@ export const EditToolMessage = memo(function EditToolMessage({
         <CollapsibleTrigger asChild>
           <div className="flex items-center gap-2">
             <ToolStatusIcon status={toolStatus} />
-            {ToolIcon ? (
-              <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} />
-            ) : null}
-            <span className="font-mono text-xs font-semibold text-foreground">
-              {toolName}
-            </span>
+            {ToolIcon ? <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} /> : null}
+            <span className="font-mono text-xs font-semibold text-foreground">{toolName}</span>
             {filePath ? (
               <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
                 {filePath}
@@ -144,9 +136,7 @@ export const EditToolMessage = memo(function EditToolMessage({
               <div className="rounded-md overflow-hidden border border-border/50 bg-input/40">
                 {edits.map((edit, i) => (
                   <div key={i}>
-                    {i > 0 ? (
-                      <div className="border-t border-border/30 my-0" />
-                    ) : null}
+                    {i > 0 ? <div className="border-t border-border/30 my-0" /> : null}
                     <InlineDiff oldString={edit.oldString} newString={edit.newString} />
                   </div>
                 ))}
@@ -156,9 +146,7 @@ export const EditToolMessage = memo(function EditToolMessage({
             {/* Write: content 미리보기 (너무 길면 truncate) */}
             {isWrite && input.content ? (
               <div>
-                <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">
-                  Content
-                </div>
+                <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">Content</div>
                 <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
                   {String(input.content).length > 2000
                     ? `${String(input.content).slice(0, 2000)}\u2026`
@@ -171,9 +159,7 @@ export const EditToolMessage = memo(function EditToolMessage({
             {message.output ? (
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-mono text-2xs text-muted-foreground/70">
-                    Output
-                  </span>
+                  <span className="font-mono text-2xs text-muted-foreground/70">Output</span>
                   {message.is_truncated && message.full_length ? (
                     <span className="font-mono text-2xs text-warning">
                       ({message.output.length.toLocaleString()}/
@@ -184,9 +170,7 @@ export const EditToolMessage = memo(function EditToolMessage({
                 <pre
                   className={cn(
                     "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text",
-                    message.is_error
-                      ? "text-destructive"
-                      : "text-muted-foreground",
+                    message.is_error ? "text-destructive" : "text-muted-foreground",
                   )}
                 >
                   {message.output}

@@ -20,10 +20,7 @@ export function shortenPath(fullPath: string): string {
   return "\u2026/" + segments.slice(-2).join("/");
 }
 
-export function getActivityLabel(
-  tool: string,
-  input?: Record<string, unknown>,
-): string {
+export function getActivityLabel(tool: string, input?: Record<string, unknown>): string {
   if (tool === "__thinking__") return "Thinking\u2026";
 
   const label = TOOL_LABELS[tool] || tool;
@@ -39,14 +36,12 @@ export function getActivityLabel(
     return desc ? `${label}: ${desc}` : label;
   }
 
-  const filePath =
-    (input?.file_path as string) || (input?.path as string) || "";
+  const filePath = (input?.file_path as string) || (input?.path as string) || "";
   if (filePath) {
     return `${label} ${shortenPath(filePath)}`;
   }
 
-  const pattern =
-    (input?.pattern as string) || (input?.query as string) || "";
+  const pattern = (input?.pattern as string) || (input?.query as string) || "";
   if (pattern) {
     return `${label} "${pattern}"`;
   }
