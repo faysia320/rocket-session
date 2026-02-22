@@ -1,7 +1,6 @@
 """WebSocket 엔드포인트 - 실시간 스트리밍."""
 
 import asyncio
-import json
 import logging
 from datetime import datetime, timezone
 
@@ -137,15 +136,7 @@ async def _handle_prompt(
             "mcp_server_ids",
         ]:
             if not merged_session.get(key) and global_settings.get(key):
-                if key in ("permission_required_tools", "mcp_server_ids"):
-                    val = global_settings[key]
-                    merged_session[key] = (
-                        json.dumps(val) if isinstance(val, list) else val
-                    )
-                elif key == "permission_mode":
-                    merged_session[key] = int(global_settings[key])
-                else:
-                    merged_session[key] = global_settings[key]
+                merged_session[key] = global_settings[key]
 
         # MCP 서비스 주입
         mcp_service = get_mcp_service()
@@ -235,13 +226,18 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
     ws_manager.register(session_id, ws)
 
     try:
-        # JSONL 감시 자동 시작 (import된 세션 + 활성 JSONL 파일)
-        await jsonl_watcher.try_auto_start(session_id)
+        # is_running 판단을 먼저 수행 (try_auto_start 이전)
+        # try_auto_start가 먼저 실행되면 방금 시작한 watcher가
+        # is_running=true를 만들어 idle 세션이 running으로 보이는 버그 발생
         session_with_counts = await manager.get_with_counts(session_id) or session
         latest_seq = ws_manager.get_latest_seq(session_id)
         is_running = manager.get_runner_task(
             session_id
         ) is not None or jsonl_watcher.is_watching(session_id)
+
+        # JSONL 감시 자동 시작 (import된 세션 + 활성 JSONL 파일)
+        # is_running 판단 이후에 시작하여 향후 이벤트 모니터링 용도로만 사용
+        await jsonl_watcher.try_auto_start(session_id)
 
         if last_seq is not None:
             # 재연결: 세션 상태만 전송 (히스토리 없음) + 놓친 이벤트 전송

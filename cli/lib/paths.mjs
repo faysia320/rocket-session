@@ -31,7 +31,7 @@ export function getEnvFile(options = {}) {
   return join(getDataDir(options), '.env');
 }
 
-/** SQLite DB 디렉토리 */
+/** 데이터베이스 관련 디렉토리 */
 export function getDbDir(options = {}) {
   return join(getDataDir(options), 'data');
 }

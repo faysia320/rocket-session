@@ -124,19 +124,10 @@ class ClaudeRunner:
         elif session.get("permission_mode"):
             # Permission MCP는 _setup_mcp_config에서 통합 처리됨
             # permission_required_tools에 해당하는 도구는 allowedTools에서 제외
-            perm_tools_raw = session.get("permission_required_tools")
-            if perm_tools_raw and allowed_tools:
-                try:
-                    required = (
-                        json.loads(perm_tools_raw)
-                        if isinstance(perm_tools_raw, str)
-                        else perm_tools_raw
-                    )
-                except (json.JSONDecodeError, TypeError):
-                    required = []
-                if required:
-                    tool_list = [t.strip() for t in allowed_tools.split(",")]
-                    allowed_tools = ",".join(t for t in tool_list if t not in required)
+            required = session.get("permission_required_tools") or []
+            if required and allowed_tools:
+                tool_list = [t.strip() for t in allowed_tools.split(",")]
+                allowed_tools = ",".join(t for t in tool_list if t not in required)
 
         if allowed_tools:
             cmd.extend(["--allowedTools", allowed_tools])
@@ -218,20 +209,8 @@ class ClaudeRunner:
         """
         has_permission = bool(session.get("permission_mode"))
 
-        # 세션의 mcp_server_ids 파싱
-        mcp_ids_raw = session.get("mcp_server_ids")
-        mcp_ids: list[str] = []
-        if mcp_ids_raw:
-            try:
-                parsed = (
-                    json.loads(mcp_ids_raw)
-                    if isinstance(mcp_ids_raw, str)
-                    else mcp_ids_raw
-                )
-                if isinstance(parsed, list):
-                    mcp_ids = parsed
-            except (json.JSONDecodeError, TypeError):
-                pass
+        # 세션의 mcp_server_ids (JSONB → Python list)
+        mcp_ids: list[str] = session.get("mcp_server_ids") or []
 
         # MCP 서버도 없고 Permission도 없으면 스킵
         if not mcp_ids and not has_permission:

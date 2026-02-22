@@ -1,7 +1,6 @@
 """SessionManager service tests."""
 
 import asyncio
-import json
 import tempfile
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
@@ -50,8 +49,8 @@ class TestSessionManager:
         )
 
         assert session["id"]
-        assert session["permission_mode"] == 1  # DB stores as int
-        assert session["permission_required_tools"] == json.dumps(perm_tools)
+        assert session["permission_mode"] is True
+        assert session["permission_required_tools"] == perm_tools
 
     async def test_get_existing_session(self, session_manager):
         """Test retrieval of existing session."""
@@ -353,8 +352,8 @@ class TestSessionManager:
         )
 
         assert updated is not None
-        assert updated["permission_mode"] == 1
-        assert updated["permission_required_tools"] == json.dumps(perm_tools)
+        assert updated["permission_mode"] is True
+        assert updated["permission_required_tools"] == perm_tools
 
     async def test_to_info_complete(self, session_manager):
         """Test to_info converts dict to SessionInfo with all fields."""
@@ -408,8 +407,8 @@ class TestSessionManager:
 
         assert info.permission_required_tools is None
 
-    async def test_to_info_permission_mode_int_to_bool(self, session_manager):
-        """Test to_info converts permission_mode int to bool."""
+    async def test_to_info_permission_mode_bool(self, session_manager):
+        """Test to_info preserves permission_mode as bool."""
         work_dir = tempfile.gettempdir()
         created = await session_manager.create(
             work_dir=work_dir,
@@ -418,8 +417,7 @@ class TestSessionManager:
         session_id = created["id"]
 
         session_dict = await session_manager.get(session_id)
-        # DB stores as int
-        assert session_dict["permission_mode"] == 1
+        assert session_dict["permission_mode"] is True
 
         info = session_manager.to_info(session_dict)
         assert info.permission_mode is True
@@ -427,7 +425,7 @@ class TestSessionManager:
         # Test False case
         await session_manager.update_settings(session_id, permission_mode=False)
         session_dict = await session_manager.get(session_id)
-        assert session_dict["permission_mode"] == 0
+        assert session_dict["permission_mode"] is False
 
         info = session_manager.to_info(session_dict)
         assert info.permission_mode is False

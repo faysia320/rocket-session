@@ -1,7 +1,6 @@
 """Database 클래스 lifecycle 및 Repository CRUD 테스트.
 
-기존 SQLite 기반 API (db.create_session, db.conn 등)를 현재
-PostgreSQL + SQLAlchemy ORM + Repository 패턴에 맞게 재작성.
+PostgreSQL + SQLAlchemy ORM + Repository 패턴 기반.
 """
 
 import json
