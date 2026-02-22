@@ -343,7 +343,12 @@ export const Sidebar = memo(function Sidebar({
                   variant="ghost"
                   size="icon"
                   className={cn("h-7 w-7", viewMode === "single" && "bg-muted")}
-                  onClick={() => setViewMode("single")}
+                  onClick={() => {
+                    setViewMode("single");
+                    if (activeSessionId) {
+                      navigate({ to: "/session/$sessionId", params: { sessionId: activeSessionId } });
+                    }
+                  }}
                   aria-label="단일 뷰"
                 >
                   <MessageSquare className="h-3.5 w-3.5" />
@@ -359,7 +364,12 @@ export const Sidebar = memo(function Sidebar({
                   variant="ghost"
                   size="icon"
                   className={cn("h-7 w-7", viewMode === "split" && "bg-muted")}
-                  onClick={() => setViewMode("split")}
+                  onClick={() => {
+                    setViewMode("split");
+                    if (activeSessionId) {
+                      navigate({ to: "/session/$sessionId", params: { sessionId: activeSessionId } });
+                    }
+                  }}
                   aria-label="분할 뷰"
                 >
                   <Columns2 className="h-3.5 w-3.5" />
