@@ -9,7 +9,6 @@ import {
   FileEdit,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
-import { CodeBlock } from "@/components/ui/CodeBlock";
 import {
   Collapsible,
   CollapsibleContent,
@@ -35,8 +34,11 @@ import { AskUserQuestionCard } from "./AskUserQuestionCard";
 import { TodoWriteMessage } from "./TodoWriteMessage";
 import { EditToolMessage } from "./EditToolMessage";
 import { BashToolMessage } from "./BashToolMessage";
+import { ReadToolMessage } from "./ReadToolMessage";
+import { SearchToolMessage } from "./SearchToolMessage";
+import { WebToolMessage } from "./WebToolMessage";
 import { ToolStatusIcon } from "./ToolStatusIcon";
-import { getToolIcon, getToolColor, useElapsed, getLanguageFromPath, parseMcpToolName } from "./toolMessageUtils";
+import { getToolIcon, getToolColor, useElapsed, parseMcpToolName } from "./toolMessageUtils";
 
 interface MessageBubbleProps {
   message: Message;
@@ -108,6 +110,12 @@ export const MessageBubble = memo(function MessageBubble({
         return <EditToolMessage message={message} />;
       if (message.tool === "Bash")
         return <BashToolMessage message={message} />;
+      if (message.tool === "Read")
+        return <ReadToolMessage message={message} />;
+      if (message.tool === "Grep" || message.tool === "Glob")
+        return <SearchToolMessage message={message} />;
+      if (message.tool === "WebFetch" || message.tool === "WebSearch")
+        return <WebToolMessage message={message} />;
       return <ToolUseMessage message={message} animate={animate} />;
     case "thinking":
       return <ThinkingMessage message={message} animate={animate} />;
@@ -296,8 +304,6 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
   const toolName = message.tool || "Tool";
   const input = (message.input || {}) as Record<string, unknown>;
   const toolStatus: "running" | "done" | "error" = message.status || "running";
-  const isRead = toolName === "Read";
-  const filePath = String(input.file_path ?? input.path ?? "");
   const mcpInfo = useMemo(() => parseMcpToolName(toolName), [toolName]);
 
   const borderColor =
@@ -311,10 +317,6 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
   const toolColor = getToolColor(toolName);
   const elapsed = useElapsed(toolStatus, message.timestamp, message.completed_at);
   const summary = useMemo(() => getToolSummary(toolName, input), [toolName, input]);
-  const readLanguage = useMemo(
-    () => (isRead && filePath ? getLanguageFromPath(filePath) : null),
-    [isRead, filePath],
-  );
 
   return (
     <Collapsible
@@ -367,53 +369,40 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="mt-1.5 space-y-1.5 min-w-0 overflow-hidden">
-            {/* Read: CodeBlock으로 output 렌더링 */}
-            {isRead && message.output ? (
-              <CodeBlock
-                language={readLanguage || "text"}
-                raw={message.output}
-                className="my-0"
-              >
-                {message.output}
-              </CodeBlock>
-            ) : (
-              <>
-                {/* 기타 도구: Input JSON */}
-                <div>
-                  <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">
-                    Input
-                  </div>
-                  <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
-                    {JSON.stringify(input, null, 2)}
-                  </pre>
+            {/* Input JSON */}
+            <div>
+              <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">
+                Input
+              </div>
+              <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
+                {JSON.stringify(input, null, 2)}
+              </pre>
+            </div>
+            {message.output ? (
+              <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="font-mono text-2xs text-muted-foreground/70">
+                    Output
+                  </span>
+                  {message.is_truncated && message.full_length ? (
+                    <span className="font-mono text-2xs text-warning">
+                      ({message.output.length.toLocaleString()}/
+                      {message.full_length.toLocaleString()}자 표시)
+                    </span>
+                  ) : null}
                 </div>
-                {message.output ? (
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-mono text-2xs text-muted-foreground/70">
-                        Output
-                      </span>
-                      {message.is_truncated && message.full_length ? (
-                        <span className="font-mono text-2xs text-warning">
-                          ({message.output.length.toLocaleString()}/
-                          {message.full_length.toLocaleString()}자 표시)
-                        </span>
-                      ) : null}
-                    </div>
-                    <pre
-                      className={cn(
-                        "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
-                        message.is_error
-                          ? "text-destructive"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {message.output}
-                    </pre>
-                  </div>
-                ) : null}
-              </>
-            )}
+                <pre
+                  className={cn(
+                    "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
+                    message.is_error
+                      ? "text-destructive"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {message.output}
+                </pre>
+              </div>
+            ) : null}
           </div>
         </CollapsibleContent>
       </div>
@@ -526,12 +515,41 @@ function PermissionRequestMessage({
   message: Extract<Message, { type: "permission_request" }>;
   animate?: boolean;
 }) {
+  const resolved = "resolved" in message && message.resolved;
+  const resolution = "resolution" in message ? message.resolution : undefined;
+  const isAllowed = resolution === "allow";
+
   return (
     <div className={fadeIn(animate)}>
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-warning/10 border border-warning/25 rounded-md border-l-[3px] border-l-warning">
-        <ShieldAlert className="h-4 w-4 text-warning shrink-0" />
-        <span className="font-mono text-2xs font-semibold text-warning uppercase tracking-wider">
-          Permission Required
+      <div
+        className={cn(
+          "flex items-center gap-2 px-3 py-2.5 rounded-md border-l-[3px] border",
+          resolved
+            ? isAllowed
+              ? "bg-success/5 border-success/25 border-l-success"
+              : "bg-destructive/5 border-destructive/25 border-l-destructive"
+            : "bg-warning/10 border-warning/25 border-l-warning",
+        )}
+      >
+        <ShieldAlert
+          className={cn(
+            "h-4 w-4 shrink-0",
+            resolved
+              ? isAllowed ? "text-success" : "text-destructive"
+              : "text-warning",
+          )}
+        />
+        <span
+          className={cn(
+            "font-mono text-2xs font-semibold uppercase tracking-wider",
+            resolved
+              ? isAllowed ? "text-success" : "text-destructive"
+              : "text-warning",
+          )}
+        >
+          {resolved
+            ? isAllowed ? "Allowed" : "Denied"
+            : "Permission Required"}
         </span>
         <span className="font-mono text-xs text-foreground font-semibold bg-warning/10 px-1.5 py-0.5 rounded">
           {message.tool}
