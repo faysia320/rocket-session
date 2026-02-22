@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save } from "lucide-react";
+import { Save, Plus, X, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,9 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
     "replace" | "append"
   >("replace");
   const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
+  const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
+  const [fallbackModel, setFallbackModel] = useState("");
+  const [globallyTrustedTools, setGloballyTrustedTools] = useState<string[]>([]);
 
   // 다이얼로그 열릴 때 현재 글로벌 설정값으로 초기화
   useEffect(() => {
@@ -68,6 +71,9 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
           ? settings.disallowed_tools.split(",").map((t) => t.trim())
           : [],
       );
+      setAdditionalDirs(settings.additional_dirs ?? []);
+      setFallbackModel(settings.fallback_model ?? "");
+      setGloballyTrustedTools(settings.globally_trusted_tools ?? []);
     }
   }, [open, settings]);
 
@@ -95,6 +101,11 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
         system_prompt_mode: systemPromptMode,
         disallowed_tools:
           disallowedTools.length > 0 ? disallowedTools.join(",") : null,
+        additional_dirs: additionalDirs.filter((d) => d.trim()) .length > 0
+          ? additionalDirs.filter((d) => d.trim())
+          : null,
+        fallback_model: fallbackModel || null,
+        globally_trusted_tools: globallyTrustedTools.length > 0 ? globallyTrustedTools : null,
       });
       toast.success("글로벌 설정이 저장되었습니다.");
       onOpenChange(false);
@@ -129,6 +140,50 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
               <DirectoryPicker value={workDir} onChange={setWorkDir} />
             </div>
 
+            {/* Additional Directories */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                ADDITIONAL DIRECTORIES
+              </Label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                Claude CLI에 --add-dir 플래그로 전달할 추가 디렉토리입니다.
+              </p>
+              <div className="space-y-1.5">
+                {additionalDirs.map((dir, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5">
+                    <DirectoryPicker
+                      value={dir}
+                      onChange={(v) =>
+                        setAdditionalDirs((prev) =>
+                          prev.map((d, i) => (i === idx ? v : d)),
+                        )
+                      }
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() =>
+                        setAdditionalDirs((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      aria-label="디렉토리 삭제"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="font-mono text-xs gap-1"
+                  onClick={() => setAdditionalDirs((prev) => [...prev, ""])}
+                >
+                  <Plus className="h-3 w-3" />
+                  디렉토리 추가
+                </Button>
+              </div>
+            </div>
+
             {/* Model */}
             <div className="space-y-2">
               <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
@@ -148,6 +203,23 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 <option value="sonnet">Sonnet</option>
                 <option value="haiku">Haiku</option>
               </select>
+            </div>
+
+            {/* Fallback Model */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                FALLBACK MODEL
+              </Label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                기본 모델 사용 불가 시 대체할 모델입니다. CLI --fallback-model 플래그로
+                전달됩니다.
+              </p>
+              <Input
+                className="font-mono text-xs bg-input border-border"
+                placeholder="예: claude-sonnet-4-20250514"
+                value={fallbackModel}
+                onChange={(e) => setFallbackModel(e.target.value)}
+              />
             </div>
 
             {/* Allowed Tools (읽기 전용) */}
@@ -326,6 +398,47 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                   ))}
                 </div>
               ) : null}
+            </div>
+
+            {/* Globally Trusted Tools */}
+            <div className="space-y-3">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                GLOBALLY TRUSTED TOOLS
+              </Label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                "항상 허용"으로 승인된 도구 목록입니다. Permission 모드에서 이 도구들은
+                자동으로 승인됩니다.
+              </p>
+              {globallyTrustedTools.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {globallyTrustedTools.map((tool) => (
+                    <span
+                      key={tool}
+                      className="inline-flex items-center gap-1 font-mono text-xs bg-success/10 text-success border border-success/20 rounded px-2 py-0.5"
+                    >
+                      {tool}
+                      <button
+                        type="button"
+                        className="hover:text-destructive"
+                        onClick={() =>
+                          setGloballyTrustedTools((prev) =>
+                            prev.filter((t) => t !== tool),
+                          )
+                        }
+                        aria-label={`${tool} 신뢰 해제`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="font-mono text-2xs text-muted-foreground/50 italic">
+                  아직 글로벌 신뢰 도구가 없습니다. Permission 다이얼로그에서 "항상
+                  허용"을 선택하면 여기에 추가됩니다.
+                </p>
+              )}
             </div>
 
             {/* MCP Servers */}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Save, FileStack } from "lucide-react";
+import { Save, FileStack, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { sessionsApi } from "@/lib/api/sessions.api";
+import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
 import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
 import { SaveAsTemplateDialog } from "@/features/template/components/SaveAsTemplateDialog";
 import { AVAILABLE_TOOLS } from "../constants/tools";
@@ -44,6 +45,8 @@ export function SessionSettings({
   >("replace");
   const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
+  const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
+  const [fallbackModel, setFallbackModel] = useState("");
   const [saving, setSaving] = useState(false);
 
   const loadSession = useCallback(async () => {
@@ -65,6 +68,8 @@ export function SessionSettings({
           : [],
       );
       setMcpServerIds(s.mcp_server_ids ?? []);
+      setAdditionalDirs(s.additional_dirs ?? []);
+      setFallbackModel(s.fallback_model ?? "");
     } catch {
       toast.error("세션 설정을 불러오지 못했습니다.");
     }
@@ -97,6 +102,10 @@ export function SessionSettings({
         disallowed_tools:
           disallowedTools.length > 0 ? disallowedTools.join(",") : null,
         mcp_server_ids: mcpServerIds.length > 0 ? mcpServerIds : null,
+        additional_dirs: additionalDirs.filter((d) => d.trim()).length > 0
+          ? additionalDirs.filter((d) => d.trim())
+          : null,
+        fallback_model: fallbackModel || null,
       });
       toast.success("설정이 저장되었습니다.");
       onOpenChange(false);
@@ -147,6 +156,66 @@ export function SessionSettings({
                 <option value="sonnet">Sonnet</option>
                 <option value="haiku">Haiku</option>
               </select>
+            </div>
+
+            {/* Fallback Model */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                FALLBACK MODEL
+              </Label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                기본 모델 사용 불가 시 대체 모델입니다.
+              </p>
+              <Input
+                className="font-mono text-xs bg-input border-border"
+                placeholder="예: claude-sonnet-4-20250514"
+                value={fallbackModel}
+                onChange={(e) => setFallbackModel(e.target.value)}
+              />
+            </div>
+
+            {/* Additional Directories */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+                ADDITIONAL DIRECTORIES
+              </Label>
+              <p className="font-mono text-2xs text-muted-foreground/70">
+                --add-dir 플래그로 전달할 추가 디렉토리입니다.
+              </p>
+              <div className="space-y-1.5">
+                {additionalDirs.map((dir, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5">
+                    <DirectoryPicker
+                      value={dir}
+                      onChange={(v) =>
+                        setAdditionalDirs((prev) =>
+                          prev.map((d, i) => (i === idx ? v : d)),
+                        )
+                      }
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() =>
+                        setAdditionalDirs((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      aria-label="디렉토리 삭제"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="font-mono text-xs gap-1"
+                  onClick={() => setAdditionalDirs((prev) => [...prev, ""])}
+                >
+                  <Plus className="h-3 w-3" />
+                  디렉토리 추가
+                </Button>
+              </div>
             </div>
 
             {/* 비허용 도구 */}

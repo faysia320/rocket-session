@@ -4,6 +4,7 @@ import {
   Columns2,
   Download,
   FileStack,
+  GitFork,
   LayoutGrid,
   MessageSquare,
   PanelLeftClose,
@@ -503,6 +504,14 @@ const SessionItem = memo(function SessionItem({
             <TooltipContent className="font-mono text-xs">{displayName}</TooltipContent>
           </Tooltip>
         )}
+        {s.parent_session_id ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <GitFork className="h-3 w-3 shrink-0 text-info/60" />
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">포크된 세션</TooltipContent>
+          </Tooltip>
+        ) : null}
         <Button
           variant="ghost"
           size="icon"
