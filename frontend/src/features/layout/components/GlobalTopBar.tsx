@@ -11,9 +11,6 @@ import {
   Bell,
   BellOff,
   Settings,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Menu,
   MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +31,6 @@ import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/store";
 import { useCommandPaletteStore } from "@/store";
 import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
-import { useIsMobile } from "@/hooks/useMediaQuery";
 
 const GlobalSettingsDialog = lazy(() =>
   import("@/features/settings/components/GlobalSettingsDialog").then((m) => ({
@@ -51,12 +47,8 @@ const NAV_ITEMS = [
 export const GlobalTopBar = memo(function GlobalTopBar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useIsMobile();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
-  const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
-  const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
   const setViewMode = useSessionStore((s) => s.setViewMode);
 
   const openPalette = useCommandPaletteStore((s) => s.open);
@@ -78,10 +70,6 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
     [location.pathname],
   );
 
-  // 세션 영역: 홈(/) + 세션 라우트
-  const isSessionArea =
-    location.pathname === "/" || location.pathname.startsWith("/session");
-
   const handleNavClick = useCallback(
     (to: string) => {
       if (to === "/") {
@@ -94,14 +82,6 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
     },
     [setViewMode, navigate],
   );
-
-  const handleSidebarToggle = useCallback(() => {
-    if (isMobile) {
-      setSidebarMobileOpen(true);
-    } else {
-      toggleSidebar();
-    }
-  }, [isMobile, setSidebarMobileOpen, toggleSidebar]);
 
   const handleNotificationToggle = useCallback(async () => {
     if (!notificationSettings.enabled) {
@@ -116,49 +96,8 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
 
   return (
     <header className="h-10 shrink-0 flex items-center px-2 bg-sidebar border-b border-sidebar-border gap-2 z-40">
-      {/* 좌측: 사이드바 토글 + 앱 타이틀 */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        {isSessionArea ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleSidebarToggle}
-                aria-label={
-                  isMobile
-                    ? "메뉴 열기"
-                    : sidebarCollapsed
-                      ? "사이드바 펼치기"
-                      : "사이드바 접기"
-                }
-              >
-                {isMobile ? (
-                  <Menu className="h-4 w-4" />
-                ) : sidebarCollapsed ? (
-                  <PanelLeftOpen className="h-4 w-4" />
-                ) : (
-                  <PanelLeftClose className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {isMobile
-                ? "세션 목록"
-                : sidebarCollapsed
-                  ? "사이드바 펼치기"
-                  : "사이드바 접기"}
-            </TooltipContent>
-          </Tooltip>
-        ) : null}
-        <span className="hidden md:block font-mono text-sm font-semibold text-primary select-none">
-          Rocket Session
-        </span>
-      </div>
-
-      {/* 중앙: 네비게이션 */}
-      <nav className="hidden md:flex flex-1 items-center justify-center gap-1">
+      {/* 좌측: 네비게이션 */}
+      <nav className="hidden md:flex items-center gap-1">
         {NAV_ITEMS.map((item) => (
           <Button
             key={item.to}
