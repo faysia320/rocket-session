@@ -345,8 +345,11 @@ export const Sidebar = memo(function Sidebar({
                   className={cn("h-7 w-7", viewMode === "single" && "bg-muted")}
                   onClick={() => {
                     setViewMode("single");
-                    if (activeSessionId) {
-                      navigate({ to: "/session/$sessionId", params: { sessionId: activeSessionId } });
+                    const targetId = activeSessionId ?? sessions[0]?.id;
+                    if (targetId) {
+                      navigate({ to: "/session/$sessionId", params: { sessionId: targetId } });
+                    } else {
+                      navigate({ to: "/session/new" });
                     }
                   }}
                   aria-label="단일 뷰"
@@ -366,8 +369,11 @@ export const Sidebar = memo(function Sidebar({
                   className={cn("h-7 w-7", viewMode === "split" && "bg-muted")}
                   onClick={() => {
                     setViewMode("split");
-                    if (activeSessionId) {
-                      navigate({ to: "/session/$sessionId", params: { sessionId: activeSessionId } });
+                    const targetId = activeSessionId ?? sessions[0]?.id;
+                    if (targetId) {
+                      navigate({ to: "/session/$sessionId", params: { sessionId: targetId } });
+                    } else {
+                      navigate({ to: "/session/new" });
                     }
                   }}
                   aria-label="분할 뷰"
