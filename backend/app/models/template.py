@@ -30,5 +30,7 @@ class SessionTemplate(Base):
     max_budget_usd: Mapped[float | None] = mapped_column(Float, default=None)
     system_prompt_mode: Mapped[str] = mapped_column(String, default="replace")
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
+    additional_dirs: Mapped[list | None] = mapped_column(JSONB, default=None)
+    fallback_model: Mapped[str | None] = mapped_column(String, default=None)
     created_at: Mapped[str] = mapped_column(Text, nullable=False)
     updated_at: Mapped[str] = mapped_column(Text, nullable=False)

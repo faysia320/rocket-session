@@ -84,7 +84,9 @@ export function useClaudeSocket(sessionId: string) {
           for (const event of turnEvents) {
             // user_message: history에 이미 포함
             // permission_response: pending_interactions가 권위적 소스이므로 재생 건너뜀
-            if (event.type === "user_message" || event.type === "permission_response") continue;
+            // status: SESSION_STATE의 is_running이 권위적 소스이므로 재생 건너뜀
+            //   (과거의 "status: running" 이벤트가 재생되어 idle 세션이 running으로 보이는 버그 방지)
+            if (event.type === "user_message" || event.type === "permission_response" || event.type === "status") continue;
             // result: history의 마지막 메시지와 중복 시 reducer에서 업그레이드 처리
             handleMessage(event);
           }
@@ -468,13 +470,18 @@ export function useClaudeSocket(sessionId: string) {
   }, []);
 
   const respondPermission = useCallback(
-    (permissionId: string, behavior: "allow" | "deny") => {
+    (
+      permissionId: string,
+      behavior: "allow" | "deny",
+      trustLevel?: "once" | "session" | "always",
+    ) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(
           JSON.stringify({
             type: "permission_respond",
             permission_id: permissionId,
             behavior,
+            trust_level: trustLevel || "once",
           }),
         );
       }

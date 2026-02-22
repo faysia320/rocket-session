@@ -46,6 +46,10 @@ class Session(Base):
     )
     disallowed_tools: Mapped[str | None] = mapped_column(Text, default=None)
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
+    additional_dirs: Mapped[list | None] = mapped_column(JSONB, default=None)
+    fallback_model: Mapped[str | None] = mapped_column(String, default=None)
+    parent_session_id: Mapped[str | None] = mapped_column(String, default=None)
+    forked_at_message_id: Mapped[int | None] = mapped_column(Integer, default=None)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, default=None)
 
     # Relationships
@@ -78,4 +82,5 @@ class Session(Base):
         Index("idx_sessions_model", "model"),
         Index("idx_sessions_work_dir", "work_dir"),
         Index("idx_sessions_search_vector", "search_vector", postgresql_using="gin"),
+        Index("idx_sessions_parent_session_id", "parent_session_id"),
     )

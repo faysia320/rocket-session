@@ -21,6 +21,8 @@ class CreateTemplateRequest(BaseModel):
     max_budget_usd: Optional[float] = Field(None, gt=0)
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     mcp_server_ids: Optional[list[str]] = None
+    additional_dirs: Optional[list[str]] = None
+    fallback_model: Optional[str] = None
 
 
 class UpdateTemplateRequest(BaseModel):
@@ -39,6 +41,8 @@ class UpdateTemplateRequest(BaseModel):
     max_budget_usd: Optional[float] = Field(None, gt=0)
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     mcp_server_ids: Optional[list[str]] = None
+    additional_dirs: Optional[list[str]] = None
+    fallback_model: Optional[str] = None
 
 
 class TemplateInfo(BaseModel):
@@ -58,6 +62,8 @@ class TemplateInfo(BaseModel):
     max_budget_usd: Optional[float] = None
     system_prompt_mode: str = "replace"
     mcp_server_ids: Optional[list[str]] = None
+    additional_dirs: Optional[list[str]] = None
+    fallback_model: Optional[str] = None
     created_at: str
     updated_at: str
 

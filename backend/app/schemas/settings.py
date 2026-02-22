@@ -20,6 +20,9 @@ class GlobalSettingsResponse(BaseModel):
     system_prompt_mode: str = "replace"
     disallowed_tools: Optional[str] = None
     mcp_server_ids: Optional[list[str]] = None
+    additional_dirs: Optional[list[str]] = None
+    fallback_model: Optional[str] = None
+    globally_trusted_tools: Optional[list[str]] = None
 
 
 class UpdateGlobalSettingsRequest(BaseModel):
@@ -36,3 +39,6 @@ class UpdateGlobalSettingsRequest(BaseModel):
     system_prompt_mode: Optional[str] = None
     disallowed_tools: Optional[str] = None
     mcp_server_ids: Optional[list[str]] = None
+    additional_dirs: Optional[list[str]] = None
+    fallback_model: Optional[str] = None
+    globally_trusted_tools: Optional[list[str]] = None

@@ -26,3 +26,6 @@ class GlobalSettings(Base):
     system_prompt_mode: Mapped[str | None] = mapped_column(String, default="replace")
     disallowed_tools: Mapped[str | None] = mapped_column(Text, default=None)
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
+    additional_dirs: Mapped[list | None] = mapped_column(JSONB, default=None)
+    fallback_model: Mapped[str | None] = mapped_column(String, default=None)
+    globally_trusted_tools: Mapped[list | None] = mapped_column(JSONB, default=None)

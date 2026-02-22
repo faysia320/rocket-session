@@ -15,12 +15,14 @@ from app.api.dependencies import (
     get_template_service,
     get_ws_manager,
 )
+from app.api.v1.endpoints.permissions import clear_session_trusted
 from app.core.config import Settings
 from app.models.session import SessionStatus
 from app.schemas.search import PaginatedSessionsResponse
 from app.schemas.session import (
     CreateSessionRequest,
     CurrentActivity,
+    ForkSessionRequest,
     SessionInfo,
     UpdateSessionRequest,
 )
@@ -109,6 +111,17 @@ async def create_session(
     )
     mode = req.mode if req.mode is not None else (tpl.mode if tpl else None)
 
+    additional_dirs = (
+        req.additional_dirs
+        if req.additional_dirs is not None
+        else (tpl.additional_dirs if tpl else None)
+    )
+    fallback_model = (
+        req.fallback_model
+        if req.fallback_model is not None
+        else (tpl.fallback_model if tpl else None)
+    )
+
     # MCP 서버: 요청 > 템플릿 > 활성화된 모든 MCP 서버
     mcp_server_ids = req.mcp_server_ids
     if not mcp_server_ids and tpl and tpl.mcp_server_ids:
@@ -130,6 +143,8 @@ async def create_session(
         system_prompt_mode=system_prompt_mode or "replace",
         disallowed_tools=disallowed_tools,
         mcp_server_ids=mcp_server_ids if mcp_server_ids else None,
+        additional_dirs=additional_dirs,
+        fallback_model=fallback_model,
     )
     session_with_counts = await manager.get_with_counts(session["id"]) or session
     return manager.to_info(session_with_counts)
@@ -231,6 +246,8 @@ async def update_session(
         system_prompt_mode=req.system_prompt_mode,
         disallowed_tools=req.disallowed_tools,
         mcp_server_ids=req.mcp_server_ids,
+        additional_dirs=req.additional_dirs,
+        fallback_model=req.fallback_model,
     )
     if not updated:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
@@ -327,6 +344,19 @@ async def export_session(
     )
 
 
+@router.post("/{session_id}/fork", response_model=SessionInfo)
+async def fork_session(
+    session_id: str,
+    req: ForkSessionRequest = ForkSessionRequest(),
+    manager: SessionManager = Depends(get_session_manager),
+):
+    """세션을 포크합니다. 설정과 메시지를 새 세션으로 복사합니다."""
+    result = await manager.fork(session_id, req.message_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    return manager.to_info(result)
+
+
 @router.post("/{session_id}/archive")
 async def archive_session(
     session_id: str,
@@ -364,8 +394,9 @@ async def delete_session(
     deleted = await manager.delete(session_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-    # 인메모리 자원 정리 (seq 카운터, 이벤트 버퍼)
+    # 인메모리 자원 정리 (seq 카운터, 이벤트 버퍼, 세션 신뢰 도구)
     ws_manager.reset_session(session_id)
+    clear_session_trusted(session_id)
     return {"status": "deleted"}
 
 

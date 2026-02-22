@@ -5,8 +5,10 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { cn, formatTokens } from "@/lib/utils";
-
-const MAX_TOKENS = 200_000;
+import {
+  getContextWindowSize,
+  getModelDisplayName,
+} from "@/lib/modelContextMap";
 
 interface ContextWindowBarProps {
   inputTokens: number;
@@ -14,6 +16,7 @@ interface ContextWindowBarProps {
   cacheCreationTokens: number;
   cacheReadTokens: number;
   messageCount?: number;
+  model?: string | null;
 }
 
 export const ContextWindowBar = memo(function ContextWindowBar({
@@ -22,10 +25,13 @@ export const ContextWindowBar = memo(function ContextWindowBar({
   cacheCreationTokens,
   cacheReadTokens,
   messageCount,
+  model,
 }: ContextWindowBarProps) {
+  const maxTokens = getContextWindowSize(model);
+  const modelName = getModelDisplayName(model);
   const total = inputTokens + outputTokens;
   if (total === 0) return null;
-  const pct = Math.min((inputTokens / MAX_TOKENS) * 100, 100);
+  const pct = Math.min((inputTokens / maxTokens) * 100, 100);
   const barColor =
     pct >= 90 ? "bg-destructive" : pct >= 75 ? "bg-warning" : "bg-info";
 
@@ -33,18 +39,23 @@ export const ContextWindowBar = memo(function ContextWindowBar({
     if (!messageCount || messageCount < 2 || inputTokens < 1000) return null;
     const tokensPerTurn = inputTokens / messageCount;
     if (tokensPerTurn <= 0) return null;
-    const remainingTokens = MAX_TOKENS - inputTokens;
+    const remainingTokens = maxTokens - inputTokens;
     const remainingTurns = Math.max(
       0,
       Math.floor(remainingTokens / tokensPerTurn),
     );
     return { tokensPerTurn, remainingTurns };
-  }, [inputTokens, messageCount]);
+  }, [inputTokens, messageCount, maxTokens]);
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div className="flex items-center gap-1.5 cursor-default">
+          {modelName ? (
+            <span className="font-mono text-2xs text-info/70">
+              {modelName}
+            </span>
+          ) : null}
           <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
             <div
               className={cn(
@@ -82,6 +93,9 @@ export const ContextWindowBar = memo(function ContextWindowBar({
       </TooltipTrigger>
       <TooltipContent side="bottom" className="font-mono text-xs">
         <div className="space-y-0.5">
+          {modelName ? (
+            <div className="text-info font-semibold">{modelName}</div>
+          ) : null}
           <div>Input: {formatTokens(inputTokens)}</div>
           <div>Output: {formatTokens(outputTokens)}</div>
           {cacheReadTokens > 0 ? (
@@ -91,7 +105,7 @@ export const ContextWindowBar = memo(function ContextWindowBar({
             <div>Cache Write: {formatTokens(cacheCreationTokens)}</div>
           ) : null}
           <div className="pt-0.5 border-t border-border text-muted-foreground">
-            {formatTokens(inputTokens)} / {formatTokens(MAX_TOKENS)} context
+            {formatTokens(inputTokens)} / {formatTokens(maxTokens)} context
           </div>
           {estimate ? (
             <div className="pt-0.5 border-t border-border">

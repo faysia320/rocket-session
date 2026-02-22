@@ -36,6 +36,9 @@ class SettingsService:
                 "system_prompt_mode": entity.system_prompt_mode,
                 "disallowed_tools": entity.disallowed_tools,
                 "mcp_server_ids": entity.mcp_server_ids,
+                "globally_trusted_tools": entity.globally_trusted_tools,
+                "additional_dirs": entity.additional_dirs,
+                "fallback_model": entity.fallback_model,
             }
 
     async def update(
@@ -53,6 +56,9 @@ class SettingsService:
         system_prompt_mode: str | None = None,
         disallowed_tools: str | None = None,
         mcp_server_ids: list[str] | None = None,
+        globally_trusted_tools: list[str] | None = None,
+        additional_dirs: list[str] | None = None,
+        fallback_model: str | None = None,
     ) -> dict:
         """글로벌 설정 업데이트 후 최신 상태 반환. JSONB 필드는 직접 저장."""
         kwargs: dict = {}
@@ -82,6 +88,12 @@ class SettingsService:
             kwargs["disallowed_tools"] = disallowed_tools
         if mcp_server_ids is not None:
             kwargs["mcp_server_ids"] = mcp_server_ids
+        if globally_trusted_tools is not None:
+            kwargs["globally_trusted_tools"] = globally_trusted_tools
+        if additional_dirs is not None:
+            kwargs["additional_dirs"] = additional_dirs
+        if fallback_model is not None:
+            kwargs["fallback_model"] = fallback_model
         async with self._db.session() as session:
             repo = SettingsRepository(session)
             entity = await repo.update_settings(**kwargs)
@@ -103,4 +115,7 @@ class SettingsService:
                 "system_prompt_mode": entity.system_prompt_mode,
                 "disallowed_tools": entity.disallowed_tools,
                 "mcp_server_ids": entity.mcp_server_ids,
+                "globally_trusted_tools": entity.globally_trusted_tools,
+                "additional_dirs": entity.additional_dirs,
+                "fallback_model": entity.fallback_model,
             }

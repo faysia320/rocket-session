@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShieldAlert, Check, X } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldPlus, Check, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,9 +15,11 @@ import type { PermissionRequestData } from "@/types";
 const DANGEROUS_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"];
 const TIMEOUT_SECONDS = 120;
 
+export type TrustLevel = "once" | "session" | "always";
+
 interface PermissionDialogProps {
   request: PermissionRequestData | null;
-  onAllow: (permissionId: string) => void;
+  onAllow: (permissionId: string, trustLevel?: TrustLevel) => void;
   onDeny: (permissionId: string) => void;
 }
 
@@ -61,14 +63,14 @@ export function PermissionDialog({
         if (!open) onDeny(request.permission_id);
       }}
     >
-      <DialogContent className="sm:max-w-[480px] bg-card border-border">
+      <DialogContent className="sm:max-w-[520px] bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-mono text-sm">
             <ShieldAlert className="h-4 w-4 text-warning" />
             Permission Required
           </DialogTitle>
           <DialogDescription className="font-mono text-xs text-muted-foreground">
-            Claude wants to use a tool that requires your approval.
+            Claude가 승인이 필요한 도구를 사용하려 합니다.
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +109,7 @@ export function PermissionDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
           <Button
             variant="outline"
             size="sm"
@@ -115,16 +117,36 @@ export function PermissionDialog({
             className="font-mono text-xs gap-1.5"
           >
             <X className="h-3 w-3" />
-            Deny
+            거부
           </Button>
-          <Button
-            size="sm"
-            onClick={() => onAllow(request.permission_id)}
-            className="font-mono text-xs gap-1.5"
-          >
-            <Check className="h-3 w-3" />
-            Allow
-          </Button>
+          <div className="flex gap-1.5">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onAllow(request.permission_id, "once")}
+              className="font-mono text-xs gap-1.5"
+            >
+              <Check className="h-3 w-3" />
+              이번만
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onAllow(request.permission_id, "session")}
+              className="font-mono text-xs gap-1.5"
+            >
+              <ShieldCheck className="h-3 w-3" />
+              세션 동안
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => onAllow(request.permission_id, "always")}
+              className="font-mono text-xs gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <ShieldPlus className="h-3 w-3" />
+              항상
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

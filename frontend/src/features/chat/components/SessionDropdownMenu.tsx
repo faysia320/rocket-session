@@ -1,5 +1,5 @@
-import { memo, useCallback } from "react";
-import { EllipsisVertical, Download, Settings, Archive, ArchiveRestore } from "lucide-react";
+import { memo, useCallback, useState } from "react";
+import { EllipsisVertical, Download, Settings, Archive, ArchiveRestore, Trash2, GitFork } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -13,6 +13,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { sessionsApi } from "@/lib/api/sessions.api";
 
 interface SessionDropdownMenuProps {
@@ -21,6 +31,8 @@ interface SessionDropdownMenuProps {
   onOpenSettings: () => void;
   onArchive?: () => void;
   onUnarchive?: () => void;
+  onDelete?: () => void;
+  onFork?: () => void;
 }
 
 export const SessionDropdownMenu = memo(function SessionDropdownMenu({
@@ -29,12 +41,16 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
   onOpenSettings,
   onArchive,
   onUnarchive,
+  onDelete,
+  onFork,
 }: SessionDropdownMenuProps) {
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const handleExport = useCallback(() => {
     sessionsApi.exportMarkdown(sessionId);
   }, [sessionId]);
 
   return (
+    <>
     <DropdownMenu>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -51,6 +67,13 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
         <TooltipContent>세션 메뉴</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem
+          onClick={() => setDeleteConfirmOpen(true)}
+          className="font-mono text-xs gap-2 text-destructive focus:text-destructive"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          삭제하기
+        </DropdownMenuItem>
         {isArchived ? (
           <DropdownMenuItem
             onClick={onUnarchive}
@@ -68,6 +91,13 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
             보관하기
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem
+          onClick={onFork}
+          className="font-mono text-xs gap-2"
+        >
+          <GitFork className="h-3.5 w-3.5" />
+          세션 포크
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleExport}
@@ -87,5 +117,28 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-mono text-sm">
+            세션을 삭제하시겠습니까?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="font-mono text-xs">
+            이 세션의 모든 대화 기록과 파일 변경 이력이 영구적으로 삭제됩니다.
+            이 작업은 되돌릴 수 없습니다.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="font-mono text-xs">취소</AlertDialogCancel>
+          <AlertDialogAction
+            className="font-mono text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={onDelete}
+          >
+            삭제
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 });

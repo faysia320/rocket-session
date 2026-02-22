@@ -34,6 +34,8 @@ export const sessionsApi = {
       system_prompt?: string;
       timeout_seconds?: number;
       template_id?: string;
+      additional_dirs?: string[];
+      fallback_model?: string;
     },
   ) =>
     api.post<SessionInfo>("/api/sessions/", {
@@ -93,6 +95,11 @@ export const sessionsApi = {
     formData.append("file", file);
     return api.postFormData(`/api/sessions/${sessionId}/upload`, formData);
   },
+
+  fork: (sessionId: string, messageId?: number) =>
+    api.post<SessionInfo>(`/api/sessions/${sessionId}/fork`, {
+      message_id: messageId ?? null,
+    }),
 
   stats: (id: string) => api.get<SessionStats>(`/api/sessions/${id}/stats`),
 

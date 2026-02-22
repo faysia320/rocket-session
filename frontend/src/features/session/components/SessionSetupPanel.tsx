@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Rocket, GitBranch } from "lucide-react";
+import { Rocket, GitBranch, FolderPlus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,8 @@ interface SessionSetupPanelProps {
       system_prompt?: string;
       timeout_seconds?: number;
       template_id?: string;
+      additional_dirs?: string[];
+      fallback_model?: string;
     },
   ) => void;
   onCancel: () => void;
@@ -38,6 +40,8 @@ export function SessionSetupPanel({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     null,
   );
+  const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
+  const [fallbackModel, setFallbackModel] = useState("");
   const { data: globalSettings } = useGlobalSettings();
   const { gitInfo } = useGitInfo(workDir);
 
@@ -67,6 +71,12 @@ export function SessionSetupPanel({
     if (template.timeout_seconds) {
       setTimeoutMinutes(String(template.timeout_seconds / 60));
     }
+    if (template.additional_dirs?.length) {
+      setAdditionalDirs(template.additional_dirs);
+    }
+    if (template.fallback_model) {
+      setFallbackModel(template.fallback_model);
+    }
   };
 
   const handleCreate = async () => {
@@ -87,6 +97,8 @@ export function SessionSetupPanel({
         system_prompt?: string;
         timeout_seconds?: number;
         template_id?: string;
+        additional_dirs?: string[];
+        fallback_model?: string;
       } = {};
       if (systemPrompt.trim()) {
         options.system_prompt = systemPrompt.trim();
@@ -96,6 +108,13 @@ export function SessionSetupPanel({
       }
       if (selectedTemplateId) {
         options.template_id = selectedTemplateId;
+      }
+      const validDirs = additionalDirs.filter((d) => d.trim());
+      if (validDirs.length > 0) {
+        options.additional_dirs = validDirs;
+      }
+      if (fallbackModel.trim()) {
+        options.fallback_model = fallbackModel.trim();
       }
       onCreate(
         targetDir,
@@ -177,6 +196,69 @@ export function SessionSetupPanel({
             ) : null}
           </div>
         ) : null}
+
+        {/* Additional Directories */}
+        <div className="space-y-2">
+          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-2">
+            <FolderPlus className="h-3.5 w-3.5" />
+            ADDITIONAL DIRECTORIES
+          </Label>
+          <p className="font-mono text-2xs text-muted-foreground/70">
+            Claude가 접근할 추가 디렉토리입니다. (--add-dir 플래그)
+          </p>
+          {additionalDirs.map((dir, idx) => (
+            <div key={idx} className="flex gap-2 items-center">
+              <div className="flex-1">
+                <DirectoryPicker
+                  value={dir}
+                  onChange={(val) => {
+                    const updated = [...additionalDirs];
+                    updated[idx] = val;
+                    setAdditionalDirs(updated);
+                  }}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                onClick={() =>
+                  setAdditionalDirs(additionalDirs.filter((_, i) => i !== idx))
+                }
+                aria-label="디렉토리 제거"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="font-mono text-xs"
+            onClick={() => setAdditionalDirs([...additionalDirs, ""])}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            디렉토리 추가
+          </Button>
+        </div>
+
+        {/* Fallback Model */}
+        <div className="space-y-2">
+          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+            FALLBACK MODEL
+          </Label>
+          <p className="font-mono text-2xs text-muted-foreground/70">
+            메인 모델 사용 불가 시 대체할 모델입니다. (--fallback-model 플래그)
+          </p>
+          <Input
+            className="font-mono text-xs bg-input border-border"
+            placeholder="예: claude-sonnet-4-20250514"
+            value={fallbackModel}
+            onChange={(e) => setFallbackModel(e.target.value)}
+          />
+        </div>
 
         {/* System Prompt */}
         <div className="space-y-2">

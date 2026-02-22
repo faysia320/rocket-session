@@ -41,4 +41,7 @@ async def update_global_settings(
         system_prompt_mode=req.system_prompt_mode,
         disallowed_tools=req.disallowed_tools,
         mcp_server_ids=req.mcp_server_ids,
+        globally_trusted_tools=req.globally_trusted_tools,
+        additional_dirs=req.additional_dirs,
+        fallback_model=req.fallback_model,
     )

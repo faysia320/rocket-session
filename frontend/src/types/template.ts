@@ -15,6 +15,8 @@ export interface TemplateInfo {
   max_budget_usd?: number | null;
   system_prompt_mode?: string | null;
   mcp_server_ids?: string[] | null;
+  additional_dirs?: string[] | null;
+  fallback_model?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +37,8 @@ export interface CreateTemplateRequest {
   max_budget_usd?: number | null;
   system_prompt_mode?: string | null;
   mcp_server_ids?: string[] | null;
+  additional_dirs?: string[] | null;
+  fallback_model?: string | null;
 }
 
 export type UpdateTemplateRequest = Partial<CreateTemplateRequest>;

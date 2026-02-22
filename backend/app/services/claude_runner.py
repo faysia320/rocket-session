@@ -136,6 +136,16 @@ class ClaudeRunner:
         if model:
             cmd.extend(["--model", model])
 
+        # fallback_model
+        fallback_model = session.get("fallback_model")
+        if fallback_model:
+            cmd.extend(["--fallback-model", fallback_model])
+
+        # additional_dirs
+        for add_dir in session.get("additional_dirs") or []:
+            if add_dir and add_dir.strip():
+                cmd.extend(["--add-dir", add_dir.strip()])
+
         # system_prompt: 모드에 따라 플래그 분기
         if system_prompt:
             if session.get("system_prompt_mode") == "append":
@@ -317,7 +327,9 @@ class ClaudeRunner:
             )
 
         elif event_type == CliEventType.USER:
-            await self._handle_user_event(event, session_id, ws_manager, turn_state)
+            await self._handle_user_event(
+                event, session_id, ws_manager, session_manager, turn_state
+            )
 
         elif event_type == CliEventType.RESULT:
             await self._handle_result_event(
@@ -414,6 +426,18 @@ class ClaudeRunner:
                 }
                 await ws_manager.broadcast_event(session_id, tool_event)
 
+                # tool_use를 messages 테이블에 저장 (히스토리 복원용)
+                await session_manager.add_message(
+                    session_id=session_id,
+                    role="assistant",
+                    content="",
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    message_type="tool_use",
+                    tool_use_id=tool_use_id,
+                    tool_name=tool_name,
+                    tool_input=tool_input,
+                )
+
                 if tool_name in ("Write", "Edit", "MultiEdit"):
                     raw_path = tool_input.get(
                         "file_path", tool_input.get("path", "unknown")
@@ -455,6 +479,7 @@ class ClaudeRunner:
         event: dict,
         session_id: str,
         ws_manager: WebSocketManager,
+        session_manager: SessionManager,
         turn_state: dict,
     ) -> None:
         """user 타입 이벤트 (tool_result) 처리."""
@@ -496,6 +521,17 @@ class ClaudeRunner:
                         "full_length": full_length if truncated else None,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
+                )
+
+                # tool_result를 messages 테이블에 저장 (히스토리 복원용)
+                await session_manager.add_message(
+                    session_id=session_id,
+                    role="tool",
+                    content=output_text[: self._MAX_TOOL_OUTPUT_LENGTH],
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    is_error=block.get("is_error", False),
+                    message_type="tool_result",
+                    tool_use_id=tool_use_id,
                 )
 
     async def _handle_result_event(

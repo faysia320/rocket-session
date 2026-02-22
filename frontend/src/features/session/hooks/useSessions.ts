@@ -21,6 +21,8 @@ export function useCreateSession() {
         system_prompt?: string;
         timeout_seconds?: number;
         template_id?: string;
+        additional_dirs?: string[];
+        fallback_model?: string;
       };
     }) => sessionsApi.create(params.workDir, params.options),
     onSuccess: (session) => {
@@ -39,6 +41,8 @@ export function useCreateSession() {
         system_prompt?: string;
         timeout_seconds?: number;
         template_id?: string;
+        additional_dirs?: string[];
+        fallback_model?: string;
       },
     ) => {
       return mutation.mutateAsync({ workDir, options });
@@ -252,6 +256,18 @@ export function useSessions() {
  */
 export function useSessionMutations() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => sessionsApi.delete(id),
+    onError: () => {
+      toast.error("세션 삭제에 실패했습니다");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+    },
+  });
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => sessionsApi.archive(id),
@@ -267,6 +283,16 @@ export function useSessionMutations() {
     },
   });
 
+  const deleteSession = useCallback(
+    async (id: string) => {
+      await deleteMutation.mutateAsync(id);
+      if (location.pathname.includes(id)) {
+        navigate({ to: "/" });
+      }
+    },
+    [deleteMutation, navigate, location.pathname],
+  );
+
   const archiveSession = useCallback(
     async (id: string) => {
       await archiveMutation.mutateAsync(id);
@@ -281,7 +307,7 @@ export function useSessionMutations() {
     [unarchiveMutation],
   );
 
-  return { archiveSession, unarchiveSession };
+  return { deleteSession, archiveSession, unarchiveSession };
 }
 
 function extractSessionIdFromPath(pathname: string): string | null {

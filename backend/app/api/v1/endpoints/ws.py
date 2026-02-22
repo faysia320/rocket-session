@@ -195,8 +195,9 @@ async def _handle_permission_respond(data: dict) -> None:
     """permission_respond 메시지 처리."""
     perm_id = data.get("permission_id", "")
     behavior = data.get("behavior", "deny")
+    trust_level = data.get("trust_level", "once")
     if perm_id:
-        await respond_permission(perm_id, behavior)
+        await respond_permission(perm_id, behavior, trust_level)
 
 
 @router.websocket("/ws/{session_id}")

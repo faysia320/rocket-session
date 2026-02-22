@@ -29,6 +29,10 @@ export interface SessionInfo {
   system_prompt_mode?: string | null;
   disallowed_tools?: string | null;
   mcp_server_ids?: string[] | null;
+  additional_dirs?: string[] | null;
+  fallback_model?: string | null;
+  parent_session_id?: string | null;
+  forked_at_message_id?: number | null;
   tags?: TagInfo[];
   current_activity?: CurrentActivity | null;
 }
@@ -47,6 +51,8 @@ export interface CreateSessionRequest {
   system_prompt_mode?: string | null;
   disallowed_tools?: string | null;
   mcp_server_ids?: string[] | null;
+  additional_dirs?: string[] | null;
+  fallback_model?: string | null;
   template_id?: string | null;
 }
 
@@ -64,6 +70,8 @@ export interface UpdateSessionRequest {
   system_prompt_mode?: string | null;
   disallowed_tools?: string | null;
   mcp_server_ids?: string[] | null;
+  additional_dirs?: string[] | null;
+  fallback_model?: string | null;
 }
 
 export interface SessionStats {

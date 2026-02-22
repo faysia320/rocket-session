@@ -83,10 +83,12 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   );
   const clearPendingPrompt = useSessionStore((s) => s.clearPendingPrompt);
   const queryClient = useQueryClient();
-  const { archiveSession, unarchiveSession } = useSessionMutations();
+  const { deleteSession, archiveSession, unarchiveSession } = useSessionMutations();
 
+  const handleDelete = useCallback(() => deleteSession(sessionId), [deleteSession, sessionId]);
   const handleArchive = useCallback(() => archiveSession(sessionId), [archiveSession, sessionId]);
   const handleUnarchive = useCallback(() => unarchiveSession(sessionId), [unarchiveSession, sessionId]);
+
 
   const workDir = sessionInfo?.work_dir;
   const { gitInfo } = useGitInfo(workDir ?? "");
@@ -369,6 +371,17 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   }, [workDir, sessionId, queryClient, navigate]);
 
+  const handleFork = useCallback(async () => {
+    try {
+      const forked = await sessionsApi.fork(sessionId);
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success("세션이 포크되었습니다. 이전 대화 기록은 참조용입니다. Claude는 새 대화로 시작합니다.");
+      navigate({ to: "/session/$sessionId", params: { sessionId: forked.id } });
+    } catch {
+      toast.error("세션 포크에 실패했습니다");
+    }
+  }, [sessionId, queryClient, navigate]);
+
   return (
     <div ref={panelRef} className="relative flex-1 flex flex-col overflow-hidden">
       <ChatHeader
@@ -391,14 +404,17 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onSendPrompt={handleSendPrompt}
         onRemoveWorktree={handleRemoveWorktree}
         isArchived={sessionInfo?.status === "archived"}
+        onDelete={handleDelete}
         onArchive={handleArchive}
         onUnarchive={handleUnarchive}
+        onFork={handleFork}
       />
       <SessionStatsBar
         sessionId={sessionId}
         isRunning={status === "running" || activeTools.length > 0}
         tokenUsage={tokenUsage}
         messageCount={messages.length}
+        currentModel={sessionInfo?.model}
       />
 
       {/* 검색 바 */}
@@ -528,7 +544,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       {/* Permission Dialog */}
       <PermissionDialog
         request={pendingPermission}
-        onAllow={(id) => respondPermission(id, "allow")}
+        onAllow={(id, trustLevel) => respondPermission(id, "allow", trustLevel)}
         onDeny={(id) => respondPermission(id, "deny")}
       />
 

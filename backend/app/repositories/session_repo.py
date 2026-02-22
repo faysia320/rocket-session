@@ -207,4 +207,8 @@ def _session_to_dict(session: Session) -> dict:
         "system_prompt_mode": session.system_prompt_mode,
         "disallowed_tools": session.disallowed_tools,
         "mcp_server_ids": session.mcp_server_ids,
+        "additional_dirs": session.additional_dirs,
+        "fallback_model": session.fallback_model,
+        "parent_session_id": session.parent_session_id,
+        "forked_at_message_id": session.forked_at_message_id,
     }

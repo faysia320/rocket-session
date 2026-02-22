@@ -21,6 +21,8 @@ class CreateSessionRequest(BaseModel):
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     disallowed_tools: Optional[str] = None
     mcp_server_ids: Optional[list[str]] = None
+    additional_dirs: Optional[list[str]] = None
+    fallback_model: Optional[str] = None
     template_id: Optional[str] = None
 
 
@@ -38,6 +40,8 @@ class UpdateSessionRequest(BaseModel):
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     disallowed_tools: Optional[str] = None
     mcp_server_ids: Optional[list[str]] = None
+    additional_dirs: Optional[list[str]] = None
+    fallback_model: Optional[str] = None
 
 
 class CurrentActivity(BaseModel):
@@ -68,5 +72,15 @@ class SessionInfo(BaseModel):
     system_prompt_mode: str = "replace"
     disallowed_tools: Optional[str] = None
     mcp_server_ids: Optional[list[str]] = None
+    additional_dirs: Optional[list[str]] = None
+    fallback_model: Optional[str] = None
+    parent_session_id: Optional[str] = None
+    forked_at_message_id: Optional[int] = None
     tags: list[TagInfo] = []
     current_activity: Optional[CurrentActivity] = None
+
+
+class ForkSessionRequest(BaseModel):
+    """세션 포크 요청. message_id가 None이면 전체 메시지 복사."""
+
+    message_id: Optional[int] = None

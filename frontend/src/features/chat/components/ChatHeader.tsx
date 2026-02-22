@@ -48,6 +48,8 @@ interface ChatHeaderProps {
   isArchived?: boolean;
   onArchive?: () => void;
   onUnarchive?: () => void;
+  onDelete?: () => void;
+  onFork?: () => void;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -71,6 +73,8 @@ export const ChatHeader = memo(function ChatHeader({
   isArchived,
   onArchive,
   onUnarchive,
+  onDelete,
+  onFork,
 }: ChatHeaderProps) {
   const isEffectivelyRunning = status === "running" || activeTools.length > 0;
 
@@ -185,6 +189,8 @@ export const ChatHeader = memo(function ChatHeader({
             onOpenSettings={() => onSettingsOpenChange(true)}
             onArchive={onArchive}
             onUnarchive={onUnarchive}
+            onDelete={onDelete}
+            onFork={onFork}
           />
           <Sheet open={filesOpen} onOpenChange={onFilesOpenChange} modal={!portalContainer}>
             <Tooltip>

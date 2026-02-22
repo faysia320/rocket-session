@@ -19,6 +19,7 @@ interface SessionStatsBarProps {
     cacheReadTokens: number;
   };
   messageCount?: number;
+  currentModel?: string | null;
 }
 
 function formatDuration(ms: number): string {
@@ -35,6 +36,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
   isRunning = false,
   tokenUsage,
   messageCount,
+  currentModel,
 }: SessionStatsBarProps) {
   const { data: stats } = useSessionStats(sessionId, isRunning);
 
@@ -97,6 +99,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
             cacheCreationTokens={tokenUsage.cacheCreationTokens}
             cacheReadTokens={tokenUsage.cacheReadTokens}
             messageCount={messageCount}
+            model={currentModel}
           />
         </div>
       ) : null}
