@@ -12,10 +12,12 @@ import pytest_asyncio
 from sqlalchemy import text
 
 # ---------------------------------------------------------------------------
-# 테스트 DB URL (하드코딩 — 환경변수 의존 제거로 프로덕션 DB 접근 원천 차단)
+# 테스트 DB URL (DB명은 하드코딩하여 프로덕션 DB 접근 원천 차단)
+# POSTGRES_HOST: Docker 컨테이너 → "postgres", 로컬 개발 → "localhost" (기본값)
 # ---------------------------------------------------------------------------
+_DB_HOST = os.environ.get("POSTGRES_HOST", "localhost")
 _TEST_DB_URL = (
-    "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session_test"
+    f"postgresql+asyncpg://rocket:rocket_secret@{_DB_HOST}:5432/rocket_session_test"
 )
 os.environ["DATABASE_URL"] = _TEST_DB_URL
 os.environ["CLAUDE_WORK_DIR"] = tempfile.gettempdir()

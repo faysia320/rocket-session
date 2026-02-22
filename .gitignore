@@ -49,3 +49,4 @@ nul
 .env.docker
 /.rocket-uploads
 /e2e-screenshots
+/.claude

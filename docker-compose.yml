@@ -31,6 +31,7 @@ services:
       - ${HOST_PROJECTS_DIR}:/projects
     environment:
       - DATABASE_URL=postgresql+asyncpg://rocket:${POSTGRES_PASSWORD:-rocket_secret}@postgres:5432/rocket_session
+      - POSTGRES_HOST=postgres
       - CLAUDE_WORK_DIR=/projects
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=8101
