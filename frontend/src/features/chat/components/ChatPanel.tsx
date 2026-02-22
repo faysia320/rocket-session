@@ -371,6 +371,21 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   }, [workDir, sessionId, queryClient, navigate]);
 
+  const handleConvertToWorktree = useCallback(async (branch: string) => {
+    if (!workDir) return;
+    try {
+      await sessionsApi.convertToWorktree(sessionId, { branch });
+      queryClient.invalidateQueries({ queryKey: ["git-info", workDir] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      toast.success(`워크트리로 전환되었습니다. 브랜치: ${branch}`);
+      reconnect();
+    } catch (err) {
+      toast.error(
+        `워크트리 전환 실패: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }, [workDir, sessionId, queryClient, reconnect]);
+
   const handleFork = useCallback(async () => {
     try {
       const forked = await sessionsApi.fork(sessionId);
@@ -403,6 +418,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         portalContainer={panelRef.current}
         onSendPrompt={handleSendPrompt}
         onRemoveWorktree={handleRemoveWorktree}
+        onConvertToWorktree={handleConvertToWorktree}
         isArchived={sessionInfo?.status === "archived"}
         onDelete={handleDelete}
         onArchive={handleArchive}

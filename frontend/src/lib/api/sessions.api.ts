@@ -2,7 +2,7 @@
  * 세션 도메인 API 함수.
  */
 import { api } from "./client";
-import type { SessionInfo, UpdateSessionRequest, SessionStats, Message, FileChange } from "@/types";
+import type { SessionInfo, UpdateSessionRequest, ConvertToWorktreeRequest, SessionStats, Message, FileChange } from "@/types";
 
 export interface SearchSessionsParams {
   q?: string;
@@ -100,6 +100,12 @@ export const sessionsApi = {
     api.post<SessionInfo>(`/api/sessions/${sessionId}/fork`, {
       message_id: messageId ?? null,
     }),
+
+  convertToWorktree: (sessionId: string, req: ConvertToWorktreeRequest) =>
+    api.post<SessionInfo>(
+      `/api/sessions/${sessionId}/convert-to-worktree`,
+      req,
+    ),
 
   stats: (id: string) => api.get<SessionStats>(`/api/sessions/${id}/stats`),
 

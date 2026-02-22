@@ -42,6 +42,7 @@ class UpdateSessionRequest(BaseModel):
     mcp_server_ids: Optional[list[str]] = None
     additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
+    work_dir: Optional[str] = None
 
 
 class CurrentActivity(BaseModel):
@@ -84,3 +85,10 @@ class ForkSessionRequest(BaseModel):
     """세션 포크 요청. message_id가 None이면 전체 메시지 복사."""
 
     message_id: Optional[int] = None
+
+
+class ConvertToWorktreeRequest(BaseModel):
+    """기존 세션을 Git 워크트리로 전환 요청."""
+
+    branch: str = Field(..., min_length=1, description="새 워크트리 브랜치명")
+    target_path: Optional[str] = None

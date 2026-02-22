@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
 from app.api.dependencies import (
+    get_filesystem_service,
     get_mcp_service,
     get_search_service,
     get_session_manager,
@@ -20,6 +21,7 @@ from app.core.config import Settings
 from app.models.session import SessionStatus
 from app.schemas.search import PaginatedSessionsResponse
 from app.schemas.session import (
+    ConvertToWorktreeRequest,
     CreateSessionRequest,
     CurrentActivity,
     ForkSessionRequest,
@@ -27,6 +29,7 @@ from app.schemas.session import (
     UpdateSessionRequest,
 )
 from app.schemas.tag import SessionTagRequest, TagInfo
+from app.services.filesystem_service import FilesystemService
 from app.services.mcp_service import McpService
 from app.services.search_service import SearchService
 from app.services.tag_service import TagService
@@ -248,6 +251,7 @@ async def update_session(
         mcp_server_ids=req.mcp_server_ids,
         additional_dirs=req.additional_dirs,
         fallback_model=req.fallback_model,
+        work_dir=req.work_dir,
     )
     if not updated:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
@@ -355,6 +359,57 @@ async def fork_session(
     if not result:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     return manager.to_info(result)
+
+
+@router.post("/{session_id}/convert-to-worktree", response_model=SessionInfo)
+async def convert_session_to_worktree(
+    session_id: str,
+    req: ConvertToWorktreeRequest,
+    manager: SessionManager = Depends(get_session_manager),
+    fs: FilesystemService = Depends(get_filesystem_service),
+):
+    """기존 세션을 Git 워크트리로 전환합니다.
+
+    대화 기록, 파일 변경 이력, claude_session_id 등 모든 컨텍스트가 보존됩니다.
+    세션이 idle 상태이고, work_dir이 Git 저장소이며, 아직 워크트리가 아닌 경우에만 사용 가능합니다.
+    """
+    session = await manager.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+
+    if session.get("status") == SessionStatus.RUNNING:
+        raise HTTPException(
+            status_code=409,
+            detail="실행 중인 세션은 워크트리로 전환할 수 없습니다. 세션을 먼저 중지하세요.",
+        )
+
+    current_work_dir = session.get("work_dir")
+    if not current_work_dir:
+        raise HTTPException(
+            status_code=400, detail="세션에 작업 디렉토리가 설정되어 있지 않습니다"
+        )
+
+    try:
+        worktree_info = await fs.create_worktree(
+            repo_path=current_work_dir,
+            branch=req.branch,
+            target_path=req.target_path,
+            create_branch=True,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    updated = await manager.update_settings(
+        session_id=session_id,
+        work_dir=worktree_info.path,
+    )
+    if not updated:
+        raise HTTPException(status_code=500, detail="세션 업데이트에 실패했습니다")
+
+    session_with_counts = await manager.get_with_counts(session_id) or updated
+    return manager.to_info(session_with_counts)
 
 
 @router.post("/{session_id}/archive")

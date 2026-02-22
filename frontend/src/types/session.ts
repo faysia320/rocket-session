@@ -72,6 +72,12 @@ export interface UpdateSessionRequest {
   mcp_server_ids?: string[] | null;
   additional_dirs?: string[] | null;
   fallback_model?: string | null;
+  work_dir?: string | null;
+}
+
+export interface ConvertToWorktreeRequest {
+  branch: string;
+  target_path?: string;
 }
 
 export interface SessionStats {

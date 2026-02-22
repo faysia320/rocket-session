@@ -5,6 +5,7 @@ export type {
   SessionInfo,
   CreateSessionRequest,
   UpdateSessionRequest,
+  ConvertToWorktreeRequest,
   SessionStats,
 } from "./session";
 export type {
@@ -43,6 +44,14 @@ export type {
   GitStatusResponse,
   SkillInfo,
   SkillListResponse,
+  GitCommitEntry,
+  GitLogResponse,
+  GitHubCLIStatus,
+  GitHubPREntry,
+  GitHubPRListResponse,
+  GitHubPRReview,
+  GitHubPRComment,
+  GitHubPRDetail,
 } from "./filesystem";
 export type {
   LocalSessionMeta,

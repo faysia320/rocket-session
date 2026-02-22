@@ -290,6 +290,7 @@ class SessionManager:
         fallback_model: str | None = None,
         parent_session_id: str | None = None,
         forked_at_message_id: int | None = None,
+        work_dir: str | None = None,
     ) -> dict | None:
         kwargs = {}
         if allowed_tools is not None:
@@ -326,6 +327,8 @@ class SessionManager:
             kwargs["parent_session_id"] = parent_session_id
         if forked_at_message_id is not None:
             kwargs["forked_at_message_id"] = forked_at_message_id
+        if work_dir is not None:
+            kwargs["work_dir"] = work_dir
         async with self._db.session() as session:
             repo = SessionRepository(session)
             entity = await repo.update_settings(session_id, **kwargs)

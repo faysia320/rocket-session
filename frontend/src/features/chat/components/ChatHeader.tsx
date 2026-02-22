@@ -45,6 +45,7 @@ interface ChatHeaderProps {
   portalContainer?: HTMLElement | null;
   onSendPrompt: (prompt: string) => void;
   onRemoveWorktree?: () => void;
+  onConvertToWorktree?: (branch: string) => void;
   isArchived?: boolean;
   onArchive?: () => void;
   onUnarchive?: () => void;
@@ -70,6 +71,7 @@ export const ChatHeader = memo(function ChatHeader({
   portalContainer,
   onSendPrompt,
   onRemoveWorktree,
+  onConvertToWorktree,
   isArchived,
   onArchive,
   onUnarchive,
@@ -180,6 +182,7 @@ export const ChatHeader = memo(function ChatHeader({
           connected={connected}
           onSendPrompt={onSendPrompt}
           onRemoveWorktree={onRemoveWorktree}
+          onConvertToWorktree={onConvertToWorktree}
         />
 
         <ButtonGroup>
