@@ -28,6 +28,7 @@ services:
     volumes:
       - rocket-uploads:/app/uploads
       - ${CLAUDE_AUTH_DIR}:/root/.claude
+      - ${CLAUDE_AUTH_FILE}:/root/.claude.json
       - ${HOST_PROJECTS_DIR}:/projects
     environment:
       - DATABASE_URL=postgresql+asyncpg://rocket:${POSTGRES_PASSWORD:-rocket_secret}@postgres:5432/rocket_session
