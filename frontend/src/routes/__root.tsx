@@ -120,10 +120,19 @@ function SessionLayout() {
   const handleSelect = useCallback(
     (id: string) => {
       selectSession(id);
-      if (viewMode === "split") setFocusedSessionId(id);
+      if (viewMode === "split") {
+        setFocusedSessionId(id);
+        const idx = activeSessions.findIndex((s) => s.id === id);
+        if (idx !== -1) {
+          const targetPage = Math.floor(idx / SPLIT_PAGE_SIZE);
+          if (targetPage !== splitPage) {
+            setSplitPage(targetPage);
+          }
+        }
+      }
       if (isMobile) setSidebarMobileOpen(false);
     },
-    [selectSession, viewMode, setFocusedSessionId, isMobile, setSidebarMobileOpen],
+    [selectSession, viewMode, setFocusedSessionId, isMobile, setSidebarMobileOpen, activeSessions, splitPage],
   );
 
   const handleNew = useCallback(() => {
