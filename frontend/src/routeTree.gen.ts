@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as GitMonitorRouteImport } from './routes/git-monitor'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionNewRouteImport } from './routes/session/new'
@@ -18,6 +19,11 @@ import { Route as SessionSessionIdRouteImport } from './routes/session/$sessionI
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GitMonitorRoute = GitMonitorRouteImport.update({
+  id: '/git-monitor',
+  path: '/git-monitor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
@@ -44,6 +50,7 @@ const SessionSessionIdRoute = SessionSessionIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/git-monitor': typeof GitMonitorRoute
   '/history': typeof HistoryRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/git-monitor': typeof GitMonitorRoute
   '/history': typeof HistoryRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/git-monitor': typeof GitMonitorRoute
   '/history': typeof HistoryRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
@@ -68,15 +77,23 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analytics'
+    | '/git-monitor'
     | '/history'
     | '/session/$sessionId'
     | '/session/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/analytics' | '/history' | '/session/$sessionId' | '/session/new'
+  to:
+    | '/'
+    | '/analytics'
+    | '/git-monitor'
+    | '/history'
+    | '/session/$sessionId'
+    | '/session/new'
   id:
     | '__root__'
     | '/'
     | '/analytics'
+    | '/git-monitor'
     | '/history'
     | '/session/$sessionId'
     | '/session/new'
@@ -85,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  GitMonitorRoute: typeof GitMonitorRoute
   HistoryRoute: typeof HistoryRoute
   SessionSessionIdRoute: typeof SessionSessionIdRoute
   SessionNewRoute: typeof SessionNewRoute
@@ -97,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/git-monitor': {
+      id: '/git-monitor'
+      path: '/git-monitor'
+      fullPath: '/git-monitor'
+      preLoaderRoute: typeof GitMonitorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics': {
@@ -133,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
+  GitMonitorRoute: GitMonitorRoute,
   HistoryRoute: HistoryRoute,
   SessionSessionIdRoute: SessionSessionIdRoute,
   SessionNewRoute: SessionNewRoute,
