@@ -32,7 +32,7 @@ export function createChatCommands(deps: {
       category: "chat",
       icon: Trash2,
       action: () => dispatch("command-palette:clear-messages", activeSessionId),
-      context: { requiresActiveSession: true },
+      context: { requiresActiveSession: true, allowedZones: ["session-workspace"] },
       keywords: ["clear", "초기화", "삭제"],
     },
     {
@@ -43,7 +43,7 @@ export function createChatCommands(deps: {
       icon: Search,
       shortcut: "⌘F",
       action: () => dispatch("command-palette:toggle-search", activeSessionId),
-      context: { requiresActiveSession: true },
+      context: { requiresActiveSession: true, allowedZones: ["session-workspace"] },
       keywords: ["search", "find", "검색", "찾기"],
     },
     {
@@ -54,7 +54,7 @@ export function createChatCommands(deps: {
       icon: ToggleLeft,
       shortcut: "⇧Tab",
       action: () => dispatch("command-palette:toggle-mode", activeSessionId),
-      context: { requiresActiveSession: true },
+      context: { requiresActiveSession: true, allowedZones: ["session-workspace"] },
       keywords: ["mode", "plan", "normal", "모드", "계획"],
     },
     {
@@ -65,7 +65,7 @@ export function createChatCommands(deps: {
       icon: Minimize2,
       action: () =>
         dispatch("command-palette:send-slash", activeSessionId, "/compact"),
-      context: { requiresActiveSession: true, requiresRunning: false },
+      context: { requiresActiveSession: true, requiresRunning: false, allowedZones: ["session-workspace"] },
       keywords: ["compact", "압축", "요약"],
     },
     {
@@ -76,7 +76,7 @@ export function createChatCommands(deps: {
       icon: Cpu,
       action: () =>
         dispatch("command-palette:send-slash", activeSessionId, "/model"),
-      context: { requiresActiveSession: true, requiresRunning: false },
+      context: { requiresActiveSession: true, requiresRunning: false, allowedZones: ["session-workspace"] },
       keywords: ["model", "모델", "변경"],
     },
     {
@@ -87,7 +87,7 @@ export function createChatCommands(deps: {
       icon: Settings,
       action: () =>
         dispatch("command-palette:open-settings", activeSessionId),
-      context: { requiresActiveSession: true },
+      context: { requiresActiveSession: true, allowedZones: ["session-workspace"] },
       keywords: ["settings", "설정", "config"],
     },
     {
@@ -97,7 +97,7 @@ export function createChatCommands(deps: {
       category: "chat",
       icon: FolderOpen,
       action: () => dispatch("command-palette:toggle-files", activeSessionId),
-      context: { requiresActiveSession: true },
+      context: { requiresActiveSession: true, allowedZones: ["session-workspace"] },
       keywords: ["files", "파일", "변경"],
     },
   ];

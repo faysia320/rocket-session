@@ -1,9 +1,20 @@
-import type { PaletteCommand, CommandContext } from "./types";
+import type { PaletteCommand, CommandContext, RouteZone } from "./types";
 
 export interface RuntimeContext {
   activeSessionId: string | null;
   sessionStatus: string | null;
   isGitRepo: boolean;
+  routeZone: RouteZone;
+}
+
+/** pathname을 RouteZone으로 변환 */
+export function resolveRouteZone(pathname: string): RouteZone {
+  if (pathname === "/") return "home";
+  if (pathname === "/session/new") return "session-new";
+  if (pathname.startsWith("/session/")) return "session-workspace";
+  if (pathname === "/history") return "history";
+  if (pathname === "/analytics") return "analytics";
+  return "home";
 }
 
 function isCommandAvailable(
@@ -11,6 +22,9 @@ function isCommandAvailable(
   runtime: RuntimeContext,
 ): boolean {
   if (!context) return true;
+
+  if (context.allowedZones && !context.allowedZones.includes(runtime.routeZone))
+    return false;
 
   if (context.requiresActiveSession && !runtime.activeSessionId) return false;
   if (context.requiresRunning === true && runtime.sessionStatus !== "running")

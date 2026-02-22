@@ -44,6 +44,9 @@ export function createNavigationCommands(deps: {
       category: "navigation",
       icon: Plus,
       action: () => navigate({ to: "/session/new" }),
+      context: {
+        allowedZones: ["home", "session-workspace", "history", "analytics"],
+      },
       keywords: ["new", "create", "session", "생성"],
     },
   ];

@@ -36,6 +36,7 @@ export function createUICommands(deps: {
       icon: sidebarCollapsed ? PanelLeftOpen : PanelLeftClose,
       shortcut: "⌘B",
       action: toggleSidebar,
+      context: { allowedZones: ["home", "session-workspace", "session-new"] },
       keywords: ["sidebar", "사이드바", "토글"],
     },
     {
@@ -48,6 +49,7 @@ export function createUICommands(deps: {
         setViewMode("dashboard");
         navigateHome();
       },
+      context: { allowedZones: ["home", "session-workspace", "session-new"] },
       keywords: ["dashboard", "대시보드", "view", "뷰", "홈"],
     },
     {
@@ -57,6 +59,7 @@ export function createUICommands(deps: {
       category: "ui",
       icon: MessageSquare,
       action: () => setViewMode("single"),
+      context: { allowedZones: ["home", "session-workspace", "session-new"] },
       keywords: ["single", "단일", "view", "뷰"],
     },
     {
@@ -66,6 +69,7 @@ export function createUICommands(deps: {
       category: "ui",
       icon: Columns2,
       action: () => setViewMode("split"),
+      context: { allowedZones: ["home", "session-workspace", "session-new"] },
       keywords: ["split", "분할", "view", "뷰"],
     },
     {
