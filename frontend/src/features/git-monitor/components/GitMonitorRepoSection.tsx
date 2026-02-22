@@ -68,7 +68,7 @@ export function GitMonitorRepoSection({
   }, [createSession, path, setPendingPrompt, isCreating]);
 
   return (
-    <div className="flex flex-col h-full min-w-[280px] w-[320px] shrink-0 border-r border-border last:border-r-0">
+    <div className="flex flex-col h-full min-w-[280px] w-[320px] shrink-0 border-r border-border">
       {/* 저장소 헤더 */}
       <div className="group flex items-center gap-1.5 px-3 py-2 border-b border-border shrink-0">
         <FolderGit2 className="h-3 w-3 text-info shrink-0" />

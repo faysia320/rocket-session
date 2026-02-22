@@ -37,7 +37,7 @@ import type { SessionInfo, TagInfo } from "@/types";
 const PAGE_SIZE = 20;
 
 const STATUS_OPTIONS = [
-  { value: "", label: "전체 상태" },
+  { value: "", label: "All" },
   { value: "idle", label: "Idle" },
   { value: "running", label: "Running" },
   { value: "error", label: "Error" },
@@ -70,18 +70,15 @@ export function HistoryPage() {
   // F#7: useRef + setTimeout 디바운스 (state 기반 타이머 제거 → 불필요한 리렌더 방지)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleQueryChange = useCallback(
-    (value: string) => {
-      setQuery(value);
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = setTimeout(() => {
-        debounceTimerRef.current = null;
-        setDebouncedQuery(value);
-        setPage(0);
-      }, 300);
-    },
-    [],
-  );
+  const handleQueryChange = useCallback((value: string) => {
+    setQuery(value);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      setDebouncedQuery(value);
+      setPage(0);
+    }, 300);
+  }, []);
 
   // cleanup: 언마운트 시 타이머 정리
   useEffect(() => {
@@ -104,7 +101,17 @@ export function HistoryPage() {
       offset: page * PAGE_SIZE,
       include_tags: true,
     }),
-    [debouncedQuery, ftsMode, status, selectedTagIds, dateFrom, dateTo, sort, order, page],
+    [
+      debouncedQuery,
+      ftsMode,
+      status,
+      selectedTagIds,
+      dateFrom,
+      dateTo,
+      sort,
+      order,
+      page,
+    ],
   );
 
   const { data, isLoading, isError } = useSessionSearch(searchParams);
@@ -169,7 +176,11 @@ export function HistoryPage() {
           </div>
           <TagManagerDialog
             trigger={
-              <Button variant="outline" size="sm" className="font-mono text-xs gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-mono text-xs gap-1.5"
+              >
                 <Tag className="h-3.5 w-3.5" />
                 태그 관리
               </Button>
@@ -185,7 +196,11 @@ export function HistoryPage() {
             <Input
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
-              placeholder={ftsMode ? "대화 내용으로 검색… (FTS)" : "세션 이름 또는 ID로 검색…"}
+              placeholder={
+                ftsMode
+                  ? "대화 내용으로 검색… (FTS)"
+                  : "세션 이름 또는 ID로 검색…"
+              }
               className="pl-8 pr-8 h-8 font-mono text-xs"
               aria-label="세션 검색"
             />
@@ -215,13 +230,17 @@ export function HistoryPage() {
                   setFtsMode(!ftsMode);
                   setPage(0);
                 }}
-                aria-label={ftsMode ? "일반 검색으로 전환" : "전문 검색으로 전환"}
+                aria-label={
+                  ftsMode ? "일반 검색으로 전환" : "전문 검색으로 전환"
+                }
               >
                 <FileSearch className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {ftsMode ? "전문 검색 켜짐 (대화 내용 포함)" : "전문 검색 (대화 내용)"}
+              {ftsMode
+                ? "전문 검색 켜짐 (대화 내용 포함)"
+                : "전문 검색 (대화 내용)"}
             </TooltipContent>
           </Tooltip>
 
@@ -256,11 +275,15 @@ export function HistoryPage() {
                   size="sm"
                   className={cn(
                     "h-7 gap-1 px-2 font-mono text-2xs",
-                    selectedTagIds.length > 0 && "border-primary/30 text-primary",
+                    selectedTagIds.length > 0 &&
+                      "border-primary/30 text-primary",
                   )}
                 >
                   <Tag className="h-3 w-3" />
-                  태그{selectedTagIds.length > 0 ? ` (${selectedTagIds.length})` : ""}
+                  태그
+                  {selectedTagIds.length > 0
+                    ? ` (${selectedTagIds.length})`
+                    : ""}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-48 p-2" align="start">
