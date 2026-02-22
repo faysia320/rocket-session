@@ -88,7 +88,7 @@ export const initialState: ClaudeSocketState = {
 // ---------------------------------------------------------------------------
 
 export interface HistoryItem {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool";
   content: string;
   timestamp?: string;
   cost?: number;
@@ -99,6 +99,11 @@ export interface HistoryItem {
   cache_creation_tokens?: number;
   cache_read_tokens?: number;
   model?: string;
+  // tool_use / tool_result 관련 필드
+  message_type?: "tool_use" | "tool_result" | null;
+  tool_use_id?: string;
+  tool_name?: string;
+  tool_input?: Record<string, unknown>;
 }
 
 export type ClaudeSocketAction =
@@ -216,28 +221,71 @@ export function claudeSocketReducer(
       const newStatus = action.isRunning ? "running" as const : state.status;
 
       if (!action.isReconnect && action.history) {
-        newMessages = action.history.map((h, index) => ({
-          id: `hist-${index}`,
-          type: h.role === "user" ? "user_message" : "result",
-          message: h as unknown as string,
-          text: h.content,
-          timestamp: h.timestamp,
-          cost: h.cost,
-          duration_ms: h.duration_ms,
-          is_error: Boolean(h.is_error),
-          input_tokens: h.input_tokens,
-          output_tokens: h.output_tokens,
-          cache_creation_tokens: h.cache_creation_tokens,
-          cache_read_tokens: h.cache_read_tokens,
-          model: h.model,
-        }) as Message);
+        // tool_result를 tool_use_id로 인덱싱 (tool_use 메시지에 병합용)
+        const toolResultMap = new Map<string, HistoryItem>();
+        for (const h of action.history) {
+          if (h.message_type === "tool_result" && h.tool_use_id) {
+            toolResultMap.set(h.tool_use_id, h);
+          }
+        }
 
+        newMessages = action.history
+          .filter((h) => h.message_type !== "tool_result") // tool_result는 tool_use에 병합
+          .map((h, index) => {
+            // tool_use 메시지
+            if (h.message_type === "tool_use") {
+              const result = h.tool_use_id ? toolResultMap.get(h.tool_use_id) : undefined;
+              return {
+                id: `hist-${index}`,
+                type: "tool_use" as const,
+                tool: h.tool_name || "unknown",
+                input: h.tool_input || {},
+                tool_use_id: h.tool_use_id || "",
+                status: "done" as const,
+                output: result?.content,
+                is_error: result ? Boolean(result.is_error) : false,
+                timestamp: h.timestamp,
+              } as Message;
+            }
+
+            // user 메시지
+            if (h.role === "user") {
+              return {
+                id: `hist-${index}`,
+                type: "user_message" as const,
+                message: h as unknown as Record<string, unknown>,
+                text: h.content,
+                content: h.content,
+                timestamp: h.timestamp,
+              } as Message;
+            }
+
+            // assistant 최종 응답 (result)
+            return {
+              id: `hist-${index}`,
+              type: "result" as const,
+              text: h.content,
+              timestamp: h.timestamp,
+              cost: h.cost,
+              duration_ms: h.duration_ms,
+              is_error: Boolean(h.is_error),
+              input_tokens: h.input_tokens,
+              output_tokens: h.output_tokens,
+              cache_creation_tokens: h.cache_creation_tokens,
+              cache_read_tokens: h.cache_read_tokens,
+              model: h.model,
+            } as Message;
+          });
+
+        // 토큰 집계: text 메시지(result)만 대상 (tool 메시지 제외)
         let totalIn = 0, totalOut = 0, totalCacheCreate = 0, totalCacheRead = 0;
         for (const h of action.history) {
-          totalIn += h.input_tokens || 0;
-          totalOut += h.output_tokens || 0;
-          totalCacheCreate += h.cache_creation_tokens || 0;
-          totalCacheRead += h.cache_read_tokens || 0;
+          if (!h.message_type) {
+            totalIn += h.input_tokens || 0;
+            totalOut += h.output_tokens || 0;
+            totalCacheCreate += h.cache_creation_tokens || 0;
+            totalCacheRead += h.cache_read_tokens || 0;
+          }
         }
         newTokenUsage = {
           inputTokens: totalIn,

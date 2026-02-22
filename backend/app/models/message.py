@@ -1,6 +1,7 @@
 """메시지 모델."""
 
 from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -27,6 +28,12 @@ class Message(Base):
     cache_read_tokens: Mapped[int | None] = mapped_column(Integer, default=None)
     model: Mapped[str | None] = mapped_column(String, default=None)
 
+    # tool_use / tool_result 지원 컬럼
+    message_type: Mapped[str | None] = mapped_column(String, default=None, nullable=True)
+    tool_use_id: Mapped[str | None] = mapped_column(String, default=None, nullable=True)
+    tool_name: Mapped[str | None] = mapped_column(String, default=None, nullable=True)
+    tool_input: Mapped[dict | None] = mapped_column(JSONB, default=None, nullable=True)
+
     # Relationship
     session: Mapped["Session"] = relationship("Session", back_populates="messages")
 
@@ -35,4 +42,5 @@ class Message(Base):
         Index("idx_messages_session_timestamp", "session_id", "timestamp"),
         Index("idx_messages_timestamp", "timestamp"),
         Index("idx_messages_model", "model"),
+        Index("idx_messages_session_message_type", "session_id", "message_type"),
     )

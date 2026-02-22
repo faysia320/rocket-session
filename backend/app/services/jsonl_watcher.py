@@ -315,6 +315,18 @@ class JsonlWatcher:
                     },
                 )
 
+                # tool_use를 messages 테이블에 저장 (히스토리 복원용)
+                await self._session_manager.add_message(
+                    session_id=session_id,
+                    role="assistant",
+                    content="",
+                    timestamp=utc_now_iso(),
+                    message_type="tool_use",
+                    tool_use_id=tool_use_id,
+                    tool_name=tool_name,
+                    tool_input=tool_input,
+                )
+
                 # 파일 변경 추적
                 if tool_name in ("Write", "Edit", "MultiEdit"):
                     raw_path = tool_input.get(
@@ -368,6 +380,17 @@ class JsonlWatcher:
                         **result_info,
                         "timestamp": utc_now_iso(),
                     },
+                )
+
+                # tool_result를 messages 테이블에 저장 (히스토리 복원용)
+                await self._session_manager.add_message(
+                    session_id=session_id,
+                    role="tool",
+                    content=result_info.get("output", ""),
+                    timestamp=utc_now_iso(),
+                    is_error=result_info.get("is_error", False),
+                    message_type="tool_result",
+                    tool_use_id=tool_use_id,
                 )
 
     async def _handle_result_event(
