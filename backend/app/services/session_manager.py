@@ -79,6 +79,12 @@ class SessionManager:
                 return None
             return _session_to_dict(entity)
 
+    async def exists(self, session_id: str) -> bool:
+        """세션 존재 여부만 확인 (경량 쿼리)."""
+        async with self._db.session() as session:
+            repo = SessionRepository(session)
+            return await repo.exists(session_id)
+
     async def get_with_counts(self, session_id: str) -> dict | None:
         """message_count, file_changes_count를 포함한 단일 세션 조회."""
         async with self._db.session() as session:
