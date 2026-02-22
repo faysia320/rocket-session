@@ -76,3 +76,100 @@ class SkillInfo(BaseModel):
 
 class SkillListResponse(BaseModel):
     skills: list[SkillInfo]
+
+
+# --- Git Log 스키마 ---
+
+
+class GitCommitEntry(BaseModel):
+    """git log 한 항목."""
+
+    hash: str
+    full_hash: str
+    message: str
+    body: Optional[str] = None
+    author_name: str
+    author_email: str
+    date: str
+
+
+class GitLogResponse(BaseModel):
+    commits: list[GitCommitEntry] = []
+    total_count: int = 0
+    has_more: bool = False
+    error: Optional[str] = None
+
+
+# --- GitHub PR 스키마 ---
+
+
+class GitHubCLIStatus(BaseModel):
+    """gh CLI 설치/인증 상태."""
+
+    installed: bool = False
+    authenticated: bool = False
+    version: Optional[str] = None
+    error: Optional[str] = None
+
+
+class GitHubPREntry(BaseModel):
+    """gh pr list 한 항목."""
+
+    number: int
+    title: str
+    state: str
+    author: str
+    branch: str
+    base: str
+    created_at: str
+    updated_at: str
+    url: str
+    labels: list[str] = []
+    draft: bool = False
+    additions: int = 0
+    deletions: int = 0
+
+
+class GitHubPRListResponse(BaseModel):
+    prs: list[GitHubPREntry] = []
+    total_count: int = 0
+    error: Optional[str] = None
+
+
+class GitHubPRReview(BaseModel):
+    author: str
+    state: str
+    body: str
+    submitted_at: str
+
+
+class GitHubPRComment(BaseModel):
+    author: str
+    body: str
+    created_at: str
+    path: Optional[str] = None
+    line: Optional[int] = None
+
+
+class GitHubPRDetail(BaseModel):
+    """gh pr view 상세."""
+
+    number: int
+    title: str
+    body: str
+    state: str
+    author: str
+    branch: str
+    base: str
+    created_at: str
+    updated_at: str
+    url: str
+    labels: list[str] = []
+    additions: int = 0
+    deletions: int = 0
+    changed_files: int = 0
+    commits_count: int = 0
+    reviews: list[GitHubPRReview] = []
+    comments: list[GitHubPRComment] = []
+    mergeable: Optional[str] = None
+    error: Optional[str] = None

@@ -2,6 +2,7 @@
 
 import asyncio
 from collections import OrderedDict
+import json
 import logging
 import os
 import subprocess
@@ -12,7 +13,15 @@ from typing import Optional
 from app.schemas.filesystem import (
     DirectoryEntry,
     DirectoryListResponse,
+    GitCommitEntry,
+    GitHubCLIStatus,
+    GitHubPRComment,
+    GitHubPRDetail,
+    GitHubPREntry,
+    GitHubPRListResponse,
+    GitHubPRReview,
     GitInfo,
+    GitLogResponse,
     GitStatusFile,
     GitStatusResponse,
     SkillInfo,
@@ -587,6 +596,354 @@ class FilesystemService:
                 return out
 
         return ""
+
+    # --- Git Log ---
+
+    async def get_git_log(
+        self,
+        path: str,
+        limit: int = 30,
+        offset: int = 0,
+        author: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        search: str | None = None,
+    ) -> GitLogResponse:
+        """커밋 히스토리 조회."""
+        validated_path = self._validate_path(path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+        cwd = str(validated_path)
+
+        # 전체 커밋 수 + 로그를 병렬 실행
+        count_args = ["rev-list", "--count", "HEAD"]
+        log_args = [
+            *self._GIT_CROSS_PLATFORM_OPTS,
+            "--no-optional-locks",
+            "log",
+            f"--format=%H%n%h%n%an%n%ae%n%aI%n%s%n%b%x00",
+            f"--max-count={limit + 1}",
+            f"--skip={offset}",
+        ]
+        if author:
+            log_args.append(f"--author={author}")
+        if since:
+            log_args.append(f"--since={since}")
+        if until:
+            log_args.append(f"--until={until}")
+        if search:
+            log_args.append(f"--grep={search}")
+            log_args.append("-i")
+
+        async with self._get_git_lock(cwd):
+            (rc_count, count_out, _), (rc_log, log_out, log_err) = await asyncio.gather(
+                self._run_git_command(*count_args, cwd=cwd),
+                self._run_git_command(*log_args, cwd=cwd, timeout=30.0),
+            )
+
+        total_count = 0
+        if rc_count == 0 and count_out:
+            try:
+                total_count = int(count_out)
+            except ValueError:
+                pass
+
+        if rc_log != 0:
+            error_msg = "timeout" if log_err == "timeout" else f"git error: {log_err}"
+            return GitLogResponse(error=error_msg)
+
+        # NUL 구분자로 커밋 분리
+        commits: list[GitCommitEntry] = []
+        if log_out:
+            raw_commits = log_out.split("\x00")
+            for raw in raw_commits:
+                raw = raw.strip()
+                if not raw:
+                    continue
+                lines = raw.split("\n", 5)
+                if len(lines) < 6:
+                    continue
+                full_hash, short_hash, author_name, author_email, date, rest = (
+                    lines[0],
+                    lines[1],
+                    lines[2],
+                    lines[3],
+                    lines[4],
+                    lines[5],
+                )
+                # rest = subject\nbody
+                subject_lines = rest.split("\n", 1)
+                message = subject_lines[0]
+                body = subject_lines[1].strip() if len(subject_lines) > 1 else None
+                commits.append(
+                    GitCommitEntry(
+                        hash=short_hash,
+                        full_hash=full_hash,
+                        message=message,
+                        body=body if body else None,
+                        author_name=author_name,
+                        author_email=author_email,
+                        date=date,
+                    )
+                )
+
+        has_more = len(commits) > limit
+        if has_more:
+            commits = commits[:limit]
+
+        return GitLogResponse(
+            commits=commits,
+            total_count=total_count,
+            has_more=has_more,
+        )
+
+    async def get_commit_diff(self, path: str, commit_hash: str) -> str:
+        """특정 커밋의 diff 반환."""
+        validated_path = self._validate_path(path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+        cwd = str(validated_path)
+
+        rc, out, err = await self._run_git_command(
+            "show", "--format=", "--patch", commit_hash, cwd=cwd, timeout=30.0
+        )
+        if rc != 0:
+            raise ValueError(f"커밋 diff 조회 실패: {err}")
+        return out
+
+    # --- GitHub CLI ---
+
+    async def _run_gh_command(
+        self, *args: str, cwd: str, timeout: float = 30.0
+    ) -> tuple[int, str, str]:
+        """gh CLI 명령 실행 후 (returncode, stdout, stderr) 반환."""
+
+        def _run() -> tuple[int, str, str]:
+            try:
+                result = subprocess.run(
+                    ["gh", *args],
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                )
+                return result.returncode, result.stdout.strip(), result.stderr.strip()
+            except subprocess.TimeoutExpired:
+                return -1, "", "timeout"
+            except FileNotFoundError:
+                return -1, "", "gh CLI not found"
+
+        return await asyncio.to_thread(_run)
+
+    async def check_gh_status(self, path: str) -> GitHubCLIStatus:
+        """gh CLI 설치/인증 상태 체크."""
+        validated_path = self._validate_path(path)
+        cwd = str(validated_path)
+
+        # gh 버전 확인
+        rc_ver, ver_out, ver_err = await self._run_gh_command("--version", cwd=cwd)
+        if rc_ver != 0:
+            return GitHubCLIStatus(error=ver_err or "gh CLI를 찾을 수 없습니다")
+
+        version = ver_out.split("\n")[0] if ver_out else None
+
+        # 인증 상태 확인
+        rc_auth, _, auth_err = await self._run_gh_command(
+            "auth", "status", cwd=cwd, timeout=10.0
+        )
+        if rc_auth != 0:
+            return GitHubCLIStatus(
+                installed=True,
+                version=version,
+                error=f"인증 필요: gh auth login 실행 필요 ({auth_err})",
+            )
+
+        return GitHubCLIStatus(
+            installed=True,
+            authenticated=True,
+            version=version,
+        )
+
+    async def get_github_prs(
+        self,
+        path: str,
+        state: str = "open",
+        limit: int = 20,
+    ) -> GitHubPRListResponse:
+        """GitHub PR 목록 조회."""
+        validated_path = self._validate_path(path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+        cwd = str(validated_path)
+
+        rc, out, err = await self._run_gh_command(
+            "pr",
+            "list",
+            f"--state={state}",
+            f"--limit={limit}",
+            "--json",
+            "number,title,state,author,headRefName,baseRefName,createdAt,updatedAt,url,labels,isDraft,additions,deletions",
+            cwd=cwd,
+            timeout=30.0,
+        )
+
+        if rc != 0:
+            return GitHubPRListResponse(error=err or "PR 목록 조회 실패")
+
+        try:
+            data = json.loads(out) if out else []
+        except json.JSONDecodeError:
+            return GitHubPRListResponse(error="JSON 파싱 실패")
+
+        prs = []
+        for item in data:
+            author = item.get("author", {})
+            author_login = author.get("login", "") if isinstance(author, dict) else str(author)
+            labels = [
+                lb.get("name", "") if isinstance(lb, dict) else str(lb)
+                for lb in (item.get("labels", []) or [])
+            ]
+            prs.append(
+                GitHubPREntry(
+                    number=item.get("number", 0),
+                    title=item.get("title", ""),
+                    state=item.get("state", ""),
+                    author=author_login,
+                    branch=item.get("headRefName", ""),
+                    base=item.get("baseRefName", ""),
+                    created_at=item.get("createdAt", ""),
+                    updated_at=item.get("updatedAt", ""),
+                    url=item.get("url", ""),
+                    labels=labels,
+                    draft=item.get("isDraft", False),
+                    additions=item.get("additions", 0),
+                    deletions=item.get("deletions", 0),
+                )
+            )
+
+        return GitHubPRListResponse(prs=prs, total_count=len(prs))
+
+    async def get_github_pr_detail(
+        self, path: str, pr_number: int
+    ) -> GitHubPRDetail:
+        """GitHub PR 상세 조회."""
+        validated_path = self._validate_path(path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+        cwd = str(validated_path)
+
+        rc, out, err = await self._run_gh_command(
+            "pr",
+            "view",
+            str(pr_number),
+            "--json",
+            "number,title,body,state,author,headRefName,baseRefName,createdAt,updatedAt,url,labels,additions,deletions,changedFiles,commits,reviews,comments,mergeable",
+            cwd=cwd,
+            timeout=30.0,
+        )
+
+        if rc != 0:
+            return GitHubPRDetail(
+                number=pr_number,
+                title="",
+                body="",
+                state="",
+                author="",
+                branch="",
+                base="",
+                created_at="",
+                updated_at="",
+                url="",
+                error=err or "PR 상세 조회 실패",
+            )
+
+        try:
+            data = json.loads(out)
+        except json.JSONDecodeError:
+            return GitHubPRDetail(
+                number=pr_number,
+                title="",
+                body="",
+                state="",
+                author="",
+                branch="",
+                base="",
+                created_at="",
+                updated_at="",
+                url="",
+                error="JSON 파싱 실패",
+            )
+
+        author = data.get("author", {})
+        author_login = author.get("login", "") if isinstance(author, dict) else str(author)
+        labels = [
+            lb.get("name", "") if isinstance(lb, dict) else str(lb)
+            for lb in (data.get("labels", []) or [])
+        ]
+
+        # reviews 파싱
+        reviews = []
+        for r in data.get("reviews", []) or []:
+            r_author = r.get("author", {})
+            reviews.append(
+                GitHubPRReview(
+                    author=r_author.get("login", "") if isinstance(r_author, dict) else str(r_author),
+                    state=r.get("state", ""),
+                    body=r.get("body", ""),
+                    submitted_at=r.get("submittedAt", ""),
+                )
+            )
+
+        # comments 파싱
+        comments = []
+        for c in data.get("comments", []) or []:
+            c_author = c.get("author", {})
+            comments.append(
+                GitHubPRComment(
+                    author=c_author.get("login", "") if isinstance(c_author, dict) else str(c_author),
+                    body=c.get("body", ""),
+                    created_at=c.get("createdAt", ""),
+                    path=c.get("path"),
+                    line=c.get("line"),
+                )
+            )
+
+        commits_data = data.get("commits", []) or []
+
+        return GitHubPRDetail(
+            number=data.get("number", pr_number),
+            title=data.get("title", ""),
+            body=data.get("body", ""),
+            state=data.get("state", ""),
+            author=author_login,
+            branch=data.get("headRefName", ""),
+            base=data.get("baseRefName", ""),
+            created_at=data.get("createdAt", ""),
+            updated_at=data.get("updatedAt", ""),
+            url=data.get("url", ""),
+            labels=labels,
+            additions=data.get("additions", 0),
+            deletions=data.get("deletions", 0),
+            changed_files=data.get("changedFiles", 0),
+            commits_count=len(commits_data) if isinstance(commits_data, list) else 0,
+            reviews=reviews,
+            comments=comments,
+            mergeable=data.get("mergeable"),
+        )
+
+    async def get_github_pr_diff(self, path: str, pr_number: int) -> str:
+        """GitHub PR diff 조회."""
+        validated_path = self._validate_path(path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+        cwd = str(validated_path)
+
+        rc, out, err = await self._run_gh_command(
+            "pr", "diff", str(pr_number), cwd=cwd, timeout=30.0
+        )
+        if rc != 0:
+            raise ValueError(f"PR diff 조회 실패: {err}")
+        return out
 
     async def list_skills(self, path: str) -> SkillListResponse:
         """Skills 목록 조회 (.claude/commands/*.md)."""
