@@ -12,22 +12,11 @@ import pytest_asyncio
 from sqlalchemy import text
 
 # ---------------------------------------------------------------------------
-# 테스트 DB URL 결정 + 프로덕션 DB 보호 안전장치
+# 테스트 DB URL (하드코딩 — 환경변수 의존 제거로 프로덕션 DB 접근 원천 차단)
 # ---------------------------------------------------------------------------
-_TEST_DB_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session_test",
+_TEST_DB_URL = (
+    "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session_test"
 )
-
-# 안전장치: DB 이름에 'test' 포함 강제
-_db_name = _TEST_DB_URL.rsplit("/", 1)[-1].split("?")[0]
-if "test" not in _db_name.lower():
-    raise RuntimeError(
-        f"테스트 DB URL의 데이터베이스 이름에 'test'가 포함되어야 합니다. "
-        f"프로덕션 DB 보호를 위해 중단합니다: {_TEST_DB_URL}"
-    )
-
-# 기존 DATABASE_URL을 강제로 덮어씀 (setdefault 취약점 제거)
 os.environ["DATABASE_URL"] = _TEST_DB_URL
 os.environ["CLAUDE_WORK_DIR"] = tempfile.gettempdir()
 
