@@ -1,4 +1,4 @@
-import { useEffect, useRef, useReducer, useCallback, useMemo } from "react";
+import { useEffect, useRef, useReducer, useCallback } from "react";
 import type {
   Message,
   FileChange,
@@ -347,16 +347,6 @@ export function useClaudeSocket(sessionId: string) {
     dispatch({ type: "CONFIRM_ANSWERS", messageId });
   }, []);
 
-  /** 미전송 답변 카운트 */
-  const pendingAnswerCount = useMemo(() => {
-    return state.messages.filter(
-      (m) =>
-        m.type === "ask_user_question" &&
-        (m as AskUserQuestionMsg).answered &&
-        !(m as AskUserQuestionMsg).sent,
-    ).length;
-  }, [state.messages]);
-
   const sendPrompt = useCallback(
     (
       prompt: string,
@@ -511,7 +501,7 @@ export function useClaudeSocket(sessionId: string) {
     pendingPermission: state.pendingPermission,
     reconnectState: state.reconnectState,
     tokenUsage: state.tokenUsage,
-    pendingAnswerCount,
+    pendingAnswerCount: state.pendingAnswerCount,
     sendPrompt,
     stopExecution,
     clearMessages,

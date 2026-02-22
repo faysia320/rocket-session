@@ -62,7 +62,12 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
+  const scrollRafRef = useRef<number>(0);
   const isInitialLoad = useRef(true);
+  // F#3: 애니메이션을 새 메시지에만 적용하기 위한 인덱스 추적
+  // 초기 로드 시에는 Infinity → 모든 메시지 애니메이션 비활성화
+  // 이후 메시지 추가 시 이전 길이를 기록하여 해당 인덱스 이후만 animate=true
+  const animateFromIndex = useRef<number>(Infinity);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -136,10 +141,21 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   });
 
   const handleScroll = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    isNearBottom.current =
-      el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = 0;
+      const el = scrollContainerRef.current;
+      if (!el) return;
+      isNearBottom.current =
+        el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    });
+  }, []);
+
+  // F#11: RAF 쓰로틀 cleanup
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    };
   }, []);
 
   const messagesLength = messages.length;
@@ -150,6 +166,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
+      // F#3: 초기 로드 완료 후, 이후 추가되는 메시지부터 애니메이션 활성화
+      animateFromIndex.current = messagesLength;
       requestAnimationFrame(() => {
         virtualizer.scrollToIndex(messagesLength - 1, { align: "end" });
       });
@@ -466,6 +484,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                       message={messages[virtualItem.index]}
                       isRunning={status === "running" || activeTools.length > 0}
                       searchQuery={searchQuery || undefined}
+                      animate={virtualItem.index >= animateFromIndex.current}
                       onResend={handleResend}
                       onRetryError={handleRetryFromError}
                       onExecutePlan={handleExecutePlan}

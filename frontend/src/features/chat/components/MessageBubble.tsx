@@ -42,6 +42,8 @@ interface MessageBubbleProps {
   message: Message;
   isRunning?: boolean;
   searchQuery?: string;
+  /** 새로 추가된 메시지에만 true — 가상화 스크롤 시 재진입하는 메시지에는 애니메이션 비활성화 */
+  animate?: boolean;
   onResend?: (content: string) => void;
   onRetryError?: (messageId: string) => void;
   onExecutePlan?: (messageId: string) => void;
@@ -60,6 +62,7 @@ export const MessageBubble = memo(function MessageBubble({
   message,
   isRunning = false,
   searchQuery,
+  animate = false,
   onResend,
   onRetryError,
   onExecutePlan,
@@ -79,10 +82,11 @@ export const MessageBubble = memo(function MessageBubble({
           searchQuery={searchQuery}
           onResend={onResend}
           isRunning={isRunning}
+          animate={animate}
         />
       );
     case "assistant_text":
-      return <AssistantText message={message} isStreaming={isRunning} />;
+      return <AssistantText message={message} isStreaming={isRunning} animate={animate} />;
     case "result":
       if (message.mode === "plan") {
         return (
@@ -96,7 +100,7 @@ export const MessageBubble = memo(function MessageBubble({
           />
         );
       }
-      return <ResultMessage message={message} />;
+      return <ResultMessage message={message} animate={animate} />;
     case "tool_use":
       if (message.tool === "TodoWrite")
         return <TodoWriteMessage message={message} />;
@@ -104,27 +108,28 @@ export const MessageBubble = memo(function MessageBubble({
         return <EditToolMessage message={message} />;
       if (message.tool === "Bash")
         return <BashToolMessage message={message} />;
-      return <ToolUseMessage message={message} />;
+      return <ToolUseMessage message={message} animate={animate} />;
     case "thinking":
-      return <ThinkingMessage message={message} />;
+      return <ThinkingMessage message={message} animate={animate} />;
     case "file_change":
-      return <FileChangeMessage message={message} />;
+      return <FileChangeMessage message={message} animate={animate} />;
     case "error":
       return (
         <ErrorMessage
           message={message}
           searchQuery={searchQuery}
           onRetry={onRetryError ? () => onRetryError(message.id) : undefined}
+          animate={animate}
         />
       );
     case "stderr":
-      return <StderrMessage message={message} />;
+      return <StderrMessage message={message} animate={animate} />;
     case "system":
-      return <SystemMessage message={message} searchQuery={searchQuery} />;
+      return <SystemMessage message={message} searchQuery={searchQuery} animate={animate} />;
     case "event":
-      return <EventMessage message={message} />;
+      return <EventMessage message={message} animate={animate} />;
     case "permission_request":
-      return <PermissionRequestMessage message={message} />;
+      return <PermissionRequestMessage message={message} animate={animate} />;
     case "ask_user_question":
       return onAnswerQuestion && onConfirmAnswers ? (
         <AskUserQuestionCard
@@ -144,6 +149,10 @@ export const MessageBubble = memo(function MessageBubble({
   }
 });
 
+/** fadeIn 애니메이션을 animate prop에 따라 조건부 적용하는 헬퍼 */
+const fadeIn = (animate: boolean) => animate ? "animate-[fadeIn_0.2s_ease]" : "";
+const slideIn = (animate: boolean) => animate ? "animate-[slideInLeft_0.2s_ease]" : "";
+
 // ─── Phase 1: Primary Messages ────────────────────────────────────────────────
 
 function UserMessage({
@@ -151,17 +160,19 @@ function UserMessage({
   searchQuery,
   onResend,
   isRunning,
+  animate = false,
 }: {
   message: UserMsg;
   searchQuery?: string;
   onResend?: (content: string) => void;
   isRunning?: boolean;
+  animate?: boolean;
 }) {
   const msg = message.message as Record<string, string> | undefined;
   const text =
     msg?.content || msg?.prompt || message.content || message.prompt || "";
   return (
-    <div className="flex justify-end animate-[fadeIn_0.2s_ease]">
+    <div className={cn("flex justify-end", fadeIn(animate))}>
       <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-lg rounded-br-sm shadow-sm">
         <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap select-text">
           {searchQuery ? highlightText(text, searchQuery) : text}
@@ -195,14 +206,14 @@ function formatModelName(model: string): string {
   return model.split("-").slice(0, 2).join(" ");
 }
 
-function ResultMessage({ message }: { message: ResultMsg }) {
+function ResultMessage({ message, animate = false }: { message: ResultMsg; animate?: boolean }) {
   const hasMetadata =
     message.duration_ms ||
     message.model ||
     message.input_tokens;
 
   return (
-    <div className="animate-[fadeIn_0.2s_ease]">
+    <div className={fadeIn(animate)}>
       <div
         className={cn(
           "px-3.5 py-3 bg-card/50 rounded-md border-l-[3px] border-l-info/60",
@@ -270,7 +281,7 @@ function getToolSummary(toolName: string, input: Record<string, unknown>): strin
   return String(input.file_path ?? input.path ?? "") || null;
 }
 
-function ToolUseMessage({ message }: { message: ToolUseMsg }) {
+function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; animate?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const toolName = message.tool || "Tool";
   const input = (message.input || {}) as Record<string, unknown>;
@@ -298,7 +309,7 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
     <Collapsible
       open={expanded}
       onOpenChange={setExpanded}
-      className="animate-[slideInLeft_0.2s_ease] cursor-pointer"
+      className={cn("cursor-pointer", slideIn(animate))}
     >
       <div
         className={cn(
@@ -388,13 +399,13 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
   );
 }
 
-function ThinkingMessage({ message }: { message: ThinkingMsg }) {
+function ThinkingMessage({ message, animate = false }: { message: ThinkingMsg; animate?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <Collapsible
       open={expanded}
       onOpenChange={setExpanded}
-      className="animate-[fadeIn_0.2s_ease] cursor-pointer"
+      className={cn("cursor-pointer", fadeIn(animate))}
     >
       <div className="pl-3 border-l-2 border-muted-foreground/40">
         <CollapsibleTrigger asChild>
@@ -420,9 +431,9 @@ function ThinkingMessage({ message }: { message: ThinkingMsg }) {
 
 // ─── Phase 3: Alert Messages ──────────────────────────────────────────────────
 
-function AssistantText({ message, isStreaming }: { message: AssistantTextMsg; isStreaming?: boolean }) {
+function AssistantText({ message, isStreaming, animate = false }: { message: AssistantTextMsg; isStreaming?: boolean; animate?: boolean }) {
   return (
-    <div className="animate-[fadeIn_0.2s_ease]">
+    <div className={fadeIn(animate)}>
       <div
         className={cn(
           "px-3.5 py-3 bg-card/50 rounded-md border-l-[3px]",
@@ -454,14 +465,16 @@ function ErrorMessage({
   message,
   searchQuery,
   onRetry,
+  animate = false,
 }: {
   message: ErrorMsg;
   searchQuery?: string;
   onRetry?: () => void;
+  animate?: boolean;
 }) {
   const errorText = message.message || message.text || "Unknown error";
   return (
-    <div className="animate-[fadeIn_0.2s_ease]">
+    <div className={fadeIn(animate)}>
       <div className="flex items-center gap-2 px-3 py-2.5 bg-destructive/10 border border-destructive/30 rounded-md border-l-[3px] border-l-destructive">
         <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
         <span className="font-mono text-xs text-destructive flex-1">
@@ -486,11 +499,13 @@ function ErrorMessage({
 
 function PermissionRequestMessage({
   message,
+  animate = false,
 }: {
   message: Extract<Message, { type: "permission_request" }>;
+  animate?: boolean;
 }) {
   return (
-    <div className="animate-[fadeIn_0.2s_ease]">
+    <div className={fadeIn(animate)}>
       <div className="flex items-center gap-2 px-3 py-2.5 bg-warning/10 border border-warning/25 rounded-md border-l-[3px] border-l-warning">
         <ShieldAlert className="h-4 w-4 text-warning shrink-0" />
         <span className="font-mono text-2xs font-semibold text-warning uppercase tracking-wider">
@@ -508,9 +523,9 @@ function PermissionRequestMessage({
 
 // FileChangeMessage: 현재 tool_use + file_change 이벤트에서 tool_use 경로로 표시되므로
 // 이 컴포넌트가 직접 사용되는 경우는 드물지만, 향후 활용을 위해 유지
-function FileChangeMessage({ message }: { message: FileChangeMsg }) {
+function FileChangeMessage({ message, animate = false }: { message: FileChangeMsg; animate?: boolean }) {
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 animate-[fadeIn_0.2s_ease]">
+    <div className={cn("flex items-center gap-1.5 px-2 py-1", fadeIn(animate))}>
       <FileEdit className="h-3 w-3 text-primary/60 shrink-0" />
       <span className="font-mono text-xs text-muted-foreground">
         {message.change?.tool}:{" "}
@@ -522,9 +537,9 @@ function FileChangeMessage({ message }: { message: FileChangeMsg }) {
   );
 }
 
-function StderrMessage({ message }: { message: StderrMsg }) {
+function StderrMessage({ message, animate = false }: { message: StderrMsg; animate?: boolean }) {
   return (
-    <div className="px-3 py-1 animate-[fadeIn_0.2s_ease]">
+    <div className={cn("px-3 py-1", fadeIn(animate))}>
       <div className="pl-2 border-l border-warning/20">
         <pre className="font-mono text-2xs text-warning/60 whitespace-pre-wrap leading-relaxed">
           {message.text}
@@ -537,12 +552,14 @@ function StderrMessage({ message }: { message: StderrMsg }) {
 function SystemMessage({
   message,
   searchQuery,
+  animate = false,
 }: {
   message: SystemMsg;
   searchQuery?: string;
+  animate?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2 animate-[fadeIn_0.2s_ease]">
+    <div className={cn("flex items-center gap-3 px-4 py-2", fadeIn(animate))}>
       <div className="flex-1 h-px bg-border/50" />
       <span className="font-mono text-2xs text-muted-foreground/50 italic shrink-0">
         {searchQuery
@@ -554,13 +571,13 @@ function SystemMessage({
   );
 }
 
-function EventMessage({ message }: { message: EventMsg }) {
+function EventMessage({ message, animate = false }: { message: EventMsg; animate?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <Collapsible
       open={expanded}
       onOpenChange={setExpanded}
-      className="px-3 py-1 cursor-pointer animate-[fadeIn_0.2s_ease]"
+      className={cn("px-3 py-1 cursor-pointer", fadeIn(animate))}
     >
       <CollapsibleTrigger asChild>
         <div className="flex items-center gap-1.5">

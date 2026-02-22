@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, type ReactNode } from "react";
+import { memo, useState, useRef, useCallback, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -9,7 +9,7 @@ interface CodeBlockProps {
   className?: string;
 }
 
-export function CodeBlock({
+export const CodeBlock = memo(function CodeBlock({
   language,
   children,
   raw,
@@ -60,4 +60,4 @@ export function CodeBlock({
       </pre>
     </div>
   );
-}
+});

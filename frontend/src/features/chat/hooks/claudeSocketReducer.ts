@@ -56,6 +56,8 @@ export interface ClaudeSocketState {
   pendingPermission: PermissionRequestData | null;
   reconnectState: ReconnectState;
   tokenUsage: TokenUsage;
+  /** answered && !sent 인 ask_user_question 메시지 수 (O(1) 조회용) */
+  pendingAnswerCount: number;
 }
 
 export const initialState: ClaudeSocketState = {
@@ -78,6 +80,7 @@ export const initialState: ClaudeSocketState = {
     cacheCreationTokens: 0,
     cacheReadTokens: 0,
   },
+  pendingAnswerCount: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -136,6 +139,28 @@ export type ClaudeSocketAction =
   | { type: "CLEAR_PENDING_PERMISSION" }
   | { type: "UPDATE_SESSION_MODE"; mode: SessionMode }
   | { type: "TRUNCATE_OLD_MESSAGES"; maxFull: number };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * messages 배열에서 pendingAnswerCount를 재계산.
+ * 전체 재빌드 시(RESET, SESSION_STATE 등)에만 호출.
+ */
+function recomputePendingAnswerCount(messages: Message[]): number {
+  let count = 0;
+  for (const m of messages) {
+    if (
+      m.type === "ask_user_question" &&
+      (m as AskUserQuestionMsg).answered &&
+      !(m as AskUserQuestionMsg).sent
+    ) {
+      count++;
+    }
+  }
+  return count;
+}
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -242,6 +267,8 @@ export function claudeSocketReducer(
         messages: newMessages,
         tokenUsage: newTokenUsage,
         pendingPermission: newPendingPermission,
+        // history 재빌드 시 pendingAnswerCount 재계산
+        pendingAnswerCount: recomputePendingAnswerCount(newMessages),
       };
     }
 
@@ -290,8 +317,16 @@ export function claudeSocketReducer(
         if (t === "assistant_text") { lastIdx = i; break; }
       }
       if (lastIdx >= 0) {
+        // F#9: 텍스트가 동일하면 배열 복사 건너뛰기 (RAF 배치에서 중복 이벤트 방지)
+        const existing = prev[lastIdx] as AssistantTextMsg;
+        if (existing.text === action.data.text) return state;
+        const newMsg = { ...action.data, id: prev[lastIdx].id };
+        // 마지막 요소 업데이트 시 slice 패턴 (가장 흔한 케이스)
+        if (lastIdx === prev.length - 1) {
+          return { ...state, messages: [...prev.slice(0, -1), newMsg] };
+        }
         const updated = [...prev];
-        updated[lastIdx] = { ...action.data, id: prev[lastIdx].id };
+        updated[lastIdx] = newMsg;
         return { ...state, messages: updated };
       }
       return {
@@ -427,19 +462,34 @@ export function claudeSocketReducer(
       };
 
     case "WS_STOPPED": {
-      const cleaned = state.messages.map((msg) =>
-        msg.type === "tool_use" && msg.status === "running"
-          ? ({ ...msg, status: "done" as const } as Message)
-          : msg,
-      );
+      const msgs = state.messages;
+      // 역방향 검색: running 상태인 tool_use만 찾아서 변경 (전체 map 대신 O(최근 턴) 탐색)
+      const runningIndices: number[] = [];
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i];
+        if (m.type === "user_message" || m.type === "result") break;
+        if (m.type === "tool_use" && m.status === "running") {
+          runningIndices.push(i);
+        }
+      }
+      const systemMsg = { id: generateMessageId(), type: "system" as const, text: "Session stopped by user." };
+      if (runningIndices.length === 0) {
+        return {
+          ...state,
+          status: "idle",
+          activeTools: [],
+          messages: [...msgs, systemMsg],
+        };
+      }
+      const updated = [...msgs];
+      for (const idx of runningIndices) {
+        updated[idx] = { ...msgs[idx], status: "done" as const } as Message;
+      }
       return {
         ...state,
         status: "idle",
         activeTools: [],
-        messages: [
-          ...cleaned,
-          { id: generateMessageId(), type: "system" as const, text: "Session stopped by user." },
-        ],
+        messages: [...updated, systemMsg],
       };
     }
 
@@ -469,6 +519,7 @@ export function claudeSocketReducer(
       };
 
     case "WS_ASK_USER_QUESTION":
+      // 새 질문 추가 — answered=false이므로 pendingAnswerCount 변동 없음
       return {
         ...state,
         messages: [
@@ -542,27 +593,45 @@ export function claudeSocketReducer(
         }),
       };
 
-    case "CONFIRM_ANSWERS":
+    case "CONFIRM_ANSWERS": {
+      // answered: false → true 전환 시 pendingAnswerCount 증가
+      let delta = 0;
+      const newMessages = state.messages.map((m) => {
+        if (m.id !== action.messageId || m.type !== "ask_user_question") return m;
+        const msg = m as AskUserQuestionMsg;
+        if (!msg.answered && !msg.sent) {
+          // answered=false → true, sent=false → pending 카운트 +1
+          delta = 1;
+        }
+        return { ...m, answered: true } as Message;
+      });
       return {
         ...state,
-        messages: state.messages.map((m) =>
-          m.id === action.messageId && m.type === "ask_user_question"
-            ? ({ ...m, answered: true } as Message)
-            : m,
-        ),
+        messages: newMessages,
+        pendingAnswerCount: state.pendingAnswerCount + delta,
       };
+    }
 
-    case "MARK_ANSWERS_SENT":
-      return {
-        ...state,
-        messages: state.messages.map((m) =>
+    case "MARK_ANSWERS_SENT": {
+      // answered && !sent → sent=true 시 pendingAnswerCount를 0으로
+      let count = 0;
+      const newMessages = state.messages.map((m) => {
+        if (
           m.type === "ask_user_question" &&
           (m as AskUserQuestionMsg).answered &&
           !(m as AskUserQuestionMsg).sent
-            ? ({ ...m, sent: true } as Message)
-            : m,
-        ),
+        ) {
+          count++;
+          return { ...m, sent: true } as Message;
+        }
+        return m;
+      });
+      return {
+        ...state,
+        messages: newMessages,
+        pendingAnswerCount: state.pendingAnswerCount - count,
       };
+    }
 
     case "CLEAR_MESSAGES":
       return {
@@ -570,6 +639,7 @@ export function claudeSocketReducer(
         messages: [],
         fileChanges: [],
         tokenUsage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 },
+        pendingAnswerCount: 0,
       };
 
     case "ADD_SYSTEM_MESSAGE":

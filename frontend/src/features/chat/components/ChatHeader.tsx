@@ -1,10 +1,9 @@
-import { memo, useEffect, useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
   FolderOpen,
   GitBranch,
   RefreshCw,
 } from "lucide-react";
-import { sessionsApi } from "@/lib/api/sessions.api";
 import { GitDropdownMenu } from "./GitDropdownMenu";
 import { SessionDropdownMenu } from "./SessionDropdownMenu";
 import { SessionSettings } from "@/features/session/components/SessionSettings";
@@ -66,7 +65,6 @@ export const ChatHeader = memo(function ChatHeader({
   filesOpen,
   onFilesOpenChange,
   onRetryConnect,
-  currentModel,
   portalContainer,
   onSendPrompt,
   onRemoveWorktree,
@@ -75,14 +73,6 @@ export const ChatHeader = memo(function ChatHeader({
   onUnarchive,
 }: ChatHeaderProps) {
   const isEffectivelyRunning = status === "running" || activeTools.length > 0;
-
-  useEffect(() => {
-    if (currentModel !== "opus") {
-      sessionsApi.update(sessionId, { model: "opus" }).catch((err) => {
-        console.warn("모델 설정 실패:", err);
-      });
-    }
-  }, [sessionId, currentModel]);
 
   const uniqueFileCount = useMemo(
     () => new Set(fileChanges.map((c) => c.file)).size,
