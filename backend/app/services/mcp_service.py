@@ -2,6 +2,8 @@
 
 import json
 import logging
+import os
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +17,20 @@ logger = logging.getLogger(__name__)
 
 # ~/.claude/settings.json 경로
 _CLAUDE_SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
+
+# Docker 컨테이너 내부 실행 여부
+_RUNNING_IN_DOCKER = os.path.exists("/.dockerenv")
+
+
+def _resolve_url_for_docker(url: str) -> str:
+    """Docker 컨테이너 내부에서 localhost/127.0.0.1 URL을 host.docker.internal로 변환."""
+    if not _RUNNING_IN_DOCKER or not url:
+        return url
+    return re.sub(
+        r"://(localhost|127\.0\.0\.1)([:/?])",
+        r"://host.docker.internal\2",
+        url,
+    )
 
 
 class McpService:
@@ -228,7 +244,7 @@ class McpService:
                             entry["args"] = info.args
                     else:
                         if info.url:
-                            entry["url"] = info.url
+                            entry["url"] = _resolve_url_for_docker(info.url)
                         if info.headers:
                             entry["headers"] = info.headers
                         entry["type"] = info.transport_type
