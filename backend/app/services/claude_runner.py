@@ -566,6 +566,8 @@ class ClaudeRunner:
                 session_id, session_id_from_result
             )
 
+        turn_state["result_received"] = True
+
         result_event = {
             "type": WsEventType.RESULT,
             "text": result_text,
@@ -605,6 +607,27 @@ class ClaudeRunner:
             model=model,
         )
 
+    @staticmethod
+    def create_turn_state(work_dir: str = "", mode: str = "normal") -> dict:
+        """turn_state 딕셔너리를 생성.
+
+        turn_state는 현재 턴의 공유 상태로, 아래 키를 포함합니다:
+          text (str): 누적 응답 텍스트
+          model (str|None): 응답 모델명
+          work_dir (str): 작업 디렉토리 (파일 경로 정규화용)
+          mode (str): 현재 모드 ("normal"|"plan"), ExitPlanMode 시 "normal"로 변경
+          result_received (bool): result 이벤트 수신 여부 (비정상 종료 감지용)
+          exit_plan_tool_id (str, 동적): ExitPlanMode tool_use_id, tool_result 필터링 후 제거
+          should_terminate (bool, 동적): AskUserQuestion 감지 시 True, 스트림 파싱 중단
+        """
+        return {
+            "text": "",
+            "model": None,
+            "work_dir": work_dir,
+            "mode": mode,
+            "result_received": False,
+        }
+
     async def _parse_stream(
         self,
         process,
@@ -612,22 +635,13 @@ class ClaudeRunner:
         mode: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
-        work_dir: str = "",
-    ) -> dict:
+        turn_state: dict,
+    ) -> None:
         """subprocess stdout에서 JSON 스트림을 읽고 이벤트별로 처리.
 
-        Returns:
-            turn_state dict. should_terminate 키가 True이면 AskUserQuestion으로
-            인한 조기 중단을 의미.
+        turn_state dict를 in-place로 갱신합니다.
+        should_terminate 키가 True이면 AskUserQuestion으로 인한 조기 중단을 의미.
         """
-        # turn_state: 현재 턴의 공유 상태
-        #   text (str): 누적 응답 텍스트
-        #   model (str|None): 응답 모델명
-        #   work_dir (str): 작업 디렉토리 (파일 경로 정규화용)
-        #   mode (str): 현재 모드 ("normal"|"plan"), ExitPlanMode 시 "normal"로 변경
-        #   exit_plan_tool_id (str, 동적): ExitPlanMode tool_use_id, tool_result 필터링 후 제거
-        #   should_terminate (bool, 동적): AskUserQuestion 감지 시 True, 스트림 파싱 중단
-        turn_state = {"text": "", "model": None, "work_dir": work_dir, "mode": mode}
 
         while True:
             line = await process.stdout.readline()
@@ -658,8 +672,6 @@ class ClaudeRunner:
             # AskUserQuestion 감지 시 스트림 파싱 중단 (caller에서 프로세스 종료)
             if turn_state.get("should_terminate"):
                 break
-
-        return turn_state
 
     @staticmethod
     def _cleanup_mcp_config(mcp_config_path: Path | None) -> None:
@@ -706,24 +718,24 @@ class ClaudeRunner:
         )
         timeout_seconds = session.get("timeout_seconds")
 
+        work_dir = session.get("work_dir", "")
+        turn_state = self.create_turn_state(work_dir=work_dir, mode=mode)
+
         try:
             process = await self._start_process(cmd, session["work_dir"])
             session_manager.set_process(session_id, process)
 
-            work_dir = session.get("work_dir", "")
-            turn_state: dict | None = None
-
             # 타임아웃 적용
             if timeout_seconds and timeout_seconds > 0:
                 try:
-                    turn_state = await asyncio.wait_for(
+                    await asyncio.wait_for(
                         self._parse_stream(
                             process,
                             session_id,
                             mode,
                             ws_manager,
                             session_manager,
-                            work_dir=work_dir,
+                            turn_state=turn_state,
                         ),
                         timeout=timeout_seconds,
                     )
@@ -744,13 +756,13 @@ class ClaudeRunner:
                         },
                     )
             else:
-                turn_state = await self._parse_stream(
+                await self._parse_stream(
                     process,
                     session_id,
                     mode,
                     ws_manager,
                     session_manager,
-                    work_dir=work_dir,
+                    turn_state=turn_state,
                 )
 
             # AskUserQuestion으로 인한 조기 중단: subprocess 종료
@@ -804,6 +816,32 @@ class ClaudeRunner:
             )
 
         finally:
+            # 비정상 종료 시 스트리밍 중이던 텍스트를 DB에 저장 (데이터 유실 방지)
+            # result 이벤트가 수신되지 않았고, 누적된 텍스트가 있는 경우에만
+            if (
+                turn_state.get("text")
+                and not turn_state.get("result_received")
+                and not turn_state.get("should_terminate")
+            ):
+                logger.info(
+                    "세션 %s: result 미수신 상태에서 종료 — partial text 저장 (%d자)",
+                    session_id,
+                    len(turn_state["text"]),
+                )
+                try:
+                    await session_manager.add_message(
+                        session_id=session_id,
+                        role="assistant",
+                        content=turn_state["text"],
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        is_error=True,
+                        model=turn_state.get("model"),
+                    )
+                except Exception:
+                    logger.warning(
+                        "세션 %s: partial text DB 저장 실패", session_id, exc_info=True
+                    )
+
             # ERROR 상태인 경우 보존, 그 외에는 IDLE로 전환
             current_session = await session_manager.get(session_id)
             current_status = current_session.get("status") if current_session else None
