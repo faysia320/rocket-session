@@ -87,6 +87,12 @@ export function useClaudeSocket(sessionId: string) {
             // status: SESSION_STATE의 is_running이 권위적 소스이므로 재생 건너뜀
             //   (과거의 "status: running" 이벤트가 재생되어 idle 세션이 running으로 보이는 버그 방지)
             if (event.type === "user_message" || event.type === "permission_response" || event.type === "status") continue;
+            // assistant_text: RAF 배치를 우회하여 직접 dispatch (재생은 동기적으로 빠르게
+            // 발생하므로, RAF 경유 시 마지막 이벤트만 반영될 수 있음)
+            if (event.type === "assistant_text") {
+              dispatch({ type: "WS_ASSISTANT_TEXT", data: event as unknown as AssistantTextMsg });
+              continue;
+            }
             // result: history의 마지막 메시지와 중복 시 reducer에서 업그레이드 처리
             handleMessage(event);
           }
@@ -485,7 +491,7 @@ export function useClaudeSocket(sessionId: string) {
           }),
         );
       }
-      dispatch({ type: "CLEAR_PENDING_PERMISSION" });
+      dispatch({ type: "CLEAR_PENDING_PERMISSION", behavior });
     },
     [],
   );

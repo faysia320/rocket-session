@@ -107,6 +107,10 @@ export interface PermissionRequestMsg extends BaseMessage {
   type: "permission_request";
   tool: string;
   input?: Record<string, unknown>;
+  /** 처리 완료 여부 (승인/거부 후 true) */
+  resolved?: boolean;
+  /** 처리 결과 ("allow" | "deny") */
+  resolution?: "allow" | "deny";
 }
 
 // ---------------------------------------------------------------------------

@@ -141,7 +141,7 @@ export type ClaudeSocketAction =
   | { type: "CLEAR_MESSAGES" }
   | { type: "ADD_SYSTEM_MESSAGE"; text: string }
   | { type: "UPDATE_MESSAGE"; id: string; patch: MessageUpdate }
-  | { type: "CLEAR_PENDING_PERMISSION" }
+  | { type: "CLEAR_PENDING_PERMISSION"; behavior?: "allow" | "deny" }
   | { type: "UPDATE_SESSION_MODE"; mode: SessionMode }
   | { type: "TRUNCATE_OLD_MESSAGES"; maxFull: number };
 
@@ -350,11 +350,20 @@ export function claudeSocketReducer(
       return { ...state, status: action.status };
     }
 
-    case "WS_USER_MESSAGE":
+    case "WS_USER_MESSAGE": {
+      // 백엔드 user_message 형태: { type: "user_message", message: { role, content, timestamp } }
+      const userMsg = action.data.message as { content?: string; prompt?: string; timestamp?: string } | undefined;
       return {
         ...state,
-        messages: [...state.messages, { ...(action.data as unknown as Message), id: generateMessageId() }],
+        messages: [...state.messages, {
+          id: generateMessageId(),
+          type: "user_message" as const,
+          content: userMsg?.content || String(action.data.prompt || ""),
+          timestamp: userMsg?.timestamp || new Date().toISOString(),
+          message: userMsg,
+        }],
       };
+    }
 
     case "WS_ASSISTANT_TEXT": {
       const prev = state.messages;
@@ -501,6 +510,9 @@ export function claudeSocketReducer(
       return {
         ...state,
         messages: [...state.messages, { ...(action.data as unknown as Message), id: generateMessageId() }],
+        // 세션 미발견이 아닌 경우 방어적으로 error 상태 설정
+        // (백엔드 finally에서 STATUS 이벤트가 후속 전송되지만, 네트워크 문제로 누락될 수 있음)
+        status: action.isSessionNotFound ? state.status : "error",
       };
 
     case "WS_STDERR":
@@ -602,10 +614,24 @@ export function claudeSocketReducer(
       };
 
     case "WS_PERMISSION_RESPONSE": {
-      const newMessages = action.reason
-        ? [...state.messages, { id: generateMessageId(), type: "system" as const, text: `Permission: ${action.reason}` }]
-        : state.messages;
-      return { ...state, pendingPermission: null, messages: newMessages };
+      // 가장 최근의 미처리 permission_request 메시지를 resolved로 마킹
+      let msgs = state.messages;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].type === "permission_request" && !(msgs[i] as import("@/types").PermissionRequestMsg).resolved) {
+          const updated = [...msgs];
+          updated[i] = {
+            ...msgs[i],
+            resolved: true,
+            resolution: action.reason === "denied" ? "deny" : "allow",
+          } as Message;
+          msgs = updated;
+          break;
+        }
+      }
+      if (action.reason) {
+        msgs = [...msgs, { id: generateMessageId(), type: "system" as const, text: `Permission: ${action.reason}` }];
+      }
+      return { ...state, pendingPermission: null, messages: msgs };
     }
 
     case "WS_MODE_CHANGE":
@@ -704,8 +730,21 @@ export function claudeSocketReducer(
         ),
       };
 
-    case "CLEAR_PENDING_PERMISSION":
-      return { ...state, pendingPermission: null };
+    case "CLEAR_PENDING_PERMISSION": {
+      // respondPermission()에서 호출: 로컬에서 즉시 permission_request를 resolved로 마킹
+      let msgs = state.messages;
+      if (action.behavior) {
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (msgs[i].type === "permission_request" && !(msgs[i] as import("@/types").PermissionRequestMsg).resolved) {
+            const updated = [...msgs];
+            updated[i] = { ...msgs[i], resolved: true, resolution: action.behavior } as Message;
+            msgs = updated;
+            break;
+          }
+        }
+      }
+      return { ...state, pendingPermission: null, messages: msgs };
+    }
 
     case "UPDATE_SESSION_MODE":
       return {
