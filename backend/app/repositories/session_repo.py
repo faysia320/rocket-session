@@ -1,6 +1,6 @@
 """세션 Repository."""
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, literal, select, update
 
 from app.models.file_change import FileChange
 from app.models.message import Message
@@ -20,28 +20,41 @@ class SessionRepository(BaseRepository[Session]):
         )
         return result.scalar_one_or_none()
 
+    async def exists(self, session_id: str) -> bool:
+        """세션 존재 여부만 확인 (경량 쿼리)."""
+        stmt = select(literal(1)).where(Session.id == session_id).limit(1)
+        result = await self._session.execute(stmt)
+        return result.scalar() is not None
+
+    async def get_status(self, session_id: str) -> str | None:
+        """세션 status만 조회."""
+        stmt = select(Session.status).where(Session.id == session_id)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_mode(self, session_id: str) -> str | None:
+        """세션 mode만 조회 (경량)."""
+        stmt = select(Session.mode).where(Session.id == session_id)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def list_with_counts(self) -> list[dict]:
-        """세션 목록 + message_count, file_changes_count."""
-        msg_sub = (
-            select(Message.session_id, func.count().label("cnt"))
-            .group_by(Message.session_id)
-            .subquery()
+        """세션 목록 + message_count, file_changes_count (correlated subquery)."""
+        msg_count = (
+            select(func.count())
+            .where(Message.session_id == Session.id)
+            .correlate(Session)
+            .scalar_subquery()
+            .label("message_count")
         )
-        fc_sub = (
-            select(FileChange.session_id, func.count().label("cnt"))
-            .group_by(FileChange.session_id)
-            .subquery()
+        fc_count = (
+            select(func.count())
+            .where(FileChange.session_id == Session.id)
+            .correlate(Session)
+            .scalar_subquery()
+            .label("file_changes_count")
         )
-        stmt = (
-            select(
-                Session,
-                func.coalesce(msg_sub.c.cnt, 0).label("message_count"),
-                func.coalesce(fc_sub.c.cnt, 0).label("file_changes_count"),
-            )
-            .outerjoin(msg_sub, msg_sub.c.session_id == Session.id)
-            .outerjoin(fc_sub, fc_sub.c.session_id == Session.id)
-            .order_by(Session.created_at.desc())
-        )
+        stmt = select(Session, msg_count, fc_count).order_by(Session.created_at.desc())
         result = await self._session.execute(stmt)
         rows = result.all()
         return [
@@ -149,6 +162,7 @@ class SessionRepository(BaseRepository[Session]):
             return await self.get_by_id(session_id)
         stmt = update(Session).where(Session.id == session_id).values(**kwargs)
         await self._session.execute(stmt)
+        # UPDATE 후 변경된 엔티티를 가져옴 (noload이므로 경량)
         return await self.get_by_id(session_id)
 
     async def find_by_claude_id(self, claude_session_id: str) -> Session | None:

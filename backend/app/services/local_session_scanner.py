@@ -217,25 +217,28 @@ class LocalSessionScanner:
                     if '"type":"user"' in line or '"type":"assistant"' in line:
                         message_count += 1
 
-                    # 타임스탬프 추출 (모든 줄에서)
-                    if '"timestamp"' in line:
+                    # 파싱이 필요한지 사전 판별 (불필요한 json.loads 회피)
+                    needs_timestamp = '"timestamp"' in line
+                    needs_meta = not meta_extracted and (
+                        '"sessionId"' in line or '"cwd"' in line
+                    )
+
+                    if needs_timestamp or needs_meta:
                         try:
                             obj = json.loads(line)
+                        except (json.JSONDecodeError, ValueError):
+                            continue
+
+                        # 타임스탬프 추출 (모든 줄에서)
+                        if needs_timestamp:
                             ts = obj.get("timestamp")
                             if ts:
                                 if first_timestamp is None:
                                     first_timestamp = ts
                                 last_timestamp = ts
-                        except json.JSONDecodeError:
-                            continue
 
-                    # 메타데이터는 처음 몇 줄에서만 추출
-                    if not meta_extracted and (
-                        '"sessionId"' in line or '"cwd"' in line
-                    ):
-                        try:
-                            obj = json.loads(line)
-
+                        # 메타데이터는 처음 몇 줄에서만 추출
+                        if needs_meta:
                             # continuation 판별: 첫 이벤트의 sessionId가 파일명과 다르면 continuation
                             if not first_event_checked and obj.get("sessionId"):
                                 first_event_checked = True
@@ -253,8 +256,6 @@ class LocalSessionScanner:
                                 slug = obj["slug"]
                             if cwd and version:
                                 meta_extracted = True
-                        except json.JSONDecodeError:
-                            continue
 
             if not cwd:
                 # cwd가 없으면 프로젝트 디렉토리명에서 복원 시도

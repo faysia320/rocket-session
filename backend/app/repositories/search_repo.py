@@ -34,6 +34,8 @@ class SearchRepository:
     ) -> tuple[list[dict], int]:
         """세션 검색. (items, total) 튜플 반환.
 
+        COUNT(*) OVER() 윈도우 함수로 count/data 쿼리를 단일 쿼리로 통합.
+
         Args:
             q: LIKE 검색어 (이름/ID 부분 일치)
             fts_query: 전문 검색어 (tsvector/tsquery)
@@ -48,27 +50,26 @@ class SearchRepository:
             limit: 조회 제한
             offset: 조회 시작 위치
         """
-        # 메시지 수/파일 변경 수 서브쿼리
-        msg_sub = (
-            select(Message.session_id, func.count().label("cnt"))
-            .group_by(Message.session_id)
-            .subquery()
+        # correlated subquery로 메시지 수/파일 변경 수 계산
+        msg_count = (
+            select(func.count())
+            .where(Message.session_id == Session.id)
+            .correlate(Session)
+            .scalar_subquery()
+            .label("message_count")
         )
-        fc_sub = (
-            select(FileChange.session_id, func.count().label("cnt"))
-            .group_by(FileChange.session_id)
-            .subquery()
+        fc_count = (
+            select(func.count())
+            .where(FileChange.session_id == Session.id)
+            .correlate(Session)
+            .scalar_subquery()
+            .label("file_changes_count")
         )
 
-        base = (
-            select(
-                Session,
-                func.coalesce(msg_sub.c.cnt, 0).label("message_count"),
-                func.coalesce(fc_sub.c.cnt, 0).label("file_changes_count"),
-            )
-            .outerjoin(msg_sub, msg_sub.c.session_id == Session.id)
-            .outerjoin(fc_sub, fc_sub.c.session_id == Session.id)
-        )
+        # COUNT(*) OVER() 윈도우 함수: 별도 count 쿼리 없이 총 개수 계산
+        total_count = func.count().over().label("total_count")
+
+        base = select(Session, msg_count, fc_count, total_count)
 
         # 필터 조건 누적
         filters = []
@@ -110,10 +111,6 @@ class SearchRepository:
         if filters:
             base = base.where(*filters)
 
-        # 총 개수 조회
-        count_stmt = select(func.count()).select_from(base.subquery())
-        total = (await self._session.execute(count_stmt)).scalar_one()
-
         # 정렬 컬럼 결정
         allowed_sorts = {"created_at", "name", "status", "model"}
         if sort == "message_count":
@@ -132,6 +129,9 @@ class SearchRepository:
 
         result = await self._session.execute(base)
         rows = result.all()
+
+        # 첫 행에서 total_count 추출 (결과가 없으면 0)
+        total = rows[0][3] if rows else 0
 
         items = [
             {

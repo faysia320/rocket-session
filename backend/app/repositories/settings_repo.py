@@ -19,7 +19,7 @@ class SettingsRepository(BaseRepository[GlobalSettings]):
         return result.scalar_one_or_none()
 
     async def update_settings(self, **kwargs) -> GlobalSettings | None:
-        """동적 필드 업데이트. kwargs에 있는 필드만 업데이트."""
+        """동적 필드 업데이트."""
         if not kwargs:
             return await self.get_default()
         stmt = (

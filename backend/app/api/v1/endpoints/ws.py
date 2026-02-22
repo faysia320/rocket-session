@@ -274,12 +274,12 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                 "latest_seq": latest_seq,
                 "is_running": is_running,
             }
-            # 현재 턴 이벤트 전송 (running + 완료된 세션 모두)
-            # running: 인메모리 버퍼에서 실시간 이벤트 복구
-            # idle/error: DB fallback으로 마지막 완료 턴의 중간 이벤트 복구
-            current_turn = await ws_manager.get_current_turn_events(session_id)
-            if current_turn:
-                state_msg["current_turn_events"] = current_turn
+            # 현재 턴 이벤트 전송 (running 상태일 때만)
+            # idle/error 상태에서는 DB fallback 조회를 스킵하여 연결 시간 단축
+            if is_running:
+                current_turn = await ws_manager.get_current_turn_events(session_id)
+                if current_turn:
+                    state_msg["current_turn_events"] = current_turn
 
             # 대기 중인 인터랙션 (permission 등) 상태 전달
             # 프론트엔드가 네비게이션 후 돌아왔을 때 질문 UI를 복구하는 권위적 소스

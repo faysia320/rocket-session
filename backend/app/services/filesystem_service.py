@@ -1,6 +1,7 @@
 """파일시스템 탐색 및 Git 작업 서비스."""
 
 import asyncio
+from collections import OrderedDict
 import logging
 import os
 import subprocess
@@ -31,17 +32,21 @@ class FilesystemService:
 
     # Cross-platform git 설정: Windows↔WSL2 환경에서 false positive 방지
     _GIT_CROSS_PLATFORM_OPTS = (
-        "-c", "core.fileMode=false",      # Windows/Linux 파일 권한 차이 무시
-        "-c", "core.autocrlf=input",      # CRLF→LF 정규화 (비교 시 clean filter 적용)
-        "-c", "core.trustctime=false",    # WSL2 ctime 불일치 무시
-        "-c", "core.checkStat=minimal",   # stat 비교를 mtime+size로 최소화
+        "-c",
+        "core.fileMode=false",  # Windows/Linux 파일 권한 차이 무시
+        "-c",
+        "core.autocrlf=input",  # CRLF→LF 정규화 (비교 시 clean filter 적용)
+        "-c",
+        "core.trustctime=false",  # WSL2 ctime 불일치 무시
+        "-c",
+        "core.checkStat=minimal",  # stat 비교를 mtime+size로 최소화
     )
 
     def __init__(self, root_dir: str = ""):
-        self._git_cache: dict[str, tuple[float, GitInfo]] = {}
+        self._git_cache: OrderedDict[str, tuple[float, GitInfo]] = OrderedDict()
         self._git_cache_ttl: float = 10.0  # 10초 TTL
         # 동일 레포에 대한 동시 git 명령 직렬화 (index.lock 경합 방지)
-        self._git_locks: dict[str, asyncio.Lock] = {}
+        self._git_locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
         # 탐색 경계: 이 디렉토리 상위로는 이동 불가
         self._root_dir: Path | None = None
         if root_dir:
@@ -58,13 +63,21 @@ class FilesystemService:
                 )
 
     def _get_git_lock(self, path: str) -> asyncio.Lock:
-        """경로별 asyncio.Lock 반환 (lazy 생성, 최대 100개)."""
-        if path not in self._git_locks:
-            if len(self._git_locks) > self._GIT_CACHE_MAX_SIZE:
-                oldest = next(iter(self._git_locks))
-                del self._git_locks[oldest]
-            self._git_locks[path] = asyncio.Lock()
-        return self._git_locks[path]
+        """경로별 asyncio.Lock 반환 (OrderedDict LRU, 최대 100개, 사용 중 lock 보호)."""
+        if path in self._git_locks:
+            self._git_locks.move_to_end(path)
+            return self._git_locks[path]
+
+        # 새 lock 생성 전 크기 제한 체크
+        while len(self._git_locks) >= self._GIT_CACHE_MAX_SIZE:
+            oldest_key, oldest_lock = next(iter(self._git_locks.items()))
+            if oldest_lock.locked():
+                break  # 사용 중인 lock은 제거하지 않음
+            del self._git_locks[oldest_key]
+
+        lock = asyncio.Lock()
+        self._git_locks[path] = lock
+        return lock
 
     @property
     def root_dir(self) -> str:
@@ -161,18 +174,22 @@ class FilesystemService:
         return await asyncio.to_thread(_run)
 
     async def get_git_info(self, path: str) -> GitInfo:
-        """Git 저장소 정보 조회 (10초 TTL 캐시, 최대 100개 항목)."""
+        """Git 저장소 정보 조회 (OrderedDict LRU 캐시, 10초 TTL, 최대 100개)."""
         now = time.monotonic()
         cached = self._git_cache.get(path)
-        if cached and (now - cached[0]) < self._git_cache_ttl:
-            return cached[1]
+        if cached:
+            ts, data = cached
+            if (now - ts) < self._git_cache_ttl:
+                self._git_cache.move_to_end(path)  # LRU 업데이트
+                return data
+            else:
+                del self._git_cache[path]  # 만료된 캐시 제거
 
         result = await self._fetch_git_info(path)
+        # 캐시 크기 제한: O(1) LRU 퇴거
+        if len(self._git_cache) >= self._GIT_CACHE_MAX_SIZE:
+            self._git_cache.popitem(last=False)  # 가장 오래된 항목 제거
         self._git_cache[path] = (now, result)
-        # 캐시 크기 제한: 가장 오래된 항목 제거
-        if len(self._git_cache) > self._GIT_CACHE_MAX_SIZE:
-            oldest_key = min(self._git_cache, key=lambda k: self._git_cache[k][0])
-            del self._git_cache[oldest_key]
         return result
 
     async def _fetch_git_info(self, path: str) -> GitInfo:

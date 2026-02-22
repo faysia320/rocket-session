@@ -89,31 +89,28 @@ class AnalyticsRepository:
             end: 종료 타임스탬프 (ISO 문자열, 미만)
             limit: 상위 N개 세션
         """
-        # 세션별 주 사용 모델 서브쿼리 (가장 많이 사용한 모델)
-        model_sub = (
+        # 세션별 주 사용 모델 서브쿼리: DISTINCT ON으로 단순화
+        model_count_sub = (
             select(
                 Message.session_id,
                 Message.model,
-                func.count().label("model_cnt"),
+                func.count().label("cnt"),
             )
             .where(Message.model.isnot(None))
             .group_by(Message.session_id, Message.model)
             .subquery()
         )
-        # ROW_NUMBER()로 세션별 최다 모델 선택
-        top_model_sub = select(
-            model_sub.c.session_id,
-            model_sub.c.model,
-            func.row_number()
-            .over(
-                partition_by=model_sub.c.session_id,
-                order_by=model_sub.c.model_cnt.desc(),
-            )
-            .label("rn"),
-        ).subquery()
+        # PostgreSQL DISTINCT ON: 세션별 최다 사용 모델 1개 선택
         top_model = (
-            select(top_model_sub.c.session_id, top_model_sub.c.model)
-            .where(top_model_sub.c.rn == 1)
+            select(
+                model_count_sub.c.session_id,
+                model_count_sub.c.model,
+            )
+            .distinct(model_count_sub.c.session_id)
+            .order_by(
+                model_count_sub.c.session_id,
+                model_count_sub.c.cnt.desc(),
+            )
             .subquery()
         )
 

@@ -214,8 +214,7 @@ async def update_session(
     req: UpdateSessionRequest,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = await manager.get(session_id)
-    if not session:
+    if not await manager.exists(session_id):
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     updated = await manager.update_settings(
         session_id=session_id,

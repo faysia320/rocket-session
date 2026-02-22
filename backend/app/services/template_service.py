@@ -5,6 +5,8 @@ import uuid
 from datetime import datetime, timezone
 
 from app.core.database import Database
+from sqlalchemy import select
+
 from app.models.template import SessionTemplate
 from app.repositories.session_repo import SessionRepository
 from app.repositories.template_repo import TemplateRepository
@@ -211,13 +213,18 @@ class TemplateService:
 
     async def import_template(self, data: TemplateInfo) -> TemplateInfo:
         """export 데이터에서 새 템플릿을 import."""
-        # 이름 중복 처리: 자동 suffix 추가
+        # 이름 중복 처리: 기존 이름을 한 번에 조회하여 in-memory에서 해결
         base_name = data.name
         name = base_name
         counter = 2
         async with self._db.session() as session:
-            repo = TemplateRepository(session)
-            while await repo.get_by_name(name):
+            result = await session.execute(
+                select(SessionTemplate.name).where(
+                    SessionTemplate.name.like(f"{base_name}%")
+                )
+            )
+            existing_names = {row[0] for row in result}
+            while name in existing_names:
                 name = f"{base_name} ({counter})"
                 counter += 1
 

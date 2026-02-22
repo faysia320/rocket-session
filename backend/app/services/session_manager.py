@@ -304,24 +304,7 @@ class SessionManager:
 
     @staticmethod
     def to_info(session: dict) -> SessionInfo:
-        # JSONB 필드는 이미 Python 객체이므로 json.loads 불필요
-        # 하위 호환성: 문자열로 들어올 경우 fallback 처리
-        perm_tools = session.get("permission_required_tools")
-        if isinstance(perm_tools, str):
-            import json
-
-            try:
-                perm_tools = json.loads(perm_tools)
-            except (json.JSONDecodeError, TypeError):
-                perm_tools = None
-        mcp_ids = session.get("mcp_server_ids")
-        if isinstance(mcp_ids, str):
-            import json
-
-            try:
-                mcp_ids = json.loads(mcp_ids)
-            except (json.JSONDecodeError, TypeError):
-                mcp_ids = None
+        # JSONB 필드는 PostgreSQL에서 항상 Python 객체로 반환됨
         return SessionInfo(
             id=session["id"],
             claude_session_id=session.get("claude_session_id"),
@@ -335,14 +318,14 @@ class SessionManager:
             timeout_seconds=session.get("timeout_seconds"),
             mode=session.get("mode", "normal"),
             permission_mode=bool(session.get("permission_mode", False)),
-            permission_required_tools=perm_tools,
+            permission_required_tools=session.get("permission_required_tools"),
             name=session.get("name"),
             model=session.get("model"),
             max_turns=session.get("max_turns"),
             max_budget_usd=session.get("max_budget_usd"),
             system_prompt_mode=session.get("system_prompt_mode", "replace"),
             disallowed_tools=session.get("disallowed_tools"),
-            mcp_server_ids=mcp_ids,
+            mcp_server_ids=session.get("mcp_server_ids"),
         )
 
     @staticmethod

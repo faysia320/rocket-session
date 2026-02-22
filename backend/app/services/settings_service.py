@@ -84,6 +84,23 @@ class SettingsService:
             kwargs["mcp_server_ids"] = mcp_server_ids
         async with self._db.session() as session:
             repo = SettingsRepository(session)
-            await repo.update_settings(**kwargs)
+            entity = await repo.update_settings(**kwargs)
             await session.commit()
-        return await self.get()
+            if not entity:
+                return {}
+            return {
+                "id": entity.id,
+                "work_dir": entity.work_dir,
+                "allowed_tools": entity.allowed_tools,
+                "system_prompt": entity.system_prompt,
+                "timeout_seconds": entity.timeout_seconds,
+                "mode": entity.mode,
+                "permission_mode": entity.permission_mode,
+                "permission_required_tools": entity.permission_required_tools,
+                "model": entity.model,
+                "max_turns": entity.max_turns,
+                "max_budget_usd": entity.max_budget_usd,
+                "system_prompt_mode": entity.system_prompt_mode,
+                "disallowed_tools": entity.disallowed_tools,
+                "mcp_server_ids": entity.mcp_server_ids,
+            }
