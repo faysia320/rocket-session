@@ -1,4 +1,4 @@
-import { LayoutGrid, Plus, Monitor, BarChart3, Clock } from "lucide-react";
+import { LayoutGrid, Plus, Monitor, BarChart3, Clock, GitBranch } from "lucide-react";
 import type { PaletteCommand } from "../types";
 import type { SessionInfo } from "@/types";
 
@@ -36,6 +36,15 @@ export function createNavigationCommands(deps: {
       icon: Clock,
       action: () => navigate({ to: "/history" }),
       keywords: ["history", "히스토리", "검색", "기록"],
+    },
+    {
+      id: "nav:git-monitor",
+      label: "Git Monitor",
+      description: "Git 저장소 모니터링 및 PR 리뷰",
+      category: "navigation",
+      icon: GitBranch,
+      action: () => navigate({ to: "/git-monitor" }),
+      keywords: ["git", "monitor", "깃", "모니터", "pr", "commit", "커밋", "풀리퀘스트"],
     },
     {
       id: "nav:new-session",

@@ -6,8 +6,41 @@ import {
   Search,
   Globe,
   GitBranch,
+  Plug,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
+/** MCP 도구 이름 파싱 결과 */
+export interface McpToolInfo {
+  isMcp: boolean;
+  provider: string;
+  toolName: string;
+  displayName: string;
+}
+
+/** MCP 도구 이름 파싱: "mcp__provider__tool_name" → 구조화된 정보 */
+export function parseMcpToolName(toolName: string): McpToolInfo {
+  const match = toolName.match(/^mcp__([^_]+)__(.+)$/);
+  if (!match) {
+    return { isMcp: false, provider: "", toolName, displayName: toolName };
+  }
+  const provider = match[1];
+  const tool = match[2];
+  return {
+    isMcp: true,
+    provider,
+    toolName: tool,
+    displayName: `${provider} → ${tool}`,
+  };
+}
+
+/** MCP provider별 아이콘 매핑 */
+const mcpProviderIcons: Record<string, LucideIcon> = {
+  serena: Search,
+  github: GitBranch,
+  playwright: Globe,
+  context7: FileText,
+};
 
 /** 도구 카테고리별 아이콘 매핑 */
 export function getToolIcon(toolName: string): LucideIcon | null {
@@ -28,8 +61,13 @@ export function getToolIcon(toolName: string): LucideIcon | null {
       return Globe;
     case "Task":
       return GitBranch;
-    default:
+    default: {
+      const mcp = parseMcpToolName(toolName);
+      if (mcp.isMcp) {
+        return mcpProviderIcons[mcp.provider] ?? Plug;
+      }
       return null;
+    }
   }
 }
 
@@ -49,8 +87,10 @@ export function getToolColor(toolName: string): string {
     case "WebFetch":
     case "WebSearch":
       return "text-success";
-    default:
-      return "text-muted-foreground";
+    default: {
+      const mcp = parseMcpToolName(toolName);
+      return mcp.isMcp ? "text-violet-400" : "text-muted-foreground";
+    }
   }
 }
 

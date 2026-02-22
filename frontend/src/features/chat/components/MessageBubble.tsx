@@ -36,7 +36,7 @@ import { TodoWriteMessage } from "./TodoWriteMessage";
 import { EditToolMessage } from "./EditToolMessage";
 import { BashToolMessage } from "./BashToolMessage";
 import { ToolStatusIcon } from "./ToolStatusIcon";
-import { getToolIcon, getToolColor, useElapsed, getLanguageFromPath } from "./toolMessageUtils";
+import { getToolIcon, getToolColor, useElapsed, getLanguageFromPath, parseMcpToolName } from "./toolMessageUtils";
 
 interface MessageBubbleProps {
   message: Message;
@@ -277,6 +277,16 @@ function getToolSummary(toolName: string, input: Record<string, unknown>): strin
   if (toolName === "Glob") {
     return input.pattern ? String(input.pattern) : null;
   }
+  // MCP 도구: 주요 파라미터 자동 추출
+  if (toolName.startsWith("mcp__")) {
+    const query = input.query ?? input.q ?? input.pattern ?? input.search ?? input.text;
+    const path = input.path ?? input.file_path ?? input.repo ?? input.owner;
+    const parts = [
+      query ? `"${String(query)}"` : null,
+      path ? `in ${String(path)}` : null,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(" ") : null;
+  }
   // Read 및 기타: file_path 또는 path
   return String(input.file_path ?? input.path ?? "") || null;
 }
@@ -288,6 +298,7 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
   const toolStatus: "running" | "done" | "error" = message.status || "running";
   const isRead = toolName === "Read";
   const filePath = String(input.file_path ?? input.path ?? "");
+  const mcpInfo = useMemo(() => parseMcpToolName(toolName), [toolName]);
 
   const borderColor =
     toolStatus === "error"
@@ -323,9 +334,20 @@ function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; ani
             {ToolIcon ? (
               <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} />
             ) : null}
-            <span className="font-mono text-xs font-semibold text-foreground">
-              {toolName}
-            </span>
+            {mcpInfo.isMcp ? (
+              <>
+                <span className="font-mono text-2xs px-1 py-0.5 rounded bg-violet-500/20 text-violet-400 shrink-0">
+                  {mcpInfo.provider}
+                </span>
+                <span className="font-mono text-xs font-semibold text-foreground">
+                  {mcpInfo.toolName}
+                </span>
+              </>
+            ) : (
+              <span className="font-mono text-xs font-semibold text-foreground">
+                {toolName}
+              </span>
+            )}
             {summary ? (
               <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
                 {summary}

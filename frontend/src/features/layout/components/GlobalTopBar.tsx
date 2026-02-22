@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "@tanstack/react-router";
 import {
   Clock,
   BarChart3,
+  GitBranch,
   MessageSquare,
   PanelLeft,
   Sun,
@@ -43,6 +44,7 @@ const NAV_ITEMS = [
   { to: "/" as const, label: "Sessions", icon: MessageSquare },
   { to: "/history" as const, label: "History", icon: Clock },
   { to: "/analytics" as const, label: "Analytics", icon: BarChart3 },
+  { to: "/git-monitor" as const, label: "Git", icon: GitBranch },
 ] as const;
 
 export const GlobalTopBar = memo(function GlobalTopBar() {
