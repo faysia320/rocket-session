@@ -2,7 +2,7 @@
  * 세션 히스토리 페이지.
  * 검색, 필터(상태/태그/날짜), 정렬, 페이징 지원.
  */
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, memo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Search,
@@ -67,23 +67,28 @@ export function HistoryPage() {
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
 
-  // 디바운스된 검색어
-  const [debounceTimer, setDebounceTimer] = useState<ReturnType<
-    typeof setTimeout
-  > | null>(null);
+  // F#7: useRef + setTimeout 디바운스 (state 기반 타이머 제거 → 불필요한 리렌더 방지)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleQueryChange = useCallback(
     (value: string) => {
       setQuery(value);
-      if (debounceTimer) clearTimeout(debounceTimer);
-      const timer = setTimeout(() => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        debounceTimerRef.current = null;
         setDebouncedQuery(value);
         setPage(0);
       }, 300);
-      setDebounceTimer(timer);
     },
-    [debounceTimer],
+    [],
   );
+
+  // cleanup: 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
 
   const searchParams = useMemo(
     () => ({
@@ -138,6 +143,16 @@ export function HistoryPage() {
     );
     setPage(0);
   };
+
+  const handleSessionClick = useCallback(
+    (sessionId: string) => {
+      navigate({
+        to: "/session/$sessionId",
+        params: { sessionId },
+      });
+    },
+    [navigate],
+  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -406,12 +421,7 @@ export function HistoryPage() {
               <HistorySessionRow
                 key={session.id}
                 session={session}
-                onClick={() =>
-                  navigate({
-                    to: "/session/$sessionId",
-                    params: { sessionId: session.id },
-                  })
-                }
+                onClick={handleSessionClick}
               />
             ))}
           </div>
@@ -450,12 +460,13 @@ export function HistoryPage() {
   );
 }
 
-function HistorySessionRow({
+/** F#8: memo로 감싸 부모 리렌더 시 불필요한 행 렌더링 방지 */
+const HistorySessionRow = memo(function HistorySessionRow({
   session,
   onClick,
 }: {
   session: SessionInfo;
-  onClick: () => void;
+  onClick: (sessionId: string) => void;
 }) {
   const statusColors: Record<string, string> = {
     running: "bg-success",
@@ -475,11 +486,15 @@ function HistorySessionRow({
       })
     : "";
 
+  const handleClick = useCallback(() => {
+    onClick(session.id);
+  }, [onClick, session.id]);
+
   return (
     <button
       type="button"
       className="w-full text-left px-6 py-3 hover:bg-muted/50 transition-colors"
-      onClick={onClick}
+      onClick={handleClick}
     >
       <div className="flex items-center gap-3">
         <span
@@ -517,4 +532,4 @@ function HistorySessionRow({
       </div>
     </button>
   );
-}
+});

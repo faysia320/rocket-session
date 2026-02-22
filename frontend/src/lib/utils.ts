@@ -26,10 +26,13 @@ export function formatTime(ts?: string): string {
 export function highlightText(text: string, query: string): ReactNode[] {
   if (!query || !text) return [text];
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`(${escaped})`, "gi");
-  const parts = text.split(regex);
+  // split용 regex: g 플래그 사용 (split에서는 lastIndex 문제 없음)
+  const splitRegex = new RegExp(`(${escaped})`, "gi");
+  // test용 regex: g 플래그 제거 (lastIndex 상태 버그 방지)
+  const testRegex = new RegExp(`^${escaped}$`, "i");
+  const parts = text.split(splitRegex);
   return parts.map((part, i) =>
-    regex.test(part)
+    testRegex.test(part)
       ? createElement(
           "mark",
           {

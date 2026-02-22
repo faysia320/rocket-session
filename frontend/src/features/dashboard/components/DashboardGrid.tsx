@@ -1,4 +1,4 @@
-import { memo, lazy, Suspense } from "react";
+import { memo, useMemo, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { sortSessionsByStatus } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
@@ -27,8 +27,14 @@ export const DashboardGrid = memo(function DashboardGrid({
   onSelect,
   onNew,
 }: DashboardGridProps) {
-  const sortedSessions = sortSessionsByStatus(sessions);
-  const runningCount = sessions.filter((s) => s.status === "running").length;
+  const sortedSessions = useMemo(
+    () => sortSessionsByStatus(sessions),
+    [sessions],
+  );
+  const runningCount = useMemo(
+    () => sessions.filter((s) => s.status === "running").length,
+    [sessions],
+  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">

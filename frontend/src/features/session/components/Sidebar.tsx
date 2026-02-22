@@ -262,7 +262,7 @@ export const Sidebar = memo(function Sidebar({
                 <TooltipTrigger asChild>
                   <button
                     className={cn(
-                      "w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-all border border-transparent",
+                      "w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-colors border border-transparent",
                       s.id === activeSessionId &&
                         "bg-muted border-[hsl(var(--border-bright))]",
                     )}
@@ -442,7 +442,7 @@ const SessionItem = memo(function SessionItem({
     <button
       type="button"
       className={cn(
-        "w-full text-left px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-all border border-transparent overflow-hidden min-w-0",
+        "w-full text-left px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-colors border border-transparent overflow-hidden min-w-0",
         isActive && "bg-muted border-[hsl(var(--border-bright))]",
       )}
       onClick={() => onSelect(s.id)}
