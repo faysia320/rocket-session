@@ -5,6 +5,7 @@ import {
   Clock,
   BarChart3,
   MessageSquare,
+  PanelLeft,
   Sun,
   Moon,
   Search,
@@ -28,8 +29,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useSessionStore } from "@/store";
-import { useCommandPaletteStore } from "@/store";
+import { useSessionStore, useCommandPaletteStore } from "@/store";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
 
 const GlobalSettingsDialog = lazy(() =>
@@ -50,6 +51,8 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const setViewMode = useSessionStore((s) => s.setViewMode);
+  const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
+  const isMobile = useIsMobile();
 
   const openPalette = useCommandPaletteStore((s) => s.open);
 
@@ -96,6 +99,19 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
 
   return (
     <header className="h-10 shrink-0 flex items-center px-2 bg-sidebar border-b border-sidebar-border gap-2 z-40">
+      {/* 모바일: 사이드바 열기 */}
+      {isMobile ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setSidebarMobileOpen(true)}
+          aria-label="세션 목록"
+        >
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+      ) : null}
+
       {/* 좌측: 네비게이션 */}
       <nav className="hidden md:flex items-center gap-1">
         {NAV_ITEMS.map((item) => (
