@@ -25,7 +25,7 @@ import type {
   EventMsg,
   AskUserQuestionMsg,
 } from "@/types";
-import { PlanResultCard } from "./PlanResultCard";
+import { WorkflowPhaseCard } from "@/features/workflow/components/WorkflowPhaseCard";
 import { AskUserQuestionCard } from "./AskUserQuestionCard";
 import { TodoWriteMessage } from "./TodoWriteMessage";
 import { EditToolMessage } from "./EditToolMessage";
@@ -40,14 +40,14 @@ interface MessageBubbleProps {
   message: Message;
   isRunning?: boolean;
   searchQuery?: string;
-  /** 새로 추가된 메시지에만 true — 가상화 스크롤 시 재진입하는 메시지에는 애니메이션 비활성화 */
   animate?: boolean;
   onResend?: (content: string) => void;
   onRetryError?: (messageId: string) => void;
-  onExecutePlan?: (messageId: string) => void;
-  onContinuePlan?: (messageId: string) => void;
-  onDismissPlan?: (messageId: string) => void;
-  onRevisePlan?: (messageId: string, feedback: string) => void;
+  onApprovePhase?: (feedback?: string) => void;
+  onRequestRevision?: (feedback: string) => void;
+  onOpenArtifact?: (artifactId: number) => void;
+  isApprovingPhase?: boolean;
+  isRequestingRevision?: boolean;
   onAnswerQuestion?: (messageId: string, questionIndex: number, labels: string[]) => void;
   onConfirmAnswers?: (messageId: string) => void;
 }
@@ -59,10 +59,11 @@ export const MessageBubble = memo(function MessageBubble({
   animate = false,
   onResend,
   onRetryError,
-  onExecutePlan,
-  onContinuePlan,
-  onDismissPlan,
-  onRevisePlan,
+  onApprovePhase,
+  onRequestRevision,
+  onOpenArtifact,
+  isApprovingPhase,
+  isRequestingRevision,
   onAnswerQuestion,
   onConfirmAnswers,
 }: MessageBubbleProps) {
@@ -82,15 +83,15 @@ export const MessageBubble = memo(function MessageBubble({
     case "assistant_text":
       return <AssistantText message={message} isStreaming={isRunning} animate={animate} />;
     case "result":
-      if (message.mode === "plan") {
+      if (message.workflow_phase && message.workflow_phase !== "implement") {
         return (
-          <PlanResultCard
+          <WorkflowPhaseCard
             message={message}
-            isRunning={isRunning}
-            onExecute={onExecutePlan!}
-            onContinue={onContinuePlan!}
-            onDismiss={onDismissPlan!}
-            onRevise={onRevisePlan!}
+            onApprove={onApprovePhase}
+            onRequestRevision={onRequestRevision}
+            onOpenArtifact={onOpenArtifact ? () => onOpenArtifact(0) : undefined}
+            isApproving={isApprovingPhase}
+            isRequestingRevision={isRequestingRevision}
           />
         );
       }

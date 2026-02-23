@@ -34,7 +34,7 @@ interface TemplateFormData {
   fallback_model: string;
   system_prompt: string;
   system_prompt_mode: "replace" | "append";
-  mode: "normal" | "plan";
+  workflow_enabled: boolean;
   timeout_minutes: string;
   max_turns: string;
   max_budget_usd: string;
@@ -54,7 +54,7 @@ function getInitialFormData(template?: TemplateInfo | null): TemplateFormData {
     fallback_model: template?.fallback_model ?? "",
     system_prompt: template?.system_prompt ?? "",
     system_prompt_mode: (template?.system_prompt_mode as "replace" | "append") ?? "replace",
-    mode: (template?.mode as "normal" | "plan") ?? "normal",
+    workflow_enabled: template?.workflow_enabled ?? false,
     timeout_minutes: template?.timeout_seconds
       ? String(Math.round(template.timeout_seconds / 60))
       : "",
@@ -99,7 +99,7 @@ export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFor
       fallback_model: formData.fallback_model.trim() || undefined,
       system_prompt: formData.system_prompt.trim() || undefined,
       system_prompt_mode: formData.system_prompt_mode,
-      mode: formData.mode,
+      workflow_enabled: formData.workflow_enabled || undefined,
       timeout_seconds: formData.timeout_minutes ? Number(formData.timeout_minutes) * 60 : undefined,
       max_turns: formData.max_turns ? Number(formData.max_turns) : undefined,
       max_budget_usd: formData.max_budget_usd ? Number(formData.max_budget_usd) : undefined,
@@ -270,27 +270,20 @@ export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFor
             {/* ── 실행 제어 ── */}
             <div className="space-y-2">
               <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                MODE
+                WORKFLOW
               </Label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={formData.workflow_enabled}
+                  onCheckedChange={(checked) => update("workflow_enabled", checked === true)}
+                />
+                <span className="font-mono text-xs text-foreground">
+                  워크플로우 모드 활성화
+                </span>
+              </label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                normal은 일반 대화, plan은 실행 전 계획을 먼저 확인합니다.
+                활성화하면 Research → Plan → Implement 단계를 순차 진행합니다.
               </p>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={formData.mode === "normal"}
-                    onCheckedChange={() => update("mode", "normal")}
-                  />
-                  <span className="font-mono text-xs text-foreground">Normal</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={formData.mode === "plan"}
-                    onCheckedChange={() => update("mode", "plan")}
-                  />
-                  <span className="font-mono text-xs text-foreground">Plan</span>
-                </label>
-              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">

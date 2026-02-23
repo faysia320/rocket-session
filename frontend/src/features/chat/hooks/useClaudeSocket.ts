@@ -2,7 +2,6 @@ import { useEffect, useRef, useReducer, useCallback } from "react";
 import type {
   Message,
   FileChange,
-  SessionMode,
   PermissionRequestData,
   AssistantTextMsg,
   ToolUseMsg,
@@ -25,7 +24,6 @@ export function useClaudeSocket(sessionId: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldReconnect = useRef(true);
-  const lastModeRef = useRef<"normal" | "plan">("normal");
   const lastSeqRef = useRef<number>(0);
   // RAF 배치: assistant_text 스트리밍 최적화 (프레임당 1회 dispatch)
   const pendingTextRef = useRef<AssistantTextMsg | null>(null);
@@ -172,7 +170,7 @@ export function useClaudeSocket(sessionId: string) {
         dispatch({
           type: "WS_RESULT",
           data: resultData,
-          mode: (data.mode as "normal" | "plan") || lastModeRef.current,
+          workflowPhase: (data.workflow_phase as string) || null,
           inputTokens: (data.input_tokens as number) || 0,
           outputTokens: (data.output_tokens as number) || 0,
           cacheCreationTokens: (data.cache_creation_tokens as number) || 0,
@@ -235,12 +233,23 @@ export function useClaudeSocket(sessionId: string) {
         dispatch({ type: "WS_PERMISSION_RESPONSE", reason: data.reason as string | undefined });
         break;
 
-      case "mode_change":
+      case "workflow_phase_completed":
         dispatch({
-          type: "WS_MODE_CHANGE",
-          fromMode: data.from_mode as string,
-          toMode: data.to_mode as SessionMode,
+          type: "WS_WORKFLOW_PHASE_COMPLETED",
+          phase: data.phase as string,
         });
+        break;
+
+      case "workflow_phase_approved":
+        dispatch({
+          type: "WS_WORKFLOW_PHASE_APPROVED",
+          phase: data.phase as string,
+          nextPhase: (data.next_phase as string) || null,
+        });
+        break;
+
+      case "workflow_completed":
+        dispatch({ type: "WS_WORKFLOW_COMPLETED" });
         break;
 
       case "raw":
@@ -453,7 +462,6 @@ export function useClaudeSocket(sessionId: string) {
       prompt: string,
       options?: {
         allowedTools?: string[];
-        mode?: SessionMode;
         images?: string[];
         skipAnswerPrepend?: boolean;
       },
@@ -490,13 +498,11 @@ export function useClaudeSocket(sessionId: string) {
           }
         }
 
-        lastModeRef.current = options?.mode || "normal";
         wsRef.current.send(
           JSON.stringify({
             type: "prompt",
             prompt: finalPrompt,
             allowed_tools: options?.allowedTools,
-            mode: options?.mode,
             images: options?.images,
           }),
         );
@@ -528,7 +534,6 @@ export function useClaudeSocket(sessionId: string) {
       if (lines.length > 0) {
         const answerText = `[이전 질문에 대한 답변]\n${lines.join("\n")}`;
         sendPrompt(answerText, {
-          mode: lastModeRef.current as SessionMode,
           skipAnswerPrepend: true,
         });
       }
@@ -563,10 +568,6 @@ export function useClaudeSocket(sessionId: string) {
     dispatch({ type: "RECONNECT_RESET" });
     connect();
   }, [connect]);
-
-  const updateSessionMode = useCallback((newMode: SessionMode) => {
-    dispatch({ type: "UPDATE_SESSION_MODE", mode: newMode });
-  }, []);
 
   const respondPermission = useCallback(
     (
@@ -618,6 +619,5 @@ export function useClaudeSocket(sessionId: string) {
     answerQuestion,
     confirmAnswers,
     confirmAndSendAnswers,
-    updateSessionMode,
   };
 }

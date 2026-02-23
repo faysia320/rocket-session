@@ -167,7 +167,7 @@ describe("claudeSocketReducer", () => {
     const result = claudeSocketReducer(withAssistant, {
       type: "WS_RESULT",
       data: { id: "", type: "result", text: "" } as any,
-      mode: "normal",
+      workflowPhase: null,
       inputTokens: 100,
       outputTokens: 50,
       cacheCreationTokens: 0,
@@ -332,21 +332,19 @@ describe("claudeSocketReducer", () => {
   });
 
   // -------------------------------------------------------------------
-  // WS_MODE_CHANGE
+  // WS_WORKFLOW_PHASE_COMPLETED
   // -------------------------------------------------------------------
-  it("WS_MODE_CHANGE는 시스템 메시지를 추가하고 sessionInfo를 업데이트한다", () => {
+  it("WS_WORKFLOW_PHASE_COMPLETED는 sessionInfo의 workflow_phase_status를 awaiting_approval로 업데이트한다", () => {
     const withSession: ClaudeSocketState = {
       ...initialState,
-      sessionInfo: { mode: "normal" },
+      sessionInfo: { workflow_phase: "research", workflow_phase_status: "in_progress" },
     };
     const result = claudeSocketReducer(withSession, {
-      type: "WS_MODE_CHANGE",
-      fromMode: "normal",
-      toMode: "plan",
+      type: "WS_WORKFLOW_PHASE_COMPLETED",
+      phase: "research",
     });
-    expect(result.messages).toHaveLength(1);
-    expect((result.messages[0] as any).text).toContain("normal → plan");
-    expect(result.sessionInfo?.mode).toBe("plan");
+    expect(result.sessionInfo?.workflow_phase_status).toBe("awaiting_approval");
+    expect(result.sessionInfo?.workflow_phase).toBe("research");
   });
 
   // -------------------------------------------------------------------

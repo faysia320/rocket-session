@@ -1,4 +1,4 @@
-import { Trash2, Search, ToggleLeft, Minimize2, Cpu, Settings, FolderOpen } from "lucide-react";
+import { Trash2, Search, Minimize2, Cpu, Settings, FolderOpen } from "lucide-react";
 import type { PaletteCommand } from "../types";
 
 function dispatch(event: string, sessionId: string | null, data?: string) {
@@ -29,17 +29,6 @@ export function createChatCommands(deps: { activeSessionId: string | null }): Pa
       action: () => dispatch("command-palette:toggle-search", activeSessionId),
       context: { requiresActiveSession: true, allowedZones: ["session-workspace"] },
       keywords: ["search", "find", "검색", "찾기"],
-    },
-    {
-      id: "chat:toggle-mode",
-      label: "모드 전환 (Normal ↔ Plan)",
-      description: "일반 모드와 계획 모드 사이 전환",
-      category: "chat",
-      icon: ToggleLeft,
-      shortcut: "⇧Tab",
-      action: () => dispatch("command-palette:toggle-mode", activeSessionId),
-      context: { requiresActiveSession: true, allowedZones: ["session-workspace"] },
-      keywords: ["mode", "plan", "normal", "모드", "계획"],
     },
     {
       id: "chat:compact",

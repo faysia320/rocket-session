@@ -23,9 +23,9 @@ vi.mock("@/components/ui/collapsible", () => ({
   ),
 }));
 
-vi.mock("./PlanResultCard", () => ({
-  PlanResultCard: (props: any) => (
-    <div data-testid="plan-result-card" data-message-id={props.message?.id} />
+vi.mock("@/features/workflow/components/WorkflowPhaseCard", () => ({
+  WorkflowPhaseCard: (props: any) => (
+    <div data-testid="workflow-phase-card" data-message-id={props.message?.id} />
   ),
 }));
 
@@ -181,17 +181,17 @@ describe("ResultMessage", () => {
     ).toBeInTheDocument();
   });
 
-  it('routes to PlanResultCard when mode="plan"', () => {
+  it('routes to WorkflowPhaseCard when workflow_phase is set', () => {
     render(
       <MessageBubble
-        message={makeMsg({ type: "result", mode: "plan", id: "plan-1" })}
-        onExecutePlan={vi.fn()}
-        onDismissPlan={vi.fn()}
-        onRevisePlan={vi.fn()}
+        message={makeMsg({ type: "result", workflow_phase: "plan", id: "plan-1" })}
+        onApprovePhase={vi.fn()}
+        onRequestRevision={vi.fn()}
+        onOpenArtifact={vi.fn()}
       />,
     );
-    expect(screen.getByTestId("plan-result-card")).toBeInTheDocument();
-    expect(screen.getByTestId("plan-result-card")).toHaveAttribute("data-message-id", "plan-1");
+    expect(screen.getByTestId("workflow-phase-card")).toBeInTheDocument();
+    expect(screen.getByTestId("workflow-phase-card")).toHaveAttribute("data-message-id", "plan-1");
   });
 });
 

@@ -163,14 +163,14 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
                           prompt
                         </span>
                       ) : null}
-                      {tpl.mode === "plan" ? (
+                      {tpl.workflow_enabled ? (
                         <span
                           className={cn(
                             "font-mono text-2xs px-1.5 py-0.5 rounded",
                             "bg-info/10 text-info/70",
                           )}
                         >
-                          plan
+                          workflow
                         </span>
                       ) : null}
                       {tpl.model ? (

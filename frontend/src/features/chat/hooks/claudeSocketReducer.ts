@@ -1,7 +1,6 @@
 import type {
   Message,
   FileChange,
-  SessionMode,
   PermissionRequestData,
   ToolUseMsg,
   AssistantTextMsg,
@@ -12,7 +11,6 @@ import type {
 } from "@/types";
 import { getMessageText } from "@/types";
 import { generateMessageId, RECONNECT_MAX_ATTEMPTS } from "./useClaudeSocket.utils";
-import { extractPlanFileContent } from "../utils/planFileExtractor";
 
 // ---------------------------------------------------------------------------
 // State
@@ -21,7 +19,6 @@ import { extractPlanFileContent } from "../utils/planFileExtractor";
 export interface SessionState {
   claude_session_id?: string;
   work_dir?: string;
-  mode?: SessionMode;
   name?: string;
   status?: string;
   allowed_tools?: string;
@@ -31,6 +28,9 @@ export interface SessionState {
   permission_required_tools?: string;
   model?: string;
   worktree_name?: string | null;
+  workflow_enabled?: boolean;
+  workflow_phase?: string | null;
+  workflow_phase_status?: string | null;
 }
 
 export interface ReconnectState {
@@ -150,7 +150,7 @@ export type ClaudeSocketAction =
   | {
       type: "WS_RESULT";
       data: ResultMsg;
-      mode: "normal" | "plan";
+      workflowPhase: string | null;
       inputTokens: number;
       outputTokens: number;
       cacheCreationTokens: number;
@@ -169,8 +169,11 @@ export type ClaudeSocketAction =
     }
   | { type: "WS_PERMISSION_REQUEST"; permData: PermissionRequestData }
   | { type: "WS_PERMISSION_RESPONSE"; reason: string | undefined }
-  | { type: "WS_MODE_CHANGE"; fromMode: string; toMode: SessionMode }
   | { type: "WS_RAW"; text: string }
+  // Workflow events
+  | { type: "WS_WORKFLOW_PHASE_COMPLETED"; phase: string }
+  | { type: "WS_WORKFLOW_PHASE_APPROVED"; phase: string; nextPhase: string | null }
+  | { type: "WS_WORKFLOW_COMPLETED" }
   // User actions
   | { type: "ANSWER_QUESTION"; messageId: string; questionIndex: number; selectedLabels: string[] }
   | { type: "CONFIRM_ANSWERS"; messageId: string }
@@ -179,7 +182,6 @@ export type ClaudeSocketAction =
   | { type: "ADD_SYSTEM_MESSAGE"; text: string }
   | { type: "UPDATE_MESSAGE"; id: string; patch: MessageUpdate }
   | { type: "CLEAR_PENDING_PERMISSION"; behavior?: "allow" | "deny" }
-  | { type: "UPDATE_SESSION_MODE"; mode: SessionMode }
   | { type: "TRUNCATE_OLD_MESSAGES"; maxFull: number };
 
 // ---------------------------------------------------------------------------
@@ -507,29 +509,25 @@ export function claudeSocketReducer(
     case "WS_RESULT": {
       const prev = state.messages;
 
-      // history에서 복원된 result 메시지를 mode/planFileContent로 업그레이드
+      // history에서 복원된 result 메시지를 workflow_phase로 업그레이드
       // (네비게이션 후 돌아올 때 current_turn_events 재생으로 호출됨)
       const lastMsg = prev.length > 0 ? prev[prev.length - 1] : null;
       if (
         lastMsg &&
         lastMsg.type === "result" &&
         lastMsg.id.startsWith("hist-") &&
-        !(lastMsg as ResultMsg).mode
+        !(lastMsg as ResultMsg).workflow_phase
       ) {
         const text = action.data.text || (lastMsg as ResultMsg).text;
-        const planFileContent =
-          action.mode === "plan" ? extractPlanFileContent(prev.slice(0, -1), text) : undefined;
-
         const upgraded = {
           ...lastMsg,
-          mode: action.mode,
-          planFileContent,
+          workflow_phase: action.workflowPhase,
+          text,
         } as Message;
 
         return {
           ...state,
           messages: [...prev.slice(0, -1), upgraded],
-          // tokenUsage는 history 로딩 시 이미 계산됨 — 이중 계산 방지
         };
       }
 
@@ -549,10 +547,6 @@ export function claudeSocketReducer(
           : prev;
       const text = action.data.text || assistantText;
 
-      // Plan 모드: Write tool_use에서 plan 파일 content 추출
-      const planFileContent =
-        action.mode === "plan" ? extractPlanFileContent(cleaned, text) : undefined;
-
       const newTokenUsage =
         action.inputTokens || action.outputTokens
           ? {
@@ -571,9 +565,8 @@ export function claudeSocketReducer(
           {
             ...action.data,
             text,
-            planFileContent,
             id: generateMessageId(),
-            mode: action.mode,
+            workflow_phase: action.workflowPhase,
           } as Message,
         ],
         tokenUsage: newTokenUsage,
@@ -735,19 +728,35 @@ export function claudeSocketReducer(
       return { ...state, pendingPermission: null, messages: msgs };
     }
 
-    case "WS_MODE_CHANGE":
+    case "WS_WORKFLOW_PHASE_COMPLETED":
       return {
         ...state,
-        messages: [
-          ...state.messages,
-          {
-            id: generateMessageId(),
-            type: "system" as const,
-            text: `Mode: ${action.fromMode} → ${action.toMode}`,
-          },
-        ],
         sessionInfo: state.sessionInfo
-          ? { ...state.sessionInfo, mode: action.toMode }
+          ? { ...state.sessionInfo, workflow_phase_status: "awaiting_approval" }
+          : state.sessionInfo,
+      };
+
+    case "WS_WORKFLOW_PHASE_APPROVED":
+      return {
+        ...state,
+        sessionInfo: state.sessionInfo
+          ? {
+              ...state.sessionInfo,
+              workflow_phase: action.nextPhase,
+              workflow_phase_status: action.nextPhase ? "in_progress" : null,
+            }
+          : state.sessionInfo,
+      };
+
+    case "WS_WORKFLOW_COMPLETED":
+      return {
+        ...state,
+        sessionInfo: state.sessionInfo
+          ? {
+              ...state.sessionInfo,
+              workflow_phase: null,
+              workflow_phase_status: null,
+            }
           : state.sessionInfo,
       };
 
@@ -859,14 +868,6 @@ export function claudeSocketReducer(
       }
       return { ...state, pendingPermission: null, messages: msgs };
     }
-
-    case "UPDATE_SESSION_MODE":
-      return {
-        ...state,
-        sessionInfo: state.sessionInfo
-          ? { ...state.sessionInfo, mode: action.mode }
-          : state.sessionInfo,
-      };
 
     case "TRUNCATE_OLD_MESSAGES": {
       if (state.status !== "idle" || state.messages.length <= action.maxFull) return state;

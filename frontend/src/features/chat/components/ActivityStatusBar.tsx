@@ -4,28 +4,35 @@ import { ShieldAlert, ClipboardList } from "lucide-react";
 import type { ToolUseMsg, PermissionRequestData } from "@/types";
 import { getActivityLabel } from "../utils/activityLabel";
 
+const PHASE_NAMES: Record<string, string> = {
+  research: "연구",
+  plan: "계획",
+  implement: "구현",
+};
+
 interface ActivityStatusBarProps {
   activeTools: ToolUseMsg[];
   status: "idle" | "running" | "error";
   pendingPermission?: PermissionRequestData | null;
-  waitingForPlanApproval?: boolean;
+  waitingForWorkflowApproval?: boolean;
+  workflowPhase?: string | null;
 }
 
 export const ActivityStatusBar = memo(function ActivityStatusBar({
   activeTools,
   status,
   pendingPermission,
-  waitingForPlanApproval,
+  waitingForWorkflowApproval,
+  workflowPhase,
 }: ActivityStatusBarProps) {
-  // 승인 대기 상태는 idle에서도 표시 (Plan 결과 수신 후 idle로 전환됨)
   const hasPermissionWait = !!pendingPermission;
-  const hasPlanWait = !!waitingForPlanApproval;
+  const hasWorkflowWait = !!waitingForWorkflowApproval;
   const hasActiveTools = activeTools.length > 0;
   // status가 "running"이 아니더라도 activeTools가 있으면 실제로 동작 중
   const isEffectivelyRunning = status === "running" || hasActiveTools;
 
   // 아무 표시할 내용이 없으면 null
-  if (!hasPermissionWait && !hasPlanWait && !isEffectivelyRunning) return null;
+  if (!hasPermissionWait && !hasWorkflowWait && !isEffectivelyRunning) return null;
 
   return (
     <div
@@ -35,7 +42,7 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
         "px-4 py-1.5 border-t border-border animate-[fadeIn_0.15s_ease]",
         hasPermissionWait
           ? "bg-warning/10 border-warning/30"
-          : hasPlanWait
+          : hasWorkflowWait
             ? "bg-info/10 border-info/30"
             : "bg-secondary/50",
       )}
@@ -51,12 +58,12 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
           </div>
         ) : null}
 
-        {/* Plan 검토 대기 */}
-        {hasPlanWait ? (
+        {/* 워크플로우 검토 대기 */}
+        {hasWorkflowWait ? (
           <div className="flex items-center gap-2 min-h-[20px]">
             <ClipboardList className="w-3.5 h-3.5 text-info animate-pulse shrink-0" />
             <span className="font-mono text-xs text-info font-semibold">
-              계획 검토 대기 중 — 아래에서 실행/수정을 선택하세요
+              {PHASE_NAMES[workflowPhase ?? ""] ?? workflowPhase} 단계 완료 — 아티팩트를 검토하고 승인해주세요
             </span>
           </div>
         ) : null}
@@ -74,7 +81,7 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
           : null}
 
         {/* running이지만 도구/승인 대기 없을 때: 기본 처리 중 표시 */}
-        {isEffectivelyRunning && !hasActiveTools && !hasPermissionWait && !hasPlanWait ? (
+        {isEffectivelyRunning && !hasActiveTools && !hasPermissionWait && !hasWorkflowWait ? (
           <div className="flex items-center gap-2 min-h-[20px]">
             <span className="inline-block w-3 h-3 border-[1.5px] border-primary/40 border-t-primary rounded-full animate-spin shrink-0" />
             <span className="font-mono text-xs text-muted-foreground">Reasoning…</span>

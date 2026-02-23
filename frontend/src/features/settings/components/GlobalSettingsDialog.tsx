@@ -29,7 +29,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
   const [workDir, setWorkDir] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
-  const [mode, setMode] = useState<"normal" | "plan">("normal");
+  const [workflowEnabled, setWorkflowEnabled] = useState(false);
   const [permissionMode, setPermissionMode] = useState(false);
   const [permissionTools, setPermissionTools] = useState<string[]>([]);
   const [model, setModel] = useState("");
@@ -47,7 +47,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
       setTimeoutMinutes(
         settings.timeout_seconds ? String(Math.round(settings.timeout_seconds / 60)) : "",
       );
-      setMode(settings.mode ?? "normal");
+      setWorkflowEnabled(settings.workflow_enabled ?? false);
       setPermissionMode(settings.permission_mode ?? false);
       setPermissionTools(settings.permission_required_tools ?? []);
       setModel(settings.model ?? "");
@@ -73,7 +73,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
         allowed_tools: AVAILABLE_TOOLS.join(","),
         system_prompt: systemPrompt || null,
         timeout_seconds: timeoutSec,
-        mode,
+        workflow_enabled: workflowEnabled,
         permission_mode: permissionMode,
         permission_required_tools:
           permissionMode && permissionTools.length > 0 ? permissionTools : null,
@@ -286,24 +286,24 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
               </div>
             </div>
 
-            {/* Mode */}
+            {/* Workflow */}
             <div className="space-y-2">
               <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                MODE
+                WORKFLOW
               </Label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={workflowEnabled}
+                  onCheckedChange={(checked) => setWorkflowEnabled(checked === true)}
+                />
+                <span className="font-mono text-xs text-foreground">
+                  워크플로우 모드 기본 활성화
+                </span>
+              </label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                기본 실행 모드입니다. Plan 모드에서는 계획만 수립하고 승인 후 실행합니다.
+                활성화하면 새 세션이 Research → Plan → Implement 단계를 순차 진행합니다.
+                각 단계 완료 시 아티팩트를 검토하고 승인해야 다음 단계로 넘어갑니다.
               </p>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox checked={mode === "normal"} onCheckedChange={() => setMode("normal")} />
-                  <span className="font-mono text-xs text-foreground">Normal</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox checked={mode === "plan"} onCheckedChange={() => setMode("plan")} />
-                  <span className="font-mono text-xs text-foreground">Plan</span>
-                </label>
-              </div>
             </div>
 
             {/* Permission Mode */}

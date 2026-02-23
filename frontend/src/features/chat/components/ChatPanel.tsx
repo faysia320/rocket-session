@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import type { ResultMsg } from "@/types";
 import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClaudeSocket } from "../hooks/useClaudeSocket";
 import { useChatNotifications } from "../hooks/useChatNotifications";
 import { useChatSearch } from "../hooks/useChatSearch";
-import { usePlanActions } from "../hooks/usePlanActions";
+import { useWorkflowActions } from "@/features/workflow/hooks/useWorkflowActions";
+import { WorkflowProgressBar } from "@/features/workflow/components/WorkflowProgressBar";
+import { ArtifactViewer } from "@/features/workflow/components/ArtifactViewer";
+import { useWorkflowArtifact } from "@/features/workflow/hooks/useWorkflow";
 import { MessageBubble } from "./MessageBubble";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { PermissionDialog } from "./PermissionDialog";
@@ -16,7 +18,8 @@ import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileViewer } from "@/features/files/components/FileViewer";
-import type { FileChange, SessionMode, UserMsg } from "@/types";
+import type { FileChange, UserMsg } from "@/types";
+import type { WorkflowPhase } from "@/types/workflow";
 import { useSessionStore } from "@/store";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { useSlashCommands } from "../hooks/useSlashCommands";
@@ -27,6 +30,7 @@ import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { useSessionMutations } from "@/features/session/hooks/useSessions";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
+import { useAddAnnotation, useUpdateAnnotation, useUpdateArtifact } from "@/features/workflow/hooks/useWorkflow";
 
 interface ChatPanelProps {
   sessionId: string;
@@ -48,13 +52,11 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     stopExecution,
     clearMessages,
     addSystemMessage,
-    updateMessage,
     respondPermission,
     reconnect,
     answerQuestion,
     confirmAndSendAnswers,
     pendingAnswerCount,
-    updateSessionMode,
   } = useClaudeSocket(sessionId);
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -70,7 +72,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
-  const [mode, setMode] = useState<SessionMode>("normal");
 
   const isSplitView = useSessionStore((s) => s.viewMode === "split");
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
@@ -93,13 +94,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
   useChatNotifications({ sessionId, status, messages, pendingPermission, workDir });
 
-  // 세션 정보에서 mode 동기화
-  useEffect(() => {
-    if (sessionInfo?.mode) {
-      setMode(sessionInfo.mode);
-    }
-  }, [sessionInfo]);
-
   // pendingPrompt 자동 전송 (Git Monitor 커밋 등 외부에서 세션 생성 시)
   const hasAutoSentRef = useRef(false);
 
@@ -111,7 +105,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       !hasAutoSentRef.current
     ) {
       hasAutoSentRef.current = true;
-      sendPrompt(pendingPrompt, { mode: "normal" });
+      sendPrompt(pendingPrompt);
       clearPendingPrompt();
     }
   }, [connected, pendingPrompt, pendingPromptSessionId, sessionId, sendPrompt, clearPendingPrompt]);
@@ -217,19 +211,27 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [virtualizer, queryClient]);
 
-  // Plan result 자동 감지 → 해당 메시지로 스크롤
-  useEffect(() => {
-    if (messagesLength === 0) return;
-    const lastMsg = messages[messagesLength - 1];
-    if (lastMsg.type === "result" && lastMsg.mode === "plan" && !lastMsg.planExecuted) {
-      requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(messagesLength - 1, { align: "start" });
-      });
-    }
-  }, [messagesLength, messages, virtualizer]);
+  // 워크플로우 액션
+  const {
+    handleAdvancePhase,
+    handleRequestRevision,
+    handleOpenArtifact,
+    handleCloseArtifact,
+    artifactViewerOpen,
+    viewingArtifactId,
+    isApproving,
+    isRequestingRevision,
+  } = useWorkflowActions({ sessionId, sendPrompt });
 
-  const { cycleMode, handleExecutePlan, handleContinuePlan, handleDismissPlan, handleRevise } =
-    usePlanActions({ sessionId, setMode, sendPrompt, updateMessage, updateSessionMode });
+  // 아티팩트 뷰어 데이터
+  const { data: viewingArtifact } = useWorkflowArtifact(
+    sessionId,
+    viewingArtifactId ?? 0,
+    artifactViewerOpen && viewingArtifactId !== null,
+  );
+  const addAnnotationMut = useAddAnnotation(sessionId, viewingArtifactId ?? 0);
+  const updateAnnotationMut = useUpdateAnnotation(sessionId, viewingArtifactId ?? 0, 0);
+  const updateArtifactMut = useUpdateArtifact(sessionId, viewingArtifactId ?? 0);
 
   const {
     searchOpen,
@@ -241,16 +243,11 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     handleToggleSearch,
   } = useChatSearch({ messages, virtualizer, isSplitView, focusedSessionId, sessionId });
 
-  // Plan 승인 대기 상태 감지
-  const waitingForPlanApproval = useMemo(() => {
-    if (messages.length === 0) return false;
-    const lastMsg = messages[messages.length - 1];
-    return (
-      lastMsg.type === "result" &&
-      (lastMsg as ResultMsg).mode === "plan" &&
-      !(lastMsg as ResultMsg).planExecuted
-    );
-  }, [messages]);
+  // 워크플로우 승인 대기 상태 감지
+  const waitingForWorkflowApproval = useMemo(() => {
+    if (!sessionInfo?.workflow_enabled) return false;
+    return sessionInfo.workflow_phase_status === "awaiting_approval";
+  }, [sessionInfo]);
 
   // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
   const prevGapsRef = useRef<Record<number, "tight" | "normal" | "turn-start">>({});
@@ -266,17 +263,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const cmdPaletteRef = useRef({
     clearMessages,
     handleToggleSearch,
-    cycleMode,
     sendPrompt,
-    mode,
     sessionId,
   });
   cmdPaletteRef.current = {
     clearMessages,
     handleToggleSearch,
-    cycleMode,
     sendPrompt,
-    mode,
     sessionId,
   };
 
@@ -293,18 +286,17 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         forThis(e, () => cmdPaletteRef.current.clearMessages()),
       "command-palette:toggle-search": (e) =>
         forThis(e, () => cmdPaletteRef.current.handleToggleSearch()),
-      "command-palette:toggle-mode": (e) => forThis(e, () => cmdPaletteRef.current.cycleMode()),
       "command-palette:open-settings": (e) => forThis(e, () => setSettingsOpen(true)),
       "command-palette:toggle-files": (e) => forThis(e, () => setFilesOpen((p) => !p)),
       "command-palette:send-slash": (e) =>
         forThis(e, () => {
           const data = (e as CustomEvent).detail?.data;
-          if (data) cmdPaletteRef.current.sendPrompt(data, { mode: cmdPaletteRef.current.mode });
+          if (data) cmdPaletteRef.current.sendPrompt(data);
         }),
       "command-palette:send-prompt": (e) =>
         forThis(e, () => {
           const data = (e as CustomEvent).detail?.data;
-          if (data) cmdPaletteRef.current.sendPrompt(data, { mode: cmdPaletteRef.current.mode });
+          if (data) cmdPaletteRef.current.sendPrompt(data);
         }),
     };
 
@@ -343,7 +335,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           break;
         case "compact":
         case "model":
-          sendPrompt(`/${cmd.id}`, { mode });
+          sendPrompt(`/${cmd.id}`);
           break;
         case "settings":
           setSettingsOpen(true);
@@ -353,26 +345,26 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           break;
         default:
           if (cmd.source === "skill") {
-            sendPrompt(`/${cmd.id}`, { mode });
+            sendPrompt(`/${cmd.id}`);
           }
           break;
       }
     },
-    [addSystemMessage, clearMessages, sendPrompt, mode],
+    [addSystemMessage, clearMessages, sendPrompt],
   );
 
   const handleSendPrompt = useCallback(
     (prompt: string, images?: string[]) => {
-      sendPrompt(prompt, { mode, images });
+      sendPrompt(prompt, { images });
     },
-    [sendPrompt, mode],
+    [sendPrompt],
   );
 
   const handleResend = useCallback(
     (content: string) => {
-      sendPrompt(content, { mode });
+      sendPrompt(content);
     },
-    [sendPrompt, mode],
+    [sendPrompt],
   );
 
   // 에러 메시지에서 직전 user 메시지를 찾아 재전송 — messagesRef로 messages 의존성 제거
@@ -387,12 +379,12 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           const userMsg = msgs[i] as UserMsg;
           const msg = userMsg.message as Record<string, string> | undefined;
           const text = msg?.content || msg?.prompt || userMsg.content || userMsg.prompt || "";
-          if (text) sendPrompt(text, { mode });
+          if (text) sendPrompt(text);
           break;
         }
       }
     },
-    [sendPrompt, mode],
+    [sendPrompt],
   );
 
   const navigate = useNavigate();
@@ -465,6 +457,15 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onUnarchive={handleUnarchive}
         onFork={handleFork}
       />
+      {sessionInfo?.workflow_enabled ? (
+        <WorkflowProgressBar
+          currentPhase={(sessionInfo.workflow_phase as WorkflowPhase) ?? null}
+          currentStatus={sessionInfo.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus ?? null}
+          onPhaseClick={(_phase) => {
+            // TODO: 해당 phase의 아티팩트 뷰어 열기
+          }}
+        />
+      ) : null}
       <SessionStatsBar
         sessionId={sessionId}
         isRunning={status === "running" || activeTools.length > 0}
@@ -559,10 +560,11 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                       animate={virtualItem.index >= animateFromIndex.current}
                       onResend={handleResend}
                       onRetryError={handleRetryFromError}
-                      onExecutePlan={handleExecutePlan}
-                      onContinuePlan={handleContinuePlan}
-                      onDismissPlan={handleDismissPlan}
-                      onRevisePlan={handleRevise}
+                      onApprovePhase={handleAdvancePhase}
+                      onRequestRevision={handleRequestRevision}
+                      onOpenArtifact={handleOpenArtifact}
+                      isApprovingPhase={isApproving}
+                      isRequestingRevision={isRequestingRevision}
                       onAnswerQuestion={answerQuestion}
                       onConfirmAnswers={confirmAndSendAnswers}
                     />
@@ -578,7 +580,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         activeTools={activeTools}
         status={status}
         pendingPermission={pendingPermission}
-        waitingForPlanApproval={waitingForPlanApproval}
+        waitingForWorkflowApproval={waitingForWorkflowApproval}
+        workflowPhase={(sessionInfo?.workflow_phase as string) ?? null}
       />
 
       <div>
@@ -586,14 +589,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           connected={connected}
           status={status}
           activeTools={activeTools}
-          mode={mode}
           slashCommands={slashCommands}
           onSubmit={handleSendPrompt}
           onStop={stopExecution}
-          onModeToggle={cycleMode}
           onSlashCommand={handleSlashCommand}
           sessionId={sessionId}
           pendingAnswerCount={pendingAnswerCount}
+          disabled={waitingForWorkflowApproval}
         />
       </div>
 
@@ -617,6 +619,36 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           }}
         />
       ) : null}
+
+      {/* Artifact Viewer */}
+      <ArtifactViewer
+        open={artifactViewerOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCloseArtifact();
+        }}
+        artifact={viewingArtifact ?? null}
+        onApprove={handleAdvancePhase}
+        onRequestRevision={handleRequestRevision}
+        onAddAnnotation={(lineStart, lineEnd, content, type) => {
+          addAnnotationMut.mutate({
+            line_start: lineStart,
+            line_end: lineEnd,
+            content,
+            annotation_type: type,
+          });
+        }}
+        onResolveAnnotation={(_annId) => {
+          updateAnnotationMut.mutate({ status: "resolved" });
+        }}
+        onDismissAnnotation={(_annId) => {
+          updateAnnotationMut.mutate({ status: "dismissed" });
+        }}
+        onUpdateContent={(content) => {
+          updateArtifactMut.mutate({ content });
+        }}
+        isApproving={isApproving}
+        isRequestingRevision={isRequestingRevision}
+      />
     </div>
   );
 }

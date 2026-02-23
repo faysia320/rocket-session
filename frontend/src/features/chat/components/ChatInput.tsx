@@ -1,5 +1,5 @@
 import { memo, useState, useRef, useCallback, useEffect } from "react";
-import { Send, Square, Image, X, ClipboardList } from "lucide-react";
+import { Send, Square, Image, X } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SlashCommandPopup } from "./SlashCommandPopup";
 import { cn } from "@/lib/utils";
 import { sessionsApi } from "@/lib/api/sessions.api";
-import type { SessionMode, ToolUseMsg } from "@/types";
+import type { ToolUseMsg } from "@/types";
 import type { SlashCommand } from "../constants/slashCommands";
 import type { useSlashCommands } from "../hooks/useSlashCommands";
 
@@ -20,14 +20,13 @@ interface ChatInputProps {
   connected: boolean;
   status: "idle" | "running" | "error";
   activeTools: ToolUseMsg[];
-  mode: SessionMode;
   slashCommands: ReturnType<typeof useSlashCommands>;
   onSubmit: (prompt: string, images?: string[]) => void;
   onStop: () => void;
-  onModeToggle: () => void;
   onSlashCommand: (cmd: SlashCommand) => void;
   sessionId?: string;
   pendingAnswerCount?: number;
+  disabled?: boolean;
 }
 
 const ACCEPTED_IMAGE_TYPES = [
@@ -43,14 +42,13 @@ export const ChatInput = memo(function ChatInput({
   connected,
   status,
   activeTools,
-  mode,
   slashCommands,
   onSubmit,
   onStop,
-  onModeToggle,
   onSlashCommand,
   sessionId,
   pendingAnswerCount = 0,
+  disabled = false,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -177,17 +175,12 @@ export const ChatInput = memo(function ChatInput({
         }
         return;
       }
-      if (e.key === "Tab" && e.shiftKey) {
-        e.preventDefault();
-        onModeToggle();
-        return;
-      }
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
       }
     },
-    [slashCommands, status, onStop, resetTextarea, onModeToggle, handleSubmit, executeSlashCommand],
+    [slashCommands, status, onStop, resetTextarea, handleSubmit, executeSlashCommand],
   );
 
   const handleTextareaInput = useCallback(
@@ -311,29 +304,6 @@ export const ChatInput = memo(function ChatInput({
             isDragOver && "border-primary/50",
           )}
         >
-          {/* 모드 전환 버튼 (항상 표시) */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onModeToggle}
-                className={cn(
-                  "flex items-center self-center p-1 rounded transition-all duration-200 shrink-0",
-                  "border",
-                  mode === "plan"
-                    ? "text-primary bg-primary/15 border-primary/30 hover:bg-primary/25"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted border-transparent",
-                )}
-                aria-label={mode === "plan" ? "Normal 모드로 전환" : "Plan 모드로 전환"}
-              >
-                <ClipboardList className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {mode === "plan" ? "Plan 모드 활성 (클릭하여 해제)" : "Plan 모드로 전환"}
-            </TooltipContent>
-          </Tooltip>
-
           {/* 이미지 첨부 버튼 */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -370,7 +340,7 @@ export const ChatInput = memo(function ChatInput({
             onPaste={handlePaste}
             placeholder="메시지를 입력하세요…"
             rows={1}
-            disabled={!connected}
+            disabled={!connected || disabled}
           />
           <div className="flex items-center">
             {isEffectivelyRunning ? (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Rocket, GitBranch, FolderPlus, Plus, X } from "lucide-react";
+import { Rocket, GitBranch, FolderPlus, Plus, X, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ interface SessionSetupPanelProps {
       additional_dirs?: string[];
       fallback_model?: string;
       worktree_name?: string;
+      workflow_enabled?: boolean;
     },
   ) => void;
   onCancel: () => void;
@@ -37,19 +38,25 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
   const [fallbackModel, setFallbackModel] = useState("");
+  const [workflowEnabled, setWorkflowEnabled] = useState(false);
   const { data: globalSettings } = useGlobalSettings();
   const { gitInfo } = useGitInfo(workDir);
 
-  // 글로벌 설정의 work_dir이 이미 적용되었는지 추적
+  // 글로벌 설정의 기본값이 이미 적용되었는지 추적
   const globalAppliedRef = useRef(false);
 
-  // 글로벌 work_dir 기본값 적용
+  // 글로벌 기본값 적용
   useEffect(() => {
-    if (!globalAppliedRef.current && !workDir && globalSettings?.work_dir) {
-      setWorkDir(globalSettings.work_dir);
+    if (!globalAppliedRef.current && globalSettings) {
+      if (!workDir && globalSettings.work_dir) {
+        setWorkDir(globalSettings.work_dir);
+      }
+      if (globalSettings.workflow_enabled) {
+        setWorkflowEnabled(true);
+      }
       globalAppliedRef.current = true;
     }
-  }, [globalSettings?.work_dir]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [globalSettings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTemplateSelect = (template: TemplateInfo | null) => {
     if (!template) {
@@ -84,6 +91,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         additional_dirs?: string[];
         fallback_model?: string;
         worktree_name?: string;
+        workflow_enabled?: boolean;
       } = {};
       if (systemPrompt.trim()) {
         options.system_prompt = systemPrompt.trim();
@@ -103,6 +111,9 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       }
       if (useWorktree && worktreeName.trim()) {
         options.worktree_name = worktreeName.trim();
+      }
+      if (workflowEnabled) {
+        options.workflow_enabled = true;
       }
       onCreate(workDir.trim(), Object.keys(options).length > 0 ? options : undefined);
     } catch {
@@ -235,6 +246,23 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             value={fallbackModel}
             onChange={(e) => setFallbackModel(e.target.value)}
           />
+        </div>
+
+        {/* Workflow Mode */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label
+              htmlFor="workflow-toggle"
+              className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-2 cursor-pointer"
+            >
+              <Workflow className="h-3.5 w-3.5" />
+              WORKFLOW MODE
+            </Label>
+            <Switch id="workflow-toggle" checked={workflowEnabled} onCheckedChange={setWorkflowEnabled} />
+          </div>
+          <p className="font-mono text-2xs text-muted-foreground/70">
+            활성화하면 Research → Plan → Implement 단계를 순차 진행합니다.
+          </p>
         </div>
 
         {/* System Prompt */}

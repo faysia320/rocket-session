@@ -615,7 +615,7 @@ describe("handleMessage: result", () => {
     expect((result.current.messages[0] as any).text).toBe("fallback text");
   });
 
-  it("sets mode from data.mode", () => {
+  it("sets workflow_phase from data.workflow_phase", () => {
     const { result } = renderHook(() => useClaudeSocket("sess-1"));
 
     act(() => {
@@ -624,12 +624,12 @@ describe("handleMessage: result", () => {
       ws.simulateMessage({
         type: "result",
         text: "plan result",
-        mode: "plan",
+        workflow_phase: "plan",
         seq: 1,
       });
     });
 
-    expect((result.current.messages[0] as any).mode).toBe("plan");
+    expect((result.current.messages[0] as any).workflow_phase).toBe("plan");
   });
 
   it("assigns new ID to result message", () => {
@@ -1076,7 +1076,6 @@ describe("Actions", () => {
 
     act(() => {
       result.current.sendPrompt("Hello Claude", {
-        mode: "plan",
         allowedTools: ["Read"],
       });
     });
@@ -1086,7 +1085,6 @@ describe("Actions", () => {
     const sent = JSON.parse(ws.sentMessages[0]);
     expect(sent.type).toBe("prompt");
     expect(sent.prompt).toBe("Hello Claude");
-    expect(sent.mode).toBe("plan");
     expect(sent.allowed_tools).toEqual(["Read"]);
   });
 
