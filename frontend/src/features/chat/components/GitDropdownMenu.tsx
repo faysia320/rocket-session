@@ -23,6 +23,7 @@ import type { GitInfo } from "@/types";
 
 interface GitDropdownMenuProps {
   gitInfo: GitInfo | null;
+  worktreeName?: string | null;
   status: "idle" | "running" | "error";
   connected: boolean;
   onSendPrompt: (prompt: string) => void;
@@ -31,6 +32,7 @@ interface GitDropdownMenuProps {
 
 export const GitDropdownMenu = memo(function GitDropdownMenu({
   gitInfo,
+  worktreeName,
   status,
   connected,
   onSendPrompt,
@@ -62,13 +64,14 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
 
   if (!gitInfo?.is_git_repo) return null;
 
+  const isWorktreeSession = !!worktreeName;
   const hasCommits = gitInfo.ahead > 0;
   const showCommit = hasChanges;
   const showPR = hasChanges || hasCommits;
-  const showRebase = gitInfo.is_worktree;
+  const showRebase = isWorktreeSession;
   const disabled = status === "running" || !connected;
 
-  if (!showCommit && !showPR && !showRebase && !gitInfo.is_worktree) return null;
+  if (!showCommit && !showPR && !showRebase && !isWorktreeSession) return null;
 
   return (
     <>
@@ -114,7 +117,7 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
               Rebase & Merge
             </DropdownMenuItem>
           ) : null}
-          {gitInfo.is_worktree ? (
+          {isWorktreeSession ? (
             <>
               {showCommit || showPR || showRebase ? <DropdownMenuSeparator /> : null}
               <DropdownMenuItem
@@ -129,7 +132,7 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
-      {gitInfo.is_worktree ? (
+      {isWorktreeSession ? (
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>

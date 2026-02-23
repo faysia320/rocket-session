@@ -30,6 +30,7 @@ export interface SessionState {
   permission_mode?: number;
   permission_required_tools?: string;
   model?: string;
+  worktree_name?: string | null;
 }
 
 export interface ReconnectState {

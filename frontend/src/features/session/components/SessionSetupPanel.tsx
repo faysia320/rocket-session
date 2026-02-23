@@ -8,7 +8,6 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
-import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 import { TemplateSelector } from "@/features/template/components/TemplateSelector";
 import type { TemplateInfo } from "@/types";
@@ -22,6 +21,7 @@ interface SessionSetupPanelProps {
       template_id?: string;
       additional_dirs?: string[];
       fallback_model?: string;
+      worktree_name?: string;
     },
   ) => void;
   onCancel: () => void;
@@ -33,7 +33,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [creating, setCreating] = useState(false);
   const [useWorktree, setUseWorktree] = useState(false);
-  const [worktreeBranch, setWorktreeBranch] = useState("");
+  const [worktreeName, setWorktreeName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
   const [fallbackModel, setFallbackModel] = useState("");
@@ -77,23 +77,13 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const handleCreate = async () => {
     setCreating(true);
     try {
-      let targetDir = workDir.trim();
-
-      if (useWorktree && worktreeBranch.trim()) {
-        const worktreeInfo = await filesystemApi.createWorktree({
-          repo_path: workDir.trim(),
-          branch: worktreeBranch.trim(),
-          create_branch: true,
-        });
-        targetDir = worktreeInfo.path;
-      }
-
       const options: {
         system_prompt?: string;
         timeout_seconds?: number;
         template_id?: string;
         additional_dirs?: string[];
         fallback_model?: string;
+        worktree_name?: string;
       } = {};
       if (systemPrompt.trim()) {
         options.system_prompt = systemPrompt.trim();
@@ -111,7 +101,10 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       if (fallbackModel.trim()) {
         options.fallback_model = fallbackModel.trim();
       }
-      onCreate(targetDir, Object.keys(options).length > 0 ? options : undefined);
+      if (useWorktree && worktreeName.trim()) {
+        options.worktree_name = worktreeName.trim();
+      }
+      onCreate(workDir.trim(), Object.keys(options).length > 0 ? options : undefined);
     } catch {
       setCreating(false);
     }
@@ -168,14 +161,14 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             {useWorktree ? (
               <div className="space-y-2 pl-0.5">
                 <p className="font-mono text-2xs text-muted-foreground/70">
-                  현재 브랜치: <code className="text-info/80">{gitInfo.branch}</code> 기준으로 새
-                  워크트리를 생성합니다
+                  세션 실행 시 <code className="text-info/80">worktree-{worktreeName || "{name}"}</code>{" "}
+                  브랜치가 자동 생성됩니다
                 </p>
                 <Input
                   className="font-mono text-xs bg-input border-border"
-                  placeholder="새 브랜치명 (예: feature-auth)"
-                  value={worktreeBranch}
-                  onChange={(e) => setWorktreeBranch(e.target.value)}
+                  placeholder="워크트리 이름 (예: feature-auth)"
+                  value={worktreeName}
+                  onChange={(e) => setWorktreeName(e.target.value)}
                 />
               </div>
             ) : null}
@@ -282,7 +275,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           <Button
             className="flex-1 font-mono text-sm font-semibold"
             onClick={handleCreate}
-            disabled={creating || !workDir.trim() || (useWorktree && !worktreeBranch.trim())}
+            disabled={creating || !workDir.trim() || (useWorktree && !worktreeName.trim())}
           >
             <Rocket className="h-4 w-4 mr-2" />
             {creating ? "Creating…" : "Create Session"}

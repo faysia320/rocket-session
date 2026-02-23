@@ -38,13 +38,6 @@ export interface WorktreeListResponse {
   worktrees: WorktreeInfo[];
 }
 
-export interface CreateWorktreeRequest {
-  repo_path: string;
-  branch: string;
-  target_path?: string;
-  create_branch: boolean;
-}
-
 export interface GitStatusFile {
   path: string;
   status: string;

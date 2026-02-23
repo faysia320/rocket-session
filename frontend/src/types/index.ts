@@ -39,7 +39,6 @@ export type {
   GitInfo,
   WorktreeInfo,
   WorktreeListResponse,
-  CreateWorktreeRequest,
   GitStatusFile,
   GitStatusResponse,
   SkillInfo,

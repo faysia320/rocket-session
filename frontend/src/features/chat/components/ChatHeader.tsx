@@ -22,6 +22,7 @@ interface ChatHeaderProps {
   connected: boolean;
   workDir?: string;
   gitInfo: GitInfo | null;
+  worktreeName?: string | null;
   status: "idle" | "running" | "error";
   activeTools: ToolUseMsg[];
   sessionId: string;
@@ -37,7 +38,7 @@ interface ChatHeaderProps {
   portalContainer?: HTMLElement | null;
   onSendPrompt: (prompt: string) => void;
   onRemoveWorktree?: () => void;
-  onConvertToWorktree?: (branch: string) => void;
+  onConvertToWorktree?: (name: string) => void;
   isArchived?: boolean;
   onArchive?: () => void;
   onUnarchive?: () => void;
@@ -49,6 +50,7 @@ export const ChatHeader = memo(function ChatHeader({
   connected,
   workDir,
   gitInfo,
+  worktreeName,
   status,
   activeTools,
   sessionId,
@@ -172,6 +174,7 @@ export const ChatHeader = memo(function ChatHeader({
       <div className="flex items-center gap-2">
         <GitDropdownMenu
           gitInfo={gitInfo}
+          worktreeName={worktreeName}
           status={status}
           connected={connected}
           onSendPrompt={onSendPrompt}
@@ -183,6 +186,7 @@ export const ChatHeader = memo(function ChatHeader({
             sessionId={sessionId}
             isArchived={isArchived}
             gitInfo={gitInfo}
+            worktreeName={worktreeName}
             onOpenSettings={() => onSettingsOpenChange(true)}
             onArchive={onArchive}
             onUnarchive={onUnarchive}

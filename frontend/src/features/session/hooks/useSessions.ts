@@ -23,6 +23,7 @@ export function useCreateSession() {
         template_id?: string;
         additional_dirs?: string[];
         fallback_model?: string;
+        worktree_name?: string;
       };
     }) => sessionsApi.create(params.workDir, params.options),
     onSuccess: (session) => {
@@ -43,6 +44,7 @@ export function useCreateSession() {
         template_id?: string;
         additional_dirs?: string[];
         fallback_model?: string;
+        worktree_name?: string;
       },
     ) => {
       return mutation.mutateAsync({ workDir, options });

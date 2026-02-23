@@ -44,18 +44,20 @@ interface SessionDropdownMenuProps {
   sessionId: string;
   isArchived?: boolean;
   gitInfo?: GitInfo | null;
+  worktreeName?: string | null;
   onOpenSettings: () => void;
   onArchive?: () => void;
   onUnarchive?: () => void;
   onDelete?: () => void;
   onFork?: () => void;
-  onConvertToWorktree?: (branch: string) => void;
+  onConvertToWorktree?: (name: string) => void;
 }
 
 export const SessionDropdownMenu = memo(function SessionDropdownMenu({
   sessionId,
   isArchived,
   gitInfo,
+  worktreeName,
   onOpenSettings,
   onArchive,
   onUnarchive,
@@ -70,7 +72,7 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
     sessionsApi.exportMarkdown(sessionId);
   }, [sessionId]);
 
-  const showConvertToWorktree = gitInfo?.is_git_repo && !gitInfo?.is_worktree;
+  const showConvertToWorktree = gitInfo?.is_git_repo && !worktreeName;
 
   const handleConvert = useCallback(() => {
     if (!newBranchName.trim()) return;
@@ -171,8 +173,8 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
             <DialogHeader>
               <DialogTitle className="font-mono text-sm">워크트리로 전환</DialogTitle>
               <DialogDescription className="font-mono text-xs">
-                현재 세션의 작업 디렉토리를 새 Git 워크트리로 전환합니다. 대화 기록과 컨텍스트는
-                모두 보존됩니다.
+                다음 메시지 전송 시 <code>claude -w</code>로 격리된 워크트리에서 실행됩니다. 대화
+                기록과 컨텍스트는 모두 보존됩니다.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2 py-2">
@@ -180,13 +182,14 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
                 htmlFor="convert-branch-name"
                 className="font-mono text-xs text-muted-foreground"
               >
-                현재 브랜치: <code className="text-info/80">{gitInfo?.branch ?? "unknown"}</code>
+                <code className="text-info/80">worktree-{newBranchName || "{name}"}</code> 브랜치가
+                자동 생성됩니다
               </Label>
               <Input
                 id="convert-branch-name"
                 value={newBranchName}
                 onChange={(e) => setNewBranchName(e.target.value)}
-                placeholder="새 브랜치명 (예: feature/my-branch)"
+                placeholder="워크트리 이름 (예: feature-auth)"
                 className="font-mono text-xs"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && newBranchName.trim()) {

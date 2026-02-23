@@ -13,8 +13,6 @@ import type {
   PRReviewResponse,
   PRReviewSubmitResponse,
   WorktreeListResponse,
-  WorktreeInfo,
-  CreateWorktreeRequest,
   SkillListResponse,
 } from "@/types";
 
@@ -36,11 +34,9 @@ export const filesystemApi = {
   listWorktrees: (path: string) =>
     api.get<WorktreeListResponse>(`/api/fs/worktrees?path=${encodeURIComponent(path)}`),
 
-  createWorktree: (req: CreateWorktreeRequest) => api.post<WorktreeInfo>("/api/fs/worktrees", req),
-
-  removeWorktree: (path: string, force = false) =>
+  removeWorktree: (repoPath: string, worktreeName: string, force = false) =>
     api.delete<{ ok: boolean }>(
-      `/api/fs/worktrees?path=${encodeURIComponent(path)}&force=${force}`,
+      `/api/fs/worktrees?repo_path=${encodeURIComponent(repoPath)}&name=${encodeURIComponent(worktreeName)}&force=${force}`,
     ),
 
   listSkills: (path: string) =>

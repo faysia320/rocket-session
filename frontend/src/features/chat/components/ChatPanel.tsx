@@ -88,6 +88,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   );
 
   const workDir = sessionInfo?.work_dir;
+  const worktreeName = sessionInfo?.worktree_name;
   const { gitInfo } = useGitInfo(workDir ?? "");
 
   useChatNotifications({ sessionId, status, messages, pendingPermission, workDir });
@@ -358,9 +359,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
   const navigate = useNavigate();
   const handleRemoveWorktree = useCallback(async () => {
-    if (!workDir) return;
+    if (!workDir || !worktreeName) return;
     try {
-      await filesystemApi.removeWorktree(workDir, true);
+      await filesystemApi.removeWorktree(workDir, worktreeName, true);
       await sessionsApi.delete(sessionId);
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       toast.success("워크트리가 삭제되었습니다.");
@@ -368,22 +369,19 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     } catch (err) {
       toast.error(`워크트리 삭제 실패: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, [workDir, sessionId, queryClient, navigate]);
+  }, [workDir, worktreeName, sessionId, queryClient, navigate]);
 
   const handleConvertToWorktree = useCallback(
-    async (branch: string) => {
-      if (!workDir) return;
+    async (name: string) => {
       try {
-        await sessionsApi.convertToWorktree(sessionId, { branch });
-        queryClient.invalidateQueries({ queryKey: ["git-info", workDir] });
+        await sessionsApi.convertToWorktree(sessionId, { worktree_name: name });
         queryClient.invalidateQueries({ queryKey: ["sessions"] });
-        toast.success(`워크트리로 전환되었습니다. 브랜치: ${branch}`);
-        reconnect();
+        toast.success(`워크트리로 전환되었습니다. 이름: ${name}`);
       } catch (err) {
         toast.error(`워크트리 전환 실패: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
-    [workDir, sessionId, queryClient, reconnect],
+    [sessionId, queryClient],
   );
 
   const handleFork = useCallback(async () => {
@@ -405,6 +403,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         connected={connected}
         workDir={workDir}
         gitInfo={gitInfo ?? null}
+        worktreeName={worktreeName}
         status={status}
         activeTools={activeTools}
         sessionId={sessionId}

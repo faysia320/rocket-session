@@ -43,6 +43,7 @@ export const sessionsApi = {
       template_id?: string;
       additional_dirs?: string[];
       fallback_model?: string;
+      worktree_name?: string;
     },
   ) =>
     api.post<SessionInfo>("/api/sessions/", {

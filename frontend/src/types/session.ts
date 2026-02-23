@@ -31,6 +31,7 @@ export interface SessionInfo {
   mcp_server_ids?: string[] | null;
   additional_dirs?: string[] | null;
   fallback_model?: string | null;
+  worktree_name?: string | null;
   parent_session_id?: string | null;
   forked_at_message_id?: number | null;
   tags?: TagInfo[];
@@ -54,6 +55,7 @@ export interface CreateSessionRequest {
   additional_dirs?: string[] | null;
   fallback_model?: string | null;
   template_id?: string | null;
+  worktree_name?: string | null;
 }
 
 export interface UpdateSessionRequest {
@@ -76,8 +78,7 @@ export interface UpdateSessionRequest {
 }
 
 export interface ConvertToWorktreeRequest {
-  branch: string;
-  target_path?: string;
+  worktree_name: string;
 }
 
 export interface SessionStats {
