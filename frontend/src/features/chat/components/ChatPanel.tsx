@@ -30,7 +30,7 @@ import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { useSessionMutations } from "@/features/session/hooks/useSessions";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
-import { useAddAnnotation, useUpdateAnnotation, useUpdateArtifact } from "@/features/workflow/hooks/useWorkflow";
+import { useAddAnnotation, useUpdateAnnotation, useUpdateArtifact, useStartWorkflow } from "@/features/workflow/hooks/useWorkflow";
 
 interface ChatPanelProps {
   sessionId: string;
@@ -91,6 +91,22 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
   const workDir = sessionInfo?.work_dir;
   const worktreeName = sessionInfo?.worktree_name;
   const { gitInfo } = useGitInfo(workDir ?? "");
+
+  const startWorkflow = useStartWorkflow(sessionId);
+  const handleEnableWorkflow = useCallback(() => {
+    startWorkflow.mutate(
+      {},
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["sessions"] });
+          toast.success("워크플로우 모드로 전환되었습니다");
+        },
+        onError: () => {
+          toast.error("워크플로우 전환에 실패했습니다");
+        },
+      },
+    );
+  }, [startWorkflow, queryClient]);
 
   useChatNotifications({ sessionId, status, messages, pendingPermission, workDir });
 
@@ -456,6 +472,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onArchive={handleArchive}
         onUnarchive={handleUnarchive}
         onFork={handleFork}
+        workflowEnabled={sessionInfo?.workflow_enabled}
+        onEnableWorkflow={handleEnableWorkflow}
       />
       {sessionInfo?.workflow_enabled ? (
         <WorkflowProgressBar
@@ -583,6 +601,19 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         waitingForWorkflowApproval={waitingForWorkflowApproval}
         workflowPhase={(sessionInfo?.workflow_phase as string) ?? null}
       />
+
+      {!sessionInfo?.workflow_enabled ? (
+        <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-muted/50 border-t border-border text-xs text-muted-foreground">
+          <span>읽기전용 모드 — 분석/검색만 가능합니다</span>
+          <button
+            type="button"
+            onClick={handleEnableWorkflow}
+            className="px-2 py-0.5 text-2xs font-medium text-primary bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
+          >
+            워크플로우 전환
+          </button>
+        </div>
+      ) : null}
 
       <div>
         <ChatInput
