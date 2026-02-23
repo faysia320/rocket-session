@@ -489,6 +489,35 @@ class ClaudeRunner:
                 },
             )
 
+            # 리드 세션 @delegate 패턴 자동 위임
+            try:
+                from app.api.dependencies import get_team_coordinator
+
+                coordinator = get_team_coordinator()
+                commands = coordinator.parse_delegate_commands(turn_state["text"])
+                if commands:
+                    # 이 세션이 속한 팀에서 리드인지 확인
+                    from app.repositories.team_repo import (
+                        TeamMemberRepository,
+                        TeamRepository,
+                    )
+
+                    async with coordinator._db.session() as db_sess:
+                        m_repo = TeamMemberRepository(db_sess)
+                        teams = await m_repo.get_teams_by_session(session_id)
+                        t_repo = TeamRepository(db_sess)
+                        for t_info in teams:
+                            team = await t_repo.get_by_id(t_info["team_id"])
+                            if team and team.lead_session_id == session_id:
+                                for nickname, desc in commands:
+                                    asyncio.create_task(
+                                        coordinator.auto_delegate(
+                                            team.id, nickname, desc
+                                        )
+                                    )
+            except (RuntimeError, Exception):
+                pass  # TeamCoordinator 미초기화 시 무시
+
     async def _handle_user_event(
         self,
         event: dict,
@@ -884,3 +913,17 @@ class ClaudeRunner:
             await ws_manager.flush_events()
             ws_manager.clear_buffer(session_id)
             self._cleanup_mcp_config(mcp_config_path)
+
+            # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
+            try:
+                from app.api.dependencies import get_team_coordinator
+
+                coordinator = get_team_coordinator()
+                last_text = turn_state.get("text") if turn_state else None
+                await coordinator.on_session_completed(session_id, last_text)
+            except (RuntimeError, Exception) as e:
+                # TeamCoordinator 미초기화 또는 오류 시 무시
+                if "초기화되지 않았습니다" not in str(e):
+                    logger.warning(
+                        "세션 %s: 팀 콜백 실패: %s", session_id, e
+                    )

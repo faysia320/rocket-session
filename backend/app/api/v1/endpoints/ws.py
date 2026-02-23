@@ -138,6 +138,20 @@ async def _handle_prompt(
             if not merged_session.get(key) and global_settings.get(key):
                 merged_session[key] = global_settings[key]
 
+        # 팀 리드 세션인 경우 시스템 프롬프트에 팀 컨텍스트 자동 주입
+        try:
+            from app.api.dependencies import get_team_coordinator
+
+            team_coordinator = get_team_coordinator()
+            team_context = await team_coordinator.inject_team_context(session_id)
+            if team_context:
+                existing = merged_session.get("system_prompt") or ""
+                merged_session["system_prompt"] = (
+                    existing + "\n\n" + team_context if existing else team_context
+                )
+        except (RuntimeError, Exception):
+            pass  # TeamCoordinator 미초기화 시 무시
+
         # MCP 서비스 주입
         mcp_service = get_mcp_service()
 
