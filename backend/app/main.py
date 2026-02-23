@@ -1,4 +1,4 @@
-"""Claude Code Dashboard - FastAPI 앱 팩토리."""
+"""rocket-session - FastAPI 앱 팩토리."""
 
 import asyncio
 import logging
@@ -83,7 +83,7 @@ async def lifespan(application: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
 
-    application = FastAPI(title="Claude Code Dashboard API", lifespan=lifespan)
+    application = FastAPI(title="rocket-session API", lifespan=lifespan)
 
     application.add_middleware(
         CORSMiddleware,

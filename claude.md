@@ -1,4 +1,4 @@
-# Claude Code Dashboard (rocket-session)
+# rocket-session
 
 > **최종 수정일**: 2026-02-22
 

@@ -1,4 +1,4 @@
-# Claude Code Dashboard (rocket-session)
+# rocket-session
 
 브라우저에서 Claude Code CLI 세션을 관리하고 모니터링하는 웹 대시보드입니다.
 

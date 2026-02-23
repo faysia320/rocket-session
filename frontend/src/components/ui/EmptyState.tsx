@@ -9,7 +9,7 @@ export function EmptyState({ onNew }: { onNew: () => void }) {
           {">"}_
         </div>
         <h1 className="font-mono text-[28px] font-semibold text-foreground mb-2 tracking-tight">
-          Claude Code Dashboard
+          Rocket Session
         </h1>
         <p className="text-muted-foreground text-[15px] mb-6">
           Create a session to start sending commands to Claude Code CLI
