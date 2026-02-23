@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { FileStack, Plus, Pencil, Trash2, Download, Upload, Check, X } from "lucide-react";
+import { FileStack, Plus, Pencil, Trash2, Download, Upload } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -8,20 +8,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   useTemplates,
-  useCreateTemplate,
-  useUpdateTemplate,
   useDeleteTemplate,
   useImportTemplate,
 } from "@/features/template/hooks/useTemplates";
 import { templatesApi } from "@/lib/api/templates.api";
+import { TemplateFormDialog } from "./TemplateFormDialog";
 import type { TemplateInfo, TemplateExport } from "@/types";
 
 interface TemplateListDialogProps {
@@ -31,41 +28,12 @@ interface TemplateListDialogProps {
 export function TemplateListDialog({ children }: TemplateListDialogProps) {
   const [open, setOpen] = useState(false);
   const { data: templates, isLoading } = useTemplates();
-  const createMutation = useCreateTemplate();
-  const updateMutation = useUpdateTemplate();
   const deleteMutation = useDeleteTemplate();
   const importMutation = useImportTemplate();
 
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editDesc, setEditDesc] = useState("");
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<TemplateInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
-    await createMutation.mutateAsync({
-      name: newName.trim(),
-      description: newDesc.trim() || undefined,
-    });
-    setNewName("");
-    setNewDesc("");
-    setCreating(false);
-  };
-
-  const handleUpdate = async (id: string) => {
-    if (!editName.trim()) return;
-    await updateMutation.mutateAsync({
-      id,
-      data: {
-        name: editName.trim(),
-        description: editDesc.trim() || undefined,
-      },
-    });
-    setEditingId(null);
-  };
 
   const handleExport = async (tpl: TemplateInfo) => {
     try {
@@ -128,7 +96,10 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
             variant="outline"
             size="sm"
             className="font-mono text-xs gap-1.5"
-            onClick={() => setCreating(true)}
+            onClick={() => {
+              setEditingTemplate(null);
+              setFormDialogOpen(true);
+            }}
           >
             <Plus className="h-3.5 w-3.5" />새 템플릿
           </Button>
@@ -150,53 +121,6 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
           />
         </div>
 
-        {/* 새 템플릿 폼 */}
-        {creating ? (
-          <div className="space-y-2 p-3 rounded-md border border-border bg-card">
-            <Input
-              className="font-mono text-xs"
-              placeholder="템플릿 이름"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreate();
-                if (e.key === "Escape") setCreating(false);
-              }}
-              autoFocus
-            />
-            <Textarea
-              className="font-mono text-xs min-h-[60px]"
-              placeholder="설명 (선택)"
-              value={newDesc}
-              onChange={(e) => setNewDesc(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                className="font-mono text-xs gap-1"
-                onClick={handleCreate}
-                disabled={!newName.trim() || createMutation.isPending}
-              >
-                <Check className="h-3 w-3" />
-                생성
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="font-mono text-xs gap-1"
-                onClick={() => {
-                  setCreating(false);
-                  setNewName("");
-                  setNewDesc("");
-                }}
-              >
-                <X className="h-3 w-3" />
-                취소
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
         {/* 템플릿 목록 */}
         <ScrollArea className="max-h-[400px]">
           {isLoading ? (
@@ -214,139 +138,112 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
                   key={tpl.id}
                   className="flex items-start gap-3 p-3 rounded-md border border-border bg-card hover:bg-muted/50 transition-colors"
                 >
-                  {editingId === tpl.id ? (
-                    <div className="flex-1 space-y-2">
-                      <Input
-                        className="font-mono text-xs"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleUpdate(tpl.id);
-                          if (e.key === "Escape") setEditingId(null);
-                        }}
-                        autoFocus
-                      />
-                      <Textarea
-                        className="font-mono text-xs min-h-[40px]"
-                        placeholder="설명"
-                        value={editDesc}
-                        onChange={(e) => setEditDesc(e.target.value)}
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="font-mono text-xs gap-1"
-                          onClick={() => handleUpdate(tpl.id)}
-                          disabled={!editName.trim() || updateMutation.isPending}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-mono text-xs font-semibold text-foreground truncate">
+                      {tpl.name}
+                    </p>
+                    {tpl.description ? (
+                      <p className="font-mono text-2xs text-muted-foreground mt-0.5 truncate">
+                        {tpl.description}
+                      </p>
+                    ) : null}
+                    <div className="flex items-center gap-2 mt-1">
+                      {tpl.work_dir ? (
+                        <span className="font-mono text-2xs text-muted-foreground/60 truncate max-w-[200px]">
+                          {tpl.work_dir}
+                        </span>
+                      ) : null}
+                      {tpl.system_prompt ? (
+                        <span
+                          className={cn(
+                            "font-mono text-2xs px-1.5 py-0.5 rounded",
+                            "bg-primary/10 text-primary/70",
+                          )}
                         >
-                          <Check className="h-3 w-3" />
-                          저장
-                        </Button>
+                          prompt
+                        </span>
+                      ) : null}
+                      {tpl.mode === "plan" ? (
+                        <span
+                          className={cn(
+                            "font-mono text-2xs px-1.5 py-0.5 rounded",
+                            "bg-info/10 text-info/70",
+                          )}
+                        >
+                          plan
+                        </span>
+                      ) : null}
+                      {tpl.model ? (
+                        <span
+                          className={cn(
+                            "font-mono text-2xs px-1.5 py-0.5 rounded",
+                            "bg-secondary text-muted-foreground",
+                          )}
+                        >
+                          {tpl.model}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button
                           variant="ghost"
-                          size="sm"
-                          className="font-mono text-xs"
-                          onClick={() => setEditingId(null)}
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            setEditingTemplate(tpl);
+                            setFormDialogOpen(true);
+                          }}
+                          aria-label="수정"
                         >
-                          취소
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-mono text-xs font-semibold text-foreground truncate">
-                          {tpl.name}
-                        </p>
-                        {tpl.description ? (
-                          <p className="font-mono text-2xs text-muted-foreground mt-0.5 truncate">
-                            {tpl.description}
-                          </p>
-                        ) : null}
-                        <div className="flex items-center gap-2 mt-1">
-                          {tpl.work_dir ? (
-                            <span className="font-mono text-2xs text-muted-foreground/60 truncate max-w-[200px]">
-                              {tpl.work_dir}
-                            </span>
-                          ) : null}
-                          {tpl.system_prompt ? (
-                            <span
-                              className={cn(
-                                "font-mono text-2xs px-1.5 py-0.5 rounded",
-                                "bg-primary/10 text-primary/70",
-                              )}
-                            >
-                              prompt
-                            </span>
-                          ) : null}
-                          {tpl.mode === "plan" ? (
-                            <span
-                              className={cn(
-                                "font-mono text-2xs px-1.5 py-0.5 rounded",
-                                "bg-info/10 text-info/70",
-                              )}
-                            >
-                              plan
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => {
-                                setEditingId(tpl.id);
-                                setEditName(tpl.name);
-                                setEditDesc(tpl.description ?? "");
-                              }}
-                              aria-label="수정"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="font-mono text-xs">수정</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => handleExport(tpl)}
-                              aria-label="내보내기"
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="font-mono text-xs">내보내기</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive/60 hover:text-destructive"
-                              onClick={() => deleteMutation.mutate(tpl.id)}
-                              aria-label="삭제"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className="font-mono text-xs">삭제</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </>
-                  )}
+                      </TooltipTrigger>
+                      <TooltipContent className="font-mono text-xs">수정</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleExport(tpl)}
+                          aria-label="내보내기"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="font-mono text-xs">내보내기</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive/60 hover:text-destructive"
+                          onClick={() => deleteMutation.mutate(tpl.id)}
+                          aria-label="삭제"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="font-mono text-xs">삭제</TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </ScrollArea>
       </DialogContent>
+
+      <TemplateFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        template={editingTemplate}
+      />
     </Dialog>
   );
 }

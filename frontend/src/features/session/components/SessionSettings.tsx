@@ -18,9 +18,7 @@ import { sessionsApi } from "@/lib/api/sessions.api";
 import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
 import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
 import { SaveAsTemplateDialog } from "@/features/template/components/SaveAsTemplateDialog";
-import { AVAILABLE_TOOLS } from "../constants/tools";
-
-const PERMISSION_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"] as const;
+import { AVAILABLE_TOOLS, PERMISSION_TOOLS } from "../constants/tools";
 
 interface SessionSettingsProps {
   sessionId: string;

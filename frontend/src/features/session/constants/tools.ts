@@ -11,3 +11,5 @@ export const AVAILABLE_TOOLS = [
   "TodoRead",
   "TodoWrite",
 ] as const;
+
+export const PERMISSION_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"] as const;
