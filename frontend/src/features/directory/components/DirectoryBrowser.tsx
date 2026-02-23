@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Folder, FolderGit2, ArrowUp, Star, X } from "lucide-react";
+import { Folder, FolderGit2, ArrowUp, Star, StarOff, X } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   Dialog,
@@ -35,7 +35,7 @@ export function DirectoryBrowser({
   );
   const [selected, setSelected] = useState<string | null>(null);
   const [pathInput, setPathInput] = useState("");
-  const { favorites, removeFavorite } = useFavoriteDirectories();
+  const { favorites, isFavorite, toggleFavorite, removeFavorite } = useFavoriteDirectories();
 
   const handleNavigate = () => {
     if (pathInput.trim()) {
@@ -68,14 +68,30 @@ export function DirectoryBrowser({
         </DialogHeader>
 
         <div className="space-y-3">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="font-mono text-2xs text-muted-foreground truncate">
-                현재: {currentPath}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className="font-mono text-xs">{currentPath}</TooltipContent>
-          </Tooltip>
+          <div className="flex items-center gap-1.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="font-mono text-2xs text-muted-foreground truncate flex-1 min-w-0">
+                  현재: {currentPath}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">{currentPath}</TooltipContent>
+            </Tooltip>
+            <button
+              type="button"
+              className="shrink-0 p-0.5 rounded-sm hover:bg-muted transition-colors"
+              onClick={() => toggleFavorite(currentPath)}
+              aria-label={
+                isFavorite(currentPath) ? "현재 경로 즐겨찾기 해제" : "현재 경로 즐겨찾기 추가"
+              }
+            >
+              {isFavorite(currentPath) ? (
+                <Star className="h-3 w-3 text-warning fill-warning" />
+              ) : (
+                <StarOff className="h-3 w-3 text-muted-foreground hover:text-warning" />
+              )}
+            </button>
+          </div>
 
           <div className="flex gap-1.5">
             <Input
@@ -159,30 +175,58 @@ export function DirectoryBrowser({
                 </div>
               ) : (
                 entries.map((entry) => (
-                  <button
+                  <div
                     key={entry.path}
-                    type="button"
                     className={cn(
-                      "w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors",
+                      "w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-left transition-colors group",
                       selected === entry.path
                         ? "bg-accent text-accent-foreground"
                         : "hover:bg-muted",
                     )}
-                    onClick={() => handleEntryClick(entry)}
-                    onDoubleClick={() => handleEntryDoubleClick(entry)}
                   >
-                    {entry.is_git_repo ? (
-                      <FolderGit2 className="h-3.5 w-3.5 text-info shrink-0" />
-                    ) : (
-                      <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    )}
-                    <span className="font-mono text-xs truncate">{entry.name}</span>
-                    {entry.is_git_repo ? (
-                      <span className="font-mono text-[9px] text-info/70 ml-auto shrink-0">
-                        (git)
-                      </span>
-                    ) : null}
-                  </button>
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 flex-1 min-w-0"
+                      onClick={() => handleEntryClick(entry)}
+                      onDoubleClick={() => handleEntryDoubleClick(entry)}
+                    >
+                      {entry.is_git_repo ? (
+                        <FolderGit2 className="h-3.5 w-3.5 text-info shrink-0" />
+                      ) : (
+                        <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      )}
+                      <span className="font-mono text-xs truncate">{entry.name}</span>
+                      {entry.is_git_repo ? (
+                        <span className="font-mono text-[9px] text-info/70 ml-auto shrink-0">
+                          (git)
+                        </span>
+                      ) : null}
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        "shrink-0 p-0.5 rounded-sm transition-all",
+                        isFavorite(entry.path)
+                          ? "opacity-100"
+                          : "opacity-0 group-hover:opacity-100",
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(entry.path);
+                      }}
+                      aria-label={
+                        isFavorite(entry.path)
+                          ? `${entry.name} 즐겨찾기 해제`
+                          : `${entry.name} 즐겨찾기 추가`
+                      }
+                    >
+                      {isFavorite(entry.path) ? (
+                        <Star className="h-3 w-3 text-warning fill-warning" />
+                      ) : (
+                        <StarOff className="h-3 w-3 text-muted-foreground hover:text-warning" />
+                      )}
+                    </button>
+                  </div>
                 ))
               )}
             </div>
