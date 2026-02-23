@@ -38,7 +38,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
   const [fallbackModel, setFallbackModel] = useState("");
-  const [workflowEnabled, setWorkflowEnabled] = useState(false);
+  const [workflowEnabled, setWorkflowEnabled] = useState(true);
   const { data: globalSettings } = useGlobalSettings();
   const { gitInfo } = useGitInfo(workDir);
 
