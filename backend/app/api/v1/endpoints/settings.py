@@ -32,7 +32,7 @@ async def update_global_settings(
         allowed_tools=req.allowed_tools,
         system_prompt=req.system_prompt,
         timeout_seconds=req.timeout_seconds,
-        mode=req.mode,
+        workflow_enabled=req.workflow_enabled,
         permission_mode=req.permission_mode,
         permission_required_tools=req.permission_required_tools,
         model=req.model,

@@ -23,6 +23,7 @@ from app.services.team_task_service import TeamTaskService
 from app.services.template_service import TemplateService
 from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
+from app.services.workflow_service import WorkflowService
 
 # 싱글턴 인스턴스 (앱 시작 시 초기화)
 _database: Database | None = None
@@ -43,6 +44,7 @@ _team_coordinator: TeamCoordinator | None = None
 _team_message_service: TeamMessageService | None = None
 _search_service: SearchService | None = None
 _analytics_service: AnalyticsService | None = None
+_workflow_service: WorkflowService | None = None
 
 
 @lru_cache(maxsize=1)
@@ -158,6 +160,12 @@ def get_analytics_service() -> AnalyticsService:
     return _analytics_service
 
 
+def get_workflow_service() -> WorkflowService:
+    if _workflow_service is None:
+        raise RuntimeError("WorkflowService가 초기화되지 않았습니다")
+    return _workflow_service
+
+
 async def init_dependencies():
     """앱 시작 시 DB 및 SessionManager 초기화."""
     global \
@@ -178,7 +186,8 @@ async def init_dependencies():
         _team_coordinator, \
         _team_message_service, \
         _search_service, \
-        _analytics_service
+        _analytics_service, \
+        _workflow_service
     logger = logging.getLogger(__name__)
     settings = get_settings()
     _filesystem_service = FilesystemService(root_dir=settings.claude_work_dir)
@@ -211,6 +220,7 @@ async def init_dependencies():
     _team_message_service = TeamMessageService(_database)
     _search_service = SearchService(_database)
     _analytics_service = AnalyticsService(_database)
+    _workflow_service = WorkflowService(_database)
     _jsonl_watcher = JsonlWatcher(_session_manager, _ws_manager)
 
     # 서버 재시작 시 프로세스/task가 없는 stale running 세션을 idle로 복구
@@ -253,7 +263,8 @@ async def shutdown_dependencies():
         _team_coordinator, \
         _team_message_service, \
         _search_service, \
-        _analytics_service
+        _analytics_service, \
+        _workflow_service
     logger = logging.getLogger(__name__)
     # 1. 실행 중인 세션 프로세스 종료
     if _session_manager:
@@ -295,3 +306,4 @@ async def shutdown_dependencies():
     _team_message_service = None
     _search_service = None
     _analytics_service = None
+    _workflow_service = None

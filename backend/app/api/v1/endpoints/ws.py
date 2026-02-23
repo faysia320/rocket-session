@@ -13,6 +13,7 @@ from app.api.dependencies import (
     get_session_manager,
     get_settings,
     get_settings_service,
+    get_workflow_service,
     get_ws_manager,
 )
 from app.api.v1.endpoints.permissions import get_pending, respond_permission
@@ -87,13 +88,35 @@ async def _handle_prompt(
             or settings.claude_allowed_tools
         )
 
-        # 모드: 요청 > 세션 > 글로벌 > 기본값
-        mode = (
-            data.get("mode")
-            or (current_session.get("mode") if current_session else None)
-            or global_settings.get("mode")
-            or "normal"
-        )
+        # 워크플로우 phase 감지
+        workflow_phase = None
+        workflow_service = None
+        if current_session and current_session.get("workflow_enabled"):
+            workflow_phase = current_session.get("workflow_phase")
+            workflow_phase_status = current_session.get("workflow_phase_status")
+
+            # awaiting_approval 상태이면 프롬프트 거부
+            if workflow_phase_status == "awaiting_approval":
+                await ws.send_json(
+                    {
+                        "type": WsEventType.ERROR,
+                        "message": (
+                            "현재 단계의 검토가 완료되지 않았습니다. "
+                            "아티팩트를 승인하거나 수정 요청해주세요."
+                        ),
+                    }
+                )
+                return
+
+            workflow_service = get_workflow_service()
+
+            # Phase별 컨텍스트 프롬프트 구성
+            if workflow_phase and workflow_service:
+                phase_context = await workflow_service.build_phase_context(
+                    session_id, workflow_phase
+                )
+                if phase_context:
+                    prompt = f"{phase_context}\n\n## 요청\n{prompt}"
 
         # 이미지 경로 목록 (업로드 API로 먼저 업로드한 파일 경로)
         images = data.get("images", [])
@@ -164,9 +187,10 @@ async def _handle_prompt(
                 session_id,
                 ws_manager,
                 manager,
-                mode=mode,
                 images=images,
                 mcp_service=mcp_service,
+                workflow_phase=workflow_phase,
+                workflow_service=workflow_service,
             )
         )
         task.add_done_callback(lambda t: _on_runner_task_done(t, session_id, manager))

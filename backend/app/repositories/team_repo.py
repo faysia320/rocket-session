@@ -19,9 +19,7 @@ class TeamRepository(BaseRepository[Team]):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
-    async def list_with_member_counts(
-        self, status: str | None = None
-    ) -> list[dict]:
+    async def list_with_member_counts(self, status: str | None = None) -> list[dict]:
         """팀 목록 + 멤버 수 조회."""
         member_count = (
             select(func.count())
@@ -153,9 +151,7 @@ class TeamMemberRepository:
         await self._session.flush()
         return await self.get_member_by_id(member_id)
 
-    async def update_role(
-        self, team_id: str, member_id: int, role: str
-    ) -> None:
+    async def update_role(self, team_id: str, member_id: int, role: str) -> None:
         """멤버 역할 변경."""
         stmt = (
             update(TeamMember)

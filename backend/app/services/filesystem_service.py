@@ -10,7 +10,6 @@ import subprocess
 import time
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from app.schemas.filesystem import (
     DirectoryEntry,
@@ -366,9 +365,7 @@ class FilesystemService:
 
         return WorktreeListResponse(worktrees=worktrees)
 
-    async def create_claude_worktree(
-        self, repo_path: str, worktree_name: str
-    ) -> str:
+    async def create_claude_worktree(self, repo_path: str, worktree_name: str) -> str:
         """claude -w 방식의 워크트리를 미리 생성합니다.
 
         repo_path: 레포 루트 경로
@@ -607,7 +604,7 @@ class FilesystemService:
             *self._GIT_CROSS_PLATFORM_OPTS,
             "--no-optional-locks",
             "log",
-            f"--format=%H%n%h%n%an%n%ae%n%aI%n%s%n%b%x00",
+            "--format=%H%n%h%n%an%n%ae%n%aI%n%s%n%b%x00",
             f"--max-count={limit + 1}",
             f"--skip={offset}",
         ]
@@ -784,7 +781,9 @@ class FilesystemService:
         prs = []
         for item in data:
             author = item.get("author", {})
-            author_login = author.get("login", "") if isinstance(author, dict) else str(author)
+            author_login = (
+                author.get("login", "") if isinstance(author, dict) else str(author)
+            )
             labels = [
                 lb.get("name", "") if isinstance(lb, dict) else str(lb)
                 for lb in (item.get("labels", []) or [])
@@ -809,9 +808,7 @@ class FilesystemService:
 
         return GitHubPRListResponse(prs=prs, total_count=len(prs))
 
-    async def get_github_pr_detail(
-        self, path: str, pr_number: int
-    ) -> GitHubPRDetail:
+    async def get_github_pr_detail(self, path: str, pr_number: int) -> GitHubPRDetail:
         """GitHub PR 상세 조회."""
         validated_path = self._validate_path(path)
         if not self._is_within_root(validated_path):
@@ -861,7 +858,9 @@ class FilesystemService:
             )
 
         author = data.get("author", {})
-        author_login = author.get("login", "") if isinstance(author, dict) else str(author)
+        author_login = (
+            author.get("login", "") if isinstance(author, dict) else str(author)
+        )
         labels = [
             lb.get("name", "") if isinstance(lb, dict) else str(lb)
             for lb in (data.get("labels", []) or [])
@@ -873,7 +872,9 @@ class FilesystemService:
             r_author = r.get("author", {})
             reviews.append(
                 GitHubPRReview(
-                    author=r_author.get("login", "") if isinstance(r_author, dict) else str(r_author),
+                    author=r_author.get("login", "")
+                    if isinstance(r_author, dict)
+                    else str(r_author),
                     state=r.get("state", ""),
                     body=r.get("body", ""),
                     submitted_at=r.get("submittedAt", ""),
@@ -886,7 +887,9 @@ class FilesystemService:
             c_author = c.get("author", {})
             comments.append(
                 GitHubPRComment(
-                    author=c_author.get("login", "") if isinstance(c_author, dict) else str(c_author),
+                    author=c_author.get("login", "")
+                    if isinstance(c_author, dict)
+                    else str(c_author),
                     body=c.get("body", ""),
                     created_at=c.get("createdAt", ""),
                     path=c.get("path"),
@@ -931,9 +934,7 @@ class FilesystemService:
             raise ValueError(f"PR diff 조회 실패: {err}")
         return out
 
-    async def generate_pr_review(
-        self, path: str, pr_number: int
-    ) -> PRReviewResponse:
+    async def generate_pr_review(self, path: str, pr_number: int) -> PRReviewResponse:
         """Claude Code CLI로 PR 리뷰 생성."""
         validated_path = self._validate_path(path)
         if not self._is_within_root(validated_path):
@@ -954,7 +955,9 @@ class FilesystemService:
         # diff가 너무 길면 잘라냄 (Claude 토큰 제한 고려)
         max_diff_chars = 50000
         if len(diff_text) > max_diff_chars:
-            diff_text = diff_text[:max_diff_chars] + "\n\n... (diff가 너무 길어 잘렸습니다)"
+            diff_text = (
+                diff_text[:max_diff_chars] + "\n\n... (diff가 너무 길어 잘렸습니다)"
+            )
 
         # 3. Claude Code CLI로 리뷰 생성
         prompt = (
@@ -1001,9 +1004,7 @@ class FilesystemService:
 
         return PRReviewResponse(review_text=stdout)
 
-    async def request_pr_review(
-        self, path: str, pr_number: int
-    ) -> PRReviewJobResponse:
+    async def request_pr_review(self, path: str, pr_number: int) -> PRReviewJobResponse:
         """PR 리뷰 비동기 작업 생성 + 백그라운드 실행 시작."""
         self._cleanup_old_review_jobs()
         job_id = str(uuid.uuid4())
@@ -1023,9 +1024,7 @@ class FilesystemService:
             error=job.error,
         )
 
-    async def _run_pr_review(
-        self, job_id: str, path: str, pr_number: int
-    ) -> None:
+    async def _run_pr_review(self, job_id: str, path: str, pr_number: int) -> None:
         """백그라운드에서 실제 리뷰 생성 (기존 generate_pr_review 활용)."""
         try:
             result = await self.generate_pr_review(path, pr_number)
@@ -1047,9 +1046,7 @@ class FilesystemService:
     def _cleanup_old_review_jobs(self) -> None:
         """1시간 이상 된 완료/에러 작업 정리."""
         cutoff = time.time() - 3600
-        expired = [
-            jid for jid, j in self._review_jobs.items() if j.created_at < cutoff
-        ]
+        expired = [jid for jid, j in self._review_jobs.items() if j.created_at < cutoff]
         for jid in expired:
             del self._review_jobs[jid]
 
@@ -1063,8 +1060,13 @@ class FilesystemService:
         cwd = str(validated_path)
 
         rc, out, err = await self._run_gh_command(
-            "pr", "comment", str(pr_number), "--body", body,
-            cwd=cwd, timeout=30.0,
+            "pr",
+            "comment",
+            str(pr_number),
+            "--body",
+            body,
+            cwd=cwd,
+            timeout=30.0,
         )
 
         if rc != 0:

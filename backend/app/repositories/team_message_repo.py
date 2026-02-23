@@ -18,10 +18,7 @@ class TeamMessageRepository(BaseRepository[TeamMessage]):
         limit: int = 50,
     ) -> list[TeamMessage]:
         """팀 메시지 목록 (최신순, after_id 이후)."""
-        stmt = (
-            select(TeamMessage)
-            .where(TeamMessage.team_id == team_id)
-        )
+        stmt = select(TeamMessage).where(TeamMessage.team_id == team_id)
         if after_id:
             stmt = stmt.where(TeamMessage.id > after_id)
         stmt = stmt.order_by(TeamMessage.id.asc()).limit(limit)
@@ -38,17 +35,12 @@ class TeamMessageRepository(BaseRepository[TeamMessage]):
         result = await self._session.execute(stmt)
         return result.rowcount
 
-    async def get_unread_count(
-        self, team_id: str, member_id: int
-    ) -> int:
+    async def get_unread_count(self, team_id: str, member_id: int) -> int:
         """특정 멤버의 안 읽은 메시지 수."""
-        stmt = (
-            select(func.count(TeamMessage.id))
-            .where(
-                TeamMessage.team_id == team_id,
-                TeamMessage.is_read == False,  # noqa: E712
-                TeamMessage.from_member_id != member_id,
-            )
+        stmt = select(func.count(TeamMessage.id)).where(
+            TeamMessage.team_id == team_id,
+            TeamMessage.is_read == False,  # noqa: E712
+            TeamMessage.from_member_id != member_id,
         )
         result = await self._session.execute(stmt)
         return result.scalar() or 0

@@ -97,8 +97,8 @@ class ClaudeRunner:
         prompt: str,
         allowed_tools: str,
         session_id: str,
-        mode: str,
         images: list[str] | None = None,
+        workflow_phase: str | None = None,
     ) -> tuple[list[str], str | None, Path | None]:
         """CLI 커맨드를 구성하고, (cmd, system_prompt, mcp_config_path)를 반환."""
         cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose"]
@@ -111,22 +111,14 @@ class ClaudeRunner:
         system_prompt = session.get("system_prompt")
         mcp_config_path = None
 
-        # Plan 모드: CLI 네이티브 plan mode + 시스템 프롬프트 + 읽기 전용 도구 제한
-        if mode == "plan":
+        # 워크플로우 phase 기반 동작
+        if workflow_phase in ("research", "plan"):
+            # 읽기 전용: --permission-mode plan + 제한된 도구
             cmd.extend(["--permission-mode", "plan"])
-            plan_instruction = (
-                "Create a detailed plan for the request. "
-                "Explain step by step what changes would be needed and why. "
-                "Do NOT execute the plan or make any changes. "
-                "Do NOT call ExitPlanMode. Present the plan for user review only."
-            )
-            if system_prompt:
-                system_prompt = f"{plan_instruction}\n\n{system_prompt}"
-            else:
-                system_prompt = plan_instruction
             allowed_tools = "Read,Glob,Grep,WebFetch,WebSearch,TodoRead"
-
-        # Permission 모드: plan mode와 상호 배타 (--permission-mode 하나만 가능)
+        elif workflow_phase == "implement":
+            # 전체 도구 허용 (기존 allowed_tools 유지)
+            pass
         elif session.get("permission_mode"):
             # Permission MCP는 _setup_mcp_config에서 통합 처리됨
             # permission_required_tools에 해당하는 도구는 allowedTools에서 제외
@@ -309,7 +301,6 @@ class ClaudeRunner:
         self,
         event: dict,
         session_id: str,
-        mode: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
         turn_state: dict,
@@ -349,7 +340,6 @@ class ClaudeRunner:
             await self._handle_result_event(
                 event,
                 session_id,
-                mode,
                 ws_manager,
                 session_manager,
                 turn_state,
@@ -398,22 +388,6 @@ class ClaudeRunner:
                 tool_name = block.get("name", "unknown")
                 tool_input = block.get("input", {})
                 tool_use_id = block.get("id", "")
-
-                # ExitPlanMode 감지: 모드 전환 이벤트로 변환
-                if tool_name == "ExitPlanMode":
-                    turn_state["exit_plan_tool_id"] = tool_use_id
-                    turn_state["mode"] = "normal"
-                    await session_manager.update_settings(session_id, mode="normal")
-                    await ws_manager.broadcast_event(
-                        session_id,
-                        {
-                            "type": WsEventType.MODE_CHANGE,
-                            "from_mode": "plan",
-                            "to_mode": "normal",
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                        },
-                    )
-                    continue
 
                 # AskUserQuestion 감지: 인터랙티브 질문 이벤트로 변환
                 # 사용자 응답을 기다리기 위해 subprocess 종료를 요청
@@ -531,11 +505,6 @@ class ClaudeRunner:
             if block.get("type") == "tool_result":
                 tool_use_id = block.get("tool_use_id", "")
 
-                # ExitPlanMode의 tool_result는 프론트엔드에 전송하지 않음
-                if tool_use_id == turn_state.get("exit_plan_tool_id"):
-                    turn_state.pop("exit_plan_tool_id", None)
-                    continue
-
                 # AskUserQuestion의 tool_result는 프론트엔드에 전송하지 않음
                 if tool_use_id == turn_state.get("ask_user_question_tool_id"):
                     turn_state.pop("ask_user_question_tool_id", None)
@@ -580,7 +549,6 @@ class ClaudeRunner:
         self,
         event: dict,
         session_id: str,
-        mode: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
         turn_state: dict,
@@ -617,7 +585,7 @@ class ClaudeRunner:
             "cost": cost_info,
             "duration_ms": duration,
             "session_id": session_id_from_result,
-            "mode": mode,  # 원래 요청 mode 사용 (ExitPlanMode가 turn_state를 먼저 변경하므로)
+            "workflow_phase": turn_state.get("workflow_phase"),
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cache_creation_tokens": cache_creation_tokens,
@@ -652,8 +620,8 @@ class ClaudeRunner:
     @staticmethod
     def create_turn_state(
         work_dir: str = "",
-        mode: str = "normal",
         worktree_name: str | None = None,
+        workflow_phase: str | None = None,
     ) -> dict:
         """turn_state 딕셔너리를 생성.
 
@@ -662,9 +630,8 @@ class ClaudeRunner:
           model (str|None): 응답 모델명
           work_dir (str): 작업 디렉토리 (파일 경로 정규화용)
           worktree_name (str|None): 워크트리 이름 (claude -w 세션용)
-          mode (str): 현재 모드 ("normal"|"plan"), ExitPlanMode 시 "normal"로 변경
+          workflow_phase (str|None): 워크플로우 phase ("research"|"plan"|"implement"|None)
           result_received (bool): result 이벤트 수신 여부 (비정상 종료 감지용)
-          exit_plan_tool_id (str, 동적): ExitPlanMode tool_use_id, tool_result 필터링 후 제거
           should_terminate (bool, 동적): AskUserQuestion 감지 시 True, 스트림 파싱 중단
         """
         return {
@@ -672,7 +639,7 @@ class ClaudeRunner:
             "model": None,
             "work_dir": work_dir,
             "worktree_name": worktree_name,
-            "mode": mode,
+            "workflow_phase": workflow_phase,
             "result_received": False,
         }
 
@@ -680,7 +647,6 @@ class ClaudeRunner:
         self,
         process,
         session_id: str,
-        mode: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
         turn_state: dict,
@@ -711,7 +677,6 @@ class ClaudeRunner:
             await self._handle_stream_event(
                 event,
                 session_id,
-                mode,
                 ws_manager,
                 session_manager,
                 turn_state,
@@ -738,9 +703,10 @@ class ClaudeRunner:
         session_id: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
-        mode: str = "normal",
         images: list[str] | None = None,
         mcp_service=None,
+        workflow_phase: str | None = None,
+        workflow_service=None,
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
         await session_manager.update_status(session_id, SessionStatus.RUNNING)
@@ -756,8 +722,8 @@ class ClaudeRunner:
             prompt,
             allowed_tools,
             session_id,
-            mode,
             images,
+            workflow_phase,
         )
 
         # MCP config 통합: 사용자 MCP 서버 + Permission MCP 병합
@@ -769,7 +735,9 @@ class ClaudeRunner:
         work_dir = session.get("work_dir", "")
         worktree_name = session.get("worktree_name")
         turn_state = self.create_turn_state(
-            work_dir=work_dir, mode=mode, worktree_name=worktree_name
+            work_dir=work_dir,
+            worktree_name=worktree_name,
+            workflow_phase=workflow_phase,
         )
 
         try:
@@ -783,7 +751,6 @@ class ClaudeRunner:
                         self._parse_stream(
                             process,
                             session_id,
-                            mode,
                             ws_manager,
                             session_manager,
                             turn_state=turn_state,
@@ -810,7 +777,6 @@ class ClaudeRunner:
                 await self._parse_stream(
                     process,
                     session_id,
-                    mode,
                     ws_manager,
                     session_manager,
                     turn_state=turn_state,
@@ -912,6 +878,37 @@ class ClaudeRunner:
             ws_manager.clear_buffer(session_id)
             self._cleanup_mcp_config(mcp_config_path)
 
+            # 워크플로우: research/plan 완료 시 아티팩트 자동 저장
+            if (
+                workflow_phase in ("research", "plan")
+                and workflow_service
+                and turn_state.get("result_received")
+            ):
+                result_text = turn_state.get("text", "")
+                if result_text:
+                    try:
+                        await workflow_service.create_artifact(
+                            session_id=session_id,
+                            phase=workflow_phase,
+                            content=result_text,
+                        )
+                        await session_manager.update_settings(
+                            session_id, workflow_phase_status="awaiting_approval"
+                        )
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {
+                                "type": WsEventType.WORKFLOW_PHASE_COMPLETED,
+                                "phase": workflow_phase,
+                            },
+                        )
+                    except Exception:
+                        logger.warning(
+                            "세션 %s: 워크플로우 아티팩트 저장 실패",
+                            session_id,
+                            exc_info=True,
+                        )
+
             # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
             try:
                 from app.api.dependencies import get_team_coordinator
@@ -922,6 +919,4 @@ class ClaudeRunner:
             except (RuntimeError, Exception) as e:
                 # TeamCoordinator 미초기화 또는 오류 시 무시
                 if "초기화되지 않았습니다" not in str(e):
-                    logger.warning(
-                        "세션 %s: 팀 콜백 실패: %s", session_id, e
-                    )
+                    logger.warning("세션 %s: 팀 콜백 실패: %s", session_id, e)

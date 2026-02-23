@@ -222,9 +222,7 @@ async def submit_pr_review(
 ):
     """PR에 리뷰 코멘트 게시."""
     try:
-        return await fs.submit_pr_review_comment(
-            req.path, req.pr_number, req.body
-        )
+        return await fs.submit_pr_review_comment(req.path, req.pr_number, req.body)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

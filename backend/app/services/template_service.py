@@ -33,7 +33,7 @@ class TemplateService:
             allowed_tools=tmpl.allowed_tools,
             disallowed_tools=tmpl.disallowed_tools,
             timeout_seconds=tmpl.timeout_seconds,
-            mode=tmpl.mode or "normal",
+            workflow_enabled=bool(tmpl.workflow_enabled),
             permission_mode=tmpl.permission_mode,
             permission_required_tools=tmpl.permission_required_tools,
             model=tmpl.model,
@@ -68,7 +68,7 @@ class TemplateService:
         allowed_tools: str | None = None,
         disallowed_tools: str | None = None,
         timeout_seconds: int | None = None,
-        mode: str | None = None,
+        workflow_enabled: bool | None = None,
         permission_mode: bool | None = None,
         permission_required_tools: list[str] | None = None,
         model: str | None = None,
@@ -90,7 +90,7 @@ class TemplateService:
                 allowed_tools=allowed_tools,
                 disallowed_tools=disallowed_tools,
                 timeout_seconds=timeout_seconds,
-                mode=mode or "normal",
+                workflow_enabled=workflow_enabled or False,
                 permission_mode=permission_mode or False,
                 permission_required_tools=permission_required_tools,
                 model=model,
@@ -115,7 +115,7 @@ class TemplateService:
         allowed_tools: str | None = None,
         disallowed_tools: str | None = None,
         timeout_seconds: int | None = None,
-        mode: str | None = None,
+        workflow_enabled: bool | None = None,
         permission_mode: bool | None = None,
         permission_required_tools: list[str] | None = None,
         model: str | None = None,
@@ -140,8 +140,8 @@ class TemplateService:
             kwargs["disallowed_tools"] = disallowed_tools
         if timeout_seconds is not None:
             kwargs["timeout_seconds"] = timeout_seconds
-        if mode is not None:
-            kwargs["mode"] = mode
+        if workflow_enabled is not None:
+            kwargs["workflow_enabled"] = workflow_enabled
         if permission_mode is not None:
             kwargs["permission_mode"] = permission_mode
         if permission_required_tools is not None:
@@ -192,7 +192,7 @@ class TemplateService:
             allowed_tools=entity.allowed_tools,
             disallowed_tools=entity.disallowed_tools,
             timeout_seconds=entity.timeout_seconds,
-            mode=entity.mode,
+            workflow_enabled=entity.workflow_enabled,
             permission_mode=entity.permission_mode,
             permission_required_tools=entity.permission_required_tools,
             model=entity.model,
@@ -236,7 +236,7 @@ class TemplateService:
             allowed_tools=data.allowed_tools,
             disallowed_tools=data.disallowed_tools,
             timeout_seconds=data.timeout_seconds,
-            mode=data.mode,
+            workflow_enabled=data.workflow_enabled,
             permission_mode=data.permission_mode,
             permission_required_tools=data.permission_required_tools,
             model=data.model,

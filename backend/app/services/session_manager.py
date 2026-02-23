@@ -46,6 +46,7 @@ class SessionManager:
         additional_dirs: list[str] | None = None,
         fallback_model: str | None = None,
         worktree_name: str | None = None,
+        workflow_enabled: bool = False,
     ) -> dict:
         sid = str(uuid.uuid4())[:16]
         created_at = datetime.now(timezone.utc).isoformat()
@@ -58,6 +59,7 @@ class SessionManager:
                 allowed_tools=allowed_tools,
                 system_prompt=system_prompt,
                 timeout_seconds=timeout_seconds,
+                workflow_enabled=workflow_enabled,
                 permission_mode=permission_mode,
                 permission_required_tools=permission_required_tools,
                 model=model,
@@ -278,7 +280,9 @@ class SessionManager:
         allowed_tools: str | None = None,
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
-        mode: str | None = None,
+        workflow_enabled: bool | None = None,
+        workflow_phase: str | None = None,
+        workflow_phase_status: str | None = None,
         permission_mode: bool | None = None,
         permission_required_tools: list[str] | None = None,
         name: str | None = None,
@@ -302,8 +306,12 @@ class SessionManager:
             kwargs["system_prompt"] = system_prompt
         if timeout_seconds is not None:
             kwargs["timeout_seconds"] = timeout_seconds
-        if mode is not None:
-            kwargs["mode"] = mode
+        if workflow_enabled is not None:
+            kwargs["workflow_enabled"] = workflow_enabled
+        if workflow_phase is not None:
+            kwargs["workflow_phase"] = workflow_phase
+        if workflow_phase_status is not None:
+            kwargs["workflow_phase_status"] = workflow_phase_status
         if permission_mode is not None:
             kwargs["permission_mode"] = permission_mode
         if permission_required_tools is not None:
@@ -354,7 +362,9 @@ class SessionManager:
             allowed_tools=session.get("allowed_tools"),
             system_prompt=session.get("system_prompt"),
             timeout_seconds=session.get("timeout_seconds"),
-            mode=session.get("mode", "normal"),
+            workflow_enabled=bool(session.get("workflow_enabled", False)),
+            workflow_phase=session.get("workflow_phase"),
+            workflow_phase_status=session.get("workflow_phase_status"),
             permission_mode=bool(session.get("permission_mode", False)),
             permission_required_tools=session.get("permission_required_tools"),
             name=session.get("name"),

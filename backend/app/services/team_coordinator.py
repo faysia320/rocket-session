@@ -202,7 +202,6 @@ class TeamCoordinator:
             or global_settings.get("allowed_tools")
             or ""
         )
-        mode = session_data.get("mode") or global_settings.get("mode") or "normal"
         mcp_service = get_mcp_service()
 
         runner_task = asyncio.create_task(
@@ -213,7 +212,6 @@ class TeamCoordinator:
                 new_session_id,
                 self._ws_manager,
                 self._session_manager,
-                mode=mode,
                 mcp_service=mcp_service,
             )
         )
@@ -309,9 +307,7 @@ class TeamCoordinator:
                 role_tag = " (리드)" if m.role == "lead" else ""
                 desc = f" - {m.description}" if m.description else ""
                 model_tag = f" [{m.model}]" if m.model else ""
-                member_lines.append(
-                    f"- {m.nickname}{role_tag}{desc}{model_tag}"
-                )
+                member_lines.append(f"- {m.nickname}{role_tag}{desc}{model_tag}")
 
             # 태스크 정보
             task_lines = []

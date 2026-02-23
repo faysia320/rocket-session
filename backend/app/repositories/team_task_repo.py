@@ -27,9 +27,7 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
-    async def claim_task(
-        self, task_id: int, member_id: int
-    ) -> TeamTask | None:
+    async def claim_task(self, task_id: int, member_id: int) -> TeamTask | None:
         """태스크 선점 (FOR UPDATE SKIP LOCKED)."""
         stmt = (
             select(TeamTask)
@@ -72,12 +70,9 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
 
     async def get_by_session_id(self, session_id: str) -> TeamTask | None:
         """실행 세션 ID로 태스크 역조회 (in_progress 상태)."""
-        stmt = (
-            select(TeamTask)
-            .where(
-                TeamTask.session_id == session_id,
-                TeamTask.status == "in_progress",
-            )
+        stmt = select(TeamTask).where(
+            TeamTask.session_id == session_id,
+            TeamTask.status == "in_progress",
         )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
@@ -88,9 +83,7 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
-    async def update_session_id(
-        self, task_id: int, session_id: str
-    ) -> None:
+    async def update_session_id(self, task_id: int, session_id: str) -> None:
         """태스크에 실행 세션 ID 기록."""
         now = datetime.now(timezone.utc).isoformat()
         stmt = (

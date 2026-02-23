@@ -69,9 +69,7 @@ async def request_permission(session_id: str, body: PermissionRequest):
         global_settings = await settings_service.get()
         globally_trusted = global_settings.get("globally_trusted_tools") or []
         if body.tool_name in globally_trusted:
-            logger.info(
-                "Permission 자동 승인 (글로벌 신뢰): tool=%s", body.tool_name
-            )
+            logger.info("Permission 자동 승인 (글로벌 신뢰): tool=%s", body.tool_name)
             return {"behavior": "allow"}
     except Exception:
         logger.warning("글로벌 신뢰 도구 확인 실패, 수동 승인으로 진행", exc_info=True)
@@ -157,16 +155,12 @@ async def respond_permission(
 
         if trust_level == "session" and tool_name and session_id:
             _session_trusted_tools.setdefault(session_id, set()).add(tool_name)
-            logger.info(
-                "도구 세션 신뢰 등록: %s (세션: %s)", tool_name, session_id
-            )
+            logger.info("도구 세션 신뢰 등록: %s (세션: %s)", tool_name, session_id)
 
         elif trust_level == "always" and tool_name:
             # 세션 신뢰에도 즉시 등록
             if session_id:
-                _session_trusted_tools.setdefault(session_id, set()).add(
-                    tool_name
-                )
+                _session_trusted_tools.setdefault(session_id, set()).add(tool_name)
             # DB에 글로벌 신뢰 저장
             try:
                 settings_service = get_settings_service()
@@ -176,9 +170,7 @@ async def respond_permission(
                 await settings_service.update(globally_trusted_tools=trusted)
                 logger.info("도구 글로벌 신뢰 등록: %s", tool_name)
             except Exception:
-                logger.warning(
-                    "글로벌 신뢰 저장 실패: %s", tool_name, exc_info=True
-                )
+                logger.warning("글로벌 신뢰 저장 실패: %s", tool_name, exc_info=True)
 
     # 프론트엔드에 응답 확인 브로드캐스트
     ws_manager = get_ws_manager()

@@ -115,16 +115,12 @@ class TeamService:
             member_infos = [self._member_to_info(m) for m in members]
             return self._team_to_info(team, members=member_infos)
 
-    async def list_teams(
-        self, status: str | None = None
-    ) -> list[TeamListItem]:
+    async def list_teams(self, status: str | None = None) -> list[TeamListItem]:
         async with self._db.session() as session:
             repo = TeamRepository(session)
             rows = await repo.list_with_member_counts(status=status)
             return [
-                self._team_to_list_item(
-                    row["team"], member_count=row["member_count"]
-                )
+                self._team_to_list_item(row["team"], member_count=row["member_count"])
                 for row in rows
             ]
 

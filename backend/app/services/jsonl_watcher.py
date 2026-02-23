@@ -409,12 +409,6 @@ class JsonlWatcher:
         cache_read_tokens = data["cache_read_tokens"]
         model = data["model"]
 
-        # 세션의 현재 mode 조회 (ClaudeRunner와 동일하게 포함)
-        mode = "normal"
-        session = await self._session_manager.get(session_id)
-        if session:
-            mode = session.get("mode", "normal")
-
         if session_id_from_result:
             await self._session_manager.update_claude_session_id(
                 session_id, session_id_from_result
@@ -427,7 +421,6 @@ class JsonlWatcher:
             "cost": cost_info,
             "duration_ms": duration,
             "session_id": session_id_from_result,
-            "mode": mode,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cache_creation_tokens": cache_creation_tokens,

@@ -72,9 +72,11 @@ class MessageRepository(BaseRepository[Message]):
         up_to_message_id: int | None = None,
     ) -> int:
         """소스 세션 메시지를 타겟으로 복사. Returns 복사된 메시지 수."""
-        stmt = select(Message).where(
-            Message.session_id == source_session_id
-        ).order_by(Message.id)
+        stmt = (
+            select(Message)
+            .where(Message.session_id == source_session_id)
+            .order_by(Message.id)
+        )
 
         if up_to_message_id is not None:
             stmt = stmt.where(Message.id <= up_to_message_id)

@@ -113,7 +113,11 @@ async def create_session(
         if req.system_prompt_mode is not None
         else (tpl.system_prompt_mode if tpl else "replace")
     )
-    mode = req.mode if req.mode is not None else (tpl.mode if tpl else None)
+    workflow_enabled = (
+        req.workflow_enabled
+        if req.workflow_enabled is not None
+        else (tpl.workflow_enabled if tpl else None)
+    )
 
     additional_dirs = (
         req.additional_dirs
@@ -157,6 +161,7 @@ async def create_session(
         additional_dirs=additional_dirs,
         fallback_model=fallback_model,
         worktree_name=req.worktree_name,
+        workflow_enabled=workflow_enabled or False,
     )
     session_with_counts = await manager.get_with_counts(session["id"]) or session
     return manager.to_info(session_with_counts)
@@ -248,7 +253,7 @@ async def update_session(
         allowed_tools=req.allowed_tools,
         system_prompt=req.system_prompt,
         timeout_seconds=req.timeout_seconds,
-        mode=req.mode,
+        workflow_enabled=req.workflow_enabled,
         permission_mode=req.permission_mode,
         permission_required_tools=req.permission_required_tools,
         name=req.name,
@@ -401,7 +406,9 @@ async def convert_session_to_worktree(
 
     work_dir = session.get("work_dir")
     if not work_dir:
-        raise HTTPException(status_code=400, detail="작업 디렉토리가 설정되지 않은 세션입니다.")
+        raise HTTPException(
+            status_code=400, detail="작업 디렉토리가 설정되지 않은 세션입니다."
+        )
 
     # 1. 워크트리 즉시 생성
     try:

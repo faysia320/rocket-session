@@ -41,9 +41,7 @@ class TeamTaskService:
             updated_at=task.updated_at,
         )
 
-    async def _resolve_nickname(
-        self, session, member_id: int | None
-    ) -> str | None:
+    async def _resolve_nickname(self, session, member_id: int | None) -> str | None:
         """멤버 ID로 닉네임 조회."""
         if not member_id:
             return None
@@ -95,9 +93,7 @@ class TeamTaskService:
             task = await repo.get_by_id(task_id)
             if not task:
                 return None
-            nickname = await self._resolve_nickname(
-                session, task.assigned_member_id
-            )
+            nickname = await self._resolve_nickname(session, task.assigned_member_id)
             return self._task_to_info(task, assigned_nickname=nickname)
 
     async def list_tasks(
@@ -122,9 +118,7 @@ class TeamTaskService:
             task = await repo.update_task(task_id, **kwargs)
             if not task:
                 return None
-            nickname = await self._resolve_nickname(
-                session, task.assigned_member_id
-            )
+            nickname = await self._resolve_nickname(session, task.assigned_member_id)
             await session.commit()
             return self._task_to_info(task, assigned_nickname=nickname)
 
@@ -137,9 +131,7 @@ class TeamTaskService:
 
     # ── 할당 ──
 
-    async def claim_task(
-        self, task_id: int, member_id: int
-    ) -> TeamTaskInfo | None:
+    async def claim_task(self, task_id: int, member_id: int) -> TeamTaskInfo | None:
         async with self._db.session() as session:
             repo = TeamTaskRepository(session)
             task = await repo.claim_task(task_id, member_id)
@@ -157,9 +149,7 @@ class TeamTaskService:
             task = await repo.complete_task(task_id, result_summary)
             if not task:
                 return None
-            nickname = await self._resolve_nickname(
-                session, task.assigned_member_id
-            )
+            nickname = await self._resolve_nickname(session, task.assigned_member_id)
             await session.commit()
             return self._task_to_info(task, assigned_nickname=nickname)
 

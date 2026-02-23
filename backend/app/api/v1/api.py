@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     teams,
     templates,
     usage,
+    workflow,
 )
 
 api_router = APIRouter()
@@ -32,3 +33,4 @@ api_router.include_router(templates.router)
 api_router.include_router(tags.router)
 api_router.include_router(teams.router)
 api_router.include_router(analytics.router)
+api_router.include_router(workflow.router)

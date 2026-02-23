@@ -412,13 +412,15 @@ async def team_websocket_endpoint(
 
     try:
         # 초기 상태 전송
-        await websocket.send_json({
-            "type": "team_state",
-            "team_id": team_id,
-            "status": team.status,
-            "member_count": len(team.members),
-            "task_summary": team.task_summary.model_dump(),
-        })
+        await websocket.send_json(
+            {
+                "type": "team_state",
+                "team_id": team_id,
+                "status": team.status,
+                "member_count": len(team.members),
+                "task_summary": team.task_summary.model_dump(),
+            }
+        )
 
         # 클라이언트 메시지 수신 루프 (heartbeat + 위임 명령)
         while True:
@@ -440,17 +442,21 @@ async def team_websocket_endpoint(
                             member_id=data.get("member_id"),
                             prompt=data.get("prompt"),
                         )
-                        await websocket.send_json({
-                            "type": "delegate_result",
-                            "success": True,
-                            **result,
-                        })
+                        await websocket.send_json(
+                            {
+                                "type": "delegate_result",
+                                "success": True,
+                                **result,
+                            }
+                        )
                     except (ValueError, KeyError) as e:
-                        await websocket.send_json({
-                            "type": "delegate_result",
-                            "success": False,
-                            "error": str(e),
-                        })
+                        await websocket.send_json(
+                            {
+                                "type": "delegate_result",
+                                "success": False,
+                                "error": str(e),
+                            }
+                        )
 
             except asyncio.TimeoutError:
                 # 60초 동안 메시지 없으면 ping 전송

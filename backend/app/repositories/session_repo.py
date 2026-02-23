@@ -32,12 +32,6 @@ class SessionRepository(BaseRepository[Session]):
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_mode(self, session_id: str) -> str | None:
-        """세션 mode만 조회 (경량)."""
-        stmt = select(Session.mode).where(Session.id == session_id)
-        result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
-
     async def list_with_counts(self) -> list[dict]:
         """세션 목록 + message_count, file_changes_count (correlated subquery)."""
         msg_count = (
@@ -196,7 +190,9 @@ def _session_to_dict(session: Session) -> dict:
         "allowed_tools": session.allowed_tools,
         "system_prompt": session.system_prompt,
         "timeout_seconds": session.timeout_seconds,
-        "mode": session.mode,
+        "workflow_enabled": session.workflow_enabled,
+        "workflow_phase": session.workflow_phase,
+        "workflow_phase_status": session.workflow_phase_status,
         "permission_mode": session.permission_mode,
         "permission_required_tools": session.permission_required_tools,
         "name": session.name,
