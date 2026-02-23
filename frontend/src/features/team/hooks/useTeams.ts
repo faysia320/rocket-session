@@ -113,7 +113,7 @@ export function useDeleteTeam() {
       toast.error("팀 삭제에 실패했습니다");
     },
     onSuccess: () => {
-      navigate({ to: "/" });
+      navigate({ to: "/team" });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: teamKeys.all });

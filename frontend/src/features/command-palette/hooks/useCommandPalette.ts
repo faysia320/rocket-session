@@ -9,6 +9,7 @@ import { sessionsApi } from "@/lib/api/sessions.api";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { useSessions } from "@/features/session/hooks/useSessions";
+import { useTeams } from "@/features/team/hooks/useTeams";
 import type { SessionInfo } from "@/types";
 import type { PaletteCommand, CommandCategory } from "../types";
 import { CATEGORY_ORDER } from "../types";
@@ -16,6 +17,7 @@ import { filterCommandsByContext, resolveRouteZone, type RuntimeContext } from "
 import {
   createNavigationCommands,
   createSessionCommands,
+  createTeamCommands,
   createChatCommands,
   createUICommands,
   createGitCommands,
@@ -41,6 +43,7 @@ export function useCommandPalette() {
   const recentCommandIds = useCommandPaletteStore((s) => s.recentCommandIds);
 
   const { deleteSession } = useSessions();
+  const { teams } = useTeams();
 
   const { data: sessions = [] } = useQuery<SessionInfo[]>({
     queryKey: sessionKeys.list(),
@@ -115,6 +118,7 @@ export function useCommandPalette() {
       exportSession,
       forkSession,
     });
+    const teamCmds = createTeamCommands({ navigate, teams });
     const chatCmds = createChatCommands({ activeSessionId });
     const uiCmds = createUICommands({
       toggleSidebar,
@@ -127,7 +131,7 @@ export function useCommandPalette() {
     const hasChanges = gitInfo?.is_dirty || gitInfo?.has_untracked || false;
     const gitCmds = createGitCommands({ hasChanges });
 
-    return [...navCmds, ...sessionCmds, ...chatCmds, ...uiCmds, ...gitCmds];
+    return [...navCmds, ...sessionCmds, ...teamCmds, ...chatCmds, ...uiCmds, ...gitCmds];
   }, [
     navigate,
     sessions,
@@ -137,6 +141,7 @@ export function useCommandPalette() {
     deleteSession,
     exportSession,
     forkSession,
+    teams,
     toggleSidebar,
     setViewMode,
     navigateHome,
@@ -166,6 +171,7 @@ export function useCommandPalette() {
     const groups: Record<CommandCategory, PaletteCommand[]> = {
       navigation: [],
       session: [],
+      team: [],
       chat: [],
       ui: [],
       git: [],

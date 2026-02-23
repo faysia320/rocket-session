@@ -14,6 +14,7 @@ import {
   BellOff,
   Settings,
   MoreHorizontal,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -38,6 +39,7 @@ const GlobalSettingsDialog = lazy(() =>
 
 const NAV_ITEMS = [
   { to: "/" as const, label: "Sessions", icon: MessageSquare },
+  { to: "/team" as const, label: "Team", icon: Users },
   { to: "/history" as const, label: "History", icon: Clock },
   { to: "/analytics" as const, label: "Analytics", icon: BarChart3 },
   { to: "/git-monitor" as const, label: "Git", icon: GitBranch },
@@ -60,11 +62,14 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
     requestDesktopPermission,
   } = useNotificationCenter();
 
-  // Sessions 탭은 / 와 /session 모두에서 활성
+  // Sessions 탭은 / 와 /session, Team 탭은 /team 에서 활성
   const isActive = useCallback(
     (to: string) => {
       if (to === "/") {
         return location.pathname === "/" || location.pathname.startsWith("/session");
+      }
+      if (to === "/team") {
+        return location.pathname.startsWith("/team");
       }
       return location.pathname.startsWith(to);
     },
