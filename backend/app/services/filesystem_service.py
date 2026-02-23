@@ -24,6 +24,8 @@ from app.schemas.filesystem import (
     GitLogResponse,
     GitStatusFile,
     GitStatusResponse,
+    PRReviewResponse,
+    PRReviewSubmitResponse,
     SkillInfo,
     SkillListResponse,
     WorktreeInfo,
@@ -944,6 +946,98 @@ class FilesystemService:
         if rc != 0:
             raise ValueError(f"PR diff 조회 실패: {err}")
         return out
+
+    async def generate_pr_review(
+        self, path: str, pr_number: int
+    ) -> PRReviewResponse:
+        """Claude Code CLI로 PR 리뷰 생성."""
+        validated_path = self._validate_path(path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+        cwd = str(validated_path)
+
+        # 1. PR 상세 정보 가져오기
+        pr_detail = await self.get_github_pr_detail(path, pr_number)
+        if pr_detail.error:
+            return PRReviewResponse(error=f"PR 정보 조회 실패: {pr_detail.error}")
+
+        # 2. PR diff 가져오기
+        try:
+            diff_text = await self.get_github_pr_diff(path, pr_number)
+        except ValueError as e:
+            return PRReviewResponse(error=str(e))
+
+        # diff가 너무 길면 잘라냄 (Claude 토큰 제한 고려)
+        max_diff_chars = 50000
+        if len(diff_text) > max_diff_chars:
+            diff_text = diff_text[:max_diff_chars] + "\n\n... (diff가 너무 길어 잘렸습니다)"
+
+        # 3. Claude Code CLI로 리뷰 생성
+        prompt = (
+            f"다음은 GitHub Pull Request #{pr_number}의 정보와 diff입니다.\n"
+            f"이 PR을 코드 리뷰해주세요.\n\n"
+            f"## PR 정보\n"
+            f"- 제목: {pr_detail.title}\n"
+            f"- 작성자: {pr_detail.author}\n"
+            f"- 브랜치: {pr_detail.branch} → {pr_detail.base}\n"
+            f"- 변경: +{pr_detail.additions} -{pr_detail.deletions}, "
+            f"{pr_detail.changed_files}개 파일\n\n"
+            f"## PR 설명\n{pr_detail.body or '(없음)'}\n\n"
+            f"## Diff\n```diff\n{diff_text}\n```\n\n"
+            f"## 리뷰 요청\n"
+            f"위 PR의 코드 변경사항을 리뷰해주세요. 다음 항목을 포함해주세요:\n"
+            f"1. **요약**: 변경사항의 전체적인 요약\n"
+            f"2. **좋은 점**: 잘 작성된 부분\n"
+            f"3. **개선 제안**: 개선이 필요한 부분 (파일명, 라인 번호 포함)\n"
+            f"4. **잠재적 이슈**: 버그, 보안, 성능 관련 우려사항\n\n"
+            f"마크다운 형식으로 작성해주세요."
+        )
+
+        def _run_claude() -> tuple[int, str, str]:
+            try:
+                result = subprocess.run(
+                    ["claude", "-p", prompt, "--output-format", "text"],
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+                return result.returncode, result.stdout.strip(), result.stderr.strip()
+            except subprocess.TimeoutExpired:
+                return -1, "", "Claude Code 실행 시간 초과 (120초)"
+            except FileNotFoundError:
+                return -1, "", "Claude Code CLI를 찾을 수 없습니다"
+
+        rc, stdout, stderr = await asyncio.to_thread(_run_claude)
+
+        if rc != 0:
+            return PRReviewResponse(
+                error=stderr or f"Claude Code 실행 실패 (exit code: {rc})"
+            )
+
+        return PRReviewResponse(review_text=stdout)
+
+    async def submit_pr_review_comment(
+        self, path: str, pr_number: int, body: str
+    ) -> PRReviewSubmitResponse:
+        """PR에 리뷰 코멘트 게시 (gh pr comment)."""
+        validated_path = self._validate_path(path)
+        if not self._is_within_root(validated_path):
+            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+        cwd = str(validated_path)
+
+        rc, out, err = await self._run_gh_command(
+            "pr", "comment", str(pr_number), "--body", body,
+            cwd=cwd, timeout=30.0,
+        )
+
+        if rc != 0:
+            return PRReviewSubmitResponse(
+                success=False,
+                error=err or "코멘트 게시 실패",
+            )
+
+        return PRReviewSubmitResponse(success=True)
 
     async def list_skills(self, path: str) -> SkillListResponse:
         """Skills 목록 조회 (.claude/commands/*.md)."""

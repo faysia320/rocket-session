@@ -173,3 +173,35 @@ class GitHubPRDetail(BaseModel):
     comments: list[GitHubPRComment] = []
     mergeable: Optional[str] = None
     error: Optional[str] = None
+
+
+# --- PR Review (Claude Code) 스키마 ---
+
+
+class PRReviewRequest(BaseModel):
+    """Claude Code PR 리뷰 생성 요청."""
+
+    path: str
+    pr_number: int
+
+
+class PRReviewResponse(BaseModel):
+    """Claude Code PR 리뷰 생성 결과."""
+
+    review_text: str = ""
+    error: Optional[str] = None
+
+
+class PRReviewSubmitRequest(BaseModel):
+    """PR 리뷰 코멘트 게시 요청."""
+
+    path: str
+    pr_number: int
+    body: str
+
+
+class PRReviewSubmitResponse(BaseModel):
+    """PR 리뷰 코멘트 게시 결과."""
+
+    success: bool = False
+    error: Optional[str] = None
