@@ -376,12 +376,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       try {
         await sessionsApi.convertToWorktree(sessionId, { worktree_name: name });
         queryClient.invalidateQueries({ queryKey: ["sessions"] });
-        toast.success(`워크트리로 전환되었습니다. 이름: ${name}`);
+        toast.success(`워크트리로 전환되었습니다. (worktree-${name})`);
+        reconnect();
       } catch (err) {
         toast.error(`워크트리 전환 실패: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
-    [sessionId, queryClient],
+    [sessionId, queryClient, reconnect],
   );
 
   const handleFork = useCallback(async () => {

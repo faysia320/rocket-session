@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
 from app.api.dependencies import (
+    get_filesystem_service,
     get_mcp_service,
     get_search_service,
     get_session_manager,
@@ -28,6 +29,7 @@ from app.schemas.session import (
     UpdateSessionRequest,
 )
 from app.schemas.tag import SessionTagRequest, TagInfo
+from app.services.filesystem_service import FilesystemService
 from app.services.mcp_service import McpService
 from app.services.search_service import SearchService
 from app.services.tag_service import TagService
@@ -47,6 +49,7 @@ async def create_session(
     settings_service: SettingsService = Depends(get_settings_service),
     mcp_service: McpService = Depends(get_mcp_service),
     template_service: TemplateService = Depends(get_template_service),
+    fs: FilesystemService = Depends(get_filesystem_service),
 ):
     global_settings = await settings_service.get()
 
@@ -130,6 +133,13 @@ async def create_session(
     if not mcp_server_ids:
         enabled_servers = await mcp_service.list_servers()
         mcp_server_ids = [s.id for s in enabled_servers if s.enabled]
+
+    # worktree_name이 있으면 워크트리 즉시 생성
+    if req.worktree_name and work_dir:
+        try:
+            await fs.create_claude_worktree(work_dir, req.worktree_name)
+        except (ValueError, RuntimeError) as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     session = await manager.create(
         work_dir=work_dir,
@@ -365,11 +375,12 @@ async def convert_session_to_worktree(
     session_id: str,
     req: ConvertToWorktreeRequest,
     manager: SessionManager = Depends(get_session_manager),
+    fs: FilesystemService = Depends(get_filesystem_service),
 ):
     """기존 세션을 Git 워크트리로 전환합니다.
 
-    worktree_name을 설정하면 다음 Claude 실행 시 `-w <name>` 플래그가 추가되어
-    Claude CLI가 워크트리를 자동 생성합니다.
+    1. git worktree add로 워크트리를 즉시 생성
+    2. 세션에 worktree_name을 설정하여 이후 실행 시 `-w <name>` 플래그 사용
     대화 기록, 파일 변경 이력, claude_session_id 등 모든 컨텍스트가 보존됩니다.
     """
     session = await manager.get(session_id)
@@ -388,6 +399,17 @@ async def convert_session_to_worktree(
             detail="이미 워크트리가 설정된 세션입니다.",
         )
 
+    work_dir = session.get("work_dir")
+    if not work_dir:
+        raise HTTPException(status_code=400, detail="작업 디렉토리가 설정되지 않은 세션입니다.")
+
+    # 1. 워크트리 즉시 생성
+    try:
+        await fs.create_claude_worktree(work_dir, req.worktree_name)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # 2. 세션에 worktree_name 저장
     updated = await manager.update_settings(
         session_id=session_id,
         worktree_name=req.worktree_name,
