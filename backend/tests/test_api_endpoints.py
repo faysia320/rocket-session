@@ -18,6 +18,7 @@ from app.core.config import Settings
 from app.core.database import Database
 from app.main import app
 from app.services.claude_runner import ClaudeRunner
+from app.services.filesystem_service import FilesystemService
 from app.services.mcp_service import McpService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
@@ -68,6 +69,8 @@ async def test_client():
     app.dependency_overrides[deps.get_settings_service] = lambda: ss
     app.dependency_overrides[deps.get_mcp_service] = lambda: ms
     app.dependency_overrides[deps.get_template_service] = lambda: ts
+    fs = FilesystemService()
+    app.dependency_overrides[deps.get_filesystem_service] = lambda: fs
 
     # Create client
     transport = ASGITransport(app=app)
