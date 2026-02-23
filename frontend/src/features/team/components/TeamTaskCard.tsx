@@ -16,7 +16,7 @@ interface TeamTaskCardProps {
   task: TeamTaskInfo;
   members: TeamMemberInfo[];
   onStatusChange: (taskId: number, status: TaskStatus) => void;
-  onAssign: (taskId: number, sessionId: string) => void;
+  onAssign: (taskId: number, memberId: number) => void;
   onComplete: (taskId: number) => void;
   onDelete: (taskId: number) => void;
   onEdit: (task: TeamTaskInfo) => void;
@@ -53,8 +53,8 @@ export const TeamTaskCard = memo(function TeamTaskCard({
 
   const priority = priorityConfig[task.priority];
   const StatusIcon = statusIcons[task.status];
-  const assignedMember = task.assigned_session_id
-    ? members.find((m) => m.session_id === task.assigned_session_id)
+  const assignedMember = task.assigned_member_id != null
+    ? members.find((m) => m.id === task.assigned_member_id)
     : null;
 
   return (
@@ -114,7 +114,7 @@ export const TeamTaskCard = memo(function TeamTaskCard({
             {task.status === "pending" && onDelegate ? (
               <DropdownMenuItem onClick={() => onDelegate(task)}>
                 <Send className="h-3 w-3 mr-2" />
-                세션에 위임
+                멤버에게 위임
               </DropdownMenuItem>
             ) : null}
             {task.status === "pending" ? (
@@ -141,11 +141,11 @@ export const TeamTaskCard = memo(function TeamTaskCard({
               <>
                 {members.map((m) => (
                   <DropdownMenuItem
-                    key={m.session_id}
-                    onClick={() => onAssign(task.id, m.session_id)}
+                    key={m.id}
+                    onClick={() => onAssign(task.id, m.id)}
                   >
                     <User className="h-3 w-3 mr-2" />
-                    {m.nickname || m.session_name || m.session_id.slice(0, 8)}에 할당
+                    {m.nickname}에 할당
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
@@ -162,15 +162,20 @@ export const TeamTaskCard = memo(function TeamTaskCard({
         </DropdownMenu>
       </div>
 
-      {/* 푸터: 담당자 */}
-      {assignedMember ? (
-        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/50">
-          <User className="h-3 w-3 text-muted-foreground/60" />
-          <span className="font-mono text-2xs text-muted-foreground">
-            {assignedMember.nickname || assignedMember.session_name || assignedMember.session_id.slice(0, 8)}
-          </span>
+      {/* 푸터: 담당자 + 작업 디렉토리 */}
+      <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
+        {assignedMember ? (
+          <div className="flex items-center gap-1.5">
+            <User className="h-3 w-3 text-muted-foreground/60" />
+            <span className="font-mono text-2xs text-muted-foreground">
+              {assignedMember.nickname}
+            </span>
+          </div>
+        ) : null}
+        <div className="font-mono text-2xs text-muted-foreground/50 truncate">
+          {task.work_dir}
         </div>
-      ) : null}
+      </div>
 
       {/* 결과 요약 (완료된 태스크) */}
       {task.result_summary ? (

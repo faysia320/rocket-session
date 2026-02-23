@@ -82,8 +82,8 @@ export function useTeamTasks(teamId: string, status?: string) {
 
   // 태스크 선점
   const claimMutation = useMutation({
-    mutationFn: ({ taskId, sessionId }: { taskId: number; sessionId: string }) =>
-      teamsApi.claimTask(teamId, taskId, sessionId),
+    mutationFn: ({ taskId, memberId }: { taskId: number; memberId: number }) =>
+      teamsApi.claimTask(teamId, taskId, memberId),
     onSuccess: () => {
       invalidateTasks();
       toast.success("태스크가 할당되었습니다");

@@ -9,7 +9,6 @@ import type {
   CreateTeamRequest,
   UpdateTeamRequest,
   AddTeamMemberRequest,
-  CreateMemberSessionRequest,
   SetLeadRequest,
 } from "@/types";
 
@@ -141,21 +140,8 @@ export function useTeamMembers(teamId: string) {
     },
   });
 
-  const createMemberMutation = useMutation({
-    mutationFn: (data: CreateMemberSessionRequest) =>
-      teamsApi.createMemberSession(teamId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: teamKeys.detail(teamId) });
-      queryClient.invalidateQueries({ queryKey: teamKeys.list() });
-      toast.success("새 멤버 세션이 생성되었습니다");
-    },
-    onError: (err: Error) => {
-      toast.error(`멤버 세션 생성 실패: ${err.message}`);
-    },
-  });
-
   const removeMemberMutation = useMutation({
-    mutationFn: (sessionId: string) => teamsApi.removeMember(teamId, sessionId),
+    mutationFn: (memberId: number) => teamsApi.removeMember(teamId, memberId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teamKeys.detail(teamId) });
       queryClient.invalidateQueries({ queryKey: teamKeys.list() });
@@ -171,7 +157,7 @@ export function useTeamMembers(teamId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teamKeys.detail(teamId) });
       queryClient.invalidateQueries({ queryKey: teamKeys.list() });
-      toast.success("리드 세션이 변경되었습니다");
+      toast.success("리드가 변경되었습니다");
     },
     onError: (err: Error) => {
       toast.error(`리드 변경 실패: ${err.message}`);
@@ -180,10 +166,8 @@ export function useTeamMembers(teamId: string) {
 
   return {
     addMember: addMemberMutation.mutateAsync,
-    createMember: createMemberMutation.mutateAsync,
     removeMember: removeMemberMutation.mutateAsync,
     setLead: setLeadMutation.mutateAsync,
     isAddingMember: addMemberMutation.isPending,
-    isCreatingMember: createMemberMutation.isPending,
   };
 }

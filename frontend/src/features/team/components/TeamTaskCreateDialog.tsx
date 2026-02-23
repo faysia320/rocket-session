@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
 import type {
   TeamTaskInfo,
   CreateTaskRequest,
@@ -47,7 +48,10 @@ export function TeamTaskCreateDialog({
   const [title, setTitle] = useState(editTask?.title ?? "");
   const [description, setDescription] = useState(editTask?.description ?? "");
   const [priority, setPriority] = useState<TaskPriority>(editTask?.priority ?? "medium");
-  const [assignedSessionId, setAssignedSessionId] = useState(editTask?.assigned_session_id ?? "");
+  const [workDir, setWorkDir] = useState(editTask?.work_dir ?? "");
+  const [assignedMemberId, setAssignedMemberId] = useState(
+    editTask?.assigned_member_id != null ? String(editTask.assigned_member_id) : "",
+  );
 
   // 다이얼로그가 열릴 때 편집 데이터 반영
   const handleOpenChange = (next: boolean) => {
@@ -55,13 +59,17 @@ export function TeamTaskCreateDialog({
       setTitle(editTask.title);
       setDescription(editTask.description ?? "");
       setPriority(editTask.priority);
-      setAssignedSessionId(editTask.assigned_session_id ?? "");
+      setWorkDir(editTask.work_dir);
+      setAssignedMemberId(
+        editTask.assigned_member_id != null ? String(editTask.assigned_member_id) : "",
+      );
     }
     if (!next) {
       setTitle("");
       setDescription("");
       setPriority("medium");
-      setAssignedSessionId("");
+      setWorkDir("");
+      setAssignedMemberId("");
     }
     onOpenChange(next);
   };
@@ -73,14 +81,17 @@ export function TeamTaskCreateDialog({
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
-        assigned_session_id: assignedSessionId || undefined,
+        work_dir: workDir.trim() || undefined,
+        assigned_member_id: assignedMemberId ? Number(assignedMemberId) : undefined,
       });
     } else {
+      if (!workDir.trim()) return;
       await onCreate({
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
-        assigned_session_id: assignedSessionId || undefined,
+        work_dir: workDir.trim(),
+        assigned_member_id: assignedMemberId ? Number(assignedMemberId) : undefined,
       });
     }
     handleOpenChange(false);
@@ -118,6 +129,14 @@ export function TeamTaskCreateDialog({
             />
           </div>
 
+          {/* 작업 디렉토리 */}
+          <div className="space-y-1.5">
+            <label className="font-mono text-xs text-muted-foreground">
+              작업 디렉토리 {isEdit ? "" : "*"}
+            </label>
+            <DirectoryPicker value={workDir} onChange={setWorkDir} />
+          </div>
+
           {/* 우선순위 */}
           <div className="space-y-1.5">
             <label className="font-mono text-xs text-muted-foreground">우선순위</label>
@@ -137,8 +156,8 @@ export function TeamTaskCreateDialog({
           <div className="space-y-1.5">
             <label className="font-mono text-xs text-muted-foreground">담당자</label>
             <Select
-              value={assignedSessionId || "_none"}
-              onValueChange={(v) => setAssignedSessionId(v === "_none" ? "" : v)}
+              value={assignedMemberId || "_none"}
+              onValueChange={(v) => setAssignedMemberId(v === "_none" ? "" : v)}
             >
               <SelectTrigger className="font-mono text-sm">
                 <SelectValue placeholder="미지정" />
@@ -146,8 +165,8 @@ export function TeamTaskCreateDialog({
               <SelectContent>
                 <SelectItem value="_none" className="font-mono text-xs">미지정</SelectItem>
                 {members.map((m) => (
-                  <SelectItem key={m.session_id} value={m.session_id} className="font-mono text-xs">
-                    {m.nickname || m.session_name || m.session_id.slice(0, 8)}
+                  <SelectItem key={m.id} value={String(m.id)} className="font-mono text-xs">
+                    {m.nickname}{m.description ? ` (${m.description})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -158,7 +177,7 @@ export function TeamTaskCreateDialog({
           <Button
             className="w-full font-mono text-sm"
             onClick={handleSubmit}
-            disabled={!title.trim() || isCreating}
+            disabled={!title.trim() || (!isEdit && !workDir.trim()) || isCreating}
           >
             {isCreating
               ? isEdit

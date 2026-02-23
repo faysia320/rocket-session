@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useCreateTeam } from "../hooks/useTeams";
-import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
 
 interface TeamCreateDialogProps {
   children?: React.ReactNode;
@@ -19,19 +18,16 @@ export function TeamCreateDialog({ children }: TeamCreateDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [workDir, setWorkDir] = useState("");
   const createTeam = useCreateTeam();
 
   const handleCreate = async () => {
-    if (!name.trim() || !workDir.trim()) return;
+    if (!name.trim()) return;
     await createTeam.mutateAsync({
       name: name.trim(),
-      work_dir: workDir.trim(),
       description: description.trim() || undefined,
     });
     setName("");
     setDescription("");
-    setWorkDir("");
     setOpen(false);
   };
 
@@ -71,14 +67,10 @@ export function TeamCreateDialog({ children }: TeamCreateDialogProps) {
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="font-mono text-xs text-muted-foreground">작업 디렉토리</label>
-            <DirectoryPicker value={workDir} onChange={setWorkDir} />
-          </div>
           <Button
             className="w-full font-mono text-sm"
             onClick={handleCreate}
-            disabled={!name.trim() || !workDir.trim() || createTeam.isPending}
+            disabled={!name.trim() || createTeam.isPending}
           >
             {createTeam.isPending ? "생성 중…" : "팀 생성"}
           </Button>

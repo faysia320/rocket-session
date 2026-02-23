@@ -17,7 +17,7 @@ interface TeamTaskDelegateDialogProps {
   onOpenChange: (open: boolean) => void;
   task: TeamTaskInfo | null;
   members: TeamMemberInfo[];
-  onDelegate: (taskId: number, sessionId: string, prompt?: string) => void;
+  onDelegate: (taskId: number, memberId: number, prompt?: string) => void;
 }
 
 export function TeamTaskDelegateDialog({
@@ -27,21 +27,16 @@ export function TeamTaskDelegateDialog({
   members,
   onDelegate,
 }: TeamTaskDelegateDialogProps) {
-  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [prompt, setPrompt] = useState("");
 
   const handleDelegate = () => {
-    if (!task || !selectedSessionId) return;
-    onDelegate(task.id, selectedSessionId, prompt.trim() || undefined);
-    setSelectedSessionId("");
+    if (!task || selectedMemberId == null) return;
+    onDelegate(task.id, selectedMemberId, prompt.trim() || undefined);
+    setSelectedMemberId(null);
     setPrompt("");
     onOpenChange(false);
   };
-
-  // idle 상태의 멤버만 표시 (running 중인 세션은 위임 불가)
-  const availableMembers = members.filter(
-    (m) => m.session_status === "idle" || m.session_status === null,
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -61,36 +56,40 @@ export function TeamTaskDelegateDialog({
                   {task.description}
                 </div>
               ) : null}
+              <div className="font-mono text-2xs text-muted-foreground/70 mt-1">
+                작업 디렉토리: {task.work_dir}
+              </div>
             </div>
 
-            {/* 대상 세션 선택 */}
+            {/* 대상 멤버 선택 */}
             <div className="space-y-1.5">
               <label className="font-mono text-xs text-muted-foreground">
-                위임 대상 세션
+                위임 대상 멤버
               </label>
-              {availableMembers.length === 0 ? (
+              {members.length === 0 ? (
                 <div className="font-mono text-xs text-muted-foreground/70 py-2">
-                  위임 가능한 세션이 없습니다 (idle 상태만 가능)
+                  위임 가능한 멤버가 없습니다
                 </div>
               ) : (
                 <ScrollArea className="max-h-36">
                   <div className="space-y-1">
-                    {availableMembers.map((m) => (
+                    {members.map((m) => (
                       <button
-                        key={m.session_id}
+                        key={m.id}
                         type="button"
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-sm font-mono text-xs border border-transparent hover:bg-muted/50 transition-colors",
-                          selectedSessionId === m.session_id &&
+                          selectedMemberId === m.id &&
                             "bg-muted border-primary/30",
                         )}
-                        onClick={() => setSelectedSessionId(m.session_id)}
+                        onClick={() => setSelectedMemberId(m.id)}
                       >
                         <div className="font-medium">
-                          {m.nickname || m.session_name || m.session_id.slice(0, 8)}
+                          {m.nickname}
                         </div>
                         <div className="text-2xs text-muted-foreground">
-                          {m.role === "lead" ? "리드" : "멤버"} · {m.session_status || "unknown"}
+                          {m.role === "lead" ? "리드" : "멤버"} · {m.model || "default"}
+                          {m.description ? ` · ${m.description}` : ""}
                         </div>
                       </button>
                     ))}
@@ -106,7 +105,7 @@ export function TeamTaskDelegateDialog({
               </label>
               <Textarea
                 className="font-mono text-sm min-h-[60px] resize-none"
-                placeholder="세션에 전달할 프롬프트…"
+                placeholder="멤버에게 전달할 프롬프트…"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
               />
@@ -116,7 +115,7 @@ export function TeamTaskDelegateDialog({
             <Button
               className="w-full font-mono text-sm gap-2"
               onClick={handleDelegate}
-              disabled={!selectedSessionId}
+              disabled={selectedMemberId == null}
             >
               <Send className="h-3.5 w-3.5" />
               위임 실행

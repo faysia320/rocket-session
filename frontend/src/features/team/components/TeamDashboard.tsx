@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { Users, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +19,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useTeamDetail, useDeleteTeam, useTeamMembers } from "../hooks/useTeams";
 import { useTeamSocket } from "../hooks/useTeamSocket";
@@ -27,19 +28,15 @@ import { TeamMemberList } from "./TeamMemberList";
 import { TeamMessagePanel } from "./TeamMessagePanel";
 import { TeamStatusBar } from "./TeamStatusBar";
 import { TeamTaskBoard } from "./TeamTaskBoard";
-import { useSessions } from "@/features/session/hooks/useSessions";
-import type { SessionInfo } from "@/types";
 
 interface TeamDashboardProps {
   teamId: string;
 }
 
 export function TeamDashboard({ teamId }: TeamDashboardProps) {
-  const navigate = useNavigate();
   const { data: team, isLoading, isError } = useTeamDetail(teamId);
   const deleteTeam = useDeleteTeam();
   const { addMember, removeMember, setLead, isAddingMember } = useTeamMembers(teamId);
-  const { sessions } = useSessions();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
 
@@ -61,11 +58,6 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
       </div>
     );
   }
-
-  const memberSessionIds = new Set(team.members.map((m) => m.session_id));
-  const availableSessions = sessions.filter(
-    (s) => !memberSessionIds.has(s.id) && s.status !== "archived",
-  );
 
   const statusColor = {
     active: "bg-success",
@@ -114,14 +106,6 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
       {/* Content */}
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
-          {/* 팀 정보 */}
-          <section>
-            <div className="font-mono text-xs text-muted-foreground mb-2">작업 디렉토리</div>
-            <div className="font-mono text-sm bg-muted/30 px-3 py-2 rounded border border-border">
-              {team.work_dir}
-            </div>
-          </section>
-
           {/* 멤버 */}
           <section>
             <div className="flex items-center justify-between mb-2">
@@ -140,12 +124,9 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
             </div>
             <TeamMemberList
               members={team.members}
-              leadSessionId={team.lead_session_id}
+              leadMemberId={team.lead_member_id}
               onRemove={removeMember}
-              onSetLead={(sessionId) => setLead({ session_id: sessionId })}
-              onSelectSession={(id) =>
-                navigate({ to: "/session/$sessionId", params: { sessionId: id } })
-              }
+              onSetLead={(memberId) => setLead({ member_id: memberId })}
             />
           </section>
 
@@ -159,7 +140,7 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
             <TeamMessagePanel
               teamId={teamId}
               members={team.members}
-              leadSessionId={team.lead_session_id}
+              leadMemberId={team.lead_member_id}
             />
           </section>
         </div>
@@ -171,7 +152,7 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle className="font-mono text-sm">팀을 삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription className="font-mono text-xs">
-              "{team.name}" 팀이 삭제됩니다. 팀에 속한 세션은 삭제되지 않습니다.
+              "{team.name}" 팀이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -186,13 +167,12 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 멤버 추가 다이얼로그 */}
+      {/* 멤버 추가 다이얼로그 (페르소나 정의) */}
       <AddMemberDialog
         open={addMemberOpen}
         onOpenChange={setAddMemberOpen}
-        availableSessions={availableSessions}
-        onAdd={async (sessionId, nickname) => {
-          await addMember({ session_id: sessionId, nickname: nickname || undefined });
+        onAdd={async (data) => {
+          await addMember(data);
           setAddMemberOpen(false);
         }}
         isAdding={isAddingMember}
@@ -204,73 +184,81 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
 function AddMemberDialog({
   open,
   onOpenChange,
-  availableSessions,
   onAdd,
   isAdding,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  availableSessions: SessionInfo[];
-  onAdd: (sessionId: string, nickname: string) => void;
+  onAdd: (data: { nickname: string; description?: string; system_prompt?: string; model?: string; role?: "lead" | "member" }) => void;
   isAdding: boolean;
 }) {
-  const [selectedId, setSelectedId] = useState<string>("");
   const [nickname, setNickname] = useState("");
+  const [description, setDescription] = useState("");
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [model, setModel] = useState("");
 
   const handleAdd = () => {
-    if (!selectedId) return;
-    onAdd(selectedId, nickname);
-    setSelectedId("");
+    if (!nickname.trim()) return;
+    onAdd({
+      nickname: nickname.trim(),
+      description: description.trim() || undefined,
+      system_prompt: systemPrompt.trim() || undefined,
+      model: model.trim() || undefined,
+    });
     setNickname("");
+    setDescription("");
+    setSystemPrompt("");
+    setModel("");
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-mono text-sm">기존 세션을 멤버로 추가</DialogTitle>
+          <DialogTitle className="font-mono text-sm">새 멤버 (페르소나) 추가</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
-            <label className="font-mono text-xs text-muted-foreground">세션 선택</label>
-            {availableSessions.length === 0 ? (
-              <div className="font-mono text-xs text-muted-foreground/70 py-2">
-                추가 가능한 세션이 없습니다
-              </div>
-            ) : (
-              <ScrollArea className="max-h-48">
-                <div className="space-y-1">
-                  {availableSessions.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded-sm font-mono text-xs border border-transparent hover:bg-muted/50 transition-colors",
-                        selectedId === s.id && "bg-muted border-primary/30",
-                      )}
-                      onClick={() => setSelectedId(s.id)}
-                    >
-                      <div className="font-medium">{s.name || s.id}</div>
-                      <div className="text-2xs text-muted-foreground">{s.work_dir}</div>
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <label className="font-mono text-xs text-muted-foreground">닉네임 (선택)</label>
-            <input
-              className="w-full font-mono text-sm bg-input border border-border rounded px-3 py-2 outline-none focus:border-primary/50"
-              placeholder="예: frontend-agent"
+            <label className="font-mono text-xs text-muted-foreground">닉네임 *</label>
+            <Input
+              className="font-mono text-sm"
+              placeholder="예: backend-agent"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="font-mono text-xs text-muted-foreground">설명</label>
+            <Input
+              className="font-mono text-sm"
+              placeholder="예: 백엔드 API 전문가"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="font-mono text-xs text-muted-foreground">모델</label>
+            <Input
+              className="font-mono text-sm"
+              placeholder="예: sonnet (기본값: 글로벌 설정)"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="font-mono text-xs text-muted-foreground">시스템 프롬프트</label>
+            <Textarea
+              className="font-mono text-sm min-h-[80px] resize-none"
+              placeholder="이 멤버의 역할과 지시사항을 입력하세요"
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
             />
           </div>
           <Button
             className="w-full font-mono text-sm"
             onClick={handleAdd}
-            disabled={!selectedId || isAdding}
+            disabled={!nickname.trim() || isAdding}
           >
             {isAdding ? "추가 중…" : "멤버 추가"}
           </Button>

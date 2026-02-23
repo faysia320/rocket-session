@@ -37,7 +37,7 @@ export function TeamTaskBoard({ teamId, members }: TeamTaskBoardProps) {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editTask, setEditTask] = useState<TeamTaskInfo | null>(null);
-  const [delegateTask, setDelegateTask] = useState<TeamTaskInfo | null>(null);
+  const [delegateTaskItem, setDelegateTaskItem] = useState<TeamTaskInfo | null>(null);
 
   const handleStatusChange = useCallback(
     async (taskId: number, status: TaskStatus) => {
@@ -47,8 +47,8 @@ export function TeamTaskBoard({ teamId, members }: TeamTaskBoardProps) {
   );
 
   const handleAssign = useCallback(
-    async (taskId: number, sessionId: string) => {
-      await claimTask({ taskId, sessionId });
+    async (taskId: number, memberId: number) => {
+      await claimTask({ taskId, memberId });
     },
     [claimTask],
   );
@@ -65,9 +65,9 @@ export function TeamTaskBoard({ teamId, members }: TeamTaskBoardProps) {
   }, []);
 
   const handleDelegate = useCallback(
-    async (taskId: number, sessionId: string, prompt?: string) => {
+    async (taskId: number, memberId: number, prompt?: string) => {
       try {
-        await teamsApi.delegateTask(teamId, taskId, sessionId, prompt);
+        await teamsApi.delegateTask(teamId, taskId, memberId, prompt);
         toast.success("태스크가 위임되었습니다");
         invalidateTasks();
       } catch (err) {
@@ -78,7 +78,7 @@ export function TeamTaskBoard({ teamId, members }: TeamTaskBoardProps) {
   );
 
   const handleOpenDelegate = useCallback((task: TeamTaskInfo) => {
-    setDelegateTask(task);
+    setDelegateTaskItem(task);
   }, []);
 
   if (isLoading) {
@@ -189,11 +189,11 @@ export function TeamTaskBoard({ teamId, members }: TeamTaskBoardProps) {
 
       {/* 위임 다이얼로그 */}
       <TeamTaskDelegateDialog
-        open={!!delegateTask}
+        open={!!delegateTaskItem}
         onOpenChange={(open) => {
-          if (!open) setDelegateTask(null);
+          if (!open) setDelegateTaskItem(null);
         }}
-        task={delegateTask}
+        task={delegateTaskItem}
         members={members}
         onDelegate={handleDelegate}
       />

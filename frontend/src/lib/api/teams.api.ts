@@ -11,7 +11,7 @@ import type {
   CreateTeamRequest,
   UpdateTeamRequest,
   AddTeamMemberRequest,
-  CreateMemberSessionRequest,
+  UpdateTeamMemberRequest,
   SetLeadRequest,
   CreateTaskRequest,
   UpdateTaskRequest,
@@ -41,11 +41,11 @@ export const teamsApi = {
   addMember: (teamId: string, data: AddTeamMemberRequest) =>
     api.post<TeamMemberInfo>(`/api/teams/${teamId}/members`, data),
 
-  createMemberSession: (teamId: string, data: CreateMemberSessionRequest) =>
-    api.post<TeamMemberInfo>(`/api/teams/${teamId}/members/create`, data),
+  updateMember: (teamId: string, memberId: number, data: UpdateTeamMemberRequest) =>
+    api.patch<TeamMemberInfo>(`/api/teams/${teamId}/members/${memberId}`, data),
 
-  removeMember: (teamId: string, sessionId: string) =>
-    api.delete<void>(`/api/teams/${teamId}/members/${sessionId}`),
+  removeMember: (teamId: string, memberId: number) =>
+    api.delete<void>(`/api/teams/${teamId}/members/${memberId}`),
 
   setLead: (teamId: string, data: SetLeadRequest) =>
     api.patch<TeamInfo>(`/api/teams/${teamId}/lead`, data),
@@ -79,10 +79,10 @@ export const teamsApi = {
   deleteTask: (teamId: string, taskId: number) =>
     api.delete<void>(`/api/teams/${teamId}/tasks/${taskId}`),
 
-  claimTask: (teamId: string, taskId: number, sessionId: string) =>
-    api.post<TeamTaskInfo>(`/api/teams/${teamId}/tasks/${taskId}/claim`, {
-      session_id: sessionId,
-    }),
+  claimTask: (teamId: string, taskId: number, memberId: number) =>
+    api.post<TeamTaskInfo>(
+      `/api/teams/${teamId}/tasks/${taskId}/claim?member_id=${memberId}`,
+    ),
 
   completeTask: (teamId: string, taskId: number, data?: CompleteTaskRequest) =>
     api.post<TeamTaskInfo>(
@@ -100,12 +100,12 @@ export const teamsApi = {
   delegateTask: (
     teamId: string,
     taskId: number,
-    targetSessionId: string,
+    memberId?: number,
     prompt?: string,
   ) =>
-    api.post<{ task_id: number; target_session_id: string; status: string }>(
+    api.post<{ task_id: number; session_id: string; status: string }>(
       `/api/teams/${teamId}/tasks/${taskId}/delegate`,
-      { target_session_id: targetSessionId, prompt },
+      { member_id: memberId, prompt },
     ),
 
   // ── 메시지 ──
@@ -120,9 +120,9 @@ export const teamsApi = {
     );
   },
 
-  sendMessage: (teamId: string, fromSessionId: string, data: SendMessageRequest) =>
+  sendMessage: (teamId: string, data: SendMessageRequest) =>
     api.post<TeamMessageInfo>(
-      `/api/teams/${teamId}/messages?from_session_id=${fromSessionId}`,
+      `/api/teams/${teamId}/messages`,
       data,
     ),
 

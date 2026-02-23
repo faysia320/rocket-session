@@ -9,7 +9,7 @@ import type { TeamMemberInfo, TeamMessageInfo } from "@/types";
 interface TeamMessagePanelProps {
   teamId: string;
   members: TeamMemberInfo[];
-  leadSessionId: string | null;
+  leadMemberId: number | null;
 }
 
 const typeColors: Record<string, string> = {
@@ -27,8 +27,8 @@ function MessageBubble({
   msg: TeamMessageInfo;
   members: TeamMemberInfo[];
 }) {
-  const member = members.find((m) => m.session_id === msg.from_session_id);
-  const name = msg.from_nickname || member?.nickname || msg.from_session_id.slice(0, 8);
+  const member = members.find((m) => m.id === msg.from_member_id);
+  const name = msg.from_nickname || member?.nickname || `멤버#${msg.from_member_id}`;
   const isLead = member?.role === "lead";
 
   return (
@@ -62,7 +62,7 @@ function MessageBubble({
 export function TeamMessagePanel({
   teamId,
   members,
-  leadSessionId,
+  leadMemberId,
 }: TeamMessagePanelProps) {
   const { messages, isLoading, sendMessage, isSending } =
     useTeamMessages(teamId);
@@ -80,16 +80,16 @@ export function TeamMessagePanel({
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text) return;
-    // 리드 세션 ID가 있으면 리드로 전송, 아니면 첫 번째 멤버
-    const fromId = leadSessionId || members[0]?.session_id;
-    if (!fromId) return;
+    // 리드 멤버 ID가 있으면 리드로 전송, 아니면 첫 번째 멤버
+    const fromId = leadMemberId || members[0]?.id;
+    if (fromId == null) return;
 
     await sendMessage({
-      fromSessionId: fromId,
-      data: { content: text },
+      from_member_id: fromId,
+      content: text,
     });
     setInput("");
-  }, [input, leadSessionId, members, sendMessage]);
+  }, [input, leadMemberId, members, sendMessage]);
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">

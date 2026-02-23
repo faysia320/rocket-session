@@ -5,12 +5,18 @@
 export interface TeamMemberInfo {
   id: number;
   team_id: string;
-  session_id: string;
   role: "lead" | "member";
-  nickname: string | null;
-  joined_at: string;
-  session_status: string | null;
-  session_name: string | null;
+  nickname: string;
+  description: string | null;
+  system_prompt: string | null;
+  allowed_tools: string | null;
+  disallowed_tools: string | null;
+  model: string | null;
+  max_turns: number | null;
+  max_budget_usd: number | null;
+  mcp_server_ids: string[] | null;
+  created_at: string;
+  updated_at: string | null;
 }
 
 export interface TaskSummary {
@@ -26,8 +32,7 @@ export interface TeamInfo {
   name: string;
   description: string | null;
   status: "active" | "completed" | "paused" | "archived";
-  lead_session_id: string | null;
-  work_dir: string;
+  lead_member_id: number | null;
   config: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
@@ -40,8 +45,7 @@ export interface TeamListItem {
   name: string;
   description: string | null;
   status: "active" | "completed" | "paused" | "archived";
-  lead_session_id: string | null;
-  work_dir: string;
+  lead_member_id: number | null;
   created_at: string;
   updated_at: string;
   member_count: number;
@@ -50,7 +54,6 @@ export interface TeamListItem {
 
 export interface CreateTeamRequest {
   name: string;
-  work_dir: string;
   description?: string;
   config?: Record<string, unknown>;
 }
@@ -63,22 +66,33 @@ export interface UpdateTeamRequest {
 }
 
 export interface AddTeamMemberRequest {
-  session_id: string;
+  nickname: string;
   role?: "lead" | "member";
-  nickname?: string;
-}
-
-export interface CreateMemberSessionRequest {
-  nickname?: string;
-  role?: "lead" | "member";
-  allowed_tools?: string;
+  description?: string;
   system_prompt?: string;
+  allowed_tools?: string;
+  disallowed_tools?: string;
   model?: string;
   max_turns?: number;
+  max_budget_usd?: number;
+  mcp_server_ids?: string[];
+}
+
+export interface UpdateTeamMemberRequest {
+  nickname?: string;
+  role?: "lead" | "member";
+  description?: string;
+  system_prompt?: string;
+  allowed_tools?: string;
+  disallowed_tools?: string;
+  model?: string;
+  max_turns?: number;
+  max_budget_usd?: number;
+  mcp_server_ids?: string[];
 }
 
 export interface SetLeadRequest {
-  session_id: string;
+  member_id: number;
 }
 
 // ── 태스크 ──
@@ -93,9 +107,11 @@ export interface TeamTaskInfo {
   description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
-  assigned_session_id: string | null;
+  assigned_member_id: number | null;
   assigned_nickname: string | null;
-  created_by_session_id: string | null;
+  created_by_member_id: number | null;
+  work_dir: string;
+  session_id: string | null;
   result_summary: string | null;
   order_index: number;
   depends_on_task_id: number | null;
@@ -107,7 +123,8 @@ export interface CreateTaskRequest {
   title: string;
   description?: string;
   priority?: TaskPriority;
-  assigned_session_id?: string;
+  work_dir: string;
+  assigned_member_id?: number;
   depends_on_task_id?: number;
 }
 
@@ -116,7 +133,8 @@ export interface UpdateTaskRequest {
   description?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
-  assigned_session_id?: string;
+  work_dir?: string;
+  assigned_member_id?: number;
   order_index?: number;
 }
 
@@ -125,7 +143,7 @@ export interface CompleteTaskRequest {
 }
 
 export interface DelegateTaskRequest {
-  target_session_id: string;
+  member_id?: number;
   prompt?: string;
 }
 
@@ -136,8 +154,8 @@ export type TeamMessageType = "info" | "task_update" | "request" | "result" | "d
 export interface TeamMessageInfo {
   id: number;
   team_id: string;
-  from_session_id: string;
-  to_session_id: string | null;
+  from_member_id: number;
+  to_member_id: number | null;
   content: string;
   message_type: TeamMessageType;
   metadata_json: string | null;
@@ -147,8 +165,9 @@ export interface TeamMessageInfo {
 }
 
 export interface SendMessageRequest {
+  from_member_id: number;
   content: string;
-  to_session_id?: string;
+  to_member_id?: number;
   message_type?: TeamMessageType;
   metadata_json?: string;
 }

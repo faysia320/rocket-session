@@ -102,7 +102,7 @@ export type {
   CreateTeamRequest,
   UpdateTeamRequest,
   AddTeamMemberRequest,
-  CreateMemberSessionRequest,
+  UpdateTeamMemberRequest,
   SetLeadRequest,
   TaskStatus,
   TaskPriority,

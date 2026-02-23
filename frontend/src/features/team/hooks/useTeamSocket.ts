@@ -10,9 +10,9 @@ export type TeamWsEvent =
   | { type: "team_task_created"; team_id: string; task_id: number; task_title: string }
   | { type: "team_task_updated"; team_id: string; task_id: number }
   | { type: "team_task_completed"; team_id: string; task_id: number; task_title: string; session_id: string; result_summary: string | null }
-  | { type: "team_task_delegated"; team_id: string; task_id: number; task_title: string; target_session_id: string }
-  | { type: "team_member_joined"; team_id: string; session_id: string }
-  | { type: "team_member_left"; team_id: string; session_id: string }
+  | { type: "team_task_delegated"; team_id: string; task_id: number; task_title: string; member_id: number }
+  | { type: "team_member_joined"; team_id: string; member_id: number }
+  | { type: "team_member_left"; team_id: string; member_id: number }
   | { type: "team_status_changed"; team_id: string; status: string }
   | { type: "team_message"; team_id: string; message: Record<string, unknown> }
   | { type: "ping" }
@@ -129,13 +129,13 @@ export function useTeamSocket(teamId: string | undefined) {
 
   /** WebSocket을 통해 위임 명령 전송. */
   const sendDelegate = useCallback(
-    (taskId: number, targetSessionId: string, prompt?: string) => {
+    (taskId: number, memberId?: number, prompt?: string) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
       wsRef.current.send(
         JSON.stringify({
           type: "delegate",
           task_id: taskId,
-          target_session_id: targetSessionId,
+          member_id: memberId,
           prompt,
         }),
       );

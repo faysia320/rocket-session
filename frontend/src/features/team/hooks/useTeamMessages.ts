@@ -17,13 +17,8 @@ export function useTeamMessages(teamId: string) {
   });
 
   const sendMutation = useMutation({
-    mutationFn: ({
-      fromSessionId,
-      data,
-    }: {
-      fromSessionId: string;
-      data: SendMessageRequest;
-    }) => teamsApi.sendMessage(teamId, fromSessionId, data),
+    mutationFn: (data: SendMessageRequest) =>
+      teamsApi.sendMessage(teamId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teamKeys.messages(teamId) });
     },
