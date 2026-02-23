@@ -12,8 +12,9 @@ from app.schemas.filesystem import (
     GitInfo,
     GitLogResponse,
     GitStatusResponse,
+    PRReviewJobResponse,
     PRReviewRequest,
-    PRReviewResponse,
+    PRReviewStatusResponse,
     PRReviewSubmitRequest,
     PRReviewSubmitResponse,
     SkillListResponse,
@@ -190,16 +191,28 @@ async def get_github_pr_diff(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/gh-pr-review", response_model=PRReviewResponse)
+@router.post("/gh-pr-review", response_model=PRReviewJobResponse)
 async def generate_pr_review(
     req: PRReviewRequest,
     fs: FilesystemService = Depends(get_filesystem_service),
 ):
-    """Claude Code로 PR 리뷰 생성."""
+    """PR 리뷰 비동기 작업 생성."""
     try:
-        return await fs.generate_pr_review(req.path, req.pr_number)
+        return await fs.request_pr_review(req.path, req.pr_number)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/gh-pr-review-status/{job_id}", response_model=PRReviewStatusResponse)
+async def get_pr_review_status(
+    job_id: str,
+    fs: FilesystemService = Depends(get_filesystem_service),
+):
+    """PR 리뷰 작업 상태 조회."""
+    try:
+        return fs.get_pr_review_status(job_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/gh-pr-review-submit", response_model=PRReviewSubmitResponse)

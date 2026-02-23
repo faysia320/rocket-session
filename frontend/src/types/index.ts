@@ -52,6 +52,8 @@ export type {
   GitHubPRComment,
   GitHubPRDetail,
   PRReviewResponse,
+  PRReviewJobResponse,
+  PRReviewStatusResponse,
   PRReviewSubmitResponse,
 } from "./filesystem";
 export type {

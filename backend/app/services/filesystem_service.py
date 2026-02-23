@@ -2,11 +2,13 @@
 
 import asyncio
 from collections import OrderedDict
+from dataclasses import dataclass, field
 import json
 import logging
 import os
 import subprocess
 import time
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -24,7 +26,9 @@ from app.schemas.filesystem import (
     GitLogResponse,
     GitStatusFile,
     GitStatusResponse,
+    PRReviewJobResponse,
     PRReviewResponse,
+    PRReviewStatusResponse,
     PRReviewSubmitResponse,
     SkillInfo,
     SkillListResponse,
@@ -33,6 +37,16 @@ from app.schemas.filesystem import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _ReviewJob:
+    """PR 리뷰 백그라운드 작업 상태."""
+
+    status: str = "pending"  # "pending" | "completed" | "error"
+    review_text: str = ""
+    error: str = ""
+    created_at: float = field(default_factory=time.time)
 
 
 class FilesystemService:
@@ -58,6 +72,8 @@ class FilesystemService:
         self._git_cache_ttl: float = 10.0  # 10초 TTL
         # 동일 레포에 대한 동시 git 명령 직렬화 (index.lock 경합 방지)
         self._git_locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
+        # PR 리뷰 비동기 작업 저장소
+        self._review_jobs: dict[str, _ReviewJob] = {}
         # 탐색 경계: 이 디렉토리 상위로는 이동 불가
         self._root_dir: Path | None = None
         if root_dir:
@@ -349,6 +365,44 @@ class FilesystemService:
             )
 
         return WorktreeListResponse(worktrees=worktrees)
+
+    async def create_claude_worktree(
+        self, repo_path: str, worktree_name: str
+    ) -> str:
+        """claude -w 방식의 워크트리를 미리 생성합니다.
+
+        repo_path: 레포 루트 경로
+        worktree_name: 워크트리 이름
+        Returns: 생성된 워크트리 경로
+        """
+        validated_repo = self._validate_path(repo_path)
+        if not self._is_within_root(validated_repo):
+            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+        cwd = str(validated_repo)
+
+        worktree_path = os.path.join(cwd, ".claude", "worktrees", worktree_name)
+        branch_name = f"worktree-{worktree_name}"
+
+        # 이미 존재하면 경로만 반환
+        if os.path.isdir(worktree_path):
+            return worktree_path
+
+        # .claude/worktrees 디렉토리 보장
+        os.makedirs(os.path.join(cwd, ".claude", "worktrees"), exist_ok=True)
+
+        # git worktree add -b worktree-<name> <path>
+        returncode, _, stderr = await self._run_git_command(
+            "worktree",
+            "add",
+            "-b",
+            branch_name,
+            worktree_path,
+            cwd=cwd,
+        )
+        if returncode != 0:
+            raise RuntimeError(f"워크트리 생성 실패: {stderr}")
+
+        return worktree_path
 
     async def remove_claude_worktree(
         self, repo_path: str, worktree_name: str, force: bool = False
@@ -946,6 +1000,58 @@ class FilesystemService:
             )
 
         return PRReviewResponse(review_text=stdout)
+
+    async def request_pr_review(
+        self, path: str, pr_number: int
+    ) -> PRReviewJobResponse:
+        """PR 리뷰 비동기 작업 생성 + 백그라운드 실행 시작."""
+        self._cleanup_old_review_jobs()
+        job_id = str(uuid.uuid4())
+        self._review_jobs[job_id] = _ReviewJob()
+        asyncio.create_task(self._run_pr_review(job_id, path, pr_number))
+        return PRReviewJobResponse(job_id=job_id, status="pending")
+
+    def get_pr_review_status(self, job_id: str) -> PRReviewStatusResponse:
+        """PR 리뷰 작업 상태 조회."""
+        job = self._review_jobs.get(job_id)
+        if not job:
+            raise ValueError(f"리뷰 작업을 찾을 수 없습니다: {job_id}")
+        return PRReviewStatusResponse(
+            job_id=job_id,
+            status=job.status,
+            review_text=job.review_text,
+            error=job.error,
+        )
+
+    async def _run_pr_review(
+        self, job_id: str, path: str, pr_number: int
+    ) -> None:
+        """백그라운드에서 실제 리뷰 생성 (기존 generate_pr_review 활용)."""
+        try:
+            result = await self.generate_pr_review(path, pr_number)
+            job = self._review_jobs.get(job_id)
+            if job is None:
+                return
+            if result.error:
+                job.status = "error"
+                job.error = result.error
+            else:
+                job.status = "completed"
+                job.review_text = result.review_text
+        except Exception as e:
+            job = self._review_jobs.get(job_id)
+            if job is not None:
+                job.status = "error"
+                job.error = str(e)
+
+    def _cleanup_old_review_jobs(self) -> None:
+        """1시간 이상 된 완료/에러 작업 정리."""
+        cutoff = time.time() - 3600
+        expired = [
+            jid for jid, j in self._review_jobs.items() if j.created_at < cutoff
+        ]
+        for jid in expired:
+            del self._review_jobs[jid]
 
     async def submit_pr_review_comment(
         self, path: str, pr_number: int, body: str

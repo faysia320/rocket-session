@@ -185,6 +185,22 @@ class PRReviewResponse(BaseModel):
     error: Optional[str] = None
 
 
+class PRReviewJobResponse(BaseModel):
+    """PR 리뷰 비동기 작업 생성 응답."""
+
+    job_id: str
+    status: str = "pending"  # pending | completed | error
+
+
+class PRReviewStatusResponse(BaseModel):
+    """PR 리뷰 작업 상태 조회 응답."""
+
+    job_id: str
+    status: str  # pending | completed | error
+    review_text: str = ""
+    error: Optional[str] = None
+
+
 class PRReviewSubmitRequest(BaseModel):
     """PR 리뷰 코멘트 게시 요청."""
 

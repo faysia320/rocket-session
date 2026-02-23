@@ -159,6 +159,18 @@ export interface PRReviewResponse {
   error?: string | null;
 }
 
+export interface PRReviewJobResponse {
+  job_id: string;
+  status: "pending" | "completed" | "error";
+}
+
+export interface PRReviewStatusResponse {
+  job_id: string;
+  status: "pending" | "completed" | "error";
+  review_text: string;
+  error?: string | null;
+}
+
 export interface PRReviewSubmitResponse {
   success: boolean;
   error?: string | null;

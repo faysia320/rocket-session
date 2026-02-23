@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ExternalLink,
@@ -83,6 +83,7 @@ export function GitHubPRDetailView({
   const [activeTab, setActiveTab] = useState<"overview" | "diff" | "ai-review">("overview");
   const [reviewText, setReviewText] = useState<string>("");
   const [reviewError, setReviewError] = useState<string>("");
+  const [reviewJobId, setReviewJobId] = useState<string | null>(null);
 
   const { data: diffText, isLoading: diffLoading } = useQuery({
     queryKey: ["gh-pr-diff", repoPath, prNumber],
@@ -91,17 +92,13 @@ export function GitHubPRDetailView({
     staleTime: 30_000,
   });
 
-  // Claude Code 리뷰 생성 mutation
+  // Phase 1: 리뷰 작업 생성 (즉시 응답)
   const generateReview = useMutation({
     mutationFn: () => filesystemApi.generatePRReview(repoPath, prNumber!),
     onSuccess: (data) => {
-      if (data.error) {
-        setReviewError(data.error);
-        setReviewText("");
-      } else {
-        setReviewText(data.review_text);
-        setReviewError("");
-      }
+      setReviewJobId(data.job_id);
+      setReviewError("");
+      setReviewText("");
     },
     onError: (err: Error) => {
       setReviewError(err.message);
@@ -109,10 +106,35 @@ export function GitHubPRDetailView({
     },
   });
 
+  // Phase 2: 작업 상태 폴링 (3초 간격, pending인 동안)
+  const { data: reviewStatus } = useQuery({
+    queryKey: ["pr-review-status", reviewJobId],
+    queryFn: () => filesystemApi.getPRReviewStatus(reviewJobId!),
+    enabled: !!reviewJobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "pending" ? 3000 : false;
+    },
+  });
+
+  // 상태 변화 반영
+  useEffect(() => {
+    if (!reviewStatus) return;
+    if (reviewStatus.status === "completed") {
+      setReviewText(reviewStatus.review_text);
+      setReviewJobId(null);
+    } else if (reviewStatus.status === "error") {
+      setReviewError(reviewStatus.error || "리뷰 생성 실패");
+      setReviewJobId(null);
+    }
+  }, [reviewStatus]);
+
+  const isReviewLoading =
+    generateReview.isPending || (!!reviewJobId && reviewStatus?.status === "pending");
+
   // 리뷰 코멘트 게시 mutation
   const submitReview = useMutation({
-    mutationFn: (body: string) =>
-      filesystemApi.submitPRReviewComment(repoPath, prNumber!, body),
+    mutationFn: (body: string) => filesystemApi.submitPRReviewComment(repoPath, prNumber!, body),
     onSuccess: (data) => {
       if (data.error) {
         toast.error(`코멘트 게시 실패: ${data.error}`);
@@ -323,15 +345,15 @@ export function GitHubPRDetailView({
                     size="sm"
                     className="gap-1.5 font-mono text-xs"
                     onClick={handleGenerateReview}
-                    disabled={generateReview.isPending}
+                    disabled={isReviewLoading}
                     aria-label="AI 리뷰 생성"
                   >
-                    {generateReview.isPending ? (
+                    {isReviewLoading ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
                       <Bot className="h-3 w-3" />
                     )}
-                    {generateReview.isPending ? "리뷰 생성 중…" : "AI 리뷰 생성"}
+                    {isReviewLoading ? "리뷰 생성 중…" : "AI 리뷰 생성"}
                   </Button>
                   {reviewText ? (
                     <>
@@ -340,7 +362,7 @@ export function GitHubPRDetailView({
                         size="sm"
                         className="gap-1.5 font-mono text-xs"
                         onClick={handleGenerateReview}
-                        disabled={generateReview.isPending}
+                        disabled={isReviewLoading}
                         aria-label="리뷰 재생성"
                       >
                         <RefreshCw className="h-3 w-3" />
@@ -376,7 +398,7 @@ export function GitHubPRDetailView({
                 </div>
 
                 {/* 리뷰 생성 중 안내 */}
-                {generateReview.isPending ? (
+                {isReviewLoading ? (
                   <div className="flex flex-col items-center justify-center py-12 gap-3">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <div className="font-mono text-sm text-muted-foreground text-center">
@@ -414,7 +436,7 @@ export function GitHubPRDetailView({
                 ) : null}
 
                 {/* 초기 상태 안내 */}
-                {!generateReview.isPending && !reviewText && !reviewError ? (
+                {!isReviewLoading && !reviewText && !reviewError ? (
                   <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
                     <Bot className="h-12 w-12 text-muted-foreground/20" />
                     <div className="font-mono text-sm text-center">
