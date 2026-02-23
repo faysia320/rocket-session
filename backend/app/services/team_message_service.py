@@ -20,9 +20,9 @@ class TeamMessageService:
     async def send_message(
         self,
         team_id: str,
-        from_session_id: str,
+        from_member_id: int,
         content: str,
-        to_session_id: str | None = None,
+        to_member_id: int | None = None,
         message_type: str = "info",
         metadata_json: str | None = None,
     ) -> TeamMessageInfo:
@@ -31,8 +31,8 @@ class TeamMessageService:
             repo = TeamMessageRepository(session)
             msg = TeamMessage(
                 team_id=team_id,
-                from_session_id=from_session_id,
-                to_session_id=to_session_id,
+                from_member_id=from_member_id,
+                to_member_id=to_member_id,
                 content=content,
                 message_type=message_type,
                 metadata_json=metadata_json,
@@ -44,20 +44,20 @@ class TeamMessageService:
 
             # 닉네임 조회
             member_repo = TeamMemberRepository(session)
-            members = await member_repo.get_members(team_id)
-            nickname_map = {m.session_id: m.nickname for m in members}
+            member = await member_repo.get_member_by_id(from_member_id)
+            from_nickname = member.nickname if member else None
 
             return TeamMessageInfo(
                 id=msg.id,
                 team_id=msg.team_id,
-                from_session_id=msg.from_session_id,
-                to_session_id=msg.to_session_id,
+                from_member_id=msg.from_member_id,
+                to_member_id=msg.to_member_id,
                 content=msg.content,
                 message_type=msg.message_type,
                 metadata_json=msg.metadata_json,
                 is_read=msg.is_read,
                 created_at=msg.created_at,
-                from_nickname=nickname_map.get(msg.from_session_id),
+                from_nickname=from_nickname,
             )
 
     async def list_messages(
@@ -74,20 +74,20 @@ class TeamMessageService:
             # 닉네임 맵 구성
             member_repo = TeamMemberRepository(session)
             members = await member_repo.get_members(team_id)
-            nickname_map = {m.session_id: m.nickname for m in members}
+            nickname_map = {m.id: m.nickname for m in members}
 
             return [
                 TeamMessageInfo(
                     id=m.id,
                     team_id=m.team_id,
-                    from_session_id=m.from_session_id,
-                    to_session_id=m.to_session_id,
+                    from_member_id=m.from_member_id,
+                    to_member_id=m.to_member_id,
                     content=m.content,
                     message_type=m.message_type,
                     metadata_json=m.metadata_json,
                     is_read=m.is_read,
                     created_at=m.created_at,
-                    from_nickname=nickname_map.get(m.from_session_id),
+                    from_nickname=nickname_map.get(m.from_member_id),
                 )
                 for m in messages
             ]
@@ -100,8 +100,8 @@ class TeamMessageService:
             await session.commit()
             return count
 
-    async def get_unread_count(self, team_id: str, session_id: str) -> int:
+    async def get_unread_count(self, team_id: str, member_id: int) -> int:
         """안 읽은 메시지 수."""
         async with self._db.session() as session:
             repo = TeamMessageRepository(session)
-            return await repo.get_unread_count(team_id, session_id)
+            return await repo.get_unread_count(team_id, member_id)

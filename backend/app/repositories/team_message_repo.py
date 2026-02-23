@@ -39,15 +39,15 @@ class TeamMessageRepository(BaseRepository[TeamMessage]):
         return result.rowcount
 
     async def get_unread_count(
-        self, team_id: str, session_id: str
+        self, team_id: str, member_id: int
     ) -> int:
-        """특정 세션의 안 읽은 메시지 수."""
+        """특정 멤버의 안 읽은 메시지 수."""
         stmt = (
             select(func.count(TeamMessage.id))
             .where(
                 TeamMessage.team_id == team_id,
                 TeamMessage.is_read == False,  # noqa: E712
-                TeamMessage.from_session_id != session_id,
+                TeamMessage.from_member_id != member_id,
             )
         )
         result = await self._session.execute(stmt)

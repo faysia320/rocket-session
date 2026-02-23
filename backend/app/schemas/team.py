@@ -13,12 +13,18 @@ from pydantic import BaseModel, Field
 class TeamMemberInfo(BaseModel):
     id: int
     team_id: str
-    session_id: str
     role: str
-    nickname: str | None = None
-    joined_at: str
-    session_status: str | None = None
-    session_name: str | None = None
+    nickname: str
+    description: str | None = None
+    system_prompt: str | None = None
+    allowed_tools: str | None = None
+    disallowed_tools: str | None = None
+    model: str | None = None
+    max_turns: int | None = None
+    max_budget_usd: float | None = None
+    mcp_server_ids: list[str] | None = None
+    created_at: str
+    updated_at: str
 
 
 class TaskSummary(BaseModel):
@@ -34,8 +40,7 @@ class TeamInfo(BaseModel):
     name: str
     description: str | None = None
     status: str
-    lead_session_id: str | None = None
-    work_dir: str
+    lead_member_id: int | None = None
     config: dict | None = None
     created_at: str
     updated_at: str
@@ -48,8 +53,7 @@ class TeamListItem(BaseModel):
     name: str
     description: str | None = None
     status: str
-    lead_session_id: str | None = None
-    work_dir: str
+    lead_member_id: int | None = None
     created_at: str
     updated_at: str
     member_count: int = 0
@@ -61,7 +65,6 @@ class TeamListItem(BaseModel):
 
 class CreateTeamRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    work_dir: str = Field(..., min_length=1)
     description: Optional[str] = None
     config: Optional[dict] = None
 
@@ -74,22 +77,33 @@ class UpdateTeamRequest(BaseModel):
 
 
 class AddTeamMemberRequest(BaseModel):
-    session_id: str
+    nickname: str = Field(..., min_length=1, max_length=50)
     role: Literal["lead", "member"] = "member"
-    nickname: Optional[str] = Field(None, max_length=50)
-
-
-class CreateMemberSessionRequest(BaseModel):
-    nickname: Optional[str] = Field(None, max_length=50)
-    role: Literal["lead", "member"] = "member"
-    allowed_tools: Optional[str] = None
+    description: Optional[str] = None
     system_prompt: Optional[str] = None
+    allowed_tools: Optional[str] = None
+    disallowed_tools: Optional[str] = None
     model: Optional[str] = None
     max_turns: Optional[int] = None
+    max_budget_usd: Optional[float] = None
+    mcp_server_ids: Optional[list[str]] = None
+
+
+class UpdateTeamMemberRequest(BaseModel):
+    nickname: Optional[str] = Field(None, min_length=1, max_length=50)
+    role: Optional[Literal["lead", "member"]] = None
+    description: Optional[str] = None
+    system_prompt: Optional[str] = None
+    allowed_tools: Optional[str] = None
+    disallowed_tools: Optional[str] = None
+    model: Optional[str] = None
+    max_turns: Optional[int] = None
+    max_budget_usd: Optional[float] = None
+    mcp_server_ids: Optional[list[str]] = None
 
 
 class SetLeadRequest(BaseModel):
-    session_id: str
+    member_id: int
 
 
 # ── 태스크 스키마 ──
@@ -102,9 +116,11 @@ class TeamTaskInfo(BaseModel):
     description: str | None = None
     status: str
     priority: str
-    assigned_session_id: str | None = None
+    assigned_member_id: int | None = None
     assigned_nickname: str | None = None
-    created_by_session_id: str | None = None
+    created_by_member_id: int | None = None
+    work_dir: str
+    session_id: str | None = None
     result_summary: str | None = None
     order_index: int = 0
     depends_on_task_id: int | None = None
@@ -116,7 +132,8 @@ class CreateTaskRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     priority: Literal["low", "medium", "high"] = "medium"
-    assigned_session_id: Optional[str] = None
+    work_dir: str = Field(..., min_length=1)
+    assigned_member_id: Optional[int] = None
     depends_on_task_id: Optional[int] = None
 
 
@@ -127,7 +144,8 @@ class UpdateTaskRequest(BaseModel):
         Literal["pending", "in_progress", "completed", "failed", "cancelled"]
     ] = None
     priority: Optional[Literal["low", "medium", "high"]] = None
-    assigned_session_id: Optional[str] = None
+    work_dir: Optional[str] = None
+    assigned_member_id: Optional[int] = None
     order_index: Optional[int] = None
 
 
@@ -140,7 +158,7 @@ class CompleteTaskRequest(BaseModel):
 
 
 class DelegateTaskRequest(BaseModel):
-    target_session_id: str
+    member_id: Optional[int] = None
     prompt: Optional[str] = None
 
 
@@ -150,8 +168,8 @@ class DelegateTaskRequest(BaseModel):
 class TeamMessageInfo(BaseModel):
     id: int
     team_id: str
-    from_session_id: str
-    to_session_id: str | None = None
+    from_member_id: int
+    to_member_id: int | None = None
     content: str
     message_type: str
     metadata_json: str | None = None
@@ -162,7 +180,8 @@ class TeamMessageInfo(BaseModel):
 
 class SendMessageRequest(BaseModel):
     content: str = Field(..., min_length=1, max_length=5000)
-    to_session_id: Optional[str] = None
+    from_member_id: int
+    to_member_id: Optional[int] = None
     message_type: Literal[
         "info", "task_update", "request", "result", "delegate"
     ] = "info"

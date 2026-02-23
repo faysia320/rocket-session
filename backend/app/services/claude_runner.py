@@ -496,19 +496,17 @@ class ClaudeRunner:
                 coordinator = get_team_coordinator()
                 commands = coordinator.parse_delegate_commands(turn_state["text"])
                 if commands:
-                    # 이 세션이 속한 팀에서 리드인지 확인
-                    from app.repositories.team_repo import (
-                        TeamMemberRepository,
-                        TeamRepository,
-                    )
+                    # session_id → 태스크 역조회 → 리드 여부 확인
+                    from app.repositories.team_repo import TeamRepository
+                    from app.repositories.team_task_repo import TeamTaskRepository
 
                     async with coordinator._db.session() as db_sess:
-                        m_repo = TeamMemberRepository(db_sess)
-                        teams = await m_repo.get_teams_by_session(session_id)
-                        t_repo = TeamRepository(db_sess)
-                        for t_info in teams:
-                            team = await t_repo.get_by_id(t_info["team_id"])
-                            if team and team.lead_session_id == session_id:
+                        task_repo = TeamTaskRepository(db_sess)
+                        tasks = await task_repo.get_tasks_by_session_id(session_id)
+                        team_repo = TeamRepository(db_sess)
+                        for task in tasks:
+                            team = await team_repo.get_by_id(task.team_id)
+                            if team and team.lead_member_id == task.assigned_member_id:
                                 for nickname, desc in commands:
                                     asyncio.create_task(
                                         coordinator.auto_delegate(

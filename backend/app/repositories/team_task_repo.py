@@ -3,7 +3,6 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.team_task import TeamTask
 from app.repositories.base import BaseRepository
@@ -29,7 +28,7 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
         return list(result.scalars().all())
 
     async def claim_task(
-        self, task_id: int, session_id: str
+        self, task_id: int, member_id: int
     ) -> TeamTask | None:
         """태스크 선점 (FOR UPDATE SKIP LOCKED)."""
         stmt = (
@@ -42,7 +41,7 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
             return None
         now = datetime.now(timezone.utc).isoformat()
         task.status = "in_progress"
-        task.assigned_session_id = session_id
+        task.assigned_member_id = member_id
         task.updated_at = now
         await self._session.flush()
         return task
@@ -70,6 +69,37 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
         await self._session.execute(stmt)
         await self._session.flush()
         return await self.get_by_id(task_id)
+
+    async def get_by_session_id(self, session_id: str) -> TeamTask | None:
+        """실행 세션 ID로 태스크 역조회 (in_progress 상태)."""
+        stmt = (
+            select(TeamTask)
+            .where(
+                TeamTask.session_id == session_id,
+                TeamTask.status == "in_progress",
+            )
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_tasks_by_session_id(self, session_id: str) -> list[TeamTask]:
+        """실행 세션 ID로 모든 태스크 조회."""
+        stmt = select(TeamTask).where(TeamTask.session_id == session_id)
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def update_session_id(
+        self, task_id: int, session_id: str
+    ) -> None:
+        """태스크에 실행 세션 ID 기록."""
+        now = datetime.now(timezone.utc).isoformat()
+        stmt = (
+            update(TeamTask)
+            .where(TeamTask.id == task_id)
+            .values(session_id=session_id, updated_at=now)
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()
 
     async def get_dependent_tasks(self, task_id: int) -> list[TeamTask]:
         """특정 태스크에 의존하는 태스크 목록."""

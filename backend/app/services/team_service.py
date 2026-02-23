@@ -18,26 +18,28 @@ logger = logging.getLogger(__name__)
 
 
 class TeamService:
-    """팀 CRUD 및 멤버 관리."""
+    """팀 CRUD 및 멤버(페르소나) 관리."""
 
     def __init__(self, db: Database) -> None:
         self._db = db
 
     @staticmethod
-    def _member_to_info(
-        member: TeamMember,
-        session_status: str | None = None,
-        session_name: str | None = None,
-    ) -> TeamMemberInfo:
+    def _member_to_info(member: TeamMember) -> TeamMemberInfo:
         return TeamMemberInfo(
             id=member.id,
             team_id=member.team_id,
-            session_id=member.session_id,
             role=member.role,
             nickname=member.nickname,
-            joined_at=member.joined_at,
-            session_status=session_status,
-            session_name=session_name,
+            description=member.description,
+            system_prompt=member.system_prompt,
+            allowed_tools=member.allowed_tools,
+            disallowed_tools=member.disallowed_tools,
+            model=member.model,
+            max_turns=member.max_turns,
+            max_budget_usd=member.max_budget_usd,
+            mcp_server_ids=member.mcp_server_ids,
+            created_at=member.created_at,
+            updated_at=member.updated_at,
         )
 
     @staticmethod
@@ -51,8 +53,7 @@ class TeamService:
             name=team.name,
             description=team.description,
             status=team.status,
-            lead_session_id=team.lead_session_id,
-            work_dir=team.work_dir,
+            lead_member_id=team.lead_member_id,
             config=team.config,
             created_at=team.created_at,
             updated_at=team.updated_at,
@@ -71,8 +72,7 @@ class TeamService:
             name=team.name,
             description=team.description,
             status=team.status,
-            lead_session_id=team.lead_session_id,
-            work_dir=team.work_dir,
+            lead_member_id=team.lead_member_id,
             created_at=team.created_at,
             updated_at=team.updated_at,
             member_count=member_count,
@@ -84,7 +84,6 @@ class TeamService:
     async def create_team(
         self,
         name: str,
-        work_dir: str,
         description: str | None = None,
         config: dict | None = None,
     ) -> TeamInfo:
@@ -95,7 +94,6 @@ class TeamService:
             team = Team(
                 id=team_id,
                 name=name,
-                work_dir=work_dir,
                 description=description,
                 status="active",
                 config=config,
@@ -114,21 +112,7 @@ class TeamService:
                 return None
             member_repo = TeamMemberRepository(session)
             members = await member_repo.get_members(team_id)
-
-            # 세션 상태 조회
-            from app.repositories.session_repo import SessionRepository
-
-            session_repo = SessionRepository(session)
-            member_infos = []
-            for m in members:
-                s = await session_repo.get_by_id(m.session_id)
-                member_infos.append(
-                    self._member_to_info(
-                        m,
-                        session_status=s.status if s else None,
-                        session_name=s.name if s else None,
-                    )
-                )
+            member_infos = [self._member_to_info(m) for m in members]
             return self._team_to_info(team, members=member_infos)
 
     async def list_teams(
@@ -153,7 +137,6 @@ class TeamService:
             if not team:
                 return None
             await session.commit()
-            # 간소화된 반환 (멤버 없이)
             return self._team_to_info(team)
 
     async def delete_team(self, team_id: str) -> bool:
@@ -163,18 +146,24 @@ class TeamService:
             await session.commit()
             return deleted
 
-    # ── 멤버 관리 ──
+    # ── 멤버(페르소나) 관리 ──
 
     async def add_member(
         self,
         team_id: str,
-        session_id: str,
+        nickname: str,
         role: str = "member",
-        nickname: str | None = None,
+        description: str | None = None,
+        system_prompt: str | None = None,
+        allowed_tools: str | None = None,
+        disallowed_tools: str | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        mcp_server_ids: list | None = None,
     ) -> TeamMemberInfo:
         now = datetime.now(timezone.utc).isoformat()
         async with self._db.session() as session:
-            # 팀 존재 확인
             team_repo = TeamRepository(session)
             team = await team_repo.get_by_id(team_id)
             if not team:
@@ -182,60 +171,81 @@ class TeamService:
 
             member_repo = TeamMemberRepository(session)
             member = await member_repo.add_member(
-                team_id, session_id, role, nickname, now
+                team_id=team_id,
+                nickname=nickname,
+                role=role,
+                description=description,
+                system_prompt=system_prompt,
+                allowed_tools=allowed_tools,
+                disallowed_tools=disallowed_tools,
+                model=model,
+                max_turns=max_turns,
+                max_budget_usd=max_budget_usd,
+                mcp_server_ids=mcp_server_ids,
+                created_at=now,
             )
 
-            # 리드 역할이면 팀의 lead_session_id 업데이트
+            # 리드 역할이면 팀의 lead_member_id 업데이트
             if role == "lead":
                 await team_repo.update_team(
                     team_id,
-                    lead_session_id=session_id,
+                    lead_member_id=member.id,
                     updated_at=now,
                 )
 
             await session.commit()
             return self._member_to_info(member)
 
-    async def remove_member(self, team_id: str, session_id: str) -> bool:
+    async def update_member(
+        self, team_id: str, member_id: int, **kwargs
+    ) -> TeamMemberInfo | None:
+        now = datetime.now(timezone.utc).isoformat()
+        kwargs["updated_at"] = now
         async with self._db.session() as session:
             member_repo = TeamMemberRepository(session)
-            removed = await member_repo.remove_member(team_id, session_id)
+            member = await member_repo.update_member(member_id, **kwargs)
+            if not member or member.team_id != team_id:
+                return None
+            await session.commit()
+            return self._member_to_info(member)
 
-            if removed:
-                # 리드가 제거되면 lead_session_id 초기화
-                team_repo = TeamRepository(session)
-                team = await team_repo.get_by_id(team_id)
-                if team and team.lead_session_id == session_id:
-                    now = datetime.now(timezone.utc).isoformat()
-                    await team_repo.update_team(
-                        team_id, lead_session_id=None, updated_at=now
-                    )
+    async def remove_member(self, team_id: str, member_id: int) -> bool:
+        async with self._db.session() as session:
+            member_repo = TeamMemberRepository(session)
+            # 리드가 제거되면 lead_member_id 초기화
+            team_repo = TeamRepository(session)
+            team = await team_repo.get_by_id(team_id)
+            if team and team.lead_member_id == member_id:
+                now = datetime.now(timezone.utc).isoformat()
+                await team_repo.update_team(
+                    team_id, lead_member_id=None, updated_at=now
+                )
 
+            removed = await member_repo.remove_member(team_id, member_id)
             await session.commit()
             return removed
 
-    async def set_lead(self, team_id: str, session_id: str) -> TeamInfo | None:
+    async def set_lead(self, team_id: str, member_id: int) -> TeamInfo | None:
         now = datetime.now(timezone.utc).isoformat()
         async with self._db.session() as session:
             team_repo = TeamRepository(session)
             member_repo = TeamMemberRepository(session)
 
-            # 멤버 확인
-            member = await member_repo.get_member(team_id, session_id)
-            if not member:
-                raise ValueError("해당 세션은 팀 멤버가 아닙니다")
+            member = await member_repo.get_member_by_id(member_id)
+            if not member or member.team_id != team_id:
+                raise ValueError("해당 멤버를 찾을 수 없습니다")
 
             # 기존 리드를 member로 변경
             team = await team_repo.get_by_id(team_id)
             if not team:
                 return None
-            if team.lead_session_id and team.lead_session_id != session_id:
-                await member_repo.update_role(team_id, team.lead_session_id, "member")
+            if team.lead_member_id and team.lead_member_id != member_id:
+                await member_repo.update_role(team_id, team.lead_member_id, "member")
 
             # 새 리드 설정
-            await member_repo.update_role(team_id, session_id, "lead")
+            await member_repo.update_role(team_id, member_id, "lead")
             team = await team_repo.update_team(
-                team_id, lead_session_id=session_id, updated_at=now
+                team_id, lead_member_id=member_id, updated_at=now
             )
             await session.commit()
             return self._team_to_info(team) if team else None
@@ -244,24 +254,4 @@ class TeamService:
         async with self._db.session() as session:
             member_repo = TeamMemberRepository(session)
             members = await member_repo.get_members(team_id)
-
-            from app.repositories.session_repo import SessionRepository
-
-            session_repo = SessionRepository(session)
-            result = []
-            for m in members:
-                s = await session_repo.get_by_id(m.session_id)
-                result.append(
-                    self._member_to_info(
-                        m,
-                        session_status=s.status if s else None,
-                        session_name=s.name if s else None,
-                    )
-                )
-            return result
-
-    async def get_teams_by_session(self, session_id: str) -> list[dict]:
-        """세션이 속한 팀 목록."""
-        async with self._db.session() as session:
-            member_repo = TeamMemberRepository(session)
-            return await member_repo.get_teams_by_session(session_id)
+            return [self._member_to_info(m) for m in members]

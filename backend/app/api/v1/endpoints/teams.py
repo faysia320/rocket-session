@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from starlette.websockets import WebSocketState
 
 from app.api.dependencies import (
-    get_session_manager,
     get_team_coordinator,
     get_team_message_service,
     get_team_service,
@@ -17,7 +16,6 @@ from app.api.dependencies import (
 from app.schemas.team import (
     AddTeamMemberRequest,
     CompleteTaskRequest,
-    CreateMemberSessionRequest,
     CreateTaskRequest,
     CreateTeamRequest,
     DelegateTaskRequest,
@@ -31,9 +29,9 @@ from app.schemas.team import (
     TeamMessageInfo,
     TeamTaskInfo,
     UpdateTaskRequest,
+    UpdateTeamMemberRequest,
     UpdateTeamRequest,
 )
-from app.services.session_manager import SessionManager
 from app.services.team_coordinator import TeamCoordinator
 from app.services.team_message_service import TeamMessageService
 from app.services.team_service import TeamService
@@ -62,7 +60,6 @@ async def create_team(
 ):
     return await service.create_team(
         name=req.name,
-        work_dir=req.work_dir,
         description=req.description,
         config=req.config,
     )
@@ -122,61 +119,49 @@ async def add_member(
     req: AddTeamMemberRequest,
     service: TeamService = Depends(get_team_service),
 ):
+    """페르소나 정의로 멤버 추가."""
     try:
         return await service.add_member(
             team_id=team_id,
-            session_id=req.session_id,
-            role=req.role,
             nickname=req.nickname,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.post(
-    "/{team_id}/members/create",
-    response_model=TeamMemberInfo,
-    status_code=201,
-)
-async def create_member_session(
-    team_id: str,
-    req: CreateMemberSessionRequest,
-    service: TeamService = Depends(get_team_service),
-    session_manager: SessionManager = Depends(get_session_manager),
-):
-    """새 세션을 생성하고 팀 멤버로 추가."""
-    team = await service.get_team(team_id)
-    if not team:
-        raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
-
-    # 팀의 work_dir 상속하여 세션 생성
-    session_data = await session_manager.create(
-        work_dir=team.work_dir,
-        allowed_tools=req.allowed_tools or "",
-        system_prompt=req.system_prompt,
-        name=req.nickname,
-        model=req.model,
-        max_turns=req.max_turns,
-    )
-
-    try:
-        return await service.add_member(
-            team_id=team_id,
-            session_id=session_data["id"],
             role=req.role,
-            nickname=req.nickname,
+            description=req.description,
+            system_prompt=req.system_prompt,
+            allowed_tools=req.allowed_tools,
+            disallowed_tools=req.disallowed_tools,
+            model=req.model,
+            max_turns=req.max_turns,
+            max_budget_usd=req.max_budget_usd,
+            mcp_server_ids=req.mcp_server_ids,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/{team_id}/members/{session_id}")
-async def remove_member(
+@router.patch("/{team_id}/members/{member_id}", response_model=TeamMemberInfo)
+async def update_member(
     team_id: str,
-    session_id: str,
+    member_id: int,
+    req: UpdateTeamMemberRequest,
     service: TeamService = Depends(get_team_service),
 ):
-    removed = await service.remove_member(team_id, session_id)
+    """멤버 페르소나 설정 수정."""
+    kwargs = req.model_dump(exclude_unset=True)
+    if not kwargs:
+        raise HTTPException(status_code=400, detail="변경할 필드가 없습니다")
+    member = await service.update_member(team_id, member_id, **kwargs)
+    if not member:
+        raise HTTPException(status_code=404, detail="멤버를 찾을 수 없습니다")
+    return member
+
+
+@router.delete("/{team_id}/members/{member_id}")
+async def remove_member(
+    team_id: str,
+    member_id: int,
+    service: TeamService = Depends(get_team_service),
+):
+    removed = await service.remove_member(team_id, member_id)
     if not removed:
         raise HTTPException(status_code=404, detail="멤버를 찾을 수 없습니다")
     return {"status": "removed"}
@@ -189,7 +174,7 @@ async def set_lead(
     service: TeamService = Depends(get_team_service),
 ):
     try:
-        team = await service.set_lead(team_id, req.session_id)
+        team = await service.set_lead(team_id, req.member_id)
         if not team:
             raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
         return team
@@ -239,7 +224,8 @@ async def create_task(
         title=req.title,
         description=req.description,
         priority=req.priority,
-        assigned_session_id=req.assigned_session_id,
+        work_dir=req.work_dir,
+        assigned_member_id=req.assigned_member_id,
         depends_on_task_id=req.depends_on_task_id,
     )
 
@@ -289,10 +275,10 @@ async def delete_task(
 async def claim_task(
     team_id: str,
     task_id: int,
-    session_id: str,
+    member_id: int,
     service: TeamTaskService = Depends(get_team_task_service),
 ):
-    task = await service.claim_task(task_id, session_id)
+    task = await service.claim_task(task_id, member_id)
     if not task:
         raise HTTPException(
             status_code=409, detail="태스크를 선점할 수 없습니다 (이미 할당됨)"
@@ -333,12 +319,12 @@ async def delegate_task(
     req: DelegateTaskRequest,
     coordinator: TeamCoordinator = Depends(get_team_coordinator),
 ):
-    """태스크를 특정 세션에 위임하여 실행."""
+    """태스크를 멤버에게 위임 → 세션 자동 생성 → Claude 실행."""
     try:
         result = await coordinator.delegate_task(
             team_id=team_id,
             task_id=task_id,
-            target_session_id=req.target_session_id,
+            member_id=req.member_id,
             prompt=req.prompt,
         )
         return result
@@ -357,16 +343,15 @@ async def delegate_task(
 async def send_message(
     team_id: str,
     req: SendMessageRequest,
-    from_session_id: str,
     service: TeamMessageService = Depends(get_team_message_service),
     coordinator: TeamCoordinator = Depends(get_team_coordinator),
 ):
     """팀 메시지 전송."""
     msg = await service.send_message(
         team_id=team_id,
-        from_session_id=from_session_id,
+        from_member_id=req.from_member_id,
         content=req.content,
-        to_session_id=req.to_session_id,
+        to_member_id=req.to_member_id,
         message_type=req.message_type,
         metadata_json=req.metadata_json,
     )
@@ -452,7 +437,7 @@ async def team_websocket_endpoint(
                         result = await coordinator.delegate_task(
                             team_id=team_id,
                             task_id=data["task_id"],
-                            target_session_id=data["target_session_id"],
+                            member_id=data.get("member_id"),
                             prompt=data.get("prompt"),
                         )
                         await websocket.send_json({

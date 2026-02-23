@@ -31,7 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 class TeamCoordinator:
-    """팀 태스크 위임, 세션 완료 콜백, 팀 이벤트 브로드캐스트 조정."""
+    """팀 태스크 위임, 세션 완료 콜백, 팀 이벤트 브로드캐스트 조정.
+
+    재설계: 멤버는 페르소나(역할 정의), 세션은 태스크 위임 시 동적 생성.
+    """
 
     def __init__(
         self,
@@ -65,12 +68,11 @@ class TeamCoordinator:
     # ── 팀 이벤트 브로드캐스트 ──
 
     async def broadcast_team_event(self, team_id: str, event: dict) -> None:
-        """팀 대시보드 WS + 팀 멤버 세션 WS에 이벤트 전파."""
+        """팀 대시보드 WS에 이벤트 전파."""
         event["team_id"] = team_id
         event["timestamp"] = datetime.now(timezone.utc).isoformat()
         payload = json.dumps(event)
 
-        # 1. 팀 대시보드 WS 연결에 직접 전송
         conns = self._team_connections.get(team_id, [])
         closed = []
         for ws in conns:
@@ -84,78 +86,85 @@ class TeamCoordinator:
         for ws in closed:
             self.unregister_team_ws(team_id, ws)
 
-        # 2. 팀 멤버들의 세션 WS에도 전파
-        async with self._db.session() as session:
-            member_repo = TeamMemberRepository(session)
-            members = await member_repo.get_members(team_id)
-        for member in members:
-            await self._ws_manager.broadcast_event(member.session_id, event)
-
-    # ── 태스크 위임 ──
+    # ── 태스크 위임 (세션 동적 생성) ──
 
     async def delegate_task(
         self,
         team_id: str,
         task_id: int,
-        target_session_id: str,
+        member_id: int | None = None,
         prompt: str | None = None,
     ) -> dict:
-        """태스크를 특정 세션에 위임 (태스크 선점 + 프롬프트 전송 + 실행)."""
-        from app.services.team_task_service import TeamTaskService
+        """태스크를 멤버에게 위임. 멤버 설정 + 태스크 work_dir로 세션을 동적 생성."""
+        async with self._db.session() as db_sess:
+            task_repo = TeamTaskRepository(db_sess)
+            task = await task_repo.get_by_id(task_id)
+            if not task:
+                raise ValueError("태스크를 찾을 수 없습니다")
 
-        task_service = TeamTaskService(self._db)
+            # 대상 멤버 결정
+            target_member_id = member_id or task.assigned_member_id
+            if not target_member_id:
+                raise ValueError("위임 대상 멤버가 지정되지 않았습니다")
 
-        # 1. 태스크 선점
-        task_info = await task_service.claim_task(task_id, target_session_id)
-        if not task_info:
-            raise ValueError("태스크를 선점할 수 없습니다 (이미 진행 중이거나 존재하지 않음)")
+            member_repo = TeamMemberRepository(db_sess)
+            member = await member_repo.get_member_by_id(target_member_id)
+            if not member or member.team_id != team_id:
+                raise ValueError("대상 멤버를 찾을 수 없습니다")
 
-        # 2. 대상 세션 상태 확인
-        target_session = await self._session_manager.get(target_session_id)
-        if not target_session:
-            raise ValueError(f"세션 {target_session_id}을(를) 찾을 수 없습니다")
+            # 태스크 선점
+            if task.status == "pending":
+                task = await task_repo.claim_task(task_id, target_member_id)
+                if not task:
+                    raise ValueError("태스크를 선점할 수 없습니다")
+                await db_sess.commit()
 
-        existing_task = self._session_manager.get_runner_task(target_session_id)
-        if existing_task:
-            raise ValueError(f"세션 {target_session_id}이(가) 이미 실행 중입니다")
+        # 세션 동적 생성 (멤버 페르소나 설정 + 태스크 work_dir)
+        session_data = await self._session_manager.create(
+            work_dir=task.work_dir,
+            allowed_tools=member.allowed_tools or "",
+            system_prompt=member.system_prompt,
+            model=member.model,
+            max_turns=member.max_turns,
+            max_budget_usd=member.max_budget_usd,
+            disallowed_tools=member.disallowed_tools,
+            mcp_server_ids=member.mcp_server_ids,
+            name=f"[Team] {member.nickname} - {task.title[:40]}",
+        )
+        new_session_id = session_data["id"]
 
-        # 3. 프롬프트 구성
-        delegate_prompt = prompt or task_info.description or task_info.title
+        # 태스크에 세션 ID 기록
+        async with self._db.session() as db_sess:
+            task_repo = TeamTaskRepository(db_sess)
+            await task_repo.update_session_id(task_id, new_session_id)
+            await db_sess.commit()
 
-        # 4. 위임 이벤트 브로드캐스트
+        # 프롬프트 구성
+        delegate_prompt = prompt or task.description or task.title
+
+        # 위임 이벤트 브로드캐스트
         await self.broadcast_team_event(
             team_id,
             {
                 "type": WsEventType.TEAM_TASK_DELEGATED,
                 "task_id": task_id,
-                "task_title": task_info.title,
-                "target_session_id": target_session_id,
+                "task_title": task.title,
+                "member_id": target_member_id,
+                "member_nickname": member.nickname,
+                "session_id": new_session_id,
             },
         )
 
-        # 5. 세션에 프롬프트 전송 (Claude 실행)
-        from app.api.dependencies import get_mcp_service, get_settings_service
-
-        settings_service = get_settings_service()
-        global_settings = await settings_service.get()
-
-        allowed_tools = (
-            target_session.get("allowed_tools")
-            or global_settings.get("allowed_tools")
-            or ""
-        )
-        mode = target_session.get("mode") or global_settings.get("mode") or "normal"
-
-        # 메시지 저장
+        # 메시지 저장 + 전송
         ts = datetime.now(timezone.utc).isoformat()
         await self._session_manager.add_message(
-            session_id=target_session_id,
+            session_id=new_session_id,
             role="user",
             content=delegate_prompt,
             timestamp=ts,
         )
         await self._ws_manager.broadcast_event(
-            target_session_id,
+            new_session_id,
             {
                 "type": WsEventType.USER_MESSAGE,
                 "message": {
@@ -167,7 +176,12 @@ class TeamCoordinator:
         )
 
         # 글로벌 설정 병합
-        merged_session = dict(target_session)
+        from app.api.dependencies import get_mcp_service, get_settings_service
+
+        settings_service = get_settings_service()
+        global_settings = await settings_service.get()
+
+        merged_session = dict(session_data)
         for key in [
             "system_prompt",
             "timeout_seconds",
@@ -183,6 +197,12 @@ class TeamCoordinator:
             if not merged_session.get(key) and global_settings.get(key):
                 merged_session[key] = global_settings[key]
 
+        allowed_tools = (
+            session_data.get("allowed_tools")
+            or global_settings.get("allowed_tools")
+            or ""
+        )
+        mode = session_data.get("mode") or global_settings.get("mode") or "normal"
         mcp_service = get_mcp_service()
 
         runner_task = asyncio.create_task(
@@ -190,7 +210,7 @@ class TeamCoordinator:
                 merged_session,
                 delegate_prompt,
                 allowed_tools,
-                target_session_id,
+                new_session_id,
                 self._ws_manager,
                 self._session_manager,
                 mode=mode,
@@ -198,15 +218,16 @@ class TeamCoordinator:
             )
         )
 
-        def _on_done(t, sid=target_session_id):
+        def _on_done(t, sid=new_session_id):
             self._session_manager.clear_runner_task(sid)
 
         runner_task.add_done_callback(_on_done)
-        self._session_manager.set_runner_task(target_session_id, runner_task)
+        self._session_manager.set_runner_task(new_session_id, runner_task)
 
         return {
             "task_id": task_id,
-            "target_session_id": target_session_id,
+            "member_id": target_member_id,
+            "session_id": new_session_id,
             "status": "delegated",
         }
 
@@ -215,99 +236,99 @@ class TeamCoordinator:
     async def on_session_completed(
         self, session_id: str, last_text: str | None = None
     ) -> None:
-        """세션 runner 완료 시 호출. 팀 소속이면 태스크 상태 업데이트."""
+        """세션 runner 완료 시 호출. 태스크의 session_id로 역조회하여 자동 완료."""
         async with self._db.session() as db_session:
-            # 이 세션이 팀에 속하는지 확인
-            member_repo = TeamMemberRepository(db_session)
-            teams = await member_repo.get_teams_by_session(session_id)
-
-            if not teams:
+            task_repo = TeamTaskRepository(db_session)
+            # session_id로 진행 중인 태스크 역조회
+            task = await task_repo.get_by_session_id(session_id)
+            if not task:
                 return
 
-            # 이 세션에 할당된 진행 중 태스크 확인
-            task_repo = TeamTaskRepository(db_session)
-            for team_info in teams:
-                tid = team_info["team_id"]
-                tasks = await task_repo.list_by_team(tid, status="in_progress")
-                for task in tasks:
-                    if task.assigned_session_id == session_id:
-                        # 결과 요약 추출 (마지막 텍스트에서 앞 200자)
-                        result_summary = None
-                        if last_text:
-                            result_summary = last_text[:200]
-                            if len(last_text) > 200:
-                                result_summary += "…"
+            # 결과 요약 추출
+            result_summary = None
+            if last_text:
+                result_summary = last_text[:200]
+                if len(last_text) > 200:
+                    result_summary += "…"
 
-                        # 태스크 완료 처리
-                        task = await task_repo.complete_task(
-                            task.id, result_summary
-                        )
-                        await db_session.commit()
+            # 태스크 완료 처리
+            task = await task_repo.complete_task(task.id, result_summary)
+            await db_session.commit()
 
-                        logger.info(
-                            "팀 %s 태스크 %d 자동 완료 (세션 %s)",
-                            tid,
-                            task.id,
-                            session_id,
-                        )
+            logger.info(
+                "팀 %s 태스크 %d 자동 완료 (세션 %s)",
+                task.team_id,
+                task.id,
+                session_id,
+            )
 
-                        # 팀 이벤트 브로드캐스트
-                        await self.broadcast_team_event(
-                            tid,
-                            {
-                                "type": WsEventType.TEAM_TASK_COMPLETED,
-                                "task_id": task.id,
-                                "task_title": task.title,
-                                "session_id": session_id,
-                                "result_summary": result_summary,
-                            },
-                        )
+            # 팀 이벤트 브로드캐스트
+            await self.broadcast_team_event(
+                task.team_id,
+                {
+                    "type": WsEventType.TEAM_TASK_COMPLETED,
+                    "task_id": task.id,
+                    "task_title": task.title,
+                    "session_id": session_id,
+                    "result_summary": result_summary,
+                },
+            )
 
     # ── 리드 세션 시스템 프롬프트 주입 ──
 
     async def inject_team_context(self, session_id: str) -> str | None:
-        """리드 세션의 시스템 프롬프트에 추가할 팀 컨텍스트 텍스트 반환."""
+        """세션이 팀 리드의 세션인지 확인 → 팀 컨텍스트 반환.
+
+        session_id → TeamTask.session_id 역조회 → member → team.lead_member_id 비교
+        """
         async with self._db.session() as db_session:
-            member_repo = TeamMemberRepository(db_session)
-            teams = await member_repo.get_teams_by_session(session_id)
-            if not teams:
+            task_repo = TeamTaskRepository(db_session)
+            # session_id로 태스크 역조회
+            tasks = await task_repo.get_tasks_by_session_id(session_id)
+            if not tasks:
                 return None
 
-            # 이 세션이 리드인 팀 찾기
+            task = tasks[0]
             team_repo = TeamRepository(db_session)
-            for team_info in teams:
-                tid = team_info["team_id"]
-                team = await team_repo.get_by_id(tid)
-                if not team or team.lead_session_id != session_id:
-                    continue
+            team = await team_repo.get_by_id(task.team_id)
+            if not team or not team.lead_member_id:
+                return None
 
-                # 리드 세션임 → 팀 컨텍스트 구성
-                members = await member_repo.get_members(tid)
-                task_repo = TeamTaskRepository(db_session)
-                all_tasks = await task_repo.list_by_team(tid)
+            # 이 태스크의 멤버가 리드인지 확인
+            if task.assigned_member_id != team.lead_member_id:
+                return None
 
-                # 멤버 정보
-                member_lines = []
-                for m in members:
-                    s = await self._session_manager.get(m.session_id)
-                    status = s.get("status", "unknown") if s else "unknown"
-                    name = m.nickname or m.session_id[:8]
-                    role_tag = " (리드)" if m.role == "lead" else ""
-                    member_lines.append(
-                        f"- {name} (세션: {m.session_id[:8]}, 상태: {status}){role_tag}"
-                    )
+            # 리드 세션임 → 팀 컨텍스트 구성
+            member_repo = TeamMemberRepository(db_session)
+            members = await member_repo.get_members(task.team_id)
+            all_tasks = await task_repo.list_by_team(task.team_id)
 
-                # 태스크 정보
-                task_lines = []
-                nickname_map = {m.session_id: (m.nickname or m.session_id[:8]) for m in members}
-                for t in all_tasks:
-                    status_icon = {"pending": "대기", "in_progress": "진행중", "completed": "완료", "failed": "실패"}.get(t.status, t.status)
-                    assignee = ""
-                    if t.assigned_session_id:
-                        assignee = f" ({nickname_map.get(t.assigned_session_id, t.assigned_session_id[:8])})"
-                    task_lines.append(f"- [{status_icon}] {t.title}{assignee}")
+            # 멤버 정보 (페르소나 기반)
+            member_lines = []
+            for m in members:
+                role_tag = " (리드)" if m.role == "lead" else ""
+                desc = f" - {m.description}" if m.description else ""
+                model_tag = f" [{m.model}]" if m.model else ""
+                member_lines.append(
+                    f"- {m.nickname}{role_tag}{desc}{model_tag}"
+                )
 
-                context = f"""당신은 팀의 리드 에이전트입니다.
+            # 태스크 정보
+            task_lines = []
+            nickname_map = {m.id: m.nickname for m in members}
+            for t in all_tasks:
+                status_icon = {
+                    "pending": "대기",
+                    "in_progress": "진행중",
+                    "completed": "완료",
+                    "failed": "실패",
+                }.get(t.status, t.status)
+                assignee = ""
+                if t.assigned_member_id:
+                    assignee = f" ({nickname_map.get(t.assigned_member_id, '?')})"
+                task_lines.append(f"- [{status_icon}] {t.title}{assignee}")
+
+            context = f"""당신은 팀의 리드 에이전트입니다.
 
 ## 팀원
 {chr(10).join(member_lines)}
@@ -319,9 +340,7 @@ class TeamCoordinator:
 팀원에게 작업을 위임하려면 다음 형식을 사용하세요:
 @delegate(닉네임): 작업 설명"""
 
-                return context
-
-        return None
+            return context
 
     # ── 자동 위임 ──
 
@@ -333,14 +352,7 @@ class TeamCoordinator:
 
         async with self._db.session() as db_session:
             member_repo = TeamMemberRepository(db_session)
-            members = await member_repo.get_members(team_id)
-
-        # 닉네임으로 세션 찾기
-        target = None
-        for m in members:
-            if m.nickname == nickname or m.session_id.startswith(nickname):
-                target = m
-                break
+            target = await member_repo.get_member_by_nickname(team_id, nickname)
 
         if not target:
             logger.warning(
@@ -350,14 +362,23 @@ class TeamCoordinator:
             )
             return
 
+        # 리드 태스크의 work_dir 상속 (같은 팀의 최근 태스크에서)
+        work_dir = "/tmp"
+        async with self._db.session() as db_session:
+            task_repo = TeamTaskRepository(db_session)
+            existing_tasks = await task_repo.list_by_team(team_id)
+            if existing_tasks:
+                work_dir = existing_tasks[0].work_dir
+
         # 태스크 생성
         task_service = TeamTaskService(self._db)
         task_info = await task_service.create_task(
             team_id=team_id,
             title=description[:100],
             description=description,
+            work_dir=work_dir,
             priority="medium",
-            assigned_session_id=None,
+            assigned_member_id=target.id,
         )
 
         # 위임 실행
@@ -365,7 +386,7 @@ class TeamCoordinator:
             await self.delegate_task(
                 team_id=team_id,
                 task_id=task_info.id,
-                target_session_id=target.session_id,
+                member_id=target.id,
                 prompt=description,
             )
             logger.info(

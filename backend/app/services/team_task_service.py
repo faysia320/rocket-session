@@ -29,9 +29,11 @@ class TeamTaskService:
             description=task.description,
             status=task.status,
             priority=task.priority,
-            assigned_session_id=task.assigned_session_id,
+            assigned_member_id=task.assigned_member_id,
             assigned_nickname=assigned_nickname,
-            created_by_session_id=task.created_by_session_id,
+            created_by_member_id=task.created_by_member_id,
+            work_dir=task.work_dir,
+            session_id=task.session_id,
             result_summary=task.result_summary,
             order_index=task.order_index,
             depends_on_task_id=task.depends_on_task_id,
@@ -40,13 +42,13 @@ class TeamTaskService:
         )
 
     async def _resolve_nickname(
-        self, session, team_id: str, session_id: str | None
+        self, session, member_id: int | None
     ) -> str | None:
-        """세션 ID로 팀 내 닉네임 조회."""
-        if not session_id:
+        """멤버 ID로 닉네임 조회."""
+        if not member_id:
             return None
         member_repo = TeamMemberRepository(session)
-        member = await member_repo.get_member(team_id, session_id)
+        member = await member_repo.get_member_by_id(member_id)
         return member.nickname if member else None
 
     # ── CRUD ──
@@ -55,40 +57,35 @@ class TeamTaskService:
         self,
         team_id: str,
         title: str,
+        work_dir: str,
         description: str | None = None,
         priority: str = "medium",
-        assigned_session_id: str | None = None,
+        assigned_member_id: int | None = None,
         depends_on_task_id: int | None = None,
-        created_by_session_id: str | None = None,
+        created_by_member_id: int | None = None,
     ) -> TeamTaskInfo:
         now = datetime.now(timezone.utc).isoformat()
         async with self._db.session() as session:
             repo = TeamTaskRepository(session)
-            # order_index: 기존 태스크 수
             tasks = await repo.list_by_team(team_id)
             order_index = len(tasks)
-
-            status = "pending"
-            if assigned_session_id:
-                status = "in_progress"
 
             task = TeamTask(
                 team_id=team_id,
                 title=title,
                 description=description,
-                status=status,
+                status="pending",
                 priority=priority,
-                assigned_session_id=assigned_session_id,
-                created_by_session_id=created_by_session_id,
+                assigned_member_id=assigned_member_id,
+                created_by_member_id=created_by_member_id,
+                work_dir=work_dir,
                 order_index=order_index,
                 depends_on_task_id=depends_on_task_id,
                 created_at=now,
                 updated_at=now,
             )
             await repo.add(task)
-            nickname = await self._resolve_nickname(
-                session, team_id, assigned_session_id
-            )
+            nickname = await self._resolve_nickname(session, assigned_member_id)
             await session.commit()
             return self._task_to_info(task, assigned_nickname=nickname)
 
@@ -99,7 +96,7 @@ class TeamTaskService:
             if not task:
                 return None
             nickname = await self._resolve_nickname(
-                session, task.team_id, task.assigned_session_id
+                session, task.assigned_member_id
             )
             return self._task_to_info(task, assigned_nickname=nickname)
 
@@ -111,10 +108,10 @@ class TeamTaskService:
             tasks = await repo.list_by_team(team_id, status=status)
             member_repo = TeamMemberRepository(session)
             members = await member_repo.get_members(team_id)
-            nick_map = {m.session_id: m.nickname for m in members}
+            nick_map = {m.id: m.nickname for m in members}
             return [
                 self._task_to_info(
-                    t, assigned_nickname=nick_map.get(t.assigned_session_id)
+                    t, assigned_nickname=nick_map.get(t.assigned_member_id)
                 )
                 for t in tasks
             ]
@@ -126,7 +123,7 @@ class TeamTaskService:
             if not task:
                 return None
             nickname = await self._resolve_nickname(
-                session, task.team_id, task.assigned_session_id
+                session, task.assigned_member_id
             )
             await session.commit()
             return self._task_to_info(task, assigned_nickname=nickname)
@@ -141,16 +138,14 @@ class TeamTaskService:
     # ── 할당 ──
 
     async def claim_task(
-        self, task_id: int, session_id: str
+        self, task_id: int, member_id: int
     ) -> TeamTaskInfo | None:
         async with self._db.session() as session:
             repo = TeamTaskRepository(session)
-            task = await repo.claim_task(task_id, session_id)
+            task = await repo.claim_task(task_id, member_id)
             if not task:
                 return None
-            nickname = await self._resolve_nickname(
-                session, task.team_id, session_id
-            )
+            nickname = await self._resolve_nickname(session, member_id)
             await session.commit()
             return self._task_to_info(task, assigned_nickname=nickname)
 
@@ -163,7 +158,7 @@ class TeamTaskService:
             if not task:
                 return None
             nickname = await self._resolve_nickname(
-                session, task.team_id, task.assigned_session_id
+                session, task.assigned_member_id
             )
             await session.commit()
             return self._task_to_info(task, assigned_nickname=nickname)

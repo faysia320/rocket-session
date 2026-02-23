@@ -67,16 +67,23 @@ class TeamMemberRepository:
     async def add_member(
         self,
         team_id: str,
-        session_id: str,
-        role: str,
-        nickname: str | None,
-        joined_at: str,
+        nickname: str,
+        role: str = "member",
+        description: str | None = None,
+        system_prompt: str | None = None,
+        allowed_tools: str | None = None,
+        disallowed_tools: str | None = None,
+        model: str | None = None,
+        max_turns: int | None = None,
+        max_budget_usd: float | None = None,
+        mcp_server_ids: list | None = None,
+        created_at: str = "",
     ) -> TeamMember:
-        """멤버 추가 (중복 시 기존 반환)."""
+        """멤버(페르소나) 추가. 닉네임 중복 시 기존 반환."""
         existing = await self._session.execute(
             select(TeamMember).where(
                 TeamMember.team_id == team_id,
-                TeamMember.session_id == session_id,
+                TeamMember.nickname == nickname,
             )
         )
         member = existing.scalar_one_or_none()
@@ -84,20 +91,28 @@ class TeamMemberRepository:
             return member
         member = TeamMember(
             team_id=team_id,
-            session_id=session_id,
-            role=role,
             nickname=nickname,
-            joined_at=joined_at,
+            role=role,
+            description=description,
+            system_prompt=system_prompt,
+            allowed_tools=allowed_tools,
+            disallowed_tools=disallowed_tools,
+            model=model,
+            max_turns=max_turns,
+            max_budget_usd=max_budget_usd,
+            mcp_server_ids=mcp_server_ids,
+            created_at=created_at,
+            updated_at=created_at,
         )
         self._session.add(member)
         await self._session.flush()
         return member
 
-    async def remove_member(self, team_id: str, session_id: str) -> bool:
+    async def remove_member(self, team_id: str, member_id: int) -> bool:
         """멤버 제거."""
         stmt = delete(TeamMember).where(
             TeamMember.team_id == team_id,
-            TeamMember.session_id == session_id,
+            TeamMember.id == member_id,
         )
         result = await self._session.execute(stmt)
         return result.rowcount > 0
@@ -107,41 +122,46 @@ class TeamMemberRepository:
         stmt = (
             select(TeamMember)
             .where(TeamMember.team_id == team_id)
-            .order_by(TeamMember.joined_at.asc())
+            .order_by(TeamMember.created_at.asc())
         )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_member(
-        self, team_id: str, session_id: str
+    async def get_member_by_id(self, member_id: int) -> TeamMember | None:
+        """ID로 멤버 조회."""
+        stmt = select(TeamMember).where(TeamMember.id == member_id)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_member_by_nickname(
+        self, team_id: str, nickname: str
     ) -> TeamMember | None:
-        """특정 멤버 조회."""
+        """팀 내 닉네임으로 멤버 조회."""
         stmt = select(TeamMember).where(
             TeamMember.team_id == team_id,
-            TeamMember.session_id == session_id,
+            TeamMember.nickname == nickname,
         )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_teams_by_session(self, session_id: str) -> list[dict]:
-        """세션이 속한 팀 목록."""
-        stmt = (
-            select(TeamMember.team_id, TeamMember.role, TeamMember.nickname, Team.name)
-            .join(Team, Team.id == TeamMember.team_id)
-            .where(TeamMember.session_id == session_id)
-        )
-        result = await self._session.execute(stmt)
-        return [dict(row._mapping) for row in result.all()]
+    async def update_member(self, member_id: int, **kwargs) -> TeamMember | None:
+        """멤버 속성 업데이트."""
+        if not kwargs:
+            return await self.get_member_by_id(member_id)
+        stmt = update(TeamMember).where(TeamMember.id == member_id).values(**kwargs)
+        await self._session.execute(stmt)
+        await self._session.flush()
+        return await self.get_member_by_id(member_id)
 
     async def update_role(
-        self, team_id: str, session_id: str, role: str
+        self, team_id: str, member_id: int, role: str
     ) -> None:
         """멤버 역할 변경."""
         stmt = (
             update(TeamMember)
             .where(
                 TeamMember.team_id == team_id,
-                TeamMember.session_id == session_id,
+                TeamMember.id == member_id,
             )
             .values(role=role)
         )
