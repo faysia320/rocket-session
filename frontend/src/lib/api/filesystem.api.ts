@@ -10,6 +10,8 @@ import type {
   GitHubCLIStatus,
   GitHubPRListResponse,
   GitHubPRDetail,
+  PRReviewResponse,
+  PRReviewSubmitResponse,
   WorktreeListResponse,
   WorktreeInfo,
   CreateWorktreeRequest,
@@ -85,4 +87,14 @@ export const filesystemApi = {
 
   getGitHubPRDiff: (path: string, number: number) =>
     api.getText(`/api/fs/gh-pr-diff?path=${encodeURIComponent(path)}&number=${number}`),
+
+  generatePRReview: (path: string, prNumber: number) =>
+    api.post<PRReviewResponse>("/api/fs/gh-pr-review", { path, pr_number: prNumber }),
+
+  submitPRReviewComment: (path: string, prNumber: number, body: string) =>
+    api.post<PRReviewSubmitResponse>("/api/fs/gh-pr-review-submit", {
+      path,
+      pr_number: prNumber,
+      body,
+    }),
 };

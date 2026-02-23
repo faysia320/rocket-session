@@ -52,6 +52,8 @@ export type {
   GitHubPRReview,
   GitHubPRComment,
   GitHubPRDetail,
+  PRReviewResponse,
+  PRReviewSubmitResponse,
 } from "./filesystem";
 export type {
   LocalSessionMeta,

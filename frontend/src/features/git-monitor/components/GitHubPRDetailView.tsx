@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ExternalLink,
   Loader2,
@@ -10,8 +10,14 @@ import {
   Check,
   X as XIcon,
   MessageCircle,
+  Bot,
+  Send,
+  Copy,
+  RefreshCw,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
@@ -72,15 +78,74 @@ export function GitHubPRDetailView({
   open,
   onOpenChange,
 }: GitHubPRDetailViewProps) {
+  const queryClient = useQueryClient();
   const { data: pr, isLoading } = useGitHubPRDetail(repoPath, open ? prNumber : null);
-  const [diffTab, setDiffTab] = useState<"overview" | "diff">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "diff" | "ai-review">("overview");
+  const [reviewText, setReviewText] = useState<string>("");
+  const [reviewError, setReviewError] = useState<string>("");
 
   const { data: diffText, isLoading: diffLoading } = useQuery({
     queryKey: ["gh-pr-diff", repoPath, prNumber],
     queryFn: () => filesystemApi.getGitHubPRDiff(repoPath, prNumber!),
-    enabled: open && prNumber !== null && diffTab === "diff",
+    enabled: open && prNumber !== null && (activeTab === "diff" || activeTab === "ai-review"),
     staleTime: 30_000,
   });
+
+  // Claude Code 리뷰 생성 mutation
+  const generateReview = useMutation({
+    mutationFn: () => filesystemApi.generatePRReview(repoPath, prNumber!),
+    onSuccess: (data) => {
+      if (data.error) {
+        setReviewError(data.error);
+        setReviewText("");
+      } else {
+        setReviewText(data.review_text);
+        setReviewError("");
+      }
+    },
+    onError: (err: Error) => {
+      setReviewError(err.message);
+      setReviewText("");
+    },
+  });
+
+  // 리뷰 코멘트 게시 mutation
+  const submitReview = useMutation({
+    mutationFn: (body: string) =>
+      filesystemApi.submitPRReviewComment(repoPath, prNumber!, body),
+    onSuccess: (data) => {
+      if (data.error) {
+        toast.error(`코멘트 게시 실패: ${data.error}`);
+      } else {
+        toast.success("PR에 리뷰 코멘트가 게시되었습니다");
+        // PR 상세 정보 새로고침
+        queryClient.invalidateQueries({
+          queryKey: ["gh-pr-detail", repoPath, prNumber],
+        });
+      }
+    },
+    onError: (err: Error) => {
+      toast.error(`코멘트 게시 실패: ${err.message}`);
+    },
+  });
+
+  const handleGenerateReview = useCallback(() => {
+    setReviewText("");
+    setReviewError("");
+    generateReview.mutate();
+  }, [generateReview]);
+
+  const handleSubmitReview = useCallback(() => {
+    if (!reviewText) return;
+    submitReview.mutate(reviewText);
+  }, [submitReview, reviewText]);
+
+  const handleCopyReview = useCallback(() => {
+    if (!reviewText) return;
+    navigator.clipboard.writeText(reviewText).then(() => {
+      toast.success("리뷰 내용이 클립보드에 복사되었습니다");
+    });
+  }, [reviewText]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -144,10 +209,10 @@ export function GitHubPRDetailView({
               ) : null}
             </SheetHeader>
 
-            {/* 탭: Overview / Diff */}
+            {/* 탭: Overview / Diff / AI Review */}
             <Tabs
-              value={diffTab}
-              onValueChange={(v) => setDiffTab(v as "overview" | "diff")}
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as "overview" | "diff" | "ai-review")}
               className="flex-1 flex flex-col min-h-0"
             >
               <TabsList className="mx-4 mt-2 shrink-0">
@@ -158,6 +223,10 @@ export function GitHubPRDetailView({
                 <TabsTrigger value="diff" className="gap-1.5 font-mono text-xs">
                   <FileText className="h-3 w-3" />
                   Diff
+                </TabsTrigger>
+                <TabsTrigger value="ai-review" className="gap-1.5 font-mono text-xs">
+                  <Bot className="h-3 w-3" />
+                  AI Review
                 </TabsTrigger>
               </TabsList>
 
@@ -191,9 +260,7 @@ export function GitHubPRDetailView({
                             {getReviewStateBadge(review.state)}
                           </div>
                           {review.body ? (
-                            <div className="text-xs text-muted-foreground">
-                              <MarkdownRenderer content={review.body} />
-                            </div>
+                            <MarkdownRenderer content={review.body} className="text-xs" />
                           ) : null}
                         </div>
                       ))}
@@ -222,9 +289,7 @@ export function GitHubPRDetailView({
                               </span>
                             ) : null}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            <MarkdownRenderer content={comment.body} />
-                          </div>
+                          <MarkdownRenderer content={comment.body} className="text-xs" />
                         </div>
                       ))}
                     </div>
@@ -244,6 +309,126 @@ export function GitHubPRDetailView({
                     Diff 없음
                   </div>
                 )}
+              </TabsContent>
+
+              {/* AI Review 탭 */}
+              <TabsContent
+                value="ai-review"
+                className="flex-1 overflow-auto px-4 py-3 m-0 space-y-4"
+              >
+                {/* 리뷰 생성 버튼 */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-1.5 font-mono text-xs"
+                    onClick={handleGenerateReview}
+                    disabled={generateReview.isPending}
+                    aria-label="AI 리뷰 생성"
+                  >
+                    {generateReview.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Bot className="h-3 w-3" />
+                    )}
+                    {generateReview.isPending ? "리뷰 생성 중…" : "AI 리뷰 생성"}
+                  </Button>
+                  {reviewText ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 font-mono text-xs"
+                        onClick={handleGenerateReview}
+                        disabled={generateReview.isPending}
+                        aria-label="리뷰 재생성"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        재생성
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 font-mono text-xs"
+                        onClick={handleCopyReview}
+                        aria-label="리뷰 복사"
+                      >
+                        <Copy className="h-3 w-3" />
+                        복사
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-1.5 font-mono text-xs bg-success hover:bg-success/90"
+                        onClick={handleSubmitReview}
+                        disabled={submitReview.isPending}
+                        aria-label="PR에 코멘트 게시"
+                      >
+                        {submitReview.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Send className="h-3 w-3" />
+                        )}
+                        {submitReview.isPending ? "게시 중…" : "PR에 게시"}
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
+
+                {/* 리뷰 생성 중 안내 */}
+                {generateReview.isPending ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <div className="font-mono text-sm text-muted-foreground text-center">
+                      Claude Code가 PR을 분석하고 있습니다…
+                    </div>
+                    <div className="font-mono text-2xs text-muted-foreground text-center">
+                      PR의 overview와 diff를 기반으로 리뷰를 생성합니다.
+                      <br />
+                      변경사항이 많을 경우 최대 2분 정도 소요될 수 있습니다.
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* 에러 표시 */}
+                {reviewError ? (
+                  <div className="flex items-center gap-2 p-3 border border-destructive/30 rounded-md bg-destructive/10">
+                    <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                    <span className="font-mono text-xs text-destructive">{reviewError}</span>
+                  </div>
+                ) : null}
+
+                {/* 리뷰 결과 미리보기 */}
+                {reviewText ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-3.5 w-3.5 text-primary" />
+                      <h3 className="font-mono text-xs font-semibold text-foreground">
+                        AI 리뷰 미리보기
+                      </h3>
+                    </div>
+                    <div className="border border-primary/30 rounded-md p-3 bg-primary/5">
+                      <MarkdownRenderer content={reviewText} />
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* 초기 상태 안내 */}
+                {!generateReview.isPending && !reviewText && !reviewError ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+                    <Bot className="h-12 w-12 text-muted-foreground/20" />
+                    <div className="font-mono text-sm text-center">
+                      Claude Code로 AI 코드 리뷰를 생성합니다
+                    </div>
+                    <div className="font-mono text-2xs text-center max-w-sm">
+                      PR의 설명과 코드 변경사항(diff)을 분석하여
+                      <br />
+                      요약, 좋은 점, 개선 제안, 잠재적 이슈를 포함한
+                      <br />
+                      리뷰를 자동으로 생성합니다.
+                    </div>
+                  </div>
+                ) : null}
               </TabsContent>
             </Tabs>
           </div>

@@ -158,3 +158,15 @@ export interface GitHubPRDetail {
   mergeable?: string | null;
   error?: string | null;
 }
+
+// --- PR Review (Claude Code) ---
+
+export interface PRReviewResponse {
+  review_text: string;
+  error?: string | null;
+}
+
+export interface PRReviewSubmitResponse {
+  success: boolean;
+  error?: string | null;
+}

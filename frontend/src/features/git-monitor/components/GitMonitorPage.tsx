@@ -62,16 +62,6 @@ export function GitMonitorPage() {
                 : "Git 저장소를 추가하여 모니터링하세요"}
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAdd}
-            className="gap-1.5 font-mono text-xs"
-            aria-label="저장소 추가"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            저장소 추가
-          </Button>
         </div>
       </div>
 
@@ -124,33 +114,43 @@ export function GitMonitorPage() {
               </div>
             ) : null}
 
-            {/* 탭: Status / Commits / Pull Requests */}
+            {/* 좌우 2분할: Status/Commits (좌) | Pull Requests (우) */}
             {effectivePath ? (
-              <Tabs defaultValue="status" className="flex-1 flex flex-col min-h-0">
-                <TabsList className="mx-4 mt-3 shrink-0">
-                  <TabsTrigger value="status" className="gap-1.5 font-mono text-xs">
-                    Status
-                  </TabsTrigger>
-                  <TabsTrigger value="commits" className="gap-1.5 font-mono text-xs">
-                    Commits
-                  </TabsTrigger>
-                  <TabsTrigger value="prs" className="gap-1.5 font-mono text-xs">
-                    Pull Requests
-                  </TabsTrigger>
-                </TabsList>
+              <div className="flex-1 flex min-h-0 overflow-hidden">
+                {/* 좌측: Status / Commits 서브탭 */}
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-r border-border">
+                  <Tabs defaultValue="status" className="flex-1 flex flex-col min-h-0">
+                    <TabsList className="mx-4 mt-3 shrink-0">
+                      <TabsTrigger value="status" className="gap-1.5 font-mono text-xs">
+                        Status
+                      </TabsTrigger>
+                      <TabsTrigger value="commits" className="gap-1.5 font-mono text-xs">
+                        Commits
+                      </TabsTrigger>
+                    </TabsList>
 
-                <TabsContent value="status" className="flex-1 overflow-auto px-4 py-3 m-0">
-                  <GitRepoStatusTab repoPath={effectivePath} />
-                </TabsContent>
+                    <TabsContent value="status" className="flex-1 overflow-auto px-4 py-3 m-0">
+                      <GitRepoStatusTab repoPath={effectivePath} />
+                    </TabsContent>
 
-                <TabsContent value="commits" className="flex-1 overflow-auto px-4 py-3 m-0">
-                  <GitCommitHistoryTab repoPath={effectivePath} />
-                </TabsContent>
+                    <TabsContent value="commits" className="flex-1 overflow-auto px-4 py-3 m-0">
+                      <GitCommitHistoryTab repoPath={effectivePath} />
+                    </TabsContent>
+                  </Tabs>
+                </div>
 
-                <TabsContent value="prs" className="flex-1 overflow-auto px-4 py-3 m-0">
-                  <GitHubPRTab repoPath={effectivePath} />
-                </TabsContent>
-              </Tabs>
+                {/* 우측: Pull Requests */}
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                  <div className="mx-4 mt-3 shrink-0">
+                    <h2 className="font-mono text-xs font-semibold text-muted-foreground">
+                      Pull Requests
+                    </h2>
+                  </div>
+                  <div className="flex-1 overflow-auto px-4 py-3">
+                    <GitHubPRTab repoPath={effectivePath} />
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <span className="font-mono text-sm text-muted-foreground">
