@@ -141,11 +141,6 @@ export function GitMonitorPage() {
 
                 {/* 우측: Pull Requests */}
                 <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                  <div className="mx-4 mt-3 shrink-0">
-                    <h2 className="font-mono text-xs font-semibold text-muted-foreground">
-                      Pull Requests
-                    </h2>
-                  </div>
                   <div className="flex-1 overflow-auto px-4 py-3">
                     <GitHubPRTab repoPath={effectivePath} />
                   </div>

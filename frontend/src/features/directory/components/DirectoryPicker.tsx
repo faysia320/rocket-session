@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { FolderOpen, Star, StarOff } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useGitInfo } from "../hooks/useGitInfo";
-import { useFavoriteDirectories } from "../hooks/useFavoriteDirectories";
 import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 import { GitInfoCard } from "./GitInfoCard";
 import { DirectoryBrowser } from "./DirectoryBrowser";
@@ -18,10 +17,6 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
   const { data: globalSettings } = useGlobalSettings();
   const [browserOpen, setBrowserOpen] = useState(false);
   const { gitInfo, isLoading } = useGitInfo(value);
-  const { isFavorite, toggleFavorite } = useFavoriteDirectories();
-
-  const hasTrimmedValue = value.trim().length > 0;
-  const starred = hasTrimmedValue && isFavorite(value.trim());
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -32,20 +27,6 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          onClick={() => toggleFavorite(value.trim())}
-          disabled={!hasTrimmedValue}
-          aria-label={starred ? "즐겨찾기 해제" : "즐겨찾기 추가"}
-        >
-          {starred ? (
-            <Star className="h-3.5 w-3.5 text-warning fill-warning" />
-          ) : (
-            <StarOff className="h-3.5 w-3.5" />
-          )}
-        </Button>
         <Button
           variant="outline"
           size="icon"
