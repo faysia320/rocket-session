@@ -36,7 +36,7 @@
 - **세션 관리** — 생성, 재개, 삭제, 설정 변경, Markdown 내보내기
 - **실시간 스트리밍** — WebSocket을 통한 Claude 응답 실시간 표시
 - **파일 변경 추적** — Claude가 수정한 파일 목록 + Git diff 뷰어
-- **Plan Mode** — 읽기 전용 도구만 허용하는 계획 모드, 승인 후 실행
+- **Workflow 시스템** — 3단계 워크플로우 (Research → Plan → Implement), 아티팩트 생성 + 인라인 주석 + 승인 게이트
 - **Permission Mode** — 도구 사용 시 사용자 승인 요청 (MCP 서버 연계)
 - **이미지 업로드** — 프롬프트에 이미지 첨부 가능
 - **사용량 추적** — 5시간 블록 + 주간 사용량 (ccusage 연동)
@@ -84,14 +84,14 @@
 |  ...             |  │ │   - BashToolMessage ($ 커맨드)         │ │  |
 |                  |  │ │   - ToolUseMessage (기타 도구)         │ │  |
 |                  |  │ │ ThinkingMessage (접이식)               │ │  |
-|                  |  │ │ ResultMessage / PlanResultCard         │ │  |
+|                  |  │ │ ResultMessage / WorkflowPhaseCard      │ │  |
 |                  |  │ │ ErrorMessage (빨간색, 재시도)          │ │  |
 |                  |  │ │ SystemMessage (중앙 구분선)            │ │  |
 |                  |  │ │ AskUserQuestionCard (인터랙티브)       │ │  |
 |                  |  │ │ PermissionRequestMessage               │ │  |
 |                  |  │ └────────────────────────────────────────┘ │  |
 |                  |  │ ActivityStatusBar (실행 중 도구 표시)      │  |
-|  [🔔][⚙][🌙]    |  │ ChatInput (모드전환, 이미지, 텍스트입력)   │  |
+|  [🔔][⚙][🌙]    |  │ ChatInput (이미지, 텍스트입력)             │  |
 |  [📊][⫼][«]     |  │   └ SlashCommandPopup (/ 입력 시)         │  |
 |                  |  └───────────────────────────────────────────┘  |
 +------------------+------------------------------------------------+
@@ -166,7 +166,6 @@ div (border-t, bg-secondary)
 ├── 답변 대기 인디케이터 ("N개 답변이 다음 메시지에 포함됩니다")
 ├── 이미지 미리보기 행 (첨부된 이미지 썸네일 + 제거 버튼)
 └── 입력 행 (bg-input, rounded)
-      ├── Plan 모드 토글 (ClipboardList, 주황색=활성)
       ├── 이미지 첨부 버튼 (Image)
       ├── Textarea (자동 리사이즈, 모노스페이스)
       └── Send/Stop 버튼
@@ -176,7 +175,6 @@ div (border-t, bg-secondary)
 키보드 단축키:
   Enter       → 전송
   Shift+Enter → 줄바꿈
-  Shift+Tab   → 모드 전환 (Normal ↔ Plan)
   Escape      → 실행 중지 / 입력 초기화
 ```
 
@@ -205,7 +203,7 @@ MessageBubble 컴포넌트가 `message.type`에 따라 다른 UI를 렌더링합
 | `user_message` | UserMessage | 우측 정렬, 파란 말풍선 | 사용자 입력 메시지 |
 | `assistant_text` | AssistantText | 좌측 카드, 파란 좌측선 | 스트리밍 중 부분 텍스트 |
 | `result` | ResultMessage | 좌측 카드, 파란 좌측선 | 턴 완료 (Markdown, 토큰/시간 메타) |
-| `result` (plan) | PlanResultCard | 좌측 카드, 주황 좌측선 | Plan 결과 + 승인/수정/실행 버튼 |
+| `result` (workflow) | WorkflowPhaseCard | 좌측 카드, 주황 좌측선 | 워크플로우 단계 결과 + 승인/수정 버튼 |
 | `tool_use` | ToolUseMsg 계열 | 좌측 카드, 접이식 | 도구 실행 (아래 상세) |
 | `thinking` | ThinkingMessage | 좌측, 접이식 | 확장 사고 (Brain 아이콘) |
 | `error` | ErrorMessage | 빨간 배경/테두리 | 오류 + 재시도 버튼 |
@@ -249,7 +247,11 @@ MessageBubble 컴포넌트가 `message.type`에 따라 다른 UI를 렌더링합
 | `error` | ErrorMessage 추가 |
 | `thinking` | ThinkingMessage 생성/업데이트 |
 | `permission_request` | PermissionDialog 모달 표시 |
-| `mode_change` | SystemMessage 추가 + 모드 상태 업데이트 |
+| `workflow_started` | 워크플로우 시작, WorkflowProgressBar 활성화 |
+| `workflow_phase_completed` | 단계 완료, PhaseApprovalBar 표시 |
+| `workflow_phase_approved` | 단계 승인, 다음 단계 진행 |
+| `workflow_revision_requested` | 수정 요청, 해당 단계 재실행 |
+| `workflow_completed` | 워크플로우 전체 완료 |
 | `stopped` | 상태 idle, 도구 정리, SystemMessage 추가 |
 | `ask_user_question` | AskUserQuestionCard 표시 (선택지/체크박스) |
 | `missed_events` | 재연결 시 놓친 이벤트 순차 재처리 |
@@ -386,13 +388,16 @@ rocket-session/
 │   │   │           ├── mcp.py         # MCP 서버 관리
 │   │   │           ├── templates.py   # 세션 템플릿
 │   │   │           ├── tags.py        # 세션 태그
-│   │   │           └── analytics.py   # 분석 데이터
+│   │   │           ├── analytics.py   # 분석 데이터
+│   │   │           └── workflow.py   # 워크플로우 관리
 │   │   ├── models/
 │   │   │   ├── base.py              # SQLAlchemy Base 클래스
 │   │   │   ├── session.py           # Session ORM 모델
+│   │   │   ├── session_artifact.py  # SessionArtifact + ArtifactAnnotation ORM 모델
 │   │   │   ├── message.py           # Message ORM 모델
 │   │   │   ├── file_change.py       # FileChange ORM 모델
 │   │   │   ├── event.py             # Event ORM 모델
+│   │   │   ├── event_types.py       # WebSocket 이벤트 타입
 │   │   │   ├── global_settings.py   # GlobalSettings ORM 모델
 │   │   │   ├── mcp_server.py        # McpServer ORM 모델
 │   │   │   ├── tag.py               # Tag + SessionTag ORM 모델
@@ -408,9 +413,11 @@ rocket-session/
 │   │   │   ├── tag_repo.py          # TagRepository
 │   │   │   ├── template_repo.py     # TemplateRepository
 │   │   │   ├── search_repo.py       # SearchRepository
-│   │   │   └── analytics_repo.py    # AnalyticsRepository
+│   │   │   ├── analytics_repo.py    # AnalyticsRepository
+│   │   │   └── artifact_repo.py     # ArtifactRepository
 │   │   ├── schemas/                   # Pydantic 스키마
 │   │   │   ├── session.py
+│   │   │   ├── workflow.py           # 워크플로우 스키마
 │   │   │   ├── usage.py
 │   │   │   ├── filesystem.py
 │   │   │   ├── local_session.py
@@ -435,6 +442,7 @@ rocket-session/
 │   │   │   ├── analytics_service.py   # 분석 데이터 집계
 │   │   │   ├── jsonl_watcher.py       # JSONL 세션 실시간 감시
 │   │   │   ├── event_handler.py       # 이벤트 처리
+│   │   │   ├── workflow_service.py   # 워크플로우 3단계 관리
 │   │   │   └── permission_mcp_server.py # Permission MCP 서버
 │   │   └── alembic/                      # Alembic 마이그레이션
 │   │       ├── versions/                 # 마이그레이션 버전 파일
@@ -451,7 +459,8 @@ rocket-session/
 │   │   ├── index.css                  # Deep Space 테마 (HSL CSS 변수)
 │   │   ├── config/env.ts              # 환경 설정
 │   │   ├── types/                     # 타입 정의
-│   │   │   ├── session.ts             # SessionInfo, SessionMode
+│   │   │   ├── session.ts             # SessionInfo, SessionStatus
+│   │   │   ├── workflow.ts           # Workflow 타입 (Phase, Artifact, Annotation)
 │   │   │   ├── message.ts             # Message, FileChange, WebSocketEvent
 │   │   │   ├── usage.ts              # Usage 타입
 │   │   │   ├── filesystem.ts         # FileSystem, Git 타입
@@ -470,7 +479,8 @@ rocket-session/
 │   │   ├── components/ui/             # shadcn/ui + 공통 컴포넌트
 │   │   ├── features/
 │   │   │   ├── session/               # 세션 관리 (Sidebar, Settings, Import)
-│   │   │   ├── chat/                  # 채팅 (ChatPanel, MessageBubble, Input, Permission, Plan)
+│   │   │   ├── chat/                  # 채팅 (ChatPanel, MessageBubble, Input, Permission)
+│   │   │   ├── workflow/             # 워크플로우 (ProgressBar, PhaseCard, ArtifactViewer, ApprovalBar)
 │   │   │   ├── files/                 # 파일 (FilePanel, FileViewer, DiffViewer)
 │   │   │   ├── directory/             # 디렉토리 (Browser, Picker, Git, Worktree)
 │   │   │   ├── usage/                 # 사용량 (UsageFooter)
@@ -565,13 +575,26 @@ rocket-session/
 |--------|------|------|
 | `GET` | `/api/v1/analytics/summary` | 분석 요약 |
 
+### Workflow
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| `POST` | `/api/v1/sessions/{id}/workflow/start` | 워크플로우 시작 |
+| `GET` | `/api/v1/sessions/{id}/workflow/status` | 워크플로우 상태 조회 |
+| `GET` | `/api/v1/sessions/{id}/workflow/artifacts` | 아티팩트 목록 |
+| `GET` | `/api/v1/sessions/{id}/workflow/artifacts/{artifact_id}` | 아티팩트 상세 |
+| `PUT` | `/api/v1/sessions/{id}/workflow/artifacts/{artifact_id}` | 아티팩트 수정 |
+| `POST` | `/api/v1/sessions/{id}/workflow/artifacts/{artifact_id}/annotations` | 인라인 주석 추가 |
+| `PUT` | `/api/v1/sessions/{id}/workflow/annotations/{annotation_id}` | 주석 수정 |
+| `POST` | `/api/v1/sessions/{id}/workflow/approve` | 현재 단계 승인 |
+| `POST` | `/api/v1/sessions/{id}/workflow/request-revision` | 수정 요청 |
+
 ## 데이터베이스 스키마
 
 PostgreSQL + SQLAlchemy ORM, 마이그레이션: Alembic:
 
 | 테이블 | 설명 |
 |--------|------|
-| `sessions` | 세션 메타데이터 (id, status, work_dir, mode, model, max_turns, mcp_server_ids, search_vector 등) |
+| `sessions` | 세션 메타데이터 (id, status, work_dir, workflow_enabled/phase/phase_status, model, max_turns 등) |
 | `messages` | 대화 기록 (role, content, cost, duration_ms, input_tokens, output_tokens, model) |
 | `file_changes` | 파일 변경 기록 (tool, file, timestamp) |
 | `events` | WebSocket 이벤트 버퍼 (seq, event_type, payload -- JSONB) -- 재연결 복구용 |
@@ -580,6 +603,8 @@ PostgreSQL + SQLAlchemy ORM, 마이그레이션: Alembic:
 | `tags` | 태그 정의 (name, color) |
 | `session_tags` | 세션-태그 다대다 연결 |
 | `session_templates` | 세션 템플릿 (name, description, 모든 세션 옵션) |
+| `session_artifacts` | 워크플로우 아티팩트 (phase, title, content, status) |
+| `artifact_annotations` | 아티팩트 인라인 주석 (line_start/end, content, type, status) |
 
 ## 동작 방식
 

@@ -76,7 +76,7 @@
   - 세션 생성/관리/내보내기, 로컬 세션 import
   - 실시간 메시지 스트리밍 (WebSocket + 재연결 이벤트 복구)
   - 파일 변경 추적 + Git diff 뷰어
-  - Plan Mode (읽기 전용 계획 → 승인 후 실행)
+  - Workflow 시스템 (Research → Plan → Implement 3단계 워크플로우, 아티팩트 + 인라인 주석 + 승인 게이트)
   - Permission Mode (도구 사용 시 사용자 승인 요청, MCP 서버 연계)
   - 이미지 업로드 + 슬래시 명령어 자동완성
   - 사용량 추적 (5시간 블록 + 주간, ccusage 연동)
@@ -163,13 +163,16 @@ rocket-session/
 │   │   │           ├── mcp.py        # MCP 서버 관리
 │   │   │           ├── templates.py  # 세션 템플릿
 │   │   │           ├── tags.py       # 세션 태그
-│   │   │           └── analytics.py  # 분석 데이터
+│   │   │           ├── analytics.py  # 분석 데이터
+│   │   │           └── workflow.py   # 워크플로우 관리
 │   │   ├── models/
 │   │   │   ├── base.py               # SQLAlchemy DeclarativeBase
 │   │   │   ├── session.py            # Session ORM 모델
+│   │   │   ├── session_artifact.py   # SessionArtifact + ArtifactAnnotation ORM 모델
 │   │   │   ├── message.py            # Message ORM 모델
 │   │   │   ├── file_change.py        # FileChange ORM 모델
 │   │   │   ├── event.py              # Event ORM 모델
+│   │   │   ├── event_types.py        # WebSocket 이벤트 타입 (워크플로우 이벤트 포함)
 │   │   │   ├── global_settings.py    # GlobalSettings ORM 모델
 │   │   │   ├── mcp_server.py         # McpServer ORM 모델
 │   │   │   ├── tag.py                # Tag + SessionTag ORM 모델
@@ -185,9 +188,11 @@ rocket-session/
 │   │   │   ├── tag_repo.py           # TagRepository
 │   │   │   ├── template_repo.py      # TemplateRepository
 │   │   │   ├── search_repo.py        # SearchRepository
-│   │   │   └── analytics_repo.py     # AnalyticsRepository
+│   │   │   ├── analytics_repo.py     # AnalyticsRepository
+│   │   │   └── artifact_repo.py      # ArtifactRepository
 │   │   ├── schemas/
 │   │   │   ├── session.py            # 세션 Request/Response 스키마
+│   │   │   ├── workflow.py           # 워크플로우 스키마
 │   │   │   ├── usage.py              # 사용량 스키마
 │   │   │   ├── filesystem.py         # 파일시스템 + Git 스키마
 │   │   │   ├── local_session.py      # 로컬 세션 스키마
@@ -212,6 +217,7 @@ rocket-session/
 │   │       ├── analytics_service.py  # 분석 데이터 집계
 │   │       ├── jsonl_watcher.py      # JSONL 세션 실시간 감시
 │   │       ├── event_handler.py      # 이벤트 처리
+│   │       ├── workflow_service.py   # 워크플로우 3단계 관리 (Research → Plan → Implement)
 │   │       └── permission_mcp_server.py # Permission MCP 서버 (stdio)
 │   ├── alembic/                      # Alembic 마이그레이션
 │   │   ├── versions/                 # 마이그레이션 버전 파일
@@ -231,8 +237,9 @@ rocket-session/
 │   │   ├── config/
 │   │   │   └── env.ts                # 환경 설정
 │   │   ├── types/
-│   │   │   ├── session.ts            # SessionInfo, SessionStatus, SessionMode
+│   │   │   ├── session.ts            # SessionInfo, SessionStatus
 │   │   │   ├── message.ts            # Message, FileChange, WebSocketEvent
+│   │   │   ├── workflow.ts           # Workflow 타입 (Phase, Status, Artifact, Annotation)
 │   │   │   ├── usage.ts              # Usage 타입
 │   │   │   ├── filesystem.ts         # FileSystem, Git 타입
 │   │   │   ├── local-session.ts      # LocalSession 타입
@@ -259,10 +266,13 @@ rocket-session/
 │   │   │   │   └── hooks/            # useSessions, sessionKeys
 │   │   │   ├── chat/                 # 채팅 인터페이스
 │   │   │   │   ├── components/       # ChatPanel, MessageBubble, ChatInput, ChatHeader
-│   │   │   │   │                     # ActivityStatusBar, ModeIndicator, PermissionDialog
-│   │   │   │   │                     # PlanReviewDialog, PlanApprovalButton, SlashCommandPopup
+│   │   │   │   │                     # ActivityStatusBar, PermissionDialog, SlashCommandPopup
 │   │   │   │   ├── hooks/            # useClaudeSocket, useSlashCommands
 │   │   │   │   └── constants/        # slashCommands.ts
+│   │   │   ├── workflow/             # 워크플로우 시스템
+│   │   │   │   ├── components/       # WorkflowProgressBar, WorkflowPhaseCard,
+│   │   │   │   │                     # ArtifactViewer, ArtifactAnnotationPanel, PhaseApprovalBar
+│   │   │   │   └── hooks/            # useWorkflow, useWorkflowActions
 │   │   │   ├── files/                # 파일 변경 추적
 │   │   │   │   └── components/       # FilePanel, FileViewer, DiffViewer
 │   │   │   ├── directory/            # 디렉토리 탐색
@@ -324,7 +334,7 @@ rocket-session/
 ┌─────────────────────────────────────────────────────────────┐
 │                  API Layer (FastAPI)                         │
 │  Sessions · Files · Filesystem · Usage · Permissions · WS   │
-│  Settings · MCP · Templates · Tags · Analytics               │
+│  Settings · MCP · Templates · Tags · Analytics · Workflow    │
 └─────────────────────────────────────────────────────────────┘
                     │
 ┌─────────────────────────────────────────────────────────────┐
@@ -333,7 +343,8 @@ rocket-session/
 │  UsageService / FilesystemService / LocalSessionScanner      │
 │  SettingsService / McpService / TemplateService              │
 │  TagService / SearchService / AnalyticsService               │
-│  JsonlWatcher / EventHandler / PermissionMCPServer           │
+│  WorkflowService / JsonlWatcher / EventHandler               │
+│  PermissionMCPServer                                         │
 └─────────────────────────────────────────────────────────────┘
                     │ subprocess (asyncio)
 ┌─────────────────────────────────────────────────────────────┐
@@ -345,6 +356,7 @@ rocket-session/
 ┌─────────────────────────────────────────────────────────────┐
 │              PostgreSQL (asyncpg + SQLAlchemy ORM)            │
 │  sessions · messages · file_changes · events                 │
+│  session_artifacts · artifact_annotations                    │
 │  global_settings · mcp_servers · tags · session_templates     │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -382,6 +394,7 @@ rocket-session/
 | `TagService` | 세션 태그 관리 | PostgreSQL |
 | `SearchService` | 전문 검색 (TSVECTOR) | PostgreSQL |
 | `AnalyticsService` | 세션 분석 데이터 집계 | PostgreSQL |
+| `WorkflowService` | 3단계 워크플로우 관리 (Research → Plan → Implement) | PostgreSQL |
 | `JsonlWatcher` | JSONL 세션 파일 실시간 감시 | 인메모리 |
 | `EventHandler` | WebSocket 이벤트 처리/라우팅 | 없음 (stateless) |
 
@@ -556,6 +569,12 @@ navigate({ to: '/session/$sessionId', params: { sessionId } });
 // - result: Claude 최종 응답 결과 (cost, duration_ms 포함)
 // - permission_request: 도구 사용 승인 요청 (Permission Mode)
 // - permission_response: 승인/거부 응답
+// - workflow_started: 워크플로우 시작
+// - workflow_phase_completed: 단계 완료 (승인 대기)
+// - workflow_phase_approved: 단계 승인
+// - workflow_revision_requested: 수정 요청
+// - workflow_completed: 워크플로우 전체 완료
+// - workflow_error: 워크플로우 오류
 
 // 재연결: last_seq 파라미터로 놓친 이벤트 자동 복구
 // ws://localhost:8101/ws/{sessionId}?last_seq=42
@@ -623,6 +642,7 @@ get_template_service()   # TemplateService (DB 의존)
 get_tag_service()        # TagService (DB 의존)
 get_search_service()     # SearchService (DB 의존)
 get_analytics_service()  # AnalyticsService (DB 의존)
+get_workflow_service()   # WorkflowService (DB 의존)
 get_jsonl_watcher()      # JsonlWatcher (SessionManager + WsManager 의존)
 ```
 
@@ -728,7 +748,9 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | system_prompt | Text | 시스템 프롬프트 |
 | system_prompt_mode | String | replace / append |
 | timeout_seconds | Integer | 타임아웃 |
-| mode | String | normal / plan |
+| workflow_enabled | Boolean | 워크플로우 활성화 여부 |
+| workflow_phase | String | research / plan / implement |
+| workflow_phase_status | String | in_progress / awaiting_approval / approved / revision_requested |
 | permission_mode | Boolean | Permission 모드 활성화 |
 | permission_required_tools | JSONB | 승인 필요 도구 |
 | name | Text | 세션 이름 |
@@ -737,6 +759,11 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | max_turns | Integer | 최대 턴 수 |
 | max_budget_usd | Float | 예산 한도 (USD) |
 | mcp_server_ids | JSONB | 연결된 MCP 서버 ID 목록 |
+| additional_dirs | JSONB | 추가 작업 디렉토리 목록 |
+| fallback_model | String | 폴백 모델명 |
+| worktree_name | String | Git 워크트리 이름 |
+| parent_session_id | String | 포크 원본 세션 ID |
+| forked_at_message_id | Integer | 포크 시점 메시지 ID |
 | search_vector | TSVECTOR | 전문 검색 인덱스 (GIN) |
 
 ### messages (대화 기록)
@@ -756,6 +783,34 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | cache_creation_tokens | Integer | 캐시 생성 토큰 |
 | cache_read_tokens | Integer | 캐시 읽기 토큰 |
 | model | String | 사용된 모델명 |
+| workflow_phase | String | 메시지 생성 시 워크플로우 단계 |
+
+### session_artifacts (워크플로우 아티팩트)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | String (PK) | 아티팩트 ID |
+| session_id | String (FK → sessions) | 세션 참조 |
+| phase | String | research / plan |
+| title | String | 아티팩트 제목 |
+| content | Text | 아티팩트 내용 (Markdown) |
+| status | String | draft / final |
+| created_at | Text | 생성 시각 |
+| updated_at | Text | 수정 시각 |
+
+### artifact_annotations (아티팩트 인라인 주석)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | String (PK) | 주석 ID |
+| artifact_id | String (FK → session_artifacts) | 아티팩트 참조 |
+| line_start | Integer | 시작 행 번호 |
+| line_end | Integer | 끝 행 번호 |
+| content | Text | 주석 내용 |
+| annotation_type | String | comment / suggestion / issue |
+| status | String | open / resolved |
+| author | String | user / assistant |
+| created_at | Text | 생성 시각 |
 
 ### file_changes (파일 변경 기록)
 
@@ -787,7 +842,7 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | allowed_tools | Text | 기본 허용 도구 |
 | system_prompt | Text | 기본 시스템 프롬프트 |
 | timeout_seconds | Integer | 기본 타임아웃 |
-| mode | String | 기본 모드 |
+| workflow_enabled | Boolean | 기본 워크플로우 활성화 |
 | permission_mode | Boolean | 기본 Permission 모드 |
 | model | String | 기본 모델 |
 | max_turns | Integer | 기본 최대 턴 |
@@ -840,7 +895,7 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | allowed_tools | Text | 허용 도구 |
 | disallowed_tools | Text | 비허용 도구 |
 | timeout_seconds | Integer | 타임아웃 |
-| mode | String | 모드 |
+| workflow_enabled | Boolean | 워크플로우 활성화 |
 | permission_mode | Boolean | Permission 모드 |
 | model | String | 모델 |
 | max_turns | Integer | 최대 턴 |
