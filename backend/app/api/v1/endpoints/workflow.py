@@ -48,6 +48,7 @@ async def start_workflow(
 
     result = await workflow.start_workflow(
         session_id,
+        session_manager=manager,
         skip_research=req.skip_research,
         skip_plan=req.skip_plan,
     )
@@ -56,7 +57,7 @@ async def start_workflow(
         session_id,
         {
             "type": WsEventType.WORKFLOW_STARTED,
-            "phase": result["workflow_phase"],
+            "phase": result["phase"],
         },
     )
     return result
@@ -198,11 +199,11 @@ async def approve_phase(
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
-    result = await workflow.approve_phase(session_id, feedback=req.feedback)
+    result = await workflow.approve_phase(session_id, session_manager=manager, feedback=req.feedback)
 
     event_type = (
         WsEventType.WORKFLOW_COMPLETED
-        if result.get("workflow_completed")
+        if result.get("next_phase") is None
         else WsEventType.WORKFLOW_PHASE_APPROVED
     )
     await ws_manager.broadcast_event(
@@ -229,7 +230,7 @@ async def request_revision(
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
-    result = await workflow.request_revision(session_id, feedback=req.feedback)
+    result = await workflow.request_revision(session_id, session_manager=manager, feedback=req.feedback)
 
     await ws_manager.broadcast_event(
         session_id,

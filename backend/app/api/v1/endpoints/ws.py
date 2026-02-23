@@ -131,10 +131,10 @@ async def _handle_prompt(
             # Phase별 컨텍스트 프롬프트 구성
             if workflow_phase and workflow_service:
                 phase_context = await workflow_service.build_phase_context(
-                    session_id, workflow_phase
+                    session_id, workflow_phase, prompt
                 )
                 if phase_context:
-                    prompt = f"{phase_context}\n\n## 요청\n{prompt}"
+                    prompt = phase_context
 
         # 이미지 경로 목록 (업로드 API로 먼저 업로드한 파일 경로)
         images = data.get("images", [])
@@ -357,28 +357,43 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
             data = await ws.receive_json()
             msg_type = data.get("type")
 
-            if msg_type == "prompt":
-                await _handle_prompt(
-                    data,
-                    session_id,
-                    manager,
-                    ws_manager,
-                    ws,
-                    settings,
-                    runner,
+            try:
+                if msg_type == "prompt":
+                    await _handle_prompt(
+                        data,
+                        session_id,
+                        manager,
+                        ws_manager,
+                        ws,
+                        settings,
+                        runner,
+                    )
+
+                elif msg_type == "stop":
+                    await _handle_stop(session_id, manager, ws_manager)
+
+                elif msg_type == "clear":
+                    await _handle_clear(session_id, manager, ws_manager)
+
+                elif msg_type == "permission_respond":
+                    await _handle_permission_respond(data)
+
+                elif msg_type == "ping":
+                    await ws.send_json({"type": WsEventType.PONG})
+
+            except WebSocketDisconnect:
+                raise  # 상위 except에서 처리
+            except Exception as e:
+                logger.error(
+                    "메시지 처리 오류 (세션 %s, type=%s): %s",
+                    session_id, msg_type, e, exc_info=True,
                 )
-
-            elif msg_type == "stop":
-                await _handle_stop(session_id, manager, ws_manager)
-
-            elif msg_type == "clear":
-                await _handle_clear(session_id, manager, ws_manager)
-
-            elif msg_type == "permission_respond":
-                await _handle_permission_respond(data)
-
-            elif msg_type == "ping":
-                await ws.send_json({"type": WsEventType.PONG})
+                try:
+                    await ws.send_json(
+                        {"type": WsEventType.ERROR, "message": f"서버 오류: {e}"}
+                    )
+                except Exception:
+                    pass  # 에러 전송 실패 시 무시
 
     except WebSocketDisconnect:
         pass

@@ -18,6 +18,9 @@ from app.schemas.session import SessionInfo
 logger = logging.getLogger(__name__)
 
 
+_UNSET = object()  # 센티넬: "전달되지 않음" vs "명시적 None" 구분
+
+
 class SessionManager:
     """PostgreSQL 기반 세션 저장소 및 관리."""
 
@@ -60,6 +63,8 @@ class SessionManager:
                 system_prompt=system_prompt,
                 timeout_seconds=timeout_seconds,
                 workflow_enabled=workflow_enabled,
+                workflow_phase="research" if workflow_enabled else None,
+                workflow_phase_status="in_progress" if workflow_enabled else None,
                 permission_mode=permission_mode,
                 permission_required_tools=permission_required_tools,
                 model=model,
@@ -281,8 +286,8 @@ class SessionManager:
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
         workflow_enabled: bool | None = None,
-        workflow_phase: str | None = None,
-        workflow_phase_status: str | None = None,
+        workflow_phase: str | None | object = _UNSET,
+        workflow_phase_status: str | None | object = _UNSET,
         permission_mode: bool | None = None,
         permission_required_tools: list[str] | None = None,
         name: str | None = None,
@@ -308,9 +313,9 @@ class SessionManager:
             kwargs["timeout_seconds"] = timeout_seconds
         if workflow_enabled is not None:
             kwargs["workflow_enabled"] = workflow_enabled
-        if workflow_phase is not None:
+        if workflow_phase is not _UNSET:
             kwargs["workflow_phase"] = workflow_phase
-        if workflow_phase_status is not None:
+        if workflow_phase_status is not _UNSET:
             kwargs["workflow_phase_status"] = workflow_phase_status
         if permission_mode is not None:
             kwargs["permission_mode"] = permission_mode

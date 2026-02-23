@@ -109,7 +109,7 @@ class WorkflowService:
         feedback: str | None = None,
     ) -> dict:
         """현재 phase 승인 → 아티팩트 approved → 다음 phase 전환."""
-        session_data = await session_manager.get_session(session_id)
+        session_data = await session_manager.get(session_id)
         if not session_data:
             raise ValueError(f"세션을 찾을 수 없습니다: {session_id}")
 
@@ -158,7 +158,7 @@ class WorkflowService:
         feedback: str,
     ) -> dict:
         """수정 요청 → 아티팩트 superseded + 새 버전 생성 → 재실행 대기."""
-        session_data = await session_manager.get_session(session_id)
+        session_data = await session_manager.get(session_id)
         if not session_data:
             raise ValueError(f"세션을 찾을 수 없습니다: {session_id}")
 
