@@ -350,135 +350,65 @@ class FilesystemService:
 
         return WorktreeListResponse(worktrees=worktrees)
 
-    async def create_worktree(
-        self,
-        repo_path: str,
-        branch: str,
-        target_path: Optional[str] = None,
-        create_branch: bool = False,
-    ) -> WorktreeInfo:
-        """Git 워크트리 생성."""
+    async def remove_claude_worktree(
+        self, repo_path: str, worktree_name: str, force: bool = False
+    ) -> None:
+        """claude -w로 생성된 워크트리 삭제 + 브랜치 정리.
+
+        repo_path: 레포 루트 경로
+        worktree_name: 워크트리 이름 (claude -w <name>)
+        force: 미커밋 변경사항이 있어도 강제 삭제
+        """
         validated_repo = self._validate_path(repo_path)
         if not self._is_within_root(validated_repo):
             raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated_repo)
 
-        # target_path가 없으면 repo_path 옆에 {repo_name}-{branch} 디렉토리 생성
-        if not target_path:
-            repo_name = validated_repo.name
-            target_path = str(validated_repo.parent / f"{repo_name}-{branch}")
+        worktree_path = os.path.join(cwd, ".claude", "worktrees", worktree_name)
+        branch_name = f"worktree-{worktree_name}"
 
-        # 워크트리 생성 명령 구성
-        args = ["worktree", "add"]
-        if create_branch:
-            args.extend(["-b", branch])
-        args.append(target_path)
-        if not create_branch:
-            args.append(branch)
-
-        returncode, stdout, stderr = await self._run_git_command(*args, cwd=cwd)
-        if returncode != 0:
-            raise RuntimeError(f"워크트리 생성 실패: {stderr}")
-
-        # 생성된 워크트리 정보 조회
-        returncode, stdout, _ = await self._run_git_command(
-            "rev-parse", "HEAD", cwd=target_path
-        )
-        commit_hash = stdout if returncode == 0 else None
-
-        return WorktreeInfo(
-            path=target_path,
-            branch=branch,
-            commit_hash=commit_hash,
-            is_main=False,
-        )
-
-    async def remove_worktree(self, worktree_path: str, force: bool = False) -> None:
-        """Git 워크트리 삭제 + 연결된 브랜치 정리.
-
-        worktree_path: 삭제할 워크트리의 경로
-        force: 미커밋 변경사항이 있어도 강제 삭제
-        """
-        validated_path = self._validate_path(worktree_path)
-        if not self._is_within_root(validated_path):
-            raise ValueError(f"접근할 수 없는 경로입니다: {worktree_path}")
-        cwd = str(validated_path)
-
-        # 워크트리인지 확인 (git-dir != git-common-dir)
-        rc_dir, git_dir, _ = await self._run_git_command(
-            "rev-parse", "--git-dir", cwd=cwd
-        )
-        rc_common, git_common, _ = await self._run_git_command(
-            "rev-parse", "--git-common-dir", cwd=cwd
-        )
-        if rc_dir != 0 or rc_common != 0:
-            raise ValueError("유효한 Git 저장소가 아닙니다.")
-
-        norm_dir = os.path.normpath(os.path.join(cwd, git_dir))
-        norm_common = os.path.normpath(os.path.join(cwd, git_common))
-        if norm_dir == norm_common:
-            raise ValueError("메인 저장소는 워크트리 삭제 대상이 아닙니다.")
-
-        # 워크트리의 현재 브랜치명 기억 (삭제 후 브랜치 정리용)
-        rc_branch, branch_name, _ = await self._run_git_command(
-            "branch", "--show-current", cwd=cwd
-        )
-        worktree_branch = branch_name if rc_branch == 0 and branch_name else None
-
-        # git-common-dir이 실제 .git 디렉토리 → 메인 레포 경로 추출
-        main_repo = os.path.dirname(norm_common)
-
-        # 메인 레포의 현재 브랜치 확인 (같은 브랜치 삭제 방지)
-        rc_main, main_branch, _ = await self._run_git_command(
-            "branch", "--show-current", cwd=main_repo
-        )
-        main_current = main_branch if rc_main == 0 and main_branch else None
-
-        # 워크트리 삭제 (메인 레포에서 실행)
+        # 1. git worktree remove
         args = ["worktree", "remove"]
         if force:
             args.append("--force")
-        args.append(cwd)
+        args.append(worktree_path)
 
-        returncode, _, stderr = await self._run_git_command(*args, cwd=main_repo)
+        returncode, _, stderr = await self._run_git_command(*args, cwd=cwd)
         if returncode != 0:
             raise RuntimeError(f"워크트리 삭제 실패: {stderr}")
 
-        # 워크트리에 연결되었던 브랜치 삭제 (메인 브랜치와 다른 경우만)
-        if worktree_branch and worktree_branch != main_current:
-            delete_flag = "-D" if force else "-d"
-            await self._run_git_command(
-                "branch", delete_flag, worktree_branch, cwd=main_repo
-            )
+        # 2. 로컬 브랜치 삭제
+        delete_flag = "-D" if force else "-d"
+        await self._run_git_command("branch", delete_flag, branch_name, cwd=cwd)
 
-            # 원격 브랜치 삭제 (보호 브랜치 제외, 실패 시 경고만)
-            protected = {"main", "master", "develop", "dev"}
-            if worktree_branch not in protected:
-                rc_ls, ls_out, _ = await self._run_git_command(
-                    "ls-remote",
-                    "--heads",
+        # 3. 원격 브랜치 삭제 (보호 브랜치 제외, 실패 시 경고만)
+        protected = {"main", "master", "develop", "dev"}
+        if branch_name not in protected:
+            rc_ls, ls_out, _ = await self._run_git_command(
+                "ls-remote",
+                "--heads",
+                "origin",
+                branch_name,
+                cwd=cwd,
+                timeout=15.0,
+            )
+            if rc_ls == 0 and ls_out.strip():
+                rc_push, _, push_err = await self._run_git_command(
+                    "push",
                     "origin",
-                    worktree_branch,
-                    cwd=main_repo,
-                    timeout=15.0,
+                    "--delete",
+                    branch_name,
+                    cwd=cwd,
+                    timeout=30.0,
                 )
-                if rc_ls == 0 and ls_out.strip():
-                    rc_push, _, push_err = await self._run_git_command(
-                        "push",
-                        "origin",
-                        "--delete",
-                        worktree_branch,
-                        cwd=main_repo,
-                        timeout=30.0,
+                if rc_push != 0:
+                    logger.warning(
+                        "원격 브랜치 삭제 실패 (무시): branch=%s, err=%s",
+                        branch_name,
+                        push_err,
                     )
-                    if rc_push != 0:
-                        logger.warning(
-                            "원격 브랜치 삭제 실패 (무시): branch=%s, err=%s",
-                            worktree_branch,
-                            push_err,
-                        )
-                    else:
-                        logger.info("원격 브랜치 삭제 완료: origin/%s", worktree_branch)
+                else:
+                    logger.info("원격 브랜치 삭제 완료: origin/%s", branch_name)
 
     async def get_git_status(self, path: str) -> GitStatusResponse:
         """git status --porcelain=v1 결과를 파싱하여 변경 파일 목록 반환."""

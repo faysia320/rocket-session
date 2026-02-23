@@ -48,6 +48,7 @@ class Session(Base):
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
     additional_dirs: Mapped[list | None] = mapped_column(JSONB, default=None)
     fallback_model: Mapped[str | None] = mapped_column(String, default=None)
+    worktree_name: Mapped[str | None] = mapped_column(String, default=None)
     parent_session_id: Mapped[str | None] = mapped_column(String, default=None)
     forked_at_message_id: Mapped[int | None] = mapped_column(Integer, default=None)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, default=None)

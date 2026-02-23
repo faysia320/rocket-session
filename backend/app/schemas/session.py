@@ -23,6 +23,7 @@ class CreateSessionRequest(BaseModel):
     mcp_server_ids: Optional[list[str]] = None
     additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
+    worktree_name: Optional[str] = None
     template_id: Optional[str] = None
 
 
@@ -43,6 +44,7 @@ class UpdateSessionRequest(BaseModel):
     additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
     work_dir: Optional[str] = None
+    worktree_name: Optional[str] = None
 
 
 class CurrentActivity(BaseModel):
@@ -75,6 +77,7 @@ class SessionInfo(BaseModel):
     mcp_server_ids: Optional[list[str]] = None
     additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
+    worktree_name: Optional[str] = None
     parent_session_id: Optional[str] = None
     forked_at_message_id: Optional[int] = None
     tags: list[TagInfo] = []
@@ -90,5 +93,4 @@ class ForkSessionRequest(BaseModel):
 class ConvertToWorktreeRequest(BaseModel):
     """기존 세션을 Git 워크트리로 전환 요청."""
 
-    branch: str = Field(..., min_length=1, description="새 워크트리 브랜치명")
-    target_path: Optional[str] = None
+    worktree_name: str = Field(..., min_length=1, description="워크트리 이름 (claude -w에 전달)")

@@ -45,6 +45,7 @@ class SessionManager:
         mcp_server_ids: list[str] | None = None,
         additional_dirs: list[str] | None = None,
         fallback_model: str | None = None,
+        worktree_name: str | None = None,
     ) -> dict:
         sid = str(uuid.uuid4())[:16]
         created_at = datetime.now(timezone.utc).isoformat()
@@ -67,6 +68,7 @@ class SessionManager:
                 mcp_server_ids=mcp_server_ids,
                 additional_dirs=additional_dirs,
                 fallback_model=fallback_model,
+                worktree_name=worktree_name,
             )
             await repo.add(entity)
             await session.commit()
@@ -291,6 +293,7 @@ class SessionManager:
         parent_session_id: str | None = None,
         forked_at_message_id: int | None = None,
         work_dir: str | None = None,
+        worktree_name: str | None = None,
     ) -> dict | None:
         kwargs = {}
         if allowed_tools is not None:
@@ -329,6 +332,8 @@ class SessionManager:
             kwargs["forked_at_message_id"] = forked_at_message_id
         if work_dir is not None:
             kwargs["work_dir"] = work_dir
+        if worktree_name is not None:
+            kwargs["worktree_name"] = worktree_name
         async with self._db.session() as session:
             repo = SessionRepository(session)
             entity = await repo.update_settings(session_id, **kwargs)
@@ -361,6 +366,7 @@ class SessionManager:
             mcp_server_ids=session.get("mcp_server_ids"),
             additional_dirs=session.get("additional_dirs"),
             fallback_model=session.get("fallback_model"),
+            worktree_name=session.get("worktree_name"),
             parent_session_id=session.get("parent_session_id"),
             forked_at_message_id=session.get("forked_at_message_id"),
         )

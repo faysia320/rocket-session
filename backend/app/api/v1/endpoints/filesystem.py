@@ -5,7 +5,6 @@ from fastapi.responses import PlainTextResponse
 
 from app.api.dependencies import get_filesystem_service
 from app.schemas.filesystem import (
-    CreateWorktreeRequest,
     DirectoryListResponse,
     GitHubCLIStatus,
     GitHubPRDetail,
@@ -18,7 +17,6 @@ from app.schemas.filesystem import (
     PRReviewSubmitRequest,
     PRReviewSubmitResponse,
     SkillListResponse,
-    WorktreeInfo,
     WorktreeListResponse,
 )
 from app.services.filesystem_service import FilesystemService
@@ -87,34 +85,17 @@ async def list_worktrees(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/worktrees", response_model=WorktreeInfo)
-async def create_worktree(
-    req: CreateWorktreeRequest,
-    fs: FilesystemService = Depends(get_filesystem_service),
-):
-    try:
-        return await fs.create_worktree(
-            repo_path=req.repo_path,
-            branch=req.branch,
-            target_path=req.target_path,
-            create_branch=req.create_branch,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.delete("/worktrees")
 async def remove_worktree(
-    path: str = Query(..., description="삭제할 워크트리 경로"),
+    repo_path: str = Query(..., description="레포 루트 경로"),
+    name: str = Query(..., description="워크트리 이름 (claude -w <name>)"),
     force: bool = Query(
         default=False, description="미커밋 변경사항이 있어도 강제 삭제"
     ),
     fs: FilesystemService = Depends(get_filesystem_service),
 ):
     try:
-        await fs.remove_worktree(path, force=force)
+        await fs.remove_claude_worktree(repo_path, name, force=force)
         return {"ok": True}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

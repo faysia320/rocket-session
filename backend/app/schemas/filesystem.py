@@ -42,13 +42,6 @@ class WorktreeListResponse(BaseModel):
     worktrees: list[WorktreeInfo]
 
 
-class CreateWorktreeRequest(BaseModel):
-    repo_path: str
-    branch: str
-    target_path: Optional[str] = None
-    create_branch: bool = False
-
-
 class GitStatusFile(BaseModel):
     """git status --porcelain 한 줄 파싱 결과."""
 

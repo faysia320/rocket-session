@@ -102,6 +102,12 @@ class ClaudeRunner:
     ) -> tuple[list[str], str | None, Path | None]:
         """CLI 커맨드를 구성하고, (cmd, system_prompt, mcp_config_path)를 반환."""
         cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose"]
+
+        # 워크트리 세션: claude -w <name> 플래그 추가
+        worktree_name = session.get("worktree_name")
+        if worktree_name:
+            cmd.extend(["-w", worktree_name])
+
         system_prompt = session.get("system_prompt")
         mcp_config_path = None
 
@@ -277,17 +283,25 @@ class ClaudeRunner:
         )
 
     @staticmethod
-    def _normalize_file_path(file_path: str, work_dir: str) -> str:
-        """파일 경로를 work_dir 기준 상대 경로로 정규화한다.
+    def _normalize_file_path(
+        file_path: str, work_dir: str, worktree_name: str | None = None
+    ) -> str:
+        """파일 경로를 work_dir(또는 워크트리) 기준 상대 경로로 정규화한다.
 
-        CLI가 절대 경로를 반환하는 경우, work_dir 하위이면 상대 경로로 변환한다.
+        CLI가 절대 경로를 반환하는 경우, 기준 디렉토리 하위이면 상대 경로로 변환한다.
+        워크트리 세션에서는 {work_dir}/.claude/worktrees/{name}/ 기준으로 정규화한다.
         """
+        effective_dir = work_dir
+        if worktree_name:
+            wt_path = str(Path(work_dir) / ".claude" / "worktrees" / worktree_name)
+            if Path(wt_path).is_dir():
+                effective_dir = wt_path
         p = Path(file_path)
         if p.is_absolute():
             try:
-                return str(p.resolve().relative_to(Path(work_dir).resolve()))
+                return str(p.resolve().relative_to(Path(effective_dir).resolve()))
             except ValueError:
-                # work_dir 외부 경로는 그대로 반환
+                # 기준 디렉토리 외부 경로는 그대로 반환
                 return file_path
         return file_path
 
@@ -443,8 +457,9 @@ class ClaudeRunner:
                         "file_path", tool_input.get("path", "unknown")
                     )
                     work_dir = turn_state.get("work_dir", "")
+                    wt_name = turn_state.get("worktree_name")
                     file_path = (
-                        self._normalize_file_path(raw_path, work_dir)
+                        self._normalize_file_path(raw_path, work_dir, wt_name)
                         if work_dir
                         else raw_path
                     )
@@ -608,13 +623,18 @@ class ClaudeRunner:
         )
 
     @staticmethod
-    def create_turn_state(work_dir: str = "", mode: str = "normal") -> dict:
+    def create_turn_state(
+        work_dir: str = "",
+        mode: str = "normal",
+        worktree_name: str | None = None,
+    ) -> dict:
         """turn_state 딕셔너리를 생성.
 
         turn_state는 현재 턴의 공유 상태로, 아래 키를 포함합니다:
           text (str): 누적 응답 텍스트
           model (str|None): 응답 모델명
           work_dir (str): 작업 디렉토리 (파일 경로 정규화용)
+          worktree_name (str|None): 워크트리 이름 (claude -w 세션용)
           mode (str): 현재 모드 ("normal"|"plan"), ExitPlanMode 시 "normal"로 변경
           result_received (bool): result 이벤트 수신 여부 (비정상 종료 감지용)
           exit_plan_tool_id (str, 동적): ExitPlanMode tool_use_id, tool_result 필터링 후 제거
@@ -624,6 +644,7 @@ class ClaudeRunner:
             "text": "",
             "model": None,
             "work_dir": work_dir,
+            "worktree_name": worktree_name,
             "mode": mode,
             "result_received": False,
         }
@@ -719,7 +740,10 @@ class ClaudeRunner:
         timeout_seconds = session.get("timeout_seconds")
 
         work_dir = session.get("work_dir", "")
-        turn_state = self.create_turn_state(work_dir=work_dir, mode=mode)
+        worktree_name = session.get("worktree_name")
+        turn_state = self.create_turn_state(
+            work_dir=work_dir, mode=mode, worktree_name=worktree_name
+        )
 
         try:
             process = await self._start_process(cmd, session["work_dir"])
