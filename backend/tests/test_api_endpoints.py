@@ -38,6 +38,8 @@ async def test_client():
 
     # 테스트 격리: 이전 실행에서 남은 데이터 정리
     async with db.session() as session:
+        await session.execute(text("DELETE FROM artifact_annotations"))
+        await session.execute(text("DELETE FROM session_artifacts"))
         await session.execute(text("DELETE FROM session_tags"))
         await session.execute(text("DELETE FROM events"))
         await session.execute(text("DELETE FROM file_changes"))
@@ -119,7 +121,7 @@ class TestSessionCRUD:
         assert "id" in data
         assert data["work_dir"] == work_dir
         assert data["status"] == "idle"
-        assert data["mode"] == "normal"
+        assert data["workflow_enabled"] is False
         assert data["permission_mode"] is False
 
     async def test_create_session_without_work_dir(self, test_client: AsyncClient):
@@ -319,16 +321,32 @@ class TestSessionExport:
 
 
 @pytest.mark.asyncio
-class TestSessionModes:
-    """Tests for session mode-specific functionality."""
+class TestSessionWorkflow:
+    """Tests for session workflow and permission functionality."""
 
-    async def test_create_session_default_mode(self, test_client: AsyncClient):
-        """Should create session with default normal mode (mode is set via update)."""
+    async def test_create_session_default_workflow(self, test_client: AsyncClient):
+        """Should create session with workflow disabled by default."""
         response = await test_client.post("/api/sessions/", json={"work_dir": "/test"})
 
         assert response.status_code == 200
         data = response.json()
-        assert data["mode"] == "normal"
+        assert data["workflow_enabled"] is False
+        assert data["workflow_phase"] is None
+        assert data["workflow_phase_status"] is None
+
+    async def test_create_session_with_workflow_enabled(self, test_client: AsyncClient):
+        """Should create session with workflow enabled."""
+        response = await test_client.post(
+            "/api/sessions/",
+            json={
+                "work_dir": "/test",
+                "workflow_enabled": True,
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["workflow_enabled"] is True
 
     async def test_create_session_with_permission_mode(self, test_client: AsyncClient):
         """Should create session with permission mode enabled."""
@@ -346,15 +364,15 @@ class TestSessionModes:
         assert data["permission_mode"] is True
         assert data["permission_required_tools"] == ["Write", "Edit", "Bash"]
 
-    async def test_update_session_mode(self, test_client: AsyncClient):
-        """Should update session mode and permission settings."""
+    async def test_update_session_workflow_and_permission(self, test_client: AsyncClient):
+        """Should update session workflow and permission settings."""
         created = await create_test_session(test_client)
         session_id = created["id"]
 
         response = await test_client.patch(
             f"/api/sessions/{session_id}",
             json={
-                "mode": "plan",
+                "workflow_enabled": True,
                 "permission_mode": True,
                 "permission_required_tools": ["Bash"],
             },
@@ -362,6 +380,6 @@ class TestSessionModes:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["mode"] == "plan"
+        assert data["workflow_enabled"] is True
         assert data["permission_mode"] is True
         assert data["permission_required_tools"] == ["Bash"]
