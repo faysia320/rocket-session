@@ -25,9 +25,7 @@ class TeamMessage(Base):
         Integer, ForeignKey("team_members.id", ondelete="SET NULL"), default=None
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    message_type: Mapped[str] = mapped_column(
-        String, nullable=False, default="info"
-    )
+    message_type: Mapped[str] = mapped_column(String, nullable=False, default="info")
     metadata_json: Mapped[str | None] = mapped_column(Text, default=None)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[str] = mapped_column(Text, nullable=False)

@@ -34,10 +34,18 @@ class WsEventType:
     TOOL_RESULT = "tool_result"
     FILE_CHANGE = "file_change"
 
-    # Mode / Permission
-    MODE_CHANGE = "mode_change"
+    # Permission
     PERMISSION_REQUEST = "permission_request"
     PERMISSION_RESPONSE = "permission_response"
+
+    # Workflow
+    WORKFLOW_STARTED = "workflow_started"
+    WORKFLOW_PHASE_COMPLETED = "workflow_phase_completed"
+    WORKFLOW_PHASE_APPROVED = "workflow_phase_approved"
+    WORKFLOW_PHASE_REVISION = "workflow_phase_revision"
+    WORKFLOW_ARTIFACT_UPDATED = "workflow_artifact_updated"
+    WORKFLOW_ANNOTATION_ADDED = "workflow_annotation_added"
+    WORKFLOW_COMPLETED = "workflow_completed"
 
     # Interactive
     ASK_USER_QUESTION = "ask_user_question"

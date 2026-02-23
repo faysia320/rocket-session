@@ -29,7 +29,9 @@ class Session(Base):
     allowed_tools: Mapped[str | None] = mapped_column(Text, default=None)
     system_prompt: Mapped[str | None] = mapped_column(Text, default=None)
     timeout_seconds: Mapped[int | None] = mapped_column(Integer, default=None)
-    mode: Mapped[str] = mapped_column(String, nullable=False, default="normal")
+    workflow_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    workflow_phase: Mapped[str | None] = mapped_column(String, default=None)
+    workflow_phase_status: Mapped[str | None] = mapped_column(String, default=None)
     permission_mode: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )

@@ -29,7 +29,9 @@ class Message(Base):
     model: Mapped[str | None] = mapped_column(String, default=None)
 
     # tool_use / tool_result 지원 컬럼
-    message_type: Mapped[str | None] = mapped_column(String, default=None, nullable=True)
+    message_type: Mapped[str | None] = mapped_column(
+        String, default=None, nullable=True
+    )
     tool_use_id: Mapped[str | None] = mapped_column(String, default=None, nullable=True)
     tool_name: Mapped[str | None] = mapped_column(String, default=None, nullable=True)
     tool_input: Mapped[dict | None] = mapped_column(JSONB, default=None, nullable=True)

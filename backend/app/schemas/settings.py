@@ -11,7 +11,7 @@ class GlobalSettingsResponse(BaseModel):
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = None
-    mode: str = "normal"
+    workflow_enabled: bool = False
     permission_mode: bool = False
     permission_required_tools: Optional[list[str]] = None
     model: Optional[str] = None
@@ -30,7 +30,7 @@ class UpdateGlobalSettingsRequest(BaseModel):
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = None
-    mode: Optional[str] = None
+    workflow_enabled: Optional[bool] = None
     permission_mode: Optional[bool] = None
     permission_required_tools: Optional[list[str]] = None
     model: Optional[str] = None

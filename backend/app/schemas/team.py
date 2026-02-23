@@ -182,9 +182,9 @@ class SendMessageRequest(BaseModel):
     content: str = Field(..., min_length=1, max_length=5000)
     from_member_id: int
     to_member_id: Optional[int] = None
-    message_type: Literal[
-        "info", "task_update", "request", "result", "delegate"
-    ] = "info"
+    message_type: Literal["info", "task_update", "request", "result", "delegate"] = (
+        "info"
+    )
     metadata_json: Optional[str] = None
 
 

@@ -17,7 +17,7 @@ class GlobalSettings(Base):
     allowed_tools: Mapped[str | None] = mapped_column(Text, default=None)
     system_prompt: Mapped[str | None] = mapped_column(Text, default=None)
     timeout_seconds: Mapped[int | None] = mapped_column(Integer, default=None)
-    mode: Mapped[str | None] = mapped_column(String, default="normal")
+    workflow_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     permission_mode: Mapped[bool] = mapped_column(Boolean, default=False)
     permission_required_tools: Mapped[list | None] = mapped_column(JSONB, default=None)
     model: Mapped[str | None] = mapped_column(String, default=None)

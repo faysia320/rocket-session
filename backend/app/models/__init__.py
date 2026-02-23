@@ -11,6 +11,7 @@ from app.models.tag import SessionTag, Tag
 from app.models.team import Team, TeamMember
 from app.models.team_message import TeamMessage
 from app.models.team_task import TeamTask
+from app.models.session_artifact import ArtifactAnnotation, SessionArtifact
 from app.models.template import SessionTemplate
 
 __all__ = [
@@ -28,5 +29,7 @@ __all__ = [
     "TeamMember",
     "TeamMessage",
     "TeamTask",
+    "SessionArtifact",
+    "ArtifactAnnotation",
     "SessionTemplate",
 ]

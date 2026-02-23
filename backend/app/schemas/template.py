@@ -13,7 +13,7 @@ class CreateTemplateRequest(BaseModel):
     allowed_tools: Optional[str] = None
     disallowed_tools: Optional[str] = None
     timeout_seconds: Optional[int] = Field(None, ge=1, le=7200)
-    mode: Optional[Literal["normal", "plan"]] = None
+    workflow_enabled: Optional[bool] = None
     permission_mode: Optional[bool] = None
     permission_required_tools: Optional[list[str]] = None
     model: Optional[str] = None
@@ -33,7 +33,7 @@ class UpdateTemplateRequest(BaseModel):
     allowed_tools: Optional[str] = None
     disallowed_tools: Optional[str] = None
     timeout_seconds: Optional[int] = Field(None, ge=1, le=7200)
-    mode: Optional[Literal["normal", "plan"]] = None
+    workflow_enabled: Optional[bool] = None
     permission_mode: Optional[bool] = None
     permission_required_tools: Optional[list[str]] = None
     model: Optional[str] = None
@@ -54,7 +54,7 @@ class TemplateInfo(BaseModel):
     allowed_tools: Optional[str] = None
     disallowed_tools: Optional[str] = None
     timeout_seconds: Optional[int] = None
-    mode: str = "normal"
+    workflow_enabled: bool = False
     permission_mode: bool = False
     permission_required_tools: Optional[list[str]] = None
     model: Optional[str] = None

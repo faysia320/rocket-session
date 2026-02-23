@@ -12,7 +12,7 @@ class CreateSessionRequest(BaseModel):
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = Field(None, ge=1, le=7200)
-    mode: Optional[Literal["normal", "plan"]] = None
+    workflow_enabled: Optional[bool] = None
     permission_mode: Optional[bool] = None
     permission_required_tools: Optional[list[str]] = None
     model: Optional[str] = None
@@ -31,7 +31,7 @@ class UpdateSessionRequest(BaseModel):
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = Field(None, ge=1, le=7200)
-    mode: Optional[Literal["normal", "plan"]] = None
+    workflow_enabled: Optional[bool] = None
     permission_mode: Optional[bool] = None
     permission_required_tools: Optional[list[str]] = None
     name: Optional[str] = None
@@ -65,7 +65,9 @@ class SessionInfo(BaseModel):
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = None
-    mode: str = "normal"
+    workflow_enabled: bool = False
+    workflow_phase: Optional[str] = None
+    workflow_phase_status: Optional[str] = None
     permission_mode: bool = False
     permission_required_tools: Optional[list[str]] = None
     name: Optional[str] = None
@@ -93,4 +95,6 @@ class ForkSessionRequest(BaseModel):
 class ConvertToWorktreeRequest(BaseModel):
     """기존 세션을 Git 워크트리로 전환 요청."""
 
-    worktree_name: str = Field(..., min_length=1, description="워크트리 이름 (claude -w에 전달)")
+    worktree_name: str = Field(
+        ..., min_length=1, description="워크트리 이름 (claude -w에 전달)"
+    )
