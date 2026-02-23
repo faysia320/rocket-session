@@ -112,9 +112,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       if (useWorktree && worktreeName.trim()) {
         options.worktree_name = worktreeName.trim();
       }
-      if (workflowEnabled) {
-        options.workflow_enabled = true;
-      }
+      options.workflow_enabled = workflowEnabled;
       onCreate(workDir.trim(), Object.keys(options).length > 0 ? options : undefined);
     } catch {
       setCreating(false);

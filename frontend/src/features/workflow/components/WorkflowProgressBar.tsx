@@ -63,7 +63,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
     <div
       role="navigation"
       aria-label="워크플로우 진행 상태"
-      className="flex items-center gap-1 px-4 py-2 border-b border-border bg-card/50"
+      className="flex items-center justify-center gap-1 px-4 py-2 border-b border-border bg-card/50"
     >
       {PHASES.map((phase, idx) => {
         const state = getPhaseState(phase.key, currentPhase, currentStatus);

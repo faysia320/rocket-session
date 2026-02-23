@@ -171,9 +171,12 @@ export type ClaudeSocketAction =
   | { type: "WS_PERMISSION_RESPONSE"; reason: string | undefined }
   | { type: "WS_RAW"; text: string }
   // Workflow events
+  | { type: "WS_WORKFLOW_STARTED"; phase: string }
   | { type: "WS_WORKFLOW_PHASE_COMPLETED"; phase: string }
   | { type: "WS_WORKFLOW_PHASE_APPROVED"; phase: string; nextPhase: string | null }
+  | { type: "WS_WORKFLOW_PHASE_REVISION"; phase: string }
   | { type: "WS_WORKFLOW_COMPLETED" }
+  | { type: "WS_WORKFLOW_DATA_CHANGED"; eventType: string; artifactId?: number }
   // User actions
   | { type: "ANSWER_QUESTION"; messageId: string; questionIndex: number; selectedLabels: string[] }
   | { type: "CONFIRM_ANSWERS"; messageId: string }
@@ -728,13 +731,46 @@ export function claudeSocketReducer(
       return { ...state, pendingPermission: null, messages: msgs };
     }
 
+    case "WS_WORKFLOW_STARTED":
+      return {
+        ...state,
+        sessionInfo: state.sessionInfo
+          ? {
+              ...state.sessionInfo,
+              workflow_enabled: true,
+              workflow_phase: action.phase,
+              workflow_phase_status: "in_progress",
+            }
+          : state.sessionInfo,
+      };
+
     case "WS_WORKFLOW_PHASE_COMPLETED":
       return {
         ...state,
         sessionInfo: state.sessionInfo
-          ? { ...state.sessionInfo, workflow_phase_status: "awaiting_approval" }
+          ? {
+              ...state.sessionInfo,
+              workflow_phase: action.phase,
+              workflow_phase_status: "awaiting_approval",
+            }
           : state.sessionInfo,
       };
+
+    case "WS_WORKFLOW_PHASE_REVISION":
+      return {
+        ...state,
+        sessionInfo: state.sessionInfo
+          ? {
+              ...state.sessionInfo,
+              workflow_phase: action.phase,
+              workflow_phase_status: "in_progress",
+            }
+          : state.sessionInfo,
+      };
+
+    case "WS_WORKFLOW_DATA_CHANGED":
+      // 아티팩트/주석 변경 신호 — 프론트엔드에서 TanStack Query invalidation 용도
+      return state;
 
     case "WS_WORKFLOW_PHASE_APPROVED":
       return {

@@ -446,6 +446,15 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
   return (
     <div ref={panelRef} className="relative flex-1 flex flex-col overflow-hidden">
+      {sessionInfo?.workflow_enabled ? (
+        <WorkflowProgressBar
+          currentPhase={(sessionInfo.workflow_phase as WorkflowPhase) ?? null}
+          currentStatus={sessionInfo.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus ?? null}
+          onPhaseClick={(_phase) => {
+            // TODO: 해당 phase의 아티팩트 뷰어 열기
+          }}
+        />
+      ) : null}
       <ChatHeader
         connected={connected}
         workDir={workDir}
@@ -475,15 +484,6 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         workflowEnabled={sessionInfo?.workflow_enabled}
         onEnableWorkflow={handleEnableWorkflow}
       />
-      {sessionInfo?.workflow_enabled ? (
-        <WorkflowProgressBar
-          currentPhase={(sessionInfo.workflow_phase as WorkflowPhase) ?? null}
-          currentStatus={sessionInfo.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus ?? null}
-          onPhaseClick={(_phase) => {
-            // TODO: 해당 phase의 아티팩트 뷰어 열기
-          }}
-        />
-      ) : null}
       <SessionStatsBar
         sessionId={sessionId}
         isRunning={status === "running" || activeTools.length > 0}

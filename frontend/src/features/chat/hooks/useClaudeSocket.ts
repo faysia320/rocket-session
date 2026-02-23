@@ -252,6 +252,30 @@ export function useClaudeSocket(sessionId: string) {
         dispatch({ type: "WS_WORKFLOW_COMPLETED" });
         break;
 
+      case "workflow_started":
+        dispatch({
+          type: "WS_WORKFLOW_STARTED",
+          phase: data.phase as string,
+        });
+        break;
+
+      case "workflow_phase_revision":
+        dispatch({
+          type: "WS_WORKFLOW_PHASE_REVISION",
+          phase: data.phase as string,
+        });
+        break;
+
+      case "workflow_artifact_updated":
+      case "workflow_annotation_added":
+        // 아티팩트/주석 변경 → TanStack Query 캐시 무효화는 컴포넌트에서 처리
+        dispatch({
+          type: "WS_WORKFLOW_DATA_CHANGED",
+          eventType: data.type as string,
+          artifactId: data.artifact_id as number | undefined,
+        });
+        break;
+
       case "raw":
         dispatch({ type: "WS_RAW", text: data.text as string });
         break;
