@@ -253,6 +253,10 @@ export function useClaudeSocket(sessionId: string) {
         }
         break;
 
+      case "pong":
+        // 서버 ping 응답 — 별도 처리 불필요 (visibility probe가 message 리스너로 감지)
+        break;
+
       default:
         break;
     }
@@ -341,6 +345,92 @@ export function useClaudeSocket(sessionId: string) {
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
+      }
+    };
+  }, [connect]);
+
+  // 모바일 탭 백그라운드→포그라운드 전환 시 WebSocket 상태 점검 + 재연결
+  useEffect(() => {
+    let hiddenAt = 0;
+    let probeTimeout: ReturnType<typeof setTimeout> | null = null;
+    let probeListener: ((evt: MessageEvent) => void) | null = null;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+
+      // "visible" — 탭이 다시 보임
+      const hiddenDuration = hiddenAt > 0 ? Date.now() - hiddenAt : 0;
+      hiddenAt = 0;
+
+      // 5초 미만 백그라운드는 무시 (빠른 탭 전환)
+      if (hiddenDuration < 5_000) return;
+
+      const ws = wsRef.current;
+
+      // Case 1: WS가 이미 닫혀 있거나 없음
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.log("[Visibility] WS not open, forcing reconnect");
+        reconnectAttempt.current = 0;
+        if (reconnectTimer.current) {
+          clearTimeout(reconnectTimer.current);
+          reconnectTimer.current = null;
+        }
+        dispatch({ type: "RECONNECT_RESET" });
+        connect();
+        return;
+      }
+
+      // Case 2: WS는 OPEN이지만 stale일 수 있음 → ping 프로브
+      try {
+        ws.send(JSON.stringify({ type: "ping" }));
+      } catch {
+        console.log("[Visibility] WS send failed, forcing reconnect");
+        reconnectAttempt.current = 0;
+        dispatch({ type: "RECONNECT_RESET" });
+        connect();
+        return;
+      }
+
+      // 3초 내 아무 메시지 수신 여부로 연결 상태 판단
+      probeTimeout = setTimeout(() => {
+        if (wsRef.current === ws && ws.readyState === WebSocket.OPEN) {
+          console.log("[Visibility] WS stale (no response in 3s), forcing reconnect");
+          // 기존 WS를 먼저 정리 후 재연결
+          ws.onclose = null;
+          ws.onerror = null;
+          ws.close();
+          wsRef.current = null;
+          reconnectAttempt.current = 0;
+          dispatch({ type: "RECONNECT_RESET" });
+          connect();
+        }
+        probeTimeout = null;
+      }, 3_000);
+
+      // 어떤 메시지든 수신 시 프로브 성공 (pong뿐 아니라 running 중인 이벤트도 포함)
+      probeListener = () => {
+        if (probeTimeout) {
+          clearTimeout(probeTimeout);
+          probeTimeout = null;
+        }
+        if (probeListener) {
+          ws.removeEventListener("message", probeListener);
+          probeListener = null;
+        }
+        console.log("[Visibility] WS probe succeeded, connection alive");
+      };
+      ws.addEventListener("message", probeListener);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (probeTimeout) clearTimeout(probeTimeout);
+      if (probeListener && wsRef.current) {
+        wsRef.current.removeEventListener("message", probeListener);
       }
     };
   }, [connect]);

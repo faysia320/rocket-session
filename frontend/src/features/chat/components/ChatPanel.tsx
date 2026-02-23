@@ -179,6 +179,44 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   }, [messagesLength, virtualizer]);
 
+  // 탭 백그라운드→포그라운드 전환 시: 스크롤 위치 복원 + TanStack Query 갱신
+  useEffect(() => {
+    let hiddenAt = 0;
+    let savedNearBottom = true;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        savedNearBottom = isNearBottom.current;
+        return;
+      }
+
+      // "visible" — 탭이 다시 보임
+      const duration = hiddenAt > 0 ? Date.now() - hiddenAt : 0;
+      hiddenAt = 0;
+
+      // 5초 미만 백그라운드는 무시
+      if (duration < 5_000) return;
+
+      // 1) 스크롤 위치 복원 (백그라운드 전 하단에 있었으면 하단으로)
+      if (savedNearBottom) {
+        isNearBottom.current = true;
+        const len = messagesRef.current.length;
+        if (len > 0) {
+          requestAnimationFrame(() => {
+            virtualizer.scrollToIndex(len - 1, { align: "end" });
+          });
+        }
+      }
+
+      // 2) TanStack Query 캐시 갱신 (세션 목록, 세션 통계 등)
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [virtualizer, queryClient]);
+
   // Plan result 자동 감지 → 해당 메시지로 스크롤
   useEffect(() => {
     if (messagesLength === 0) return;
