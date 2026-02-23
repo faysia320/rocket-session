@@ -65,7 +65,7 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
   const hasCommits = gitInfo.ahead > 0;
   const showCommit = hasChanges;
   const showPR = hasChanges || hasCommits;
-  const showRebase = gitInfo.is_worktree && (hasChanges || hasCommits);
+  const showRebase = gitInfo.is_worktree;
   const disabled = status === "running" || !connected;
 
   if (!showCommit && !showPR && !showRebase && !gitInfo.is_worktree) return null;
