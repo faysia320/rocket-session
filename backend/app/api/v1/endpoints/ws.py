@@ -128,13 +128,14 @@ async def _handle_prompt(
 
             workflow_service = get_workflow_service()
 
-            # Phase별 컨텍스트 프롬프트 구성
+            # Phase별 컨텍스트 프롬프트 구성 (Claude 전달용만 별도 변수)
+            claude_prompt = prompt
             if workflow_phase and workflow_service:
                 phase_context = await workflow_service.build_phase_context(
                     session_id, workflow_phase, prompt
                 )
                 if phase_context:
-                    prompt = phase_context
+                    claude_prompt = phase_context
 
         # 이미지 경로 목록 (업로드 API로 먼저 업로드한 파일 경로)
         images = data.get("images", [])
@@ -200,7 +201,7 @@ async def _handle_prompt(
         task = asyncio.create_task(
             runner.run(
                 merged_session,
-                prompt,
+                claude_prompt if workflow_phase else prompt,
                 allowed_tools,
                 session_id,
                 ws_manager,

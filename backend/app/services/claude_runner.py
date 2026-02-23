@@ -855,7 +855,7 @@ class ClaudeRunner:
                         role="assistant",
                         content=turn_state["text"],
                         timestamp=datetime.now(timezone.utc).isoformat(),
-                        is_error=True,
+                        is_error=False,
                         model=turn_state.get("model"),
                     )
                 except Exception:
