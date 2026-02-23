@@ -8,6 +8,8 @@ from app.models.mcp_server import McpServer
 from app.models.message import Message
 from app.models.session import Session, SessionStatus
 from app.models.tag import SessionTag, Tag
+from app.models.team import Team, TeamMember
+from app.models.team_task import TeamTask
 from app.models.template import SessionTemplate
 
 __all__ = [
@@ -21,5 +23,8 @@ __all__ = [
     "SessionStatus",
     "SessionTag",
     "Tag",
+    "Team",
+    "TeamMember",
+    "TeamTask",
     "SessionTemplate",
 ]

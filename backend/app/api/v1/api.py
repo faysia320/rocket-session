@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     sessions,
     settings,
     tags,
+    teams,
     templates,
     usage,
 )
@@ -29,4 +30,5 @@ api_router.include_router(settings.router)
 api_router.include_router(mcp.router)
 api_router.include_router(templates.router)
 api_router.include_router(tags.router)
+api_router.include_router(teams.router)
 api_router.include_router(analytics.router)

@@ -16,6 +16,10 @@ from app.services.settings_service import SettingsService
 from app.services.analytics_service import AnalyticsService
 from app.services.search_service import SearchService
 from app.services.tag_service import TagService
+from app.services.team_coordinator import TeamCoordinator
+from app.services.team_message_service import TeamMessageService
+from app.services.team_service import TeamService
+from app.services.team_task_service import TeamTaskService
 from app.services.template_service import TemplateService
 from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
@@ -33,6 +37,10 @@ _jsonl_watcher: JsonlWatcher | None = None
 _mcp_service: McpService | None = None
 _template_service: TemplateService | None = None
 _tag_service: TagService | None = None
+_team_service: TeamService | None = None
+_team_task_service: TeamTaskService | None = None
+_team_coordinator: TeamCoordinator | None = None
+_team_message_service: TeamMessageService | None = None
 _search_service: SearchService | None = None
 _analytics_service: AnalyticsService | None = None
 
@@ -120,6 +128,30 @@ def get_search_service() -> SearchService:
     return _search_service
 
 
+def get_team_service() -> TeamService:
+    if _team_service is None:
+        raise RuntimeError("TeamService가 초기화되지 않았습니다")
+    return _team_service
+
+
+def get_team_task_service() -> TeamTaskService:
+    if _team_task_service is None:
+        raise RuntimeError("TeamTaskService가 초기화되지 않았습니다")
+    return _team_task_service
+
+
+def get_team_coordinator() -> TeamCoordinator:
+    if _team_coordinator is None:
+        raise RuntimeError("TeamCoordinator가 초기화되지 않았습니다")
+    return _team_coordinator
+
+
+def get_team_message_service() -> TeamMessageService:
+    if _team_message_service is None:
+        raise RuntimeError("TeamMessageService가 초기화되지 않았습니다")
+    return _team_message_service
+
+
 def get_analytics_service() -> AnalyticsService:
     if _analytics_service is None:
         raise RuntimeError("AnalyticsService가 초기화되지 않았습니다")
@@ -141,6 +173,10 @@ async def init_dependencies():
         _mcp_service, \
         _template_service, \
         _tag_service, \
+        _team_service, \
+        _team_task_service, \
+        _team_coordinator, \
+        _team_message_service, \
         _search_service, \
         _analytics_service
     logger = logging.getLogger(__name__)
@@ -167,6 +203,12 @@ async def init_dependencies():
     _mcp_service = McpService(_database)
     _template_service = TemplateService(_database)
     _tag_service = TagService(_database)
+    _team_service = TeamService(_database)
+    _team_task_service = TeamTaskService(_database)
+    _team_coordinator = TeamCoordinator(
+        _database, _session_manager, _ws_manager, _claude_runner
+    )
+    _team_message_service = TeamMessageService(_database)
     _search_service = SearchService(_database)
     _analytics_service = AnalyticsService(_database)
     _jsonl_watcher = JsonlWatcher(_session_manager, _ws_manager)
@@ -206,6 +248,10 @@ async def shutdown_dependencies():
         _mcp_service, \
         _template_service, \
         _tag_service, \
+        _team_service, \
+        _team_task_service, \
+        _team_coordinator, \
+        _team_message_service, \
         _search_service, \
         _analytics_service
     logger = logging.getLogger(__name__)
@@ -243,5 +289,9 @@ async def shutdown_dependencies():
     _mcp_service = None
     _template_service = None
     _tag_service = None
+    _team_service = None
+    _team_task_service = None
+    _team_coordinator = None
+    _team_message_service = None
     _search_service = None
     _analytics_service = None
