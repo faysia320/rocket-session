@@ -29,8 +29,11 @@ export const Route = createRootRoute({
 function RootComponent() {
   const location = useLocation();
 
-  // 사이드바는 세션 영역(홈 + 세션 라우트)에서 표시
-  const isSessionArea = location.pathname === "/" || location.pathname.startsWith("/session");
+  // 사이드바는 세션 영역(홈 + 세션 라우트 + 팀 라우트)에서 표시
+  const isSessionArea =
+    location.pathname === "/" ||
+    location.pathname.startsWith("/session") ||
+    location.pathname.startsWith("/team");
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">

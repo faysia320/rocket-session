@@ -32,6 +32,9 @@ import type { SessionInfo } from "@/types";
 import { ImportLocalDialog } from "./ImportLocalDialog";
 import { TemplateListDialog } from "@/features/template/components/TemplateListDialog";
 import { useSessionStore } from "@/store";
+import { useTeams } from "@/features/team/hooks/useTeams";
+import { TeamSidebarGroup } from "@/features/team/components/TeamSidebarGroup";
+import { TeamCreateDialog } from "@/features/team/components/TeamCreateDialog";
 
 interface SidebarProps {
   sessions: SessionInfo[];
@@ -64,6 +67,7 @@ export const Sidebar = memo(function Sidebar({
   const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
   const collapsed = isMobileOverlay ? false : sidebarCollapsed;
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
+  const { teams } = useTeams();
   const [importOpen, setImportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -162,6 +166,36 @@ export const Sidebar = memo(function Sidebar({
           </div>
         )}
       </div>
+
+      {/* Teams section */}
+      {teams.length > 0 ? (
+        <div className={cn(collapsed ? "px-1 pt-3" : "px-3 pt-3")}>
+          {collapsed ? null : (
+            <div className="flex items-center justify-between px-1 pb-1.5">
+              <span className="font-mono text-2xs font-semibold text-muted-foreground tracking-widest">
+                TEAMS
+              </span>
+              <TeamCreateDialog />
+            </div>
+          )}
+          {teams.map((t) => (
+            <TeamSidebarGroup key={t.id} team={t} collapsed={collapsed} />
+          ))}
+        </div>
+      ) : collapsed ? null : (
+        <div className="px-3 pt-3">
+          <TeamCreateDialog>
+            <Button
+              variant="outline"
+              className="w-full flex items-center gap-2 px-3 py-2 font-mono text-xs"
+              aria-label="새 팀 만들기"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Team
+            </Button>
+          </TeamCreateDialog>
+        </div>
+      )}
 
       {/* Sessions list header */}
       {collapsed ? null : (

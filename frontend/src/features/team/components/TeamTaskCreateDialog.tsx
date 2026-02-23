@@ -1,0 +1,175 @@
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type {
+  TeamTaskInfo,
+  CreateTaskRequest,
+  UpdateTaskRequest,
+  TaskPriority,
+  TeamMemberInfo,
+} from "@/types";
+
+interface TeamTaskCreateDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** 편집 모드일 때 기존 태스크 전달 */
+  editTask?: TeamTaskInfo | null;
+  members: TeamMemberInfo[];
+  onCreate: (data: CreateTaskRequest) => Promise<unknown>;
+  onUpdate?: (taskId: number, data: UpdateTaskRequest) => Promise<unknown>;
+  isCreating: boolean;
+}
+
+export function TeamTaskCreateDialog({
+  open,
+  onOpenChange,
+  editTask,
+  members,
+  onCreate,
+  onUpdate,
+  isCreating,
+}: TeamTaskCreateDialogProps) {
+  const isEdit = !!editTask;
+  const [title, setTitle] = useState(editTask?.title ?? "");
+  const [description, setDescription] = useState(editTask?.description ?? "");
+  const [priority, setPriority] = useState<TaskPriority>(editTask?.priority ?? "medium");
+  const [assignedSessionId, setAssignedSessionId] = useState(editTask?.assigned_session_id ?? "");
+
+  // 다이얼로그가 열릴 때 편집 데이터 반영
+  const handleOpenChange = (next: boolean) => {
+    if (next && editTask) {
+      setTitle(editTask.title);
+      setDescription(editTask.description ?? "");
+      setPriority(editTask.priority);
+      setAssignedSessionId(editTask.assigned_session_id ?? "");
+    }
+    if (!next) {
+      setTitle("");
+      setDescription("");
+      setPriority("medium");
+      setAssignedSessionId("");
+    }
+    onOpenChange(next);
+  };
+
+  const handleSubmit = async () => {
+    if (!title.trim()) return;
+    if (isEdit && onUpdate && editTask) {
+      await onUpdate(editTask.id, {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        priority,
+        assigned_session_id: assignedSessionId || undefined,
+      });
+    } else {
+      await onCreate({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        priority,
+        assigned_session_id: assignedSessionId || undefined,
+      });
+    }
+    handleOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-mono text-sm">
+            {isEdit ? "태스크 수정" : "새 태스크 생성"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          {/* 제목 */}
+          <div className="space-y-1.5">
+            <label className="font-mono text-xs text-muted-foreground">제목 *</label>
+            <Input
+              className="font-mono text-sm"
+              placeholder="태스크 제목"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          {/* 설명 */}
+          <div className="space-y-1.5">
+            <label className="font-mono text-xs text-muted-foreground">설명</label>
+            <Textarea
+              className="font-mono text-sm min-h-[80px] resize-none"
+              placeholder="태스크 상세 설명 (선택)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          {/* 우선순위 */}
+          <div className="space-y-1.5">
+            <label className="font-mono text-xs text-muted-foreground">우선순위</label>
+            <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
+              <SelectTrigger className="font-mono text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="high" className="font-mono text-xs">High</SelectItem>
+                <SelectItem value="medium" className="font-mono text-xs">Medium</SelectItem>
+                <SelectItem value="low" className="font-mono text-xs">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 담당자 */}
+          <div className="space-y-1.5">
+            <label className="font-mono text-xs text-muted-foreground">담당자</label>
+            <Select
+              value={assignedSessionId || "_none"}
+              onValueChange={(v) => setAssignedSessionId(v === "_none" ? "" : v)}
+            >
+              <SelectTrigger className="font-mono text-sm">
+                <SelectValue placeholder="미지정" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none" className="font-mono text-xs">미지정</SelectItem>
+                {members.map((m) => (
+                  <SelectItem key={m.session_id} value={m.session_id} className="font-mono text-xs">
+                    {m.nickname || m.session_name || m.session_id.slice(0, 8)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 제출 */}
+          <Button
+            className="w-full font-mono text-sm"
+            onClick={handleSubmit}
+            disabled={!title.trim() || isCreating}
+          >
+            {isCreating
+              ? isEdit
+                ? "수정 중…"
+                : "생성 중…"
+              : isEdit
+                ? "수정"
+                : "태스크 생성"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
