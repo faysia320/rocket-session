@@ -161,8 +161,9 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             {useWorktree ? (
               <div className="space-y-2 pl-0.5">
                 <p className="font-mono text-2xs text-muted-foreground/70">
-                  세션 실행 시 <code className="text-info/80">worktree-{worktreeName || "{name}"}</code>{" "}
-                  브랜치가 자동 생성됩니다
+                  세션 실행 시{" "}
+                  <code className="text-info/80">worktree-{worktreeName || "{name}"}</code> 브랜치가
+                  자동 생성됩니다
                 </p>
                 <Input
                   className="font-mono text-xs bg-input border-border"

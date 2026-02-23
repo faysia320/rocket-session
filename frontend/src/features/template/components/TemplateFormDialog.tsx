@@ -17,10 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
 import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
 import { AVAILABLE_TOOLS, PERMISSION_TOOLS } from "@/features/session/constants/tools";
-import {
-  useCreateTemplate,
-  useUpdateTemplate,
-} from "@/features/template/hooks/useTemplates";
+import { useCreateTemplate, useUpdateTemplate } from "@/features/template/hooks/useTemplates";
 import type { TemplateInfo, CreateTemplateRequest } from "@/types";
 
 interface TemplateFormDialogProps {
@@ -56,16 +53,13 @@ function getInitialFormData(template?: TemplateInfo | null): TemplateFormData {
     model: template?.model ?? "",
     fallback_model: template?.fallback_model ?? "",
     system_prompt: template?.system_prompt ?? "",
-    system_prompt_mode:
-      (template?.system_prompt_mode as "replace" | "append") ?? "replace",
+    system_prompt_mode: (template?.system_prompt_mode as "replace" | "append") ?? "replace",
     mode: (template?.mode as "normal" | "plan") ?? "normal",
     timeout_minutes: template?.timeout_seconds
       ? String(Math.round(template.timeout_seconds / 60))
       : "",
     max_turns: template?.max_turns ? String(template.max_turns) : "",
-    max_budget_usd: template?.max_budget_usd
-      ? String(template.max_budget_usd)
-      : "",
+    max_budget_usd: template?.max_budget_usd ? String(template.max_budget_usd) : "",
     disallowed_tools: template?.disallowed_tools
       ? template.disallowed_tools.split(",").map((t) => t.trim())
       : [],
@@ -76,19 +70,13 @@ function getInitialFormData(template?: TemplateInfo | null): TemplateFormData {
   };
 }
 
-export function TemplateFormDialog({
-  open,
-  onOpenChange,
-  template,
-}: TemplateFormDialogProps) {
+export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFormDialogProps) {
   const isEditMode = !!template;
   const createMutation = useCreateTemplate();
   const updateMutation = useUpdateTemplate();
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const [formData, setFormData] = useState<TemplateFormData>(
-    getInitialFormData(template),
-  );
+  const [formData, setFormData] = useState<TemplateFormData>(getInitialFormData(template));
 
   useEffect(() => {
     if (open) {
@@ -96,10 +84,7 @@ export function TemplateFormDialog({
     }
   }, [open, template]);
 
-  const update = <K extends keyof TemplateFormData>(
-    key: K,
-    value: TemplateFormData[K],
-  ) => {
+  const update = <K extends keyof TemplateFormData>(key: K, value: TemplateFormData[K]) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -115,26 +100,17 @@ export function TemplateFormDialog({
       system_prompt: formData.system_prompt.trim() || undefined,
       system_prompt_mode: formData.system_prompt_mode,
       mode: formData.mode,
-      timeout_seconds: formData.timeout_minutes
-        ? Number(formData.timeout_minutes) * 60
-        : undefined,
+      timeout_seconds: formData.timeout_minutes ? Number(formData.timeout_minutes) * 60 : undefined,
       max_turns: formData.max_turns ? Number(formData.max_turns) : undefined,
-      max_budget_usd: formData.max_budget_usd
-        ? Number(formData.max_budget_usd)
-        : undefined,
+      max_budget_usd: formData.max_budget_usd ? Number(formData.max_budget_usd) : undefined,
       disallowed_tools:
-        formData.disallowed_tools.length > 0
-          ? formData.disallowed_tools.join(",")
-          : undefined,
+        formData.disallowed_tools.length > 0 ? formData.disallowed_tools.join(",") : undefined,
       permission_mode: formData.permission_mode || undefined,
       permission_required_tools:
         formData.permission_mode && formData.permission_required_tools.length > 0
           ? formData.permission_required_tools
           : undefined,
-      mcp_server_ids:
-        formData.mcp_server_ids.length > 0
-          ? formData.mcp_server_ids
-          : undefined,
+      mcp_server_ids: formData.mcp_server_ids.length > 0 ? formData.mcp_server_ids : undefined,
       additional_dirs:
         formData.additional_dirs.filter((d) => d.trim()).length > 0
           ? formData.additional_dirs.filter((d) => d.trim())
@@ -202,10 +178,7 @@ export function TemplateFormDialog({
               <p className="font-mono text-2xs text-muted-foreground/70">
                 템플릿 적용 시 기본 작업 디렉토리입니다.
               </p>
-              <DirectoryPicker
-                value={formData.work_dir}
-                onChange={(v) => update("work_dir", v)}
-              />
+              <DirectoryPicker value={formData.work_dir} onChange={(v) => update("work_dir", v)} />
             </div>
 
             <div className="space-y-2">
@@ -223,9 +196,7 @@ export function TemplateFormDialog({
                       onChange={(v) =>
                         update(
                           "additional_dirs",
-                          formData.additional_dirs.map((d, i) =>
-                            i === idx ? v : d,
-                          ),
+                          formData.additional_dirs.map((d, i) => (i === idx ? v : d)),
                         )
                       }
                     />
@@ -249,12 +220,7 @@ export function TemplateFormDialog({
                   variant="outline"
                   size="sm"
                   className="font-mono text-xs gap-1"
-                  onClick={() =>
-                    update("additional_dirs", [
-                      ...formData.additional_dirs,
-                      "",
-                    ])
-                  }
+                  onClick={() => update("additional_dirs", [...formData.additional_dirs, ""])}
                 >
                   <Plus className="h-3 w-3" />
                   디렉토리 추가
@@ -270,8 +236,7 @@ export function TemplateFormDialog({
                 MODEL
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는
-                기본값을 사용합니다.
+                Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는 기본값을 사용합니다.
               </p>
               <select
                 className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
@@ -316,18 +281,14 @@ export function TemplateFormDialog({
                     checked={formData.mode === "normal"}
                     onCheckedChange={() => update("mode", "normal")}
                   />
-                  <span className="font-mono text-xs text-foreground">
-                    Normal
-                  </span>
+                  <span className="font-mono text-xs text-foreground">Normal</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={formData.mode === "plan"}
                     onCheckedChange={() => update("mode", "plan")}
                   />
-                  <span className="font-mono text-xs text-foreground">
-                    Plan
-                  </span>
+                  <span className="font-mono text-xs text-foreground">Plan</span>
                 </label>
               </div>
             </div>
@@ -402,24 +363,16 @@ export function TemplateFormDialog({
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={formData.system_prompt_mode === "replace"}
-                    onCheckedChange={() =>
-                      update("system_prompt_mode", "replace")
-                    }
+                    onCheckedChange={() => update("system_prompt_mode", "replace")}
                   />
-                  <span className="font-mono text-xs text-foreground">
-                    전체 대체
-                  </span>
+                  <span className="font-mono text-xs text-foreground">전체 대체</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={formData.system_prompt_mode === "append"}
-                    onCheckedChange={() =>
-                      update("system_prompt_mode", "append")
-                    }
+                    onCheckedChange={() => update("system_prompt_mode", "append")}
                   />
-                  <span className="font-mono text-xs text-foreground">
-                    기본에 추가
-                  </span>
+                  <span className="font-mono text-xs text-foreground">기본에 추가</span>
                 </label>
               </div>
             </div>
@@ -436,10 +389,7 @@ export function TemplateFormDialog({
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {AVAILABLE_TOOLS.map((tool) => (
-                  <label
-                    key={`dis-${tool}`}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
+                  <label key={`dis-${tool}`} className="flex items-center gap-2 cursor-pointer">
                     <Checkbox
                       checked={formData.disallowed_tools.includes(tool)}
                       onCheckedChange={(checked) =>
@@ -447,15 +397,11 @@ export function TemplateFormDialog({
                           "disallowed_tools",
                           checked === true
                             ? [...formData.disallowed_tools, tool]
-                            : formData.disallowed_tools.filter(
-                                (t) => t !== tool,
-                              ),
+                            : formData.disallowed_tools.filter((t) => t !== tool),
                         )
                       }
                     />
-                    <span className="font-mono text-xs text-foreground">
-                      {tool}
-                    </span>
+                    <span className="font-mono text-xs text-foreground">{tool}</span>
                   </label>
                 ))}
               </div>
@@ -468,9 +414,7 @@ export function TemplateFormDialog({
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={formData.permission_mode}
-                  onCheckedChange={(checked) =>
-                    update("permission_mode", checked === true)
-                  }
+                  onCheckedChange={(checked) => update("permission_mode", checked === true)}
                 />
                 <span className="font-mono text-xs text-foreground">
                   도구 실행 전 확인 요청 활성화
@@ -482,28 +426,19 @@ export function TemplateFormDialog({
               {formData.permission_mode ? (
                 <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-warning/30">
                   {PERMISSION_TOOLS.map((tool) => (
-                    <label
-                      key={tool}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
+                    <label key={tool} className="flex items-center gap-2 cursor-pointer">
                       <Checkbox
-                        checked={formData.permission_required_tools.includes(
-                          tool,
-                        )}
+                        checked={formData.permission_required_tools.includes(tool)}
                         onCheckedChange={(checked) =>
                           update(
                             "permission_required_tools",
                             checked === true
                               ? [...formData.permission_required_tools, tool]
-                              : formData.permission_required_tools.filter(
-                                  (t) => t !== tool,
-                                ),
+                              : formData.permission_required_tools.filter((t) => t !== tool),
                           )
                         }
                       />
-                      <span className="font-mono text-xs text-foreground">
-                        {tool}
-                      </span>
+                      <span className="font-mono text-xs text-foreground">{tool}</span>
                     </label>
                   ))}
                 </div>
@@ -528,19 +463,9 @@ export function TemplateFormDialog({
             disabled={!formData.name.trim() || isPending}
           >
             <Check className="h-3.5 w-3.5" />
-            {isPending
-              ? isEditMode
-                ? "저장 중…"
-                : "생성 중…"
-              : isEditMode
-                ? "저장"
-                : "생성"}
+            {isPending ? (isEditMode ? "저장 중…" : "생성 중…") : isEditMode ? "저장" : "생성"}
           </Button>
-          <Button
-            variant="ghost"
-            className="font-mono text-xs"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="ghost" className="font-mono text-xs" onClick={() => onOpenChange(false)}>
             취소
           </Button>
         </div>
