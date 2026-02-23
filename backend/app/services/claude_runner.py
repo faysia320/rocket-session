@@ -119,6 +119,10 @@ class ClaudeRunner:
         elif workflow_phase == "implement":
             # 전체 도구 허용 (기존 allowed_tools 유지)
             pass
+        elif not session.get("workflow_enabled"):
+            # 비워크플로우 세션: 읽기전용 (분석/검색만 허용)
+            cmd.extend(["--permission-mode", "plan"])
+            allowed_tools = "Read,Glob,Grep,WebFetch,WebSearch,TodoRead"
         elif session.get("permission_mode"):
             # Permission MCP는 _setup_mcp_config에서 통합 처리됨
             # permission_required_tools에 해당하는 도구는 allowedTools에서 제외

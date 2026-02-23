@@ -88,6 +88,10 @@ async def _handle_prompt(
             or settings.claude_allowed_tools
         )
 
+        # 비워크플로우 세션: 읽기전용 도구만 허용 (요청/세션/글로벌 설정 무시)
+        if current_session and not current_session.get("workflow_enabled"):
+            allowed_tools = "Read,Glob,Grep,WebFetch,WebSearch,TodoRead"
+
         # 워크플로우 phase 감지
         workflow_phase = None
         workflow_service = None
@@ -95,7 +99,21 @@ async def _handle_prompt(
             workflow_phase = current_session.get("workflow_phase")
             workflow_phase_status = current_session.get("workflow_phase_status")
 
-            # awaiting_approval 상태이면 프롬프트 거부
+            # 게이트 1: 워크플로우 미시작 상태 → 프롬프트 차단
+            if not workflow_phase:
+                await ws.send_json(
+                    {
+                        "type": WsEventType.ERROR,
+                        "message": (
+                            "워크플로우가 활성화되어 있지만 시작되지 않았습니다. "
+                            "먼저 워크플로우를 시작해주세요. "
+                            "(Research → Plan → Implement)"
+                        ),
+                    }
+                )
+                return
+
+            # 게이트 2: 승인 대기 중 → 프롬프트 차단
             if workflow_phase_status == "awaiting_approval":
                 await ws.send_json(
                     {
