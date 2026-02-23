@@ -77,7 +77,7 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
         {isEffectivelyRunning && !hasActiveTools && !hasPermissionWait && !hasPlanWait ? (
           <div className="flex items-center gap-2 min-h-[20px]">
             <span className="inline-block w-3 h-3 border-[1.5px] border-primary/40 border-t-primary rounded-full animate-spin shrink-0" />
-            <span className="font-mono text-xs text-muted-foreground">Claude가 처리 중…</span>
+            <span className="font-mono text-xs text-muted-foreground">Reasoning…</span>
           </div>
         ) : null}
       </div>

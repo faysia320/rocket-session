@@ -116,7 +116,7 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
           ) : null}
           {gitInfo.is_worktree ? (
             <>
-              <DropdownMenuSeparator />
+              {showCommit || showPR || showRebase ? <DropdownMenuSeparator /> : null}
               <DropdownMenuItem
                 onClick={() => setDeleteConfirmOpen(true)}
                 disabled={disabled}

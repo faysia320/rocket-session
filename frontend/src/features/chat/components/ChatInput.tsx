@@ -244,7 +244,7 @@ export const ChatInput = memo(function ChatInput({
 
   return (
     <div
-      className="px-4 py-2 border-t border-border bg-secondary"
+      className="px-2 py-2 border-t border-border bg-secondary"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
