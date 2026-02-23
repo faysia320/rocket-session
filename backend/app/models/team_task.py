@@ -7,7 +7,11 @@ from app.models.base import Base
 
 
 class TeamTask(Base):
-    """team_tasks 테이블 ORM 모델."""
+    """team_tasks 테이블 ORM 모델.
+
+    태스크는 고유한 work_dir을 가지며,
+    위임 시 멤버 설정 + 태스크 work_dir로 세션이 동적 생성됩니다.
+    """
 
     __tablename__ = "team_tasks"
 
@@ -19,10 +23,14 @@ class TeamTask(Base):
     description: Mapped[str | None] = mapped_column(Text, default=None)
     status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
     priority: Mapped[str] = mapped_column(String, nullable=False, default="medium")
-    assigned_session_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("sessions.id", ondelete="SET NULL"), default=None
+    assigned_member_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("team_members.id", ondelete="SET NULL"), default=None
     )
-    created_by_session_id: Mapped[str | None] = mapped_column(
+    created_by_member_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("team_members.id", ondelete="SET NULL"), default=None
+    )
+    work_dir: Mapped[str] = mapped_column(Text, nullable=False)
+    session_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("sessions.id", ondelete="SET NULL"), default=None
     )
     result_summary: Mapped[str | None] = mapped_column(Text, default=None)
@@ -37,4 +45,5 @@ class TeamTask(Base):
         Index("idx_team_tasks_team_id", "team_id"),
         Index("idx_team_tasks_status", "status"),
         Index("idx_team_tasks_team_status", "team_id", "status"),
+        Index("idx_team_tasks_session_id", "session_id"),
     )
