@@ -1,7 +1,7 @@
 import type { TagInfo } from "./tag";
+import type { WorkflowPhase, WorkflowPhaseStatus } from "./workflow";
 
 export type SessionStatus = "idle" | "running" | "error" | "stopped" | "archived";
-export type SessionMode = "normal" | "plan";
 
 export interface CurrentActivity {
   tool: string;
@@ -19,7 +19,9 @@ export interface SessionInfo {
   allowed_tools?: string;
   system_prompt?: string;
   timeout_seconds?: number;
-  mode?: SessionMode;
+  workflow_enabled?: boolean;
+  workflow_phase?: WorkflowPhase | null;
+  workflow_phase_status?: WorkflowPhaseStatus | null;
   permission_mode?: boolean;
   permission_required_tools?: string[];
   name?: string;
@@ -43,7 +45,7 @@ export interface CreateSessionRequest {
   allowed_tools?: string | null;
   system_prompt?: string | null;
   timeout_seconds?: number | null;
-  mode?: SessionMode | null;
+  workflow_enabled?: boolean | null;
   permission_mode?: boolean | null;
   permission_required_tools?: string[] | null;
   model?: string | null;
@@ -62,7 +64,7 @@ export interface UpdateSessionRequest {
   allowed_tools?: string | null;
   system_prompt?: string | null;
   timeout_seconds?: number | null;
-  mode?: SessionMode | null;
+  workflow_enabled?: boolean | null;
   permission_mode?: boolean | null;
   permission_required_tools?: string[] | null;
   name?: string | null;

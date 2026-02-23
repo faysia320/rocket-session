@@ -1,6 +1,5 @@
 export type {
   SessionStatus,
-  SessionMode,
   CurrentActivity,
   SessionInfo,
   CreateSessionRequest,
@@ -116,3 +115,19 @@ export type {
   SendMessageRequest,
   MarkReadRequest,
 } from "./team";
+export type {
+  WorkflowPhase,
+  WorkflowPhaseStatus,
+  ArtifactStatus,
+  AnnotationType,
+  AnnotationStatus,
+  SessionArtifactInfo,
+  ArtifactAnnotationInfo,
+  StartWorkflowRequest,
+  WorkflowStatusResponse,
+  UpdateArtifactRequest,
+  AddAnnotationRequest,
+  UpdateAnnotationRequest,
+  ApprovePhaseRequest,
+  RequestRevisionRequest,
+} from "./workflow";

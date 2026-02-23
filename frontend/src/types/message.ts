@@ -36,12 +36,11 @@ export interface AssistantTextMsg extends BaseMessage {
 export interface ResultMsg extends BaseMessage {
   type: "result";
   text?: string;
-  planFileContent?: string;
   is_error?: boolean;
   cost?: number;
   duration_ms?: number;
-  mode?: "normal" | "plan";
-  planExecuted?: boolean;
+  workflow_phase?: string;
+  workflowApproved?: boolean;
   input_tokens?: number;
   output_tokens?: number;
   cache_creation_tokens?: number;
@@ -165,7 +164,7 @@ export type MessageType = Message["type"];
 // MessageUpdate: fields that can be patched via updateMessage()
 // ---------------------------------------------------------------------------
 export type MessageUpdate = {
-  planExecuted?: boolean;
+  workflowApproved?: boolean;
   status?: "running" | "done" | "error";
   completed_at?: string;
   output?: string;
@@ -186,7 +185,7 @@ export function getMessageText(msg: Message): string {
     case "thinking":
       return msg.text || "";
     case "result":
-      return (msg as ResultMsg).planFileContent || msg.text || "";
+      return msg.text || "";
     case "error":
       return msg.message || msg.text || "";
     case "user_message":
@@ -218,7 +217,13 @@ export type WebSocketEventType =
   | "permission_request"
   | "permission_response"
   | "missed_events"
-  | "mode_change"
+  | "workflow_started"
+  | "workflow_phase_completed"
+  | "workflow_phase_approved"
+  | "workflow_phase_revision"
+  | "workflow_artifact_updated"
+  | "workflow_annotation_added"
+  | "workflow_completed"
   | "ask_user_question";
 
 export interface PermissionRequestData {

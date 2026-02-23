@@ -7,7 +7,7 @@ export interface TemplateInfo {
   allowed_tools?: string | null;
   disallowed_tools?: string | null;
   timeout_seconds?: number | null;
-  mode?: string;
+  workflow_enabled?: boolean;
   permission_mode?: boolean;
   permission_required_tools?: string[] | null;
   model?: string | null;
@@ -29,7 +29,7 @@ export interface CreateTemplateRequest {
   allowed_tools?: string | null;
   disallowed_tools?: string | null;
   timeout_seconds?: number | null;
-  mode?: string | null;
+  workflow_enabled?: boolean | null;
   permission_mode?: boolean | null;
   permission_required_tools?: string[] | null;
   model?: string | null;
