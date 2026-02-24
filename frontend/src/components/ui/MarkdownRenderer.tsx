@@ -1,7 +1,7 @@
 import { memo, useDeferredValue, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
+import rehypeHighlightLite from "@/lib/rehypeHighlightLite";
 import { CodeBlock } from "./CodeBlock";
 import { cn } from "@/lib/utils";
 
@@ -128,11 +128,8 @@ const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<an
 
 // remarkPlugins/rehypePlugins 배열을 모듈 레벨에서 고정 (매 렌더마다 재생성 방지)
 const remarkPlugins = [remarkGfm];
-// hljs에 등록된 언어만 사용하도록 subset 지정
-const rehypeHighlightOptions = { detect: false };
-const rehypePlugins: [typeof rehypeHighlight, typeof rehypeHighlightOptions][] = [
-  [rehypeHighlight, rehypeHighlightOptions],
-];
+// 커스텀 경량 플러그인 (17개 언어 서브셋만 번들)
+const rehypePlugins = [rehypeHighlightLite];
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
