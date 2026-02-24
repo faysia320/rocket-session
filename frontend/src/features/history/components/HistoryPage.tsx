@@ -33,7 +33,6 @@ const STATUS_OPTIONS = [
   { value: "idle", label: "Idle" },
   { value: "running", label: "Running" },
   { value: "error", label: "Error" },
-  { value: "stopped", label: "Stopped" },
   { value: "archived", label: "Archived" },
 ] as const;
 

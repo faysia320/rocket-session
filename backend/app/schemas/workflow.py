@@ -1,8 +1,14 @@
 """워크플로우 관련 Pydantic 스키마."""
 
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+
+WorkflowPhase = Literal["research", "plan", "implement"]
+WorkflowPhaseStatus = Literal["in_progress", "awaiting_approval", "approved", "revision_requested"]
+ArtifactStatusType = Literal["draft", "review", "approved", "superseded"]
+AnnotationType = Literal["comment", "suggestion", "rejection"]
+AnnotationStatusType = Literal["pending", "resolved", "dismissed"]
 
 
 class ArtifactAnnotationInfo(BaseModel):
@@ -13,8 +19,8 @@ class ArtifactAnnotationInfo(BaseModel):
     line_start: int
     line_end: Optional[int] = None
     content: str
-    annotation_type: str  # "comment" | "suggestion" | "rejection"
-    status: str  # "pending" | "resolved" | "dismissed"
+    annotation_type: AnnotationType
+    status: AnnotationStatusType
     created_at: str
 
 
@@ -23,10 +29,10 @@ class SessionArtifactInfo(BaseModel):
 
     id: int
     session_id: str
-    phase: str  # "research" | "plan"
+    phase: WorkflowPhase
     title: str
     content: str
-    status: str  # "draft" | "review" | "approved" | "superseded"
+    status: ArtifactStatusType
     version: int
     parent_artifact_id: Optional[int] = None
     annotations: list[ArtifactAnnotationInfo] = []
@@ -45,8 +51,8 @@ class WorkflowStatusResponse(BaseModel):
     """워크플로우 상태 응답."""
 
     workflow_enabled: bool
-    workflow_phase: Optional[str] = None
-    workflow_phase_status: Optional[str] = None
+    workflow_phase: Optional[WorkflowPhase] = None
+    workflow_phase_status: Optional[WorkflowPhaseStatus] = None
     artifacts: list[SessionArtifactInfo] = []
 
 
@@ -62,13 +68,13 @@ class AddAnnotationRequest(BaseModel):
     line_start: int = Field(..., ge=1)
     line_end: Optional[int] = Field(None, ge=1)
     content: str = Field(..., min_length=1)
-    annotation_type: str = "comment"
+    annotation_type: AnnotationType = "comment"
 
 
 class UpdateAnnotationRequest(BaseModel):
     """주석 상태 업데이트 요청."""
 
-    status: str  # "resolved" | "dismissed"
+    status: Literal["resolved", "dismissed"]
 
 
 class ApprovePhaseRequest(BaseModel):

@@ -55,9 +55,7 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
         : "Running"
       : s.status === "error"
         ? "Error"
-        : s.status === "stopped"
-          ? "Stopped"
-          : "Idle";
+        : "Idle";
 
   return (
     <Card

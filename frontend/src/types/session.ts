@@ -1,7 +1,7 @@
 import type { TagInfo } from "./tag";
 import type { WorkflowPhase, WorkflowPhaseStatus } from "./workflow";
 
-export type SessionStatus = "idle" | "running" | "error" | "stopped" | "archived";
+export type SessionStatus = "idle" | "running" | "error" | "archived";
 
 export interface CurrentActivity {
   tool: string;

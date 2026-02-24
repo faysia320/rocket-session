@@ -179,16 +179,18 @@ export function useClaudeSocket(sessionId: string) {
         break;
       }
 
-      case "error":
+      case "error": {
+        const isNotFound = data.code === "SESSION_NOT_FOUND" || data.message === "세션을 찾을 수 없습니다";
         dispatch({
           type: "WS_ERROR",
           data,
-          isSessionNotFound: data.message === "세션을 찾을 수 없습니다",
+          isSessionNotFound: isNotFound,
         });
-        if (data.message === "세션을 찾을 수 없습니다") {
+        if (isNotFound) {
           shouldReconnect.current = false;
         }
         break;
+      }
 
       case "stderr":
         dispatch({ type: "WS_STDERR", text: data.text as string });
