@@ -524,13 +524,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         workflowEnabled={sessionInfo?.workflow_enabled}
         onEnableWorkflow={handleEnableWorkflow}
       />
-      <SessionStatsBar
-        sessionId={sessionId}
-        isRunning={status === "running" || activeTools.length > 0}
-        tokenUsage={tokenUsage}
-        messageCount={messages.length}
-        currentModel={sessionInfo?.model}
-      />
       {sessionInfo?.workflow_enabled ? (
         <WorkflowProgressBar
           currentPhase={(sessionInfo.workflow_phase as WorkflowPhase) ?? null}
@@ -588,6 +581,14 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         </div>
       ) : null}
 
+      <ActivityStatusBar
+        activeTools={activeTools}
+        status={status}
+        pendingPermission={pendingPermission}
+        waitingForWorkflowApproval={waitingForWorkflowApproval}
+        workflowPhase={(sessionInfo?.workflow_phase as string) ?? null}
+      />
+
       <div>
         <ChatInput
           connected={connected}
@@ -603,12 +604,12 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         />
       </div>
 
-      <ActivityStatusBar
-        activeTools={activeTools}
-        status={status}
-        pendingPermission={pendingPermission}
-        waitingForWorkflowApproval={waitingForWorkflowApproval}
-        workflowPhase={(sessionInfo?.workflow_phase as string) ?? null}
+      <SessionStatsBar
+        sessionId={sessionId}
+        isRunning={status === "running" || activeTools.length > 0}
+        tokenUsage={tokenUsage}
+        messageCount={messages.length}
+        currentModel={sessionInfo?.model}
       />
 
       <ChatDialogs
