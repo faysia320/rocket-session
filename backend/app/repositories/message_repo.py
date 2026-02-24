@@ -48,7 +48,14 @@ class MessageRepository(BaseRepository[Message]):
             .order_by(Message.id)
         )
         result = await self._session.execute(stmt)
-        return [dict(row._mapping) for row in result.all()]
+        rows = []
+        for row in result.all():
+            d = dict(row._mapping)
+            # datetime → ISO string (WS send_json 호환)
+            if hasattr(d.get("timestamp"), "isoformat"):
+                d["timestamp"] = d["timestamp"].isoformat()
+            rows.append(d)
+        return rows
 
     async def count_by_session(self, session_id: str) -> int:
         """세션의 메시지 수 조회."""

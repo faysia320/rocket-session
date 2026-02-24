@@ -409,4 +409,4 @@ class SessionManager:
 
     @staticmethod
     def to_info_dict(session: dict) -> dict:
-        return SessionManager.to_info(session).model_dump()
+        return SessionManager.to_info(session).model_dump(mode="json")

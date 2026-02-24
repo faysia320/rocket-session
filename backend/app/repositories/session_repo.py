@@ -185,13 +185,17 @@ class SessionRepository(BaseRepository[Session]):
 
 
 def _session_to_dict(session: Session) -> dict:
-    """Session ORM 객체 -> dict 변환 헬퍼."""
+    """Session ORM 객체 -> dict 변환 헬퍼.
+
+    created_at은 ISO 문자열로 변환 (WS send_json 호환).
+    """
+    created_at = session.created_at
     return {
         "id": session.id,
         "claude_session_id": session.claude_session_id,
         "work_dir": session.work_dir,
         "status": session.status,
-        "created_at": session.created_at,
+        "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else created_at,
         "allowed_tools": session.allowed_tools,
         "system_prompt": session.system_prompt,
         "timeout_seconds": session.timeout_seconds,
