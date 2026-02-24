@@ -370,7 +370,7 @@ async def request_revision(
 
 
 @router.get(
-    "/{session_id}/commit-suggestion",
+    "/commit-suggestion",
     response_model=WorkflowCommitSuggestion,
 )
 async def get_commit_suggestion(
@@ -389,7 +389,7 @@ async def get_commit_suggestion(
 
 
 @router.post(
-    "/{session_id}/commit",
+    "/commit",
     response_model=WorkflowCommitResponse,
 )
 async def commit_workflow(
