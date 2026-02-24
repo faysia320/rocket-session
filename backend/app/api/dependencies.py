@@ -1,18 +1,26 @@
-"""FastAPI 의존성 주입 프로바이더."""
+"""FastAPI 의존성 주입 프로바이더.
+
+ServiceRegistry 클래스가 모든 서비스 인스턴스를 관리합니다.
+모듈 레벨 get_* 함수들은 하위 호환성을 위해 유지되며, 레지스트리에 위임합니다.
+"""
 
 import logging
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from app.core.config import Settings
 from app.core.database import Database
 from app.services.claude_runner import ClaudeRunner
 from app.services.filesystem_service import FilesystemService
+from app.services.git_service import GitService
+from app.services.github_service import GitHubService
 from app.services.jsonl_watcher import JsonlWatcher
 from app.services.local_session_scanner import LocalSessionScanner
 from app.services.mcp_service import McpService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
+from app.services.skills_service import SkillsService
 from app.services.analytics_service import AnalyticsService
 from app.services.search_service import SearchService
 from app.services.tag_service import TagService
@@ -25,26 +33,145 @@ from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
 from app.services.workflow_service import WorkflowService
 
-# 싱글턴 인스턴스 (앱 시작 시 초기화)
-_database: Database | None = None
-_session_manager: SessionManager | None = None
-_local_scanner: LocalSessionScanner | None = None
-_usage_service: UsageService | None = None
-_ws_manager: WebSocketManager | None = None
-_filesystem_service: FilesystemService | None = None
-_claude_runner: ClaudeRunner | None = None
-_settings_service: SettingsService | None = None
-_jsonl_watcher: JsonlWatcher | None = None
-_mcp_service: McpService | None = None
-_template_service: TemplateService | None = None
-_tag_service: TagService | None = None
-_team_service: TeamService | None = None
-_team_task_service: TeamTaskService | None = None
-_team_coordinator: TeamCoordinator | None = None
-_team_message_service: TeamMessageService | None = None
-_search_service: SearchService | None = None
-_analytics_service: AnalyticsService | None = None
-_workflow_service: WorkflowService | None = None
+logger = logging.getLogger(__name__)
+
+
+class ServiceRegistry:
+    """모든 서비스 인스턴스를 중앙 관리하는 레지스트리.
+
+    새 서비스 추가 시:
+    1. 타입 힌트 속성 추가
+    2. initialize()에서 인스턴스 생성
+    3. (필요 시) shutdown()에서 정리 로직 추가
+    4. 모듈 레벨 get_* 함수 추가
+    """
+
+    def __init__(self) -> None:
+        self.database: Database | None = None
+        self.session_manager: SessionManager | None = None
+        self.ws_manager: WebSocketManager | None = None
+        self.claude_runner: ClaudeRunner | None = None
+        self.filesystem_service: FilesystemService | None = None
+        self.git_service: GitService | None = None
+        self.github_service: GitHubService | None = None
+        self.skills_service: SkillsService | None = None
+        self.local_scanner: LocalSessionScanner | None = None
+        self.usage_service: UsageService | None = None
+        self.settings_service: SettingsService | None = None
+        self.jsonl_watcher: JsonlWatcher | None = None
+        self.mcp_service: McpService | None = None
+        self.template_service: TemplateService | None = None
+        self.tag_service: TagService | None = None
+        self.team_service: TeamService | None = None
+        self.team_task_service: TeamTaskService | None = None
+        self.team_coordinator: TeamCoordinator | None = None
+        self.team_message_service: TeamMessageService | None = None
+        self.search_service: SearchService | None = None
+        self.analytics_service: AnalyticsService | None = None
+        self.workflow_service: WorkflowService | None = None
+
+    def _require(self, name: str) -> Any:
+        """서비스가 초기화되었는지 확인하고 반환."""
+        value = getattr(self, name, None)
+        if value is None:
+            label = name.replace("_", " ").title().replace(" ", "")
+            raise RuntimeError(f"{label}가 초기화되지 않았습니다")
+        return value
+
+    async def initialize(self) -> None:
+        """앱 시작 시 모든 서비스 초기화."""
+        settings = get_settings()
+        self.filesystem_service = FilesystemService(root_dir=settings.claude_work_dir)
+        self.git_service = GitService(root_dir=settings.claude_work_dir)
+        self.github_service = GitHubService(git_service=self.git_service)
+        self.skills_service = SkillsService()
+
+        # 업로드 디렉토리 보장
+        upload_path = Path(settings.resolved_upload_dir)
+        upload_path.mkdir(parents=True, exist_ok=True)
+        logger.info("업로드 디렉토리: %s", upload_path)
+
+        # WebSocketManager를 DB 초기화 전에 인스턴스 생성
+        self.ws_manager = WebSocketManager()
+        self.database = Database(settings.database_url)
+        await self.database.initialize()
+        self.ws_manager.set_database(self.database)
+
+        self.session_manager = SessionManager(
+            self.database, upload_dir=settings.resolved_upload_dir
+        )
+        self.local_scanner = LocalSessionScanner(self.database)
+        self.usage_service = UsageService()
+        self.claude_runner = ClaudeRunner(settings)
+        self.settings_service = SettingsService(self.database)
+        self.mcp_service = McpService(self.database)
+        self.template_service = TemplateService(self.database)
+        self.tag_service = TagService(self.database)
+        self.team_service = TeamService(self.database)
+        self.team_task_service = TeamTaskService(self.database)
+        self.team_coordinator = TeamCoordinator(
+            self.database, self.session_manager, self.ws_manager, self.claude_runner
+        )
+        self.team_message_service = TeamMessageService(self.database)
+        self.search_service = SearchService(self.database)
+        self.analytics_service = AnalyticsService(self.database)
+        self.workflow_service = WorkflowService(self.database)
+        self.jsonl_watcher = JsonlWatcher(self.session_manager, self.ws_manager)
+
+        # 서버 재시작 시 stale running 세션 → idle 복구
+        from app.repositories.session_repo import SessionRepository
+
+        async with self.database.session() as session:
+            repo = SessionRepository(session)
+            await repo.reset_stale_running()
+            await session.commit()
+
+        # seq 카운터를 DB에서 복원
+        await self.ws_manager.restore_seq_counters(self.database)
+
+        # 오래된 이벤트 정리 (24시간 이전)
+        from app.repositories.event_repo import EventRepository
+
+        async with self.database.session() as session:
+            event_repo = EventRepository(session)
+            await event_repo.cleanup_old_events(max_age_hours=24)
+            await session.commit()
+
+    async def shutdown(self) -> None:
+        """앱 종료 시 서비스 정리."""
+        # 1. 실행 중인 세션 프로세스 종료
+        if self.session_manager:
+            for sid in list(self.session_manager._process_manager.active_session_ids):
+                try:
+                    await self.session_manager.kill_process(sid)
+                except Exception as e:
+                    logger.error("세션 %s 프로세스 종료 실패: %s", sid, e)
+        # 2. JSONL Watcher 종료
+        if self.jsonl_watcher:
+            try:
+                self.jsonl_watcher.stop_all()
+            except Exception as e:
+                logger.error("JsonlWatcher 종료 실패: %s", e)
+        # 3. Usage HTTP 클라이언트 정리
+        if self.usage_service and hasattr(self.usage_service, "close"):
+            try:
+                await self.usage_service.close()
+            except Exception as e:
+                logger.error("UsageService 종료 실패: %s", e)
+        # 4. DB 연결 종료
+        if self.database:
+            await self.database.close()
+
+        # 모든 참조 해제
+        for attr in list(vars(self)):
+            setattr(self, attr, None)
+
+
+# 싱글턴 레지스트리 인스턴스
+_registry = ServiceRegistry()
+
+
+# --- 하위 호환 getter 함수 (기존 코드와의 호환성 유지) ---
 
 
 @lru_cache(maxsize=1)
@@ -53,257 +180,101 @@ def get_settings() -> Settings:
 
 
 def get_database() -> Database:
-    if _database is None:
-        raise RuntimeError("데이터베이스가 초기화되지 않았습니다")
-    return _database
+    return _registry._require("database")
 
 
 def get_session_manager() -> SessionManager:
-    if _session_manager is None:
-        raise RuntimeError("SessionManager가 초기화되지 않았습니다")
-    return _session_manager
+    return _registry._require("session_manager")
 
 
 def get_ws_manager() -> WebSocketManager:
-    if _ws_manager is None:
-        raise RuntimeError("WebSocketManager가 초기화되지 않았습니다")
-    return _ws_manager
+    return _registry._require("ws_manager")
 
 
 def get_claude_runner() -> ClaudeRunner:
-    if _claude_runner is None:
-        raise RuntimeError("ClaudeRunner가 초기화되지 않았습니다")
-    return _claude_runner
+    return _registry._require("claude_runner")
 
 
 def get_filesystem_service() -> FilesystemService:
-    if _filesystem_service is None:
-        raise RuntimeError("FilesystemService가 초기화되지 않았습니다")
-    return _filesystem_service
+    return _registry._require("filesystem_service")
+
+
+def get_git_service() -> GitService:
+    return _registry._require("git_service")
+
+
+def get_github_service() -> GitHubService:
+    return _registry._require("github_service")
+
+
+def get_skills_service() -> SkillsService:
+    return _registry._require("skills_service")
 
 
 def get_local_scanner() -> LocalSessionScanner:
-    if _local_scanner is None:
-        raise RuntimeError("LocalSessionScanner가 초기화되지 않았습니다")
-    return _local_scanner
+    return _registry._require("local_scanner")
 
 
 def get_usage_service() -> UsageService:
-    if _usage_service is None:
-        raise RuntimeError("UsageService가 초기화되지 않았습니다")
-    return _usage_service
+    return _registry._require("usage_service")
 
 
 def get_settings_service() -> SettingsService:
-    if _settings_service is None:
-        raise RuntimeError("SettingsService가 초기화되지 않았습니다")
-    return _settings_service
+    return _registry._require("settings_service")
 
 
 def get_jsonl_watcher() -> JsonlWatcher:
-    if _jsonl_watcher is None:
-        raise RuntimeError("JsonlWatcher가 초기화되지 않았습니다")
-    return _jsonl_watcher
+    return _registry._require("jsonl_watcher")
 
 
 def get_mcp_service() -> McpService:
-    if _mcp_service is None:
-        raise RuntimeError("McpService가 초기화되지 않았습니다")
-    return _mcp_service
+    return _registry._require("mcp_service")
 
 
 def get_template_service() -> TemplateService:
-    if _template_service is None:
-        raise RuntimeError("TemplateService가 초기화되지 않았습니다")
-    return _template_service
+    return _registry._require("template_service")
 
 
 def get_tag_service() -> TagService:
-    if _tag_service is None:
-        raise RuntimeError("TagService가 초기화되지 않았습니다")
-    return _tag_service
+    return _registry._require("tag_service")
 
 
 def get_search_service() -> SearchService:
-    if _search_service is None:
-        raise RuntimeError("SearchService가 초기화되지 않았습니다")
-    return _search_service
+    return _registry._require("search_service")
 
 
 def get_team_service() -> TeamService:
-    if _team_service is None:
-        raise RuntimeError("TeamService가 초기화되지 않았습니다")
-    return _team_service
+    return _registry._require("team_service")
 
 
 def get_team_task_service() -> TeamTaskService:
-    if _team_task_service is None:
-        raise RuntimeError("TeamTaskService가 초기화되지 않았습니다")
-    return _team_task_service
+    return _registry._require("team_task_service")
 
 
 def get_team_coordinator() -> TeamCoordinator:
-    if _team_coordinator is None:
-        raise RuntimeError("TeamCoordinator가 초기화되지 않았습니다")
-    return _team_coordinator
+    return _registry._require("team_coordinator")
 
 
 def get_team_message_service() -> TeamMessageService:
-    if _team_message_service is None:
-        raise RuntimeError("TeamMessageService가 초기화되지 않았습니다")
-    return _team_message_service
+    return _registry._require("team_message_service")
 
 
 def get_analytics_service() -> AnalyticsService:
-    if _analytics_service is None:
-        raise RuntimeError("AnalyticsService가 초기화되지 않았습니다")
-    return _analytics_service
+    return _registry._require("analytics_service")
 
 
 def get_workflow_service() -> WorkflowService:
-    if _workflow_service is None:
-        raise RuntimeError("WorkflowService가 초기화되지 않았습니다")
-    return _workflow_service
+    return _registry._require("workflow_service")
 
 
-async def init_dependencies():
-    """앱 시작 시 DB 및 SessionManager 초기화."""
-    global \
-        _database, \
-        _session_manager, \
-        _local_scanner, \
-        _usage_service, \
-        _settings_service, \
-        _jsonl_watcher, \
-        _filesystem_service, \
-        _ws_manager, \
-        _claude_runner, \
-        _mcp_service, \
-        _template_service, \
-        _tag_service, \
-        _team_service, \
-        _team_task_service, \
-        _team_coordinator, \
-        _team_message_service, \
-        _search_service, \
-        _analytics_service, \
-        _workflow_service
-    logger = logging.getLogger(__name__)
-    settings = get_settings()
-    _filesystem_service = FilesystemService(root_dir=settings.claude_work_dir)
-
-    # 업로드 디렉토리 보장
-    upload_path = Path(settings.resolved_upload_dir)
-    upload_path.mkdir(parents=True, exist_ok=True)
-    logger.info("업로드 디렉토리: %s", upload_path)
-
-    # WebSocketManager를 DB 초기화 전에 인스턴스 생성
-    _ws_manager = WebSocketManager()
-    _database = Database(settings.database_url)
-    await _database.initialize()
-    _ws_manager.set_database(_database)
-    _session_manager = SessionManager(
-        _database, upload_dir=settings.resolved_upload_dir
-    )
-    _local_scanner = LocalSessionScanner(_database)
-    _usage_service = UsageService()
-    _claude_runner = ClaudeRunner(settings)
-    _settings_service = SettingsService(_database)
-    _mcp_service = McpService(_database)
-    _template_service = TemplateService(_database)
-    _tag_service = TagService(_database)
-    _team_service = TeamService(_database)
-    _team_task_service = TeamTaskService(_database)
-    _team_coordinator = TeamCoordinator(
-        _database, _session_manager, _ws_manager, _claude_runner
-    )
-    _team_message_service = TeamMessageService(_database)
-    _search_service = SearchService(_database)
-    _analytics_service = AnalyticsService(_database)
-    _workflow_service = WorkflowService(_database)
-    _jsonl_watcher = JsonlWatcher(_session_manager, _ws_manager)
-
-    # 서버 재시작 시 프로세스/task가 없는 stale running 세션을 idle로 복구
-    from app.repositories.session_repo import SessionRepository
-
-    async with _database.session() as session:
-        repo = SessionRepository(session)
-        await repo.reset_stale_running()
-        await session.commit()
-
-    # seq 카운터를 DB에서 복원 (재시작 후에도 seq 이어서 사용)
-    await _ws_manager.restore_seq_counters(_database)
-
-    # 오래된 이벤트 정리 (24시간 이전)
-    from app.repositories.event_repo import EventRepository
-
-    async with _database.session() as session:
-        event_repo = EventRepository(session)
-        await event_repo.cleanup_old_events(max_age_hours=24)
-        await session.commit()
+# --- 앱 라이프사이클 (레지스트리 위임) ---
 
 
-async def shutdown_dependencies():
-    """앱 종료 시 활성 세션 정리 및 DB 연결 종료."""
-    global \
-        _database, \
-        _session_manager, \
-        _local_scanner, \
-        _usage_service, \
-        _claude_runner, \
-        _settings_service, \
-        _jsonl_watcher, \
-        _filesystem_service, \
-        _ws_manager, \
-        _mcp_service, \
-        _template_service, \
-        _tag_service, \
-        _team_service, \
-        _team_task_service, \
-        _team_coordinator, \
-        _team_message_service, \
-        _search_service, \
-        _analytics_service, \
-        _workflow_service
-    logger = logging.getLogger(__name__)
-    # 1. 실행 중인 세션 프로세스 종료
-    if _session_manager:
-        for session_id in list(_session_manager._processes.keys()):
-            try:
-                await _session_manager.kill_process(session_id)
-            except Exception as e:
-                logger.error("세션 %s 프로세스 종료 실패: %s", session_id, e)
-    # 2. JSONL Watcher 종료
-    if _jsonl_watcher:
-        try:
-            _jsonl_watcher.stop_all()
-        except Exception as e:
-            logger.error("JsonlWatcher 종료 실패: %s", e)
-    # 3. Usage HTTP 클라이언트 정리
-    if _usage_service and hasattr(_usage_service, "close"):
-        try:
-            await _usage_service.close()
-        except Exception as e:
-            logger.error("UsageService 종료 실패: %s", e)
-    # 4. DB 연결 종료
-    if _database:
-        await _database.close()
-    _database = None
-    _session_manager = None
-    _local_scanner = None
-    _usage_service = None
-    _claude_runner = None
-    _settings_service = None
-    _jsonl_watcher = None
-    _filesystem_service = None
-    _ws_manager = None
-    _mcp_service = None
-    _template_service = None
-    _tag_service = None
-    _team_service = None
-    _team_task_service = None
-    _team_coordinator = None
-    _team_message_service = None
-    _search_service = None
-    _analytics_service = None
-    _workflow_service = None
+async def init_dependencies() -> None:
+    """앱 시작 시 모든 서비스 초기화."""
+    await _registry.initialize()
+
+
+async def shutdown_dependencies() -> None:
+    """앱 종료 시 서비스 정리."""
+    await _registry.shutdown()

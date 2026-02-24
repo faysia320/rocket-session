@@ -1,4 +1,9 @@
-"""세션 생명주기 관리 (CRUD, 프로세스 종료) - PostgreSQL 영속성."""
+"""세션 생명주기 관리 (CRUD, 프로세스 종료) - PostgreSQL 영속성.
+
+SessionManager는 파사드로서 내부 서브 서비스에 위임합니다:
+- SessionProcessManager: 인메모리 프로세스/runner task 관리
+- Repository 계층: DB CRUD (SessionRepository, MessageRepository 등)
+"""
 
 import asyncio
 import logging
@@ -14,6 +19,7 @@ from app.repositories.file_change_repo import FileChangeRepository
 from app.repositories.message_repo import MessageRepository
 from app.repositories.session_repo import SessionRepository, _session_to_dict
 from app.schemas.session import SessionInfo
+from app.services.session_process_manager import SessionProcessManager
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +28,15 @@ _UNSET = object()  # 센티넬: "전달되지 않음" vs "명시적 None" 구분
 
 
 class SessionManager:
-    """PostgreSQL 기반 세션 저장소 및 관리."""
+    """PostgreSQL 기반 세션 저장소 및 관리 (파사드).
+
+    프로세스 관리는 SessionProcessManager에 위임합니다.
+    """
 
     def __init__(self, db: Database, upload_dir: str = ""):
         self._db = db
         self._upload_dir = upload_dir
-        # 프로세스 핸들은 인메모리로 관리 (DB에 저장 불가)
-        self._processes: dict[str, asyncio.subprocess.Process] = {}
-        # runner task (stdout 읽기 코루틴) - WS 연결과 독립적으로 관리
-        self._runner_tasks: dict[str, asyncio.Task] = {}
+        self._process_manager = SessionProcessManager()
 
     async def create(
         self,
@@ -52,7 +58,7 @@ class SessionManager:
         workflow_enabled: bool = False,
     ) -> dict:
         sid = str(uuid.uuid4())[:16]
-        created_at = datetime.now(timezone.utc).isoformat()
+        created_at = datetime.now(timezone.utc)
         async with self._db.session() as session:
             repo = SessionRepository(session)
             entity = Session(
@@ -130,57 +136,30 @@ class SessionManager:
             logger.info("세션 삭제: %s", session_id)
         return deleted
 
+    # --- 프로세스 관리 (SessionProcessManager 위임) ---
+
     async def kill_process(self, session_id: str):
         """실행 중인 Claude CLI 프로세스 및 runner task를 안전하게 종료."""
-        # runner task 취소 (stdout reader) — cancel 후 완료 대기
-        runner_task = self._runner_tasks.get(session_id)
-        if runner_task and not runner_task.done():
-            runner_task.cancel()
-            try:
-                await asyncio.wait_for(asyncio.shield(runner_task), timeout=3)
-            except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
-                pass
-        self._runner_tasks.pop(session_id, None)
-
-        # 프로세스 종료
-        process = self._processes.get(session_id)
-        if process and process.returncode is None:
-            try:
-                process.terminate()
-                await asyncio.wait_for(process.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                process.kill()
-            except Exception:
-                logger.warning(
-                    "세션 %s 프로세스 종료 중 오류", session_id, exc_info=True
-                )
-        self._processes.pop(session_id, None)
+        await self._process_manager.kill_process(session_id)
         await self.update_status(session_id, SessionStatus.IDLE)
 
     def set_process(self, session_id: str, process: asyncio.subprocess.Process):
-        self._processes[session_id] = process
+        self._process_manager.set_process(session_id, process)
 
     def get_process(self, session_id: str) -> asyncio.subprocess.Process | None:
-        return self._processes.get(session_id)
+        return self._process_manager.get_process(session_id)
 
     def clear_process(self, session_id: str):
-        self._processes.pop(session_id, None)
+        self._process_manager.clear_process(session_id)
 
     def set_runner_task(self, session_id: str, task: asyncio.Task):
-        """runner task 등록."""
-        self._runner_tasks[session_id] = task
+        self._process_manager.set_runner_task(session_id, task)
 
     def get_runner_task(self, session_id: str) -> asyncio.Task | None:
-        """runner task 조회. 완료된 task는 자동 정리."""
-        task = self._runner_tasks.get(session_id)
-        if task and task.done():
-            self._runner_tasks.pop(session_id, None)
-            return None
-        return task
+        return self._process_manager.get_runner_task(session_id)
 
     def clear_runner_task(self, session_id: str):
-        """runner task 참조 제거."""
-        self._runner_tasks.pop(session_id, None)
+        self._process_manager.clear_runner_task(session_id)
 
     async def update_status(self, session_id: str, status: str):
         async with self._db.session() as session:
@@ -206,7 +185,7 @@ class SessionManager:
         session_id: str,
         role: str,
         content: str,
-        timestamp: str,
+        timestamp: "str | datetime",
         cost: float | None = None,
         duration_ms: int | None = None,
         is_error: bool = False,
@@ -259,7 +238,7 @@ class SessionManager:
             await session.commit()
 
     async def add_file_change(
-        self, session_id: str, tool: str, file: str, timestamp: str
+        self, session_id: str, tool: str, file: str, timestamp: "str | datetime"
     ):
         async with self._db.session() as session:
             repo = FileChangeRepository(session)
@@ -380,7 +359,7 @@ class SessionManager:
             return None
 
         sid = str(uuid.uuid4())[:16]
-        created_at = datetime.now(timezone.utc).isoformat()
+        created_at = datetime.now(timezone.utc)
         source_name = source.get("name") or source["id"]
 
         async with self._db.session() as session:
