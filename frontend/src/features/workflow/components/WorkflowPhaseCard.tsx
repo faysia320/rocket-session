@@ -136,8 +136,8 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
         ) : null}
       </div>
 
-      {/* Actions (only if not approved) */}
-      {!isApproved ? (
+      {/* Actions: Research는 자동 체이닝이므로 버튼 없음, Plan만 승인/수정 표시 */}
+      {!isApproved && phase === "plan" ? (
         <div className="px-4 py-2.5 border-t border-border bg-muted/20">
           {showRevisionInput ? (
             <div className="space-y-2">
@@ -186,7 +186,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                 className="h-7 text-xs"
               >
                 <Check className="w-3.5 h-3.5 mr-1" />
-                {isApproving ? "승인 중…" : "승인 → 다음 단계"}
+                {isApproving ? "승인 중…" : "승인 → 구현 시작"}
               </Button>
             </div>
           )}

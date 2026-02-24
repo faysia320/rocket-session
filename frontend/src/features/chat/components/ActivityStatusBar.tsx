@@ -4,10 +4,10 @@ import { ShieldAlert, ClipboardList } from "lucide-react";
 import type { ToolUseMsg, PermissionRequestData } from "@/types";
 import { getActivityLabel } from "../utils/activityLabel";
 
-const PHASE_NAMES: Record<string, string> = {
-  research: "연구",
-  plan: "계획",
-  implement: "구현",
+const PHASE_RUNNING_MESSAGES: Record<string, string> = {
+  research: "요구사항 조사 중…",
+  plan: "구현 계획 작성 중…",
+  implement: "구현 진행 중…",
 };
 
 interface ActivityStatusBarProps {
@@ -58,12 +58,12 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
           </div>
         ) : null}
 
-        {/* 워크플로우 검토 대기 */}
+        {/* 워크플로우 검토 대기 (Plan만 — Research는 자동 체이닝) */}
         {hasWorkflowWait ? (
           <div className="flex items-center gap-2 min-h-[20px]">
             <ClipboardList className="w-3.5 h-3.5 text-info animate-pulse shrink-0" />
             <span className="font-mono text-xs text-info font-semibold">
-              {PHASE_NAMES[workflowPhase ?? ""] ?? workflowPhase} 단계 완료 — 아티팩트를 검토하고 승인해주세요
+              구현 계획 검토 대기 — 아티팩트를 검토하고 승인해주세요
             </span>
           </div>
         ) : null}
@@ -80,11 +80,15 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
             ))
           : null}
 
-        {/* running이지만 도구/승인 대기 없을 때: 기본 처리 중 표시 */}
+        {/* running이지만 도구/승인 대기 없을 때: 워크플로우 phase 또는 기본 처리 중 표시 */}
         {isEffectivelyRunning && !hasActiveTools && !hasPermissionWait && !hasWorkflowWait ? (
           <div className="flex items-center gap-2 min-h-[20px]">
             <span className="inline-block w-3 h-3 border-[1.5px] border-primary/40 border-t-primary rounded-full animate-spin shrink-0" />
-            <span className="font-mono text-xs text-muted-foreground">Reasoning…</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {workflowPhase && PHASE_RUNNING_MESSAGES[workflowPhase]
+                ? PHASE_RUNNING_MESSAGES[workflowPhase]
+                : "Reasoning…"}
+            </span>
           </div>
         ) : null}
       </div>

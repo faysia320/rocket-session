@@ -31,13 +31,13 @@ export function useWorkflowActions({
         const result = await approveMutation.mutateAsync({ feedback });
         const nextPhase = (result as Record<string, unknown>).next_phase as string | null;
 
-        if (nextPhase && nextPhase !== "implement" && sendPrompt) {
+        if (nextPhase === "implement") {
+          toast.success("구현을 시작합니다");
+        } else if (nextPhase) {
           toast.success(
             `${PHASE_NAMES[nextPhase] ?? nextPhase} 단계로 전환되었습니다`,
           );
-        } else if (nextPhase === "implement" && sendPrompt) {
-          toast.success("구현 단계로 전환되었습니다. 프롬프트를 입력해주세요.");
-        } else if (!nextPhase) {
+        } else {
           toast.success("워크플로우가 완료되었습니다");
         }
 
@@ -58,7 +58,7 @@ export function useWorkflowActions({
     async (feedback: string) => {
       try {
         await revisionMutation.mutateAsync({ feedback });
-        toast.success("수정 요청이 전송되었습니다");
+        toast.success("수정 요청이 전송되었습니다. 계획을 다시 작성합니다…");
 
         queryClient.invalidateQueries({
           queryKey: workflowKeys.status(sessionId),

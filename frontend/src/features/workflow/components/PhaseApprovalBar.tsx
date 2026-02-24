@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 interface PhaseApprovalBarProps {
+  phase?: string;
   onApprove?: (feedback?: string) => void;
   onRequestRevision?: (feedback: string) => void;
   onToggleEdit?: () => void;
@@ -14,6 +15,7 @@ interface PhaseApprovalBarProps {
 }
 
 export const PhaseApprovalBar = memo(function PhaseApprovalBar({
+  phase,
   onApprove,
   onRequestRevision,
   onToggleEdit,
@@ -98,7 +100,11 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
         disabled={disabled || isApproving}
       >
         <Check className="w-3.5 h-3.5 mr-1.5" />
-        {isApproving ? "승인 중…" : "승인 → 다음 단계"}
+        {isApproving
+          ? "승인 중…"
+          : phase === "plan"
+            ? "승인 → 구현 시작"
+            : "승인 → 다음 단계"}
       </Button>
     </div>
   );

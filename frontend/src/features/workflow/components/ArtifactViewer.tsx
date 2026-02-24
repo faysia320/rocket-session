@@ -268,6 +268,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
         {/* Bottom: Approval bar */}
         {!isApproved ? (
           <PhaseApprovalBar
+            phase={artifact?.phase}
             onApprove={onApprove}
             onRequestRevision={onRequestRevision}
             onToggleEdit={onUpdateContent ? handleToggleEdit : undefined}

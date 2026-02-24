@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import { FolderOpen, GitBranch, GitPullRequestArrow, RefreshCw } from "lucide-react";
+import { FolderOpen, GitBranch, RefreshCw } from "lucide-react";
 import { GitDropdownMenu } from "./GitDropdownMenu";
 import { SessionDropdownMenu } from "./SessionDropdownMenu";
 import { SessionSettings } from "@/features/session/components/SessionSettings";
@@ -176,24 +176,6 @@ export const ChatHeader = memo(function ChatHeader({
         ) : null}
       </div>
       <div className="flex items-center gap-2">
-        {!workflowEnabled ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
-                onClick={onEnableWorkflow}
-                aria-label="워크플로우 모드로 전환"
-              >
-                <GitPullRequestArrow className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">워크플로우 전환</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>워크플로우 모드로 전환 (코드 수정 가능)</TooltipContent>
-          </Tooltip>
-        ) : null}
-
         <GitDropdownMenu
           gitInfo={gitInfo}
           worktreeName={worktreeName}
@@ -209,12 +191,14 @@ export const ChatHeader = memo(function ChatHeader({
             isArchived={isArchived}
             gitInfo={gitInfo}
             worktreeName={worktreeName}
+            workflowEnabled={workflowEnabled}
             onOpenSettings={() => onSettingsOpenChange(true)}
             onArchive={onArchive}
             onUnarchive={onUnarchive}
             onDelete={onDelete}
             onFork={onFork}
             onConvertToWorktree={onConvertToWorktree}
+            onEnableWorkflow={onEnableWorkflow}
           />
           <Sheet open={filesOpen} onOpenChange={onFilesOpenChange} modal={!portalContainer}>
             <Tooltip>

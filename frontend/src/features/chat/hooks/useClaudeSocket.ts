@@ -268,6 +268,21 @@ export function useClaudeSocket(sessionId: string) {
         });
         break;
 
+      case "workflow_auto_chain": {
+        const fromPhase = data.from_phase as string;
+        const toPhase = data.to_phase as string;
+        const phaseLabels: Record<string, string> = {
+          research: "조사",
+          plan: "구현 계획 작성",
+          implement: "구현",
+        };
+        const msg =
+          `${phaseLabels[fromPhase] ?? fromPhase} 완료. ` +
+          `${phaseLabels[toPhase] ?? toPhase}을(를) 시작합니다…`;
+        dispatch({ type: "ADD_SYSTEM_MESSAGE", text: msg });
+        break;
+      }
+
       case "workflow_artifact_updated":
       case "workflow_annotation_added":
         // 아티팩트/주석 변경 → TanStack Query 캐시 무효화는 컴포넌트에서 처리
