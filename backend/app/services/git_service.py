@@ -349,15 +349,29 @@ class GitService:
         worktree_path = os.path.join(cwd, ".claude", "worktrees", worktree_name)
         branch_name = f"worktree-{worktree_name}"
 
-        # 1. git worktree remove
-        args = ["worktree", "remove"]
-        if force:
-            args.append("--force")
-        args.append(worktree_path)
+        # 1. git worktree remove (폴백 전략 포함)
+        if os.path.isdir(worktree_path):
+            args = ["worktree", "remove"]
+            if force:
+                args.append("--force")
+            args.append(worktree_path)
 
-        returncode, _, stderr = await self._run_git_command(*args, cwd=cwd, timeout=60.0)
-        if returncode != 0:
-            raise RuntimeError(f"워크트리 삭제 실패: {stderr}")
+            returncode, _, stderr = await self._run_git_command(
+                *args, cwd=cwd, timeout=60.0
+            )
+            if returncode != 0:
+                # 폴백: 디렉토리 수동 삭제 + git worktree prune
+                logger.warning(
+                    "git worktree remove 실패, 수동 정리 시도: %s", stderr
+                )
+                import shutil
+
+                shutil.rmtree(worktree_path, ignore_errors=True)
+                await self._run_git_command("worktree", "prune", cwd=cwd)
+        else:
+            # 워크트리 디렉토리가 이미 없음 → prune만 실행
+            logger.info("워크트리 디렉토리 없음, prune 실행: %s", worktree_path)
+            await self._run_git_command("worktree", "prune", cwd=cwd)
 
         # 2. 로컬 브랜치 삭제
         delete_flag = "-D" if force else "-d"

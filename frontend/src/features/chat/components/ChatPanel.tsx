@@ -497,8 +497,9 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const handleRemoveWorktree = useCallback(async () => {
     if (!workDir || !worktreeName) return;
     try {
-      await filesystemApi.removeWorktree(workDir, worktreeName, true);
+      // 세션 삭제 먼저 (Claude 프로세스 종료) → 워크트리 삭제
       await sessionsApi.delete(sessionId);
+      await filesystemApi.removeWorktree(workDir, worktreeName, true);
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       toast.success("워크트리가 삭제되었습니다.");
       navigate({ to: "/" });
