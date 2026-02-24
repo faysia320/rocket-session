@@ -1026,8 +1026,8 @@ class ClaudeRunner:
                 try:
                     await session_manager.update_settings(
                         session_id,
-                        workflow_phase=None,
-                        workflow_phase_status=None,
+                        workflow_phase="implement",
+                        workflow_phase_status="completed",
                     )
 
                     # 커밋 메시지 자동 생성

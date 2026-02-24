@@ -9,6 +9,7 @@ import type {
   AskUserQuestionItem,
   MessageUpdate,
 } from "@/types";
+import type { WorkflowCommitSuggestion } from "@/types/workflow";
 import { getWsUrl, getBackoffDelay, RECONNECT_MAX_ATTEMPTS } from "./useClaudeSocket.utils";
 import {
   claudeSocketReducer,
@@ -73,6 +74,12 @@ export function useClaudeSocket(sessionId: string) {
                   };
                 })
               : null,
+          fileChanges: data.file_changes
+            ? (data.file_changes as FileChange[])
+            : null,
+          commitSuggestion: data.commit_suggestion
+            ? (data.commit_suggestion as WorkflowCommitSuggestion)
+            : null,
         };
         dispatch(action);
 

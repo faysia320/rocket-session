@@ -316,15 +316,28 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
 
         if last_seq is not None:
             # 재연결: 세션 상태만 전송 (히스토리 없음) + 놓친 이벤트 전송
-            await ws.send_json(
-                {
-                    "type": WsEventType.SESSION_STATE,
-                    "session": manager.to_info_dict(session_with_counts),
-                    "latest_seq": latest_seq,
-                    "is_reconnect": True,
-                    "is_running": is_running,
-                }
-            )
+            reconnect_msg: dict = {
+                "type": WsEventType.SESSION_STATE,
+                "session": manager.to_info_dict(session_with_counts),
+                "file_changes": await manager.get_file_changes(session_id),
+                "latest_seq": latest_seq,
+                "is_reconnect": True,
+                "is_running": is_running,
+            }
+            # 워크플로우 완료 상태이면 commit_suggestion 재생성
+            session_info = manager.to_info_dict(session_with_counts)
+            if (
+                session_info.get("workflow_enabled")
+                and session_info.get("workflow_phase_status") == "completed"
+            ):
+                try:
+                    wf_svc = get_workflow_service()
+                    reconnect_msg["commit_suggestion"] = (
+                        await wf_svc.generate_commit_suggestion(session_id)
+                    )
+                except Exception:
+                    pass
+            await ws.send_json(reconnect_msg)
             # 놓친 이벤트 조회 및 전송
             missed = await ws_manager.get_buffered_events_after(session_id, last_seq)
             if missed:
@@ -338,10 +351,13 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
         else:
             # 최초 연결: 기존 로직 + latest_seq 필드 추가
             history = await manager.get_history(session_id)
+            file_changes = await manager.get_file_changes(session_id)
+            session_info = manager.to_info_dict(session_with_counts)
             state_msg: dict = {
                 "type": WsEventType.SESSION_STATE,
-                "session": manager.to_info_dict(session_with_counts),
+                "session": session_info,
                 "history": history,
+                "file_changes": file_changes,
                 "latest_seq": latest_seq,
                 "is_running": is_running,
             }
@@ -368,6 +384,19 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                     break
             if pending_interactions:
                 state_msg["pending_interactions"] = pending_interactions
+
+            # 워크플로우 완료 상태이면 commit_suggestion 재생성
+            if (
+                session_info.get("workflow_enabled")
+                and session_info.get("workflow_phase_status") == "completed"
+            ):
+                try:
+                    wf_svc = get_workflow_service()
+                    state_msg["commit_suggestion"] = (
+                        await wf_svc.generate_commit_suggestion(session_id)
+                    )
+                except Exception:
+                    pass
 
             await ws.send_json(state_msg)
 

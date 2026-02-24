@@ -144,6 +144,8 @@ export type ClaudeSocketAction =
           tool_input: Record<string, unknown>;
         };
       } | null;
+      fileChanges: FileChange[] | null;
+      commitSuggestion: WorkflowCommitSuggestion | null;
     }
   | { type: "WS_SESSION_INFO"; claudeSessionId: string }
   | { type: "WS_STATUS"; status: "idle" | "running" | "error" }
@@ -397,6 +399,10 @@ export function claudeSocketReducer(
         pendingAnswerCount: recomputePendingAnswerCount(newMessages),
         // history에서 마지막 TodoWrite 복원
         ...(action.history ? { pinnedTodos: lastTodoWriteTodos } : {}),
+        // DB에서 file_changes 복원 (재연결/최초 연결 시)
+        ...(action.fileChanges ? { fileChanges: action.fileChanges } : {}),
+        // 워크플로우 완료 시 commit_suggestion 복원
+        ...(action.commitSuggestion ? { commitSuggestion: action.commitSuggestion } : {}),
       };
     }
 
