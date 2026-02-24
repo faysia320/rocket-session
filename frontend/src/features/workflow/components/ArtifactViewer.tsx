@@ -1,6 +1,7 @@
 import { memo, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Lightbulb, XCircle } from "lucide-react";
+import { MessageSquare, Lightbulb, XCircle, Eye, Code2 } from "lucide-react";
+import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import {
   Sheet,
   SheetContent,
@@ -59,7 +60,10 @@ export const ArtifactViewer = memo(function ArtifactViewer({
   isApproving = false,
   isRequestingRevision = false,
 }: ArtifactViewerProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  type ContentViewMode = "markdown" | "source" | "edit";
+  const [viewMode, setViewMode] = useState<ContentViewMode>("markdown");
+  const [lastNonEditMode, setLastNonEditMode] = useState<"markdown" | "source">("markdown");
+  const isEditing = viewMode === "edit";
   const [editContent, setEditContent] = useState("");
   const [annotationPopover, setAnnotationPopover] = useState<{
     line: number;
@@ -91,12 +95,25 @@ export const ArtifactViewer = memo(function ArtifactViewer({
     }
   }, [isEditing, artifact]);
 
+  // 아티팩트 변경 시 뷰 모드 리셋
+  useEffect(() => {
+    setViewMode("markdown");
+    setLastNonEditMode("markdown");
+  }, [artifact?.id]);
+
   const handleToggleEdit = useCallback(() => {
-    if (isEditing && editContent !== artifact?.content && onUpdateContent) {
-      onUpdateContent(editContent);
+    if (isEditing) {
+      // edit → 이전 뷰 모드로 복귀 (변경사항 있으면 저장)
+      if (editContent !== artifact?.content && onUpdateContent) {
+        onUpdateContent(editContent);
+      }
+      setViewMode(lastNonEditMode);
+    } else {
+      // markdown/source → edit 진입 (현재 모드 기억)
+      setLastNonEditMode(viewMode as "markdown" | "source");
+      setViewMode("edit");
     }
-    setIsEditing(!isEditing);
-  }, [isEditing, editContent, artifact?.content, onUpdateContent]);
+  }, [isEditing, editContent, artifact?.content, onUpdateContent, lastNonEditMode, viewMode]);
 
   const handleLineClick = useCallback((lineNum: number) => {
     setAnnotationPopover({ line: lineNum, open: true });
@@ -118,11 +135,24 @@ export const ArtifactViewer = memo(function ArtifactViewer({
   }, [annotationPopover, newAnnotationContent, newAnnotationType, onAddAnnotation]);
 
   const scrollToLine = useCallback((lineNum: number) => {
+    // markdown 모드에서 줄 클릭 시 source 모드로 전환 후 스크롤
+    if (viewMode === "markdown") {
+      setViewMode("source");
+      setLastNonEditMode("source");
+      // 모드 전환 후 DOM 업데이트를 기다린 뒤 스크롤
+      requestAnimationFrame(() => {
+        const el = lineRefs.current.get(lineNum);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+      return;
+    }
     const el = lineRefs.current.get(lineNum);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  }, []);
+  }, [viewMode]);
 
   if (!artifact) return null;
 
@@ -162,16 +192,44 @@ export const ArtifactViewer = memo(function ArtifactViewer({
           </div>
         </SheetHeader>
 
+        {/* View mode toggle bar (edit 모드가 아닐 때만 표시) */}
+        {!isEditing ? (
+          <div className="flex items-center gap-1 px-4 py-1.5 border-b border-border shrink-0 bg-card/50">
+            <Button
+              variant={viewMode === "markdown" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("markdown")}
+              className="h-6 px-2.5 text-[11px] gap-1.5"
+            >
+              <Eye className="w-3 h-3" />
+              미리보기
+            </Button>
+            <Button
+              variant={viewMode === "source" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("source")}
+              className="h-6 px-2.5 text-[11px] gap-1.5"
+            >
+              <Code2 className="w-3 h-3" />
+              소스
+            </Button>
+          </div>
+        ) : null}
+
         {/* Content */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Left: Code viewer */}
+          {/* Left: Content viewer */}
           <div className="flex-1 overflow-y-auto">
-            {isEditing ? (
+            {viewMode === "edit" ? (
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 className="w-full h-full min-h-0 rounded-none border-0 resize-none font-mono text-xs leading-relaxed p-4"
               />
+            ) : viewMode === "markdown" ? (
+              <div className="p-4">
+                <MarkdownRenderer content={artifact.content} />
+              </div>
             ) : (
               <div className="font-mono text-xs leading-relaxed">
                 {lines.map((line, idx) => {
