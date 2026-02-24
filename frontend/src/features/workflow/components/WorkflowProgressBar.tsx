@@ -18,6 +18,7 @@ function getPhaseState(
   const currentIdx = currentPhase ? order.indexOf(currentPhase) : -1;
   const phaseIdx = order.indexOf(phaseKey);
 
+  if (currentStatus === "completed") return "done";
   if (phaseIdx < currentIdx) return "done";
   if (phaseIdx === currentIdx) {
     if (currentStatus === "approved") return "done";
@@ -36,6 +37,8 @@ function getStatusLabel(status: WorkflowPhaseStatus | null): string {
       return "승인됨";
     case "revision_requested":
       return "수정 요청됨";
+    case "completed":
+      return "완료됨";
     default:
       return "대기 중";
   }

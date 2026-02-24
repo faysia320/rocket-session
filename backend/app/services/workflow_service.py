@@ -161,11 +161,11 @@ class WorkflowService:
             )
             return {"approved_phase": current_phase, "next_phase": next_phase}
         else:
-            # implement 완료 → 워크플로우 종료
+            # implement 완료 → 워크플로우 완료 상태로 전환
             await session_manager.update_settings(
                 session_id,
-                workflow_phase=None,
-                workflow_phase_status=None,
+                workflow_phase="implement",
+                workflow_phase_status="completed",
             )
             logger.info("워크플로우 완료: session=%s", session_id)
             return {"approved_phase": current_phase, "next_phase": None}

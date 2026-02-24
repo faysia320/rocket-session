@@ -100,49 +100,53 @@ async def _handle_prompt(
             workflow_phase = current_session.get("workflow_phase")
             workflow_phase_status = current_session.get("workflow_phase_status")
 
-            # 게이트 1: 워크플로우 미시작 상태 → 프롬프트 차단
-            if not workflow_phase:
-                await ws.send_json(
-                    {
-                        "type": WsEventType.ERROR,
-                        "message": (
-                            "워크플로우가 활성화되어 있지만 시작되지 않았습니다. "
-                            "먼저 워크플로우를 시작해주세요. "
-                            "(Research → Plan → Implement)"
-                        ),
-                    }
-                )
-                return
+            # 워크플로우 완료 상태: 일반 메시지로 처리 (게이트 + 컨텍스트 스킵)
+            if workflow_phase_status == "completed":
+                workflow_phase = None
+            else:
+                # 게이트 1: 워크플로우 미시작 상태 → 프롬프트 차단
+                if not workflow_phase:
+                    await ws.send_json(
+                        {
+                            "type": WsEventType.ERROR,
+                            "message": (
+                                "워크플로우가 활성화되어 있지만 시작되지 않았습니다. "
+                                "먼저 워크플로우를 시작해주세요. "
+                                "(Research → Plan → Implement)"
+                            ),
+                        }
+                    )
+                    return
 
-            # 게이트 2: 승인 대기 중 → 프롬프트 차단
-            if workflow_phase_status == "awaiting_approval":
-                await ws.send_json(
-                    {
-                        "type": WsEventType.ERROR,
-                        "message": (
-                            "현재 단계의 검토가 완료되지 않았습니다. "
-                            "아티팩트를 승인하거나 수정 요청해주세요."
-                        ),
-                    }
-                )
-                return
+                # 게이트 2: 승인 대기 중 → 프롬프트 차단
+                if workflow_phase_status == "awaiting_approval":
+                    await ws.send_json(
+                        {
+                            "type": WsEventType.ERROR,
+                            "message": (
+                                "현재 단계의 검토가 완료되지 않았습니다. "
+                                "아티팩트를 승인하거나 수정 요청해주세요."
+                            ),
+                        }
+                    )
+                    return
 
-            workflow_service = get_workflow_service()
+                workflow_service = get_workflow_service()
 
-            # 워크플로우 최초 프롬프트 저장 (자동 체이닝에서 사용)
-            if not current_session.get("workflow_original_prompt"):
-                await manager.update_settings(
-                    session_id, workflow_original_prompt=prompt
-                )
+                # 워크플로우 최초 프롬프트 저장 (자동 체이닝에서 사용)
+                if not current_session.get("workflow_original_prompt"):
+                    await manager.update_settings(
+                        session_id, workflow_original_prompt=prompt
+                    )
 
-            # Phase별 컨텍스트 프롬프트 구성 (Claude 전달용만 별도 변수)
-            claude_prompt = prompt
-            if workflow_phase and workflow_service:
-                phase_context = await workflow_service.build_phase_context(
-                    session_id, workflow_phase, prompt
-                )
-                if phase_context:
-                    claude_prompt = phase_context
+                # Phase별 컨텍스트 프롬프트 구성 (Claude 전달용만 별도 변수)
+                claude_prompt = prompt
+                if workflow_phase and workflow_service:
+                    phase_context = await workflow_service.build_phase_context(
+                        session_id, workflow_phase, prompt
+                    )
+                    if phase_context:
+                        claude_prompt = phase_context
 
         # 이미지 경로 목록 (업로드 API로 먼저 업로드한 파일 경로)
         images = data.get("images", [])

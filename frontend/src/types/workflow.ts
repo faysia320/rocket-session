@@ -3,7 +3,8 @@ export type WorkflowPhaseStatus =
   | "in_progress"
   | "awaiting_approval"
   | "approved"
-  | "revision_requested";
+  | "revision_requested"
+  | "completed";
 export type ArtifactStatus = "draft" | "review" | "approved" | "superseded";
 export type AnnotationType = "comment" | "suggestion" | "rejection";
 export type AnnotationStatus = "pending" | "resolved" | "dismissed";

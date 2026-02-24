@@ -824,8 +824,8 @@ export function claudeSocketReducer(
         sessionInfo: state.sessionInfo
           ? {
               ...state.sessionInfo,
-              workflow_phase: null,
-              workflow_phase_status: null,
+              workflow_phase: "implement",
+              workflow_phase_status: "completed",
             }
           : state.sessionInfo,
       };
