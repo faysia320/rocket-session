@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
 from app.api.dependencies import (
-    get_filesystem_service,
+    get_git_service,
     get_mcp_service,
     get_search_service,
     get_session_manager,
@@ -29,7 +29,7 @@ from app.schemas.session import (
     UpdateSessionRequest,
 )
 from app.schemas.tag import SessionTagRequest, TagInfo
-from app.services.filesystem_service import FilesystemService
+from app.services.git_service import GitService
 from app.services.mcp_service import McpService
 from app.services.search_service import SearchService
 from app.services.tag_service import TagService
@@ -49,7 +49,7 @@ async def create_session(
     settings_service: SettingsService = Depends(get_settings_service),
     mcp_service: McpService = Depends(get_mcp_service),
     template_service: TemplateService = Depends(get_template_service),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    git: GitService = Depends(get_git_service),
 ):
     global_settings = await settings_service.get()
 
@@ -141,7 +141,7 @@ async def create_session(
     # worktree_name이 있으면 워크트리 즉시 생성
     if req.worktree_name and work_dir:
         try:
-            await fs.create_claude_worktree(work_dir, req.worktree_name)
+            await git.create_claude_worktree(work_dir, req.worktree_name)
         except (ValueError, RuntimeError) as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -380,7 +380,7 @@ async def convert_session_to_worktree(
     session_id: str,
     req: ConvertToWorktreeRequest,
     manager: SessionManager = Depends(get_session_manager),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    git: GitService = Depends(get_git_service),
 ):
     """기존 세션을 Git 워크트리로 전환합니다.
 
@@ -412,7 +412,7 @@ async def convert_session_to_worktree(
 
     # 1. 워크트리 즉시 생성
     try:
-        await fs.create_claude_worktree(work_dir, req.worktree_name)
+        await git.create_claude_worktree(work_dir, req.worktree_name)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 

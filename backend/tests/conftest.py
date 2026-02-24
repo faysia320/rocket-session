@@ -25,6 +25,8 @@ os.environ["CLAUDE_WORK_DIR"] = tempfile.gettempdir()
 from app.core.config import Settings  # noqa: E402
 from app.core.database import Database  # noqa: E402
 from app.services.filesystem_service import FilesystemService  # noqa: E402
+from app.services.git_service import GitService  # noqa: E402
+from app.services.skills_service import SkillsService  # noqa: E402
 from app.services.session_manager import SessionManager  # noqa: E402
 from app.services.usage_service import UsageService  # noqa: E402
 from app.services.websocket_manager import WebSocketManager  # noqa: E402
@@ -151,6 +153,18 @@ def ws_manager_with_db(db, ws_manager):
 def filesystem_service():
     """FilesystemService fixture."""
     return FilesystemService()
+
+
+@pytest.fixture
+def git_service():
+    """GitService fixture."""
+    return GitService()
+
+
+@pytest.fixture
+def skills_service():
+    """SkillsService fixture."""
+    return SkillsService()
 
 
 @pytest.fixture

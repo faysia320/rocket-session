@@ -19,6 +19,9 @@ from app.core.database import Database
 from app.main import app
 from app.services.claude_runner import ClaudeRunner
 from app.services.filesystem_service import FilesystemService
+from app.services.git_service import GitService
+from app.services.github_service import GitHubService
+from app.services.skills_service import SkillsService
 from app.services.mcp_service import McpService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
@@ -71,6 +74,12 @@ async def test_client():
     app.dependency_overrides[deps.get_template_service] = lambda: ts
     fs = FilesystemService()
     app.dependency_overrides[deps.get_filesystem_service] = lambda: fs
+    git_svc = GitService()
+    app.dependency_overrides[deps.get_git_service] = lambda: git_svc
+    gh_svc = GitHubService(git_service=git_svc)
+    app.dependency_overrides[deps.get_github_service] = lambda: gh_svc
+    skills_svc = SkillsService()
+    app.dependency_overrides[deps.get_skills_service] = lambda: skills_svc
 
     # Create client
     transport = ASGITransport(app=app)

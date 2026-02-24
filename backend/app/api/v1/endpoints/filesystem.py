@@ -3,7 +3,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
-from app.api.dependencies import get_filesystem_service
+from app.api.dependencies import (
+    get_filesystem_service,
+    get_git_service,
+    get_github_service,
+    get_skills_service,
+)
 from app.schemas.filesystem import (
     DirectoryListResponse,
     GitHubCLIStatus,
@@ -21,6 +26,9 @@ from app.schemas.filesystem import (
     WorktreeListResponse,
 )
 from app.services.filesystem_service import FilesystemService
+from app.services.git_service import GitService
+from app.services.github_service import GitHubService
+from app.services.skills_service import SkillsService
 
 router = APIRouter(prefix="/fs", tags=["filesystem"])
 
@@ -41,10 +49,10 @@ async def list_directory(
 @router.get("/git-info", response_model=GitInfo)
 async def get_git_info(
     path: str = Query(..., description="Git 정보를 조회할 경로"),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    git: GitService = Depends(get_git_service),
 ):
     try:
-        return await fs.get_git_info(path)
+        return await git.get_git_info(path)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -52,10 +60,10 @@ async def get_git_info(
 @router.get("/git-status", response_model=GitStatusResponse)
 async def get_git_status(
     path: str = Query(..., description="Git 상태를 조회할 경로"),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    git: GitService = Depends(get_git_service),
 ):
     try:
-        return await fs.get_git_status(path)
+        return await git.get_git_status(path)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -66,10 +74,10 @@ async def get_git_diff(
     file: str = Query(
         ..., description="diff를 조회할 파일 경로 (저장소 루트 기준 상대 경로)"
     ),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    git: GitService = Depends(get_git_service),
 ):
     try:
-        result = await fs.get_file_diff(path, file)
+        result = await git.get_file_diff(path, file)
         return PlainTextResponse(result or "")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -78,10 +86,10 @@ async def get_git_diff(
 @router.get("/worktrees", response_model=WorktreeListResponse)
 async def list_worktrees(
     path: str = Query(..., description="Git 저장소 경로"),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    git: GitService = Depends(get_git_service),
 ):
     try:
-        return await fs.list_worktrees(path)
+        return await git.list_worktrees(path)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -93,10 +101,10 @@ async def remove_worktree(
     force: bool = Query(
         default=False, description="미커밋 변경사항이 있어도 강제 삭제"
     ),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    git: GitService = Depends(get_git_service),
 ):
     try:
-        await fs.remove_claude_worktree(repo_path, name, force=force)
+        await git.remove_claude_worktree(repo_path, name, force=force)
         return {"ok": True}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -113,10 +121,10 @@ async def get_git_log(
     since: str | None = Query(default=None),
     until: str | None = Query(default=None),
     search: str | None = Query(default=None),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    git: GitService = Depends(get_git_service),
 ):
     try:
-        return await fs.get_git_log(
+        return await git.get_git_log(
             path,
             limit=limit,
             offset=offset,
@@ -133,10 +141,10 @@ async def get_git_log(
 async def get_commit_diff(
     path: str = Query(..., description="Git 저장소 경로"),
     commit: str = Query(..., min_length=7, max_length=40, description="커밋 해시"),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    git: GitService = Depends(get_git_service),
 ):
     try:
-        result = await fs.get_commit_diff(path, commit)
+        result = await git.get_commit_diff(path, commit)
         return PlainTextResponse(result or "")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -145,10 +153,10 @@ async def get_commit_diff(
 @router.get("/gh-status", response_model=GitHubCLIStatus)
 async def get_gh_status(
     path: str = Query(..., description="Git 저장소 경로"),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    gh: GitHubService = Depends(get_github_service),
 ):
     try:
-        return await fs.check_gh_status(path)
+        return await gh.check_gh_status(path)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -158,10 +166,10 @@ async def get_github_prs(
     path: str = Query(..., description="Git 저장소 경로"),
     state: str = Query(default="open"),
     limit: int = Query(default=20, ge=1, le=100),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    gh: GitHubService = Depends(get_github_service),
 ):
     try:
-        return await fs.get_github_prs(path, state=state, limit=limit)
+        return await gh.get_github_prs(path, state=state, limit=limit)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -170,10 +178,10 @@ async def get_github_prs(
 async def get_github_pr_detail(
     path: str = Query(..., description="Git 저장소 경로"),
     number: int = Query(..., ge=1, description="PR 번호"),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    gh: GitHubService = Depends(get_github_service),
 ):
     try:
-        return await fs.get_github_pr_detail(path, number)
+        return await gh.get_github_pr_detail(path, number)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -182,10 +190,10 @@ async def get_github_pr_detail(
 async def get_github_pr_diff(
     path: str = Query(..., description="Git 저장소 경로"),
     number: int = Query(..., ge=1, description="PR 번호"),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    gh: GitHubService = Depends(get_github_service),
 ):
     try:
-        result = await fs.get_github_pr_diff(path, number)
+        result = await gh.get_github_pr_diff(path, number)
         return PlainTextResponse(result or "")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -194,11 +202,11 @@ async def get_github_pr_diff(
 @router.post("/gh-pr-review", response_model=PRReviewJobResponse)
 async def generate_pr_review(
     req: PRReviewRequest,
-    fs: FilesystemService = Depends(get_filesystem_service),
+    gh: GitHubService = Depends(get_github_service),
 ):
     """PR 리뷰 비동기 작업 생성."""
     try:
-        return await fs.request_pr_review(req.path, req.pr_number)
+        return await gh.request_pr_review(req.path, req.pr_number)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -206,11 +214,11 @@ async def generate_pr_review(
 @router.get("/gh-pr-review-status/{job_id}", response_model=PRReviewStatusResponse)
 async def get_pr_review_status(
     job_id: str,
-    fs: FilesystemService = Depends(get_filesystem_service),
+    gh: GitHubService = Depends(get_github_service),
 ):
     """PR 리뷰 작업 상태 조회."""
     try:
-        return fs.get_pr_review_status(job_id)
+        return gh.get_pr_review_status(job_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -218,11 +226,11 @@ async def get_pr_review_status(
 @router.post("/gh-pr-review-submit", response_model=PRReviewSubmitResponse)
 async def submit_pr_review(
     req: PRReviewSubmitRequest,
-    fs: FilesystemService = Depends(get_filesystem_service),
+    gh: GitHubService = Depends(get_github_service),
 ):
     """PR에 리뷰 코멘트 게시."""
     try:
-        return await fs.submit_pr_review_comment(req.path, req.pr_number, req.body)
+        return await gh.submit_pr_review_comment(req.path, req.pr_number, req.body)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -230,6 +238,6 @@ async def submit_pr_review(
 @router.get("/skills", response_model=SkillListResponse)
 async def list_skills(
     path: str = Query(default="", description="프로젝트 작업 디렉토리 경로"),
-    fs: FilesystemService = Depends(get_filesystem_service),
+    skills: SkillsService = Depends(get_skills_service),
 ):
-    return await fs.list_skills(path)
+    return await skills.list_skills(path)

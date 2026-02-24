@@ -1,4 +1,4 @@
-"""Tests for FilesystemService."""
+"""Tests for FilesystemService, GitService, and SkillsService."""
 
 import os
 import tempfile
@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.services.filesystem_service import FilesystemService
+from app.services.git_service import GitService
+from app.services.skills_service import SkillsService
 from app.schemas.filesystem import (
     DirectoryEntry,
     DirectoryListResponse,
@@ -124,10 +126,10 @@ class TestListDirectory:
 
 
 class TestListSkills:
-    """Tests for list_skills method."""
+    """Tests for SkillsService.list_skills method."""
 
     @pytest.mark.asyncio
-    async def test_list_skills_project_only(self, filesystem_service):
+    async def test_list_skills_project_only(self, skills_service):
         """Should list project skills from .claude/commands/*.md."""
         with tempfile.TemporaryDirectory() as tmpdir:
             commands_dir = Path(tmpdir) / ".claude" / "commands"
@@ -136,7 +138,7 @@ class TestListSkills:
             (commands_dir / "skill1.md").write_text("First line of skill1\nMore content")
             (commands_dir / "skill2.md").write_text("First line of skill2")
 
-            result = await filesystem_service.list_skills(tmpdir)
+            result = await skills_service.list_skills(tmpdir)
 
             assert isinstance(result, SkillListResponse)
             assert len(result.skills) == 2
@@ -149,7 +151,7 @@ class TestListSkills:
             assert skill_map["skill2"].description == "First line of skill2"
 
     @pytest.mark.asyncio
-    async def test_list_skills_project_priority(self, filesystem_service):
+    async def test_list_skills_project_priority(self, skills_service):
         """Project skills should take priority over user skills with same name."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Setup project skill
@@ -165,7 +167,7 @@ class TestListSkills:
             (user_commands / "user-only.md").write_text("User only skill")
 
             with patch("pathlib.Path.home", return_value=user_home):
-                result = await filesystem_service.list_skills(tmpdir)
+                result = await skills_service.list_skills(tmpdir)
 
             # Should have 2 skills: duplicate (project) + user-only
             assert len(result.skills) == 2
@@ -178,7 +180,7 @@ class TestListSkills:
             assert user_only.scope == "user"
 
     @pytest.mark.asyncio
-    async def test_list_skills_empty_path_user_only(self, filesystem_service):
+    async def test_list_skills_empty_path_user_only(self, skills_service):
         """Empty path should return only user skills."""
         user_home = Path(tempfile.gettempdir()) / "test-user-home"
         user_commands = user_home / ".claude" / "commands"
@@ -188,7 +190,7 @@ class TestListSkills:
             (user_commands / "user-skill.md").write_text("User skill description")
 
             with patch("pathlib.Path.home", return_value=user_home):
-                result = await filesystem_service.list_skills("")
+                result = await skills_service.list_skills("")
 
             assert len(result.skills) == 1
             assert result.skills[0].name == "user-skill"
@@ -201,48 +203,54 @@ class TestListSkills:
 
 
 class TestExtractFirstLine:
-    """Tests for _extract_first_line method."""
+    """Tests for _extract_first_line helper."""
 
     @pytest.mark.asyncio
-    async def test_extract_first_line_success(self, filesystem_service):
+    async def test_extract_first_line_success(self):
         """Should extract first non-empty line."""
+        from app.services.skills_service import _extract_first_line
+
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "test.md"
             file_path.write_text("\n\nFirst line\nSecond line")
 
-            result = filesystem_service._extract_first_line(file_path)
+            result = _extract_first_line(file_path)
 
             assert result == "First line"
 
     @pytest.mark.asyncio
-    async def test_extract_first_line_empty_file(self, filesystem_service):
+    async def test_extract_first_line_empty_file(self):
         """Empty file should return empty string."""
+        from app.services.skills_service import _extract_first_line
+
         with tempfile.TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "empty.md"
             file_path.write_text("")
 
-            result = filesystem_service._extract_first_line(file_path)
+            result = _extract_first_line(file_path)
 
             assert result == ""
 
     @pytest.mark.asyncio
-    async def test_extract_first_line_nonexistent_file(self, filesystem_service):
+    async def test_extract_first_line_nonexistent_file(self):
         """Nonexistent file should return empty string."""
-        result = filesystem_service._extract_first_line(Path("/nonexistent/file.md"))
+        from app.services.skills_service import _extract_first_line
+
+        result = _extract_first_line(Path("/nonexistent/file.md"))
         assert result == ""
 
 
 class TestRunGitCommand:
-    """Tests for _run_git_command method (mocked)."""
+    """Tests for GitService._run_git_command method (mocked)."""
 
     @pytest.mark.asyncio
-    async def test_run_git_command_success(self, filesystem_service):
+    async def test_run_git_command_success(self, git_service):
         """Should return (0, stdout, stderr) on success."""
         with tempfile.TemporaryDirectory() as tmpdir:
             mock_result = AsyncMock(return_value=(0, "output", ""))
 
-            with patch.object(filesystem_service, '_run_git_command', mock_result):
-                returncode, stdout, stderr = await filesystem_service._run_git_command(
+            with patch.object(git_service, '_run_git_command', mock_result):
+                returncode, stdout, stderr = await git_service._run_git_command(
                     "status", cwd=tmpdir
                 )
 
@@ -251,13 +259,13 @@ class TestRunGitCommand:
                 assert stderr == ""
 
     @pytest.mark.asyncio
-    async def test_run_git_command_failure(self, filesystem_service):
+    async def test_run_git_command_failure(self, git_service):
         """Should return non-zero returncode on failure."""
         with tempfile.TemporaryDirectory() as tmpdir:
             mock_result = AsyncMock(return_value=(128, "", "fatal: not a git repository"))
 
-            with patch.object(filesystem_service, '_run_git_command', mock_result):
-                returncode, stdout, stderr = await filesystem_service._run_git_command(
+            with patch.object(git_service, '_run_git_command', mock_result):
+                returncode, stdout, stderr = await git_service._run_git_command(
                     "status", cwd=tmpdir
                 )
 
@@ -266,10 +274,10 @@ class TestRunGitCommand:
 
 
 class TestGetGitInfo:
-    """Tests for get_git_info method (mocked)."""
+    """Tests for GitService.get_git_info method (mocked)."""
 
     @pytest.mark.asyncio
-    async def test_get_git_info_not_a_repo(self, filesystem_service):
+    async def test_get_git_info_not_a_repo(self, git_service):
         """Non-git directory should return is_git_repo=False."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Mock _run_git_command to return failure for rev-parse
@@ -278,14 +286,14 @@ class TestGetGitInfo:
                     return (128, "", "fatal: not a git repository")
                 return (0, "", "")
 
-            with patch.object(filesystem_service, '_run_git_command', side_effect=mock_run):
-                result = await filesystem_service.get_git_info(tmpdir)
+            with patch.object(git_service, '_run_git_command', side_effect=mock_run):
+                result = await git_service.get_git_info(tmpdir)
 
                 assert isinstance(result, GitInfo)
                 assert result.is_git_repo is False
 
     @pytest.mark.asyncio
-    async def test_get_git_info_cache(self, filesystem_service):
+    async def test_get_git_info_cache(self, git_service):
         """Should cache git info for TTL duration."""
         with tempfile.TemporaryDirectory() as tmpdir:
             call_count = 0
@@ -295,11 +303,11 @@ class TestGetGitInfo:
                 call_count += 1
                 return GitInfo(is_git_repo=True, branch="main")
 
-            with patch.object(filesystem_service, '_fetch_git_info', side_effect=mock_fetch):
+            with patch.object(git_service, '_fetch_git_info', side_effect=mock_fetch):
                 # First call
-                result1 = await filesystem_service.get_git_info(tmpdir)
+                result1 = await git_service.get_git_info(tmpdir)
                 # Second call (should use cache)
-                result2 = await filesystem_service.get_git_info(tmpdir)
+                result2 = await git_service.get_git_info(tmpdir)
 
                 assert call_count == 1  # Should only call _fetch_git_info once
                 assert result1 == result2
