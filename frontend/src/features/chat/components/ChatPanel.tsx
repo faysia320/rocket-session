@@ -30,9 +30,13 @@ import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { useSessionMutations } from "@/features/session/hooks/useSessions";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
-import { useAddAnnotation, useUpdateAnnotation, useUpdateArtifact, useStartWorkflow } from "@/features/workflow/hooks/useWorkflow";
+import {
+  useAddAnnotation,
+  useUpdateAnnotation,
+  useUpdateArtifact,
+  useStartWorkflow,
+} from "@/features/workflow/hooks/useWorkflow";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-function
 const noop = () => {};
 
 interface ChatPanelProps {
@@ -110,9 +114,8 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const workDir = sessionInfo?.work_dir;
   const worktreeName = sessionInfo?.worktree_name;
   // 워크트리 세션이면 워크트리 경로에서 Git 정보를 조회
-  const effectiveWorkDir = workDir && worktreeName
-    ? `${workDir}/.claude/worktrees/${worktreeName}`
-    : workDir;
+  const effectiveWorkDir =
+    workDir && worktreeName ? `${workDir}/.claude/worktrees/${worktreeName}` : workDir;
   const { gitInfo } = useGitInfo(effectiveWorkDir ?? "");
 
   const startWorkflow = useStartWorkflow(sessionId);
@@ -276,29 +279,43 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const updateArtifactMut = useUpdateArtifact(sessionId, viewingArtifactId ?? 0);
 
   // P0: ArtifactViewer 인라인 콜백 안정화
-  const handleArtifactOpenChange = useCallback((open: boolean) => {
-    if (!open) handleCloseArtifact();
-  }, [handleCloseArtifact]);
+  const handleArtifactOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) handleCloseArtifact();
+    },
+    [handleCloseArtifact],
+  );
 
   const handleAddAnnotation = useCallback(
     (lineStart: number, lineEnd: number | null, content: string, type: AnnotationType) => {
-      addAnnotationMut.mutate({ line_start: lineStart, line_end: lineEnd, content, annotation_type: type });
+      addAnnotationMut.mutate({
+        line_start: lineStart,
+        line_end: lineEnd,
+        content,
+        annotation_type: type,
+      });
     },
     [addAnnotationMut],
   );
 
   const handleResolveAnnotation = useCallback(
-    (annId: number) => { updateAnnotationMut.mutate({ annotationId: annId, status: "resolved" }); },
+    (annId: number) => {
+      updateAnnotationMut.mutate({ annotationId: annId, status: "resolved" });
+    },
     [updateAnnotationMut],
   );
 
   const handleDismissAnnotation = useCallback(
-    (annId: number) => { updateAnnotationMut.mutate({ annotationId: annId, status: "dismissed" }); },
+    (annId: number) => {
+      updateAnnotationMut.mutate({ annotationId: annId, status: "dismissed" });
+    },
     [updateAnnotationMut],
   );
 
   const handleUpdateArtifactContent = useCallback(
-    (content: string) => { updateArtifactMut.mutate({ content }); },
+    (content: string) => {
+      updateArtifactMut.mutate({ content });
+    },
     [updateArtifactMut],
   );
 
@@ -534,7 +551,10 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       {sessionInfo?.workflow_enabled ? (
         <WorkflowProgressBar
           currentPhase={(sessionInfo.workflow_phase as WorkflowPhase) ?? null}
-          currentStatus={sessionInfo.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus ?? null}
+          currentStatus={
+            (sessionInfo.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus) ??
+            null
+          }
           onPhaseClick={noop}
         />
       ) : (
@@ -595,7 +615,13 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         waitingForWorkflowApproval={waitingForWorkflowApproval}
         workflowPhase={(sessionInfo?.workflow_phase as string) ?? null}
       />
-
+      <SessionStatsBar
+        sessionId={sessionId}
+        isRunning={status === "running" || activeTools.length > 0}
+        tokenUsage={tokenUsage}
+        messageCount={messages.length}
+        currentModel={sessionInfo?.model}
+      />
       <div>
         <ChatInput
           connected={connected}
@@ -611,14 +637,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         />
       </div>
 
-      <SessionStatsBar
-        sessionId={sessionId}
-        isRunning={status === "running" || activeTools.length > 0}
-        tokenUsage={tokenUsage}
-        messageCount={messages.length}
-        currentModel={sessionInfo?.model}
-      />
-
       <ChatDialogs
         permissionRequest={pendingPermission}
         onAllow={handlePermissionAllow}
@@ -629,7 +647,13 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       />
 
       {/* Artifact Viewer */}
-      <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive p-4">아티팩트를 표시할 수 없습니다</div>}>
+      <ErrorBoundary
+        fallback={
+          <div className="font-mono text-xs text-destructive p-4">
+            아티팩트를 표시할 수 없습니다
+          </div>
+        }
+      >
         <ArtifactViewer
           open={artifactViewerOpen}
           onOpenChange={handleArtifactOpenChange}
