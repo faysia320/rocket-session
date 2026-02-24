@@ -33,22 +33,27 @@ class SessionRepository(BaseRepository[Session]):
         return result.scalar_one_or_none()
 
     async def list_with_counts(self) -> list[dict]:
-        """세션 목록 + message_count, file_changes_count (correlated subquery)."""
-        msg_count = (
-            select(func.count())
-            .where(Message.session_id == Session.id)
-            .correlate(Session)
-            .scalar_subquery()
-            .label("message_count")
+        """세션 목록 + message_count, file_changes_count (lateral subquery)."""
+        msg_sub = (
+            select(Message.session_id, func.count().label("cnt"))
+            .group_by(Message.session_id)
+            .subquery()
         )
-        fc_count = (
-            select(func.count())
-            .where(FileChange.session_id == Session.id)
-            .correlate(Session)
-            .scalar_subquery()
-            .label("file_changes_count")
+        fc_sub = (
+            select(FileChange.session_id, func.count().label("cnt"))
+            .group_by(FileChange.session_id)
+            .subquery()
         )
-        stmt = select(Session, msg_count, fc_count).order_by(Session.created_at.desc())
+        stmt = (
+            select(
+                Session,
+                func.coalesce(msg_sub.c.cnt, 0).label("message_count"),
+                func.coalesce(fc_sub.c.cnt, 0).label("file_changes_count"),
+            )
+            .outerjoin(msg_sub, msg_sub.c.session_id == Session.id)
+            .outerjoin(fc_sub, fc_sub.c.session_id == Session.id)
+            .order_by(Session.created_at.desc())
+        )
         result = await self._session.execute(stmt)
         rows = result.all()
         return [

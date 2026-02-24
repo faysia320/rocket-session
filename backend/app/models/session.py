@@ -55,27 +55,28 @@ class Session(Base):
     forked_at_message_id: Mapped[int | None] = mapped_column(Integer, default=None)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, default=None)
 
-    # Relationships
+    # Relationships — lazy="raise"로 실수로 N+1 쿼리가 발생하는 것을 방지
+    # 필요 시 selectinload()로 명시적으로 로드해야 함
     messages: Mapped[list["Message"]] = relationship(
         "Message",
         back_populates="session",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
     )
     file_changes: Mapped[list["FileChange"]] = relationship(
         "FileChange",
         back_populates="session",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
     )
     events: Mapped[list["Event"]] = relationship(
-        "Event", back_populates="session", cascade="all, delete-orphan", lazy="selectin"
+        "Event", back_populates="session", cascade="all, delete-orphan", lazy="raise"
     )
     tags: Mapped[list["SessionTag"]] = relationship(
         "SessionTag",
         back_populates="session",
         cascade="all, delete-orphan",
-        lazy="selectin",
+        lazy="raise",
     )
 
     __table_args__ = (
