@@ -106,7 +106,7 @@ async def get_artifact(
 ):
     """아티팩트 상세 조회 (주석 포함)."""
     artifact = await workflow.get_artifact(artifact_id)
-    if not artifact:
+    if not artifact or artifact.session_id != session_id:
         raise HTTPException(status_code=404, detail="아티팩트를 찾을 수 없습니다")
     return artifact
 
@@ -123,6 +123,9 @@ async def update_artifact(
     ws_manager: WebSocketManager = Depends(get_ws_manager),
 ):
     """아티팩트 본문 직접 편집."""
+    existing = await workflow.get_artifact(artifact_id)
+    if not existing or existing.session_id != session_id:
+        raise HTTPException(status_code=404, detail="아티팩트를 찾을 수 없습니다")
     artifact = await workflow.update_artifact(artifact_id, req.content)
     if not artifact:
         raise HTTPException(status_code=404, detail="아티팩트를 찾을 수 없습니다")
@@ -149,6 +152,9 @@ async def add_annotation(
     ws_manager: WebSocketManager = Depends(get_ws_manager),
 ):
     """인라인 주석 추가."""
+    existing = await workflow.get_artifact(artifact_id)
+    if not existing or existing.session_id != session_id:
+        raise HTTPException(status_code=404, detail="아티팩트를 찾을 수 없습니다")
     annotation = await workflow.add_annotation(
         artifact_id=artifact_id,
         line_start=req.line_start,
@@ -180,6 +186,9 @@ async def update_annotation(
     workflow: WorkflowService = Depends(get_workflow_service),
 ):
     """주석 상태 업데이트 (resolve/dismiss)."""
+    existing = await workflow.get_artifact(artifact_id)
+    if not existing or existing.session_id != session_id:
+        raise HTTPException(status_code=404, detail="아티팩트를 찾을 수 없습니다")
     annotation = await workflow.update_annotation_status(annotation_id, req.status)
     if not annotation:
         raise HTTPException(status_code=404, detail="주석을 찾을 수 없습니다")

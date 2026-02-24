@@ -17,6 +17,7 @@ from app.api.dependencies import (
     get_ws_manager,
 )
 from app.api.v1.endpoints.permissions import get_pending, respond_permission
+from app.core.constants import READONLY_TOOLS
 from app.models.event_types import WsEventType
 from app.services.claude_runner import ClaudeRunner
 from app.services.session_manager import SessionManager
@@ -90,7 +91,7 @@ async def _handle_prompt(
 
         # 비워크플로우 세션: 읽기전용 도구만 허용 (요청/세션/글로벌 설정 무시)
         if current_session and not current_session.get("workflow_enabled"):
-            allowed_tools = "Read,Glob,Grep,WebFetch,WebSearch,TodoRead"
+            allowed_tools = READONLY_TOOLS
 
         # 워크플로우 phase 감지
         workflow_phase = None
@@ -191,8 +192,8 @@ async def _handle_prompt(
                 merged_session["system_prompt"] = (
                     existing + "\n\n" + team_context if existing else team_context
                 )
-        except (RuntimeError, Exception):
-            pass  # TeamCoordinator 미초기화 시 무시
+        except Exception:
+            logger.debug("세션 %s: TeamCoordinator 컨텍스트 주입 실패 (미초기화)", session_id)
 
         # MCP 서비스 주입
         mcp_service = get_mcp_service()
@@ -270,7 +271,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
     session = await manager.get(session_id)
     if not session:
         await ws.send_json(
-            {"type": WsEventType.ERROR, "message": "세션을 찾을 수 없습니다"}
+            {"type": WsEventType.ERROR, "message": "세션을 찾을 수 없습니다", "code": "SESSION_NOT_FOUND"}
         )
         await ws.close()
         return
@@ -391,13 +392,16 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                 )
                 try:
                     await ws.send_json(
-                        {"type": WsEventType.ERROR, "message": f"서버 오류: {e}"}
+                        {"type": WsEventType.ERROR, "message": "서버 내부 오류가 발생했습니다"}
                     )
                 except Exception:
-                    pass  # 에러 전송 실패 시 무시
+                    logger.debug("세션 %s: 에러 메시지 WebSocket 전송 실패 (연결 끊김)", session_id)
 
     except WebSocketDisconnect:
         pass
     finally:
         # runner_task는 취소하지 않음 - Claude 프로세스와 함께 살아있어야 함
         ws_manager.unregister(session_id, ws)
+        # 해당 세션에 더 이상 연결된 WS가 없으면 Lock 정리 (메모리 누수 방지)
+        if not ws_manager.has_connections(session_id):
+            _prompt_locks.pop(session_id, None)

@@ -81,6 +81,8 @@ def ensure_test_db(event_loop):
 # 핵심 fixtures
 # ---------------------------------------------------------------------------
 _TRUNCATE_TABLES = [
+    "artifact_annotations",
+    "session_artifacts",
     "session_tags",
     "events",
     "file_changes",
