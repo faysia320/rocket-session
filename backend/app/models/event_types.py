@@ -46,6 +46,7 @@ class WsEventType:
     WORKFLOW_ARTIFACT_UPDATED = "workflow_artifact_updated"
     WORKFLOW_ANNOTATION_ADDED = "workflow_annotation_added"
     WORKFLOW_COMPLETED = "workflow_completed"
+    WORKFLOW_COMMIT_COMPLETED = "workflow_commit_completed"
     WORKFLOW_AUTO_CHAIN = "workflow_auto_chain"
 
     # Interactive

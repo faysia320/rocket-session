@@ -65,6 +65,8 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     confirmAndSendAnswers,
     pendingAnswerCount,
     pinnedTodos,
+    commitSuggestion,
+    clearCommitSuggestion,
   } = useClaudeSocket(sessionId);
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -133,6 +135,22 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       },
     );
   }, [startWorkflow, queryClient]);
+
+  const handleCommitSuccess = useCallback(
+    (_hash: string) => {
+      clearCommitSuggestion();
+      queryClient.invalidateQueries({ queryKey: ["git-info"] });
+      queryClient.invalidateQueries({ queryKey: ["git-status"] });
+    },
+    [clearCommitSuggestion, queryClient],
+  );
+
+  // 워크플로우 완료 시 커밋 제안이 있으면 File Changes Drawer 자동 열기
+  useEffect(() => {
+    if (commitSuggestion) {
+      setFilesOpen(true);
+    }
+  }, [commitSuggestion]);
 
   useChatNotifications({ sessionId, status, messages, pendingPermission, workDir });
 
@@ -547,6 +565,9 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         onFork={handleFork}
         workflowEnabled={sessionInfo?.workflow_enabled}
         onEnableWorkflow={handleEnableWorkflow}
+        commitSuggestion={commitSuggestion}
+        onCommitSuccess={handleCommitSuccess}
+        onDismissCommit={clearCommitSuggestion}
       />
       {sessionInfo?.workflow_enabled ? (
         <WorkflowProgressBar

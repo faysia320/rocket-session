@@ -251,7 +251,10 @@ export function useClaudeSocket(sessionId: string) {
         break;
 
       case "workflow_completed":
-        dispatch({ type: "WS_WORKFLOW_COMPLETED" });
+        dispatch({
+          type: "WS_WORKFLOW_COMPLETED",
+          commitSuggestion: data.commit_suggestion as import("@/types/workflow").WorkflowCommitSuggestion | undefined,
+        });
         break;
 
       case "workflow_started":
@@ -610,6 +613,10 @@ export function useClaudeSocket(sessionId: string) {
     connect();
   }, [connect]);
 
+  const clearCommitSuggestion = useCallback(() => {
+    dispatch({ type: "CLEAR_COMMIT_SUGGESTION" });
+  }, []);
+
   const respondPermission = useCallback(
     (
       permissionId: string,
@@ -651,6 +658,7 @@ export function useClaudeSocket(sessionId: string) {
     tokenUsage: state.tokenUsage,
     pendingAnswerCount: state.pendingAnswerCount,
     pinnedTodos: state.pinnedTodos,
+    commitSuggestion: state.commitSuggestion,
     sendPrompt,
     stopExecution,
     clearMessages,
@@ -661,5 +669,6 @@ export function useClaudeSocket(sessionId: string) {
     answerQuestion,
     confirmAnswers,
     confirmAndSendAnswers,
+    clearCommitSuggestion,
   };
 }

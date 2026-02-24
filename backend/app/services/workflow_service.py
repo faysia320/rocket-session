@@ -1,6 +1,7 @@
 """워크플로우 서비스 — 세션 레벨 Research → Plan → Implement 관리."""
 
 import logging
+import re
 from datetime import datetime, timezone
 
 from app.core.database import Database
@@ -9,9 +10,59 @@ from app.repositories.artifact_repo import (
     ArtifactAnnotationRepository,
     SessionArtifactRepository,
 )
+from app.repositories.file_change_repo import FileChangeRepository
 from app.schemas.workflow import ArtifactAnnotationInfo, SessionArtifactInfo
 
 logger = logging.getLogger(__name__)
+
+# 커밋 타입 키워드 매핑 (workflow_original_prompt 분석용)
+_COMMIT_TYPE_KEYWORDS: dict[str, list[str]] = {
+    "Fix": ["버그", "수정", "fix", "bug", "오류", "에러", "error", "깨진", "broken"],
+    "Refactor": ["리팩토링", "리팩터", "refactor", "정리", "개선", "cleanup"],
+    "Docs": ["문서", "doc", "readme", "주석", "comment"],
+    "Style": ["스타일", "디자인", "css", "ui", "ux", "레이아웃"],
+    "Chore": ["설정", "config", "환경", "의존성", "dependency", "빌드"],
+}
+
+
+def _detect_commit_type(prompt: str) -> str:
+    """원본 프롬프트에서 커밋 타입 접두사를 결정."""
+    lower = prompt.lower()
+    for ctype, keywords in _COMMIT_TYPE_KEYWORDS.items():
+        if any(kw in lower for kw in keywords):
+            return ctype
+    return "Feat"
+
+
+def _extract_plan_title(plan_content: str) -> str:
+    """Plan 아티팩트에서 제목 추출."""
+    for line in plan_content.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("# "):
+            return stripped[2:].strip()[:72]
+        if stripped.startswith("## "):
+            return stripped[3:].strip()[:72]
+    # 폴백: 첫 비빈 줄
+    for line in plan_content.split("\n"):
+        stripped = line.strip()
+        if stripped and not stripped.startswith("<!--"):
+            return stripped[:72]
+    return ""
+
+
+def _extract_plan_bullets(plan_content: str, max_bullets: int = 5) -> list[str]:
+    """Plan 아티팩트에서 주요 항목(불릿/번호 목록) 추출."""
+    bullets: list[str] = []
+    for line in plan_content.split("\n"):
+        stripped = line.strip()
+        match = re.match(r"^[-*]\s|^\d+\.\s", stripped)
+        if match:
+            text = stripped[match.end() :].strip()
+            if text and len(text) > 5:
+                bullets.append(text)
+            if len(bullets) >= max_bullets:
+                break
+    return bullets
 
 # 고정 3단계 순서
 PHASE_ORDER = ["research", "plan", "implement"]
@@ -65,6 +116,83 @@ class WorkflowService:
 
     def __init__(self, db: Database):
         self._db = db
+
+    # ─── 커밋 메시지 자동 생성 ───
+
+    async def generate_commit_suggestion(
+        self, session_id: str, session_manager=None
+    ) -> dict:
+        """plan 아티팩트 + file_changes 기반 커밋 메시지 생성 (LLM 없음).
+
+        Returns:
+            {"title", "body", "full_message", "changed_files"}
+        """
+        plan_content = ""
+        original_prompt = ""
+
+        # plan 아티팩트 조회
+        async with self._db.session() as db_sess:
+            repo = SessionArtifactRepository(db_sess)
+            plan = await repo.get_latest_by_phase(session_id, "plan")
+            if plan:
+                plan_content = plan.content or ""
+
+        # 세션 정보에서 original_prompt 조회
+        if session_manager:
+            session_data = await session_manager.get(session_id)
+            if session_data:
+                original_prompt = session_data.get("workflow_original_prompt") or ""
+
+        # file_changes 조회
+        changed_files: list[str] = []
+        async with self._db.session() as db_sess:
+            fc_repo = FileChangeRepository(db_sess)
+            changes = await fc_repo.get_by_session(session_id)
+            seen: set[str] = set()
+            for c in changes:
+                fp = c.get("file", "")
+                if fp and fp not in seen:
+                    seen.add(fp)
+                    changed_files.append(fp)
+
+        if not changed_files:
+            raise ValueError("변경된 파일이 없습니다")
+
+        # 커밋 타입 결정
+        commit_type = _detect_commit_type(original_prompt) if original_prompt else "Feat"
+
+        # 제목 결정
+        plan_title = _extract_plan_title(plan_content) if plan_content else ""
+        if plan_title:
+            title = f"{commit_type}: {plan_title}"
+        elif original_prompt:
+            first_line = original_prompt.split("\n")[0].strip()[:60]
+            title = f"{commit_type}: {first_line}"
+        else:
+            title = f"{commit_type}: 워크플로우 구현 완료"
+
+        # 72자 제한
+        if len(title) > 72:
+            title = title[:69] + "..."
+
+        # 본문 구성
+        body_parts: list[str] = []
+        if plan_content:
+            bullets = _extract_plan_bullets(plan_content)
+            for b in bullets:
+                body_parts.append(f"- {b}")
+        if not body_parts and original_prompt:
+            body_parts.append(original_prompt.strip()[:200])
+
+        body = "\n".join(body_parts)
+        full_message = f"{title}\n\n{body}" if body else title
+
+        return {
+            "title": title,
+            "body": body,
+            "full_message": full_message,
+            "changed_files": changed_files,
+        }
 
     # ─── 워크플로우 제어 ───
 

@@ -8,6 +8,8 @@ import type {
   StartWorkflowRequest,
   UpdateAnnotationRequest,
   UpdateArtifactRequest,
+  WorkflowCommitResponse,
+  WorkflowCommitSuggestion,
   WorkflowStatusResponse,
 } from "@/types/workflow";
 
@@ -82,6 +84,17 @@ export const workflowApi = {
   ) =>
     api.post<Record<string, unknown>>(
       `${base(sessionId)}/request-revision`,
+      req,
+    ),
+
+  getCommitSuggestion: (sessionId: string) =>
+    api.get<WorkflowCommitSuggestion>(
+      `${base(sessionId)}/commit-suggestion`,
+    ),
+
+  commit: (sessionId: string, req: { message: string }) =>
+    api.post<WorkflowCommitResponse>(
+      `${base(sessionId)}/commit`,
       req,
     ),
 };

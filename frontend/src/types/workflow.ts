@@ -68,3 +68,16 @@ export interface ApprovePhaseRequest {
 export interface RequestRevisionRequest {
   feedback: string;
 }
+
+export interface WorkflowCommitSuggestion {
+  title: string;
+  body: string;
+  full_message: string;
+  changed_files: string[];
+}
+
+export interface WorkflowCommitResponse {
+  success: boolean;
+  commit_hash: string;
+  error?: string | null;
+}

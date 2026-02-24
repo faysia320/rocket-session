@@ -9,6 +9,7 @@ import type {
   AskUserQuestionItem,
   MessageUpdate,
 } from "@/types";
+import type { WorkflowCommitSuggestion } from "@/types/workflow";
 import { getMessageText } from "@/types";
 import { generateMessageId, RECONNECT_MAX_ATTEMPTS } from "./useClaudeSocket.utils";
 
@@ -67,6 +68,8 @@ export interface ClaudeSocketState {
   pendingAnswerCount: number;
   /** PinnedTodoBar에 표시할 최신 TodoWrite 상태 */
   pinnedTodos: TodoItem[];
+  /** 워크플로우 완료 시 자동 생성된 커밋 메시지 제안 */
+  commitSuggestion: WorkflowCommitSuggestion | null;
 }
 
 export const initialState: ClaudeSocketState = {
@@ -91,6 +94,7 @@ export const initialState: ClaudeSocketState = {
   },
   pendingAnswerCount: 0,
   pinnedTodos: [],
+  commitSuggestion: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -184,8 +188,9 @@ export type ClaudeSocketAction =
   | { type: "WS_WORKFLOW_PHASE_COMPLETED"; phase: string }
   | { type: "WS_WORKFLOW_PHASE_APPROVED"; phase: string; nextPhase: string | null }
   | { type: "WS_WORKFLOW_PHASE_REVISION"; phase: string }
-  | { type: "WS_WORKFLOW_COMPLETED" }
+  | { type: "WS_WORKFLOW_COMPLETED"; commitSuggestion?: WorkflowCommitSuggestion }
   | { type: "WS_WORKFLOW_DATA_CHANGED"; eventType: string; artifactId?: number }
+  | { type: "CLEAR_COMMIT_SUGGESTION" }
   // User actions
   | { type: "ANSWER_QUESTION"; messageId: string; questionIndex: number; selectedLabels: string[] }
   | { type: "CONFIRM_ANSWERS"; messageId: string }
@@ -828,7 +833,11 @@ export function claudeSocketReducer(
               workflow_phase_status: "completed",
             }
           : state.sessionInfo,
+        commitSuggestion: action.commitSuggestion ?? null,
       };
+
+    case "CLEAR_COMMIT_SUGGESTION":
+      return { ...state, commitSuggestion: null };
 
     case "WS_RAW":
       return {

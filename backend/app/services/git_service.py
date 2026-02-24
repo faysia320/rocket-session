@@ -624,3 +624,66 @@ class GitService:
         if rc != 0:
             raise ValueError(f"커밋 diff 조회 실패: {err}")
         return out
+
+    # ─── 커밋 관련 ───
+
+    async def stage_files(
+        self, repo_path: str, files: list[str] | None = None
+    ) -> tuple[bool, str]:
+        """파일 스테이징. files=None이면 git add -A (전체).
+
+        Returns:
+            (success, error_message)
+        """
+        validated = self._validate_path(repo_path)
+        if not self._is_within_root(validated):
+            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+        cwd = str(validated)
+
+        async with self._get_git_lock(cwd):
+            if files:
+                args = [*self._GIT_CROSS_PLATFORM_OPTS, "add", "--"] + files
+            else:
+                args = [*self._GIT_CROSS_PLATFORM_OPTS, "add", "-A"]
+
+            rc, _, stderr = await self._run_git_command(*args, cwd=cwd, timeout=30.0)
+            if rc != 0:
+                return False, f"git add 실패: {stderr}"
+            return True, ""
+
+    async def commit(
+        self, repo_path: str, message: str
+    ) -> tuple[bool, str, str]:
+        """커밋 실행.
+
+        Returns:
+            (success, commit_hash, error_message)
+        """
+        validated = self._validate_path(repo_path)
+        if not self._is_within_root(validated):
+            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+        cwd = str(validated)
+
+        async with self._get_git_lock(cwd):
+            rc, _, stderr = await self._run_git_command(
+                *self._GIT_CROSS_PLATFORM_OPTS,
+                "commit",
+                "-m",
+                message,
+                cwd=cwd,
+                timeout=30.0,
+            )
+            if rc != 0:
+                return False, "", f"git commit 실패: {stderr}"
+
+            # 커밋 해시 조회
+            rc_hash, hash_out, _ = await self._run_git_command(
+                "rev-parse", "--short", "HEAD", cwd=cwd
+            )
+            commit_hash = hash_out if rc_hash == 0 else ""
+
+            # 캐시 무효화
+            if repo_path in self._git_cache:
+                del self._git_cache[repo_path]
+
+            return True, commit_hash, ""
