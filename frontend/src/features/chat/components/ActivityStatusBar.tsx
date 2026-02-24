@@ -39,7 +39,7 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
       role="status"
       aria-live="polite"
       className={cn(
-        "px-4 py-1.5 border-t border-border animate-[fadeIn_0.15s_ease]",
+        "px-4 py-1 border-t border-border animate-[fadeIn_0.15s_ease]",
         hasPermissionWait
           ? "bg-warning/10 border-warning/30"
           : hasWorkflowWait

@@ -575,14 +575,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         onConfirmAnswers={confirmAndSendAnswers}
       />
 
-      <ActivityStatusBar
-        activeTools={activeTools}
-        status={status}
-        pendingPermission={pendingPermission}
-        waitingForWorkflowApproval={waitingForWorkflowApproval}
-        workflowPhase={(sessionInfo?.workflow_phase as string) ?? null}
-      />
-
       {!sessionInfo?.workflow_enabled ? (
         <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-muted/50 border-t border-border text-xs text-muted-foreground">
           <span>읽기전용 모드 — 분석/검색만 가능합니다</span>
@@ -610,6 +602,14 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           disabled={waitingForWorkflowApproval}
         />
       </div>
+
+      <ActivityStatusBar
+        activeTools={activeTools}
+        status={status}
+        pendingPermission={pendingPermission}
+        waitingForWorkflowApproval={waitingForWorkflowApproval}
+        workflowPhase={(sessionInfo?.workflow_phase as string) ?? null}
+      />
 
       <ChatDialogs
         permissionRequest={pendingPermission}

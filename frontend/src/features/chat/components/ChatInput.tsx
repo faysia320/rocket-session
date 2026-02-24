@@ -237,7 +237,7 @@ export const ChatInput = memo(function ChatInput({
 
   return (
     <div
-      className="px-2 py-2 border-t border-border bg-secondary"
+      className="px-2 py-1.5 border-t border-border bg-secondary"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -300,7 +300,7 @@ export const ChatInput = memo(function ChatInput({
 
         <div
           className={cn(
-            "flex items-center gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3.5 pr-1 py-1 transition-colors focus-within:border-primary/50",
+            "flex items-center gap-2 bg-input border border-border rounded-[var(--radius-md)] pl-3 pr-1 py-0.5 transition-colors focus-within:border-primary/50",
             isDragOver && "border-primary/50",
           )}
         >
@@ -333,7 +333,7 @@ export const ChatInput = memo(function ChatInput({
 
           <Textarea
             ref={textareaRef}
-            className="flex-1 font-mono text-[16px] sm:text-md bg-transparent border-0 outline-none resize-none min-h-9 leading-[22px] py-[7px] focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="flex-1 font-mono text-sm bg-transparent border-0 outline-none resize-none min-h-8 leading-[20px] py-[5px] focus-visible:ring-0 focus-visible:ring-offset-0"
             value={input}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
@@ -350,10 +350,10 @@ export const ChatInput = memo(function ChatInput({
                     variant="destructive"
                     size="icon"
                     onClick={onStop}
-                    className="h-8 w-8 shrink-0"
+                    className="h-7 w-7 shrink-0"
                     aria-label="중지"
                   >
-                    <Square className="h-3.5 w-3.5 fill-current" />
+                    <Square className="h-3 w-3 fill-current" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>중지 (Esc)</TooltipContent>
@@ -368,10 +368,10 @@ export const ChatInput = memo(function ChatInput({
                       (!input.trim() && pendingImages.length === 0 && pendingAnswerCount === 0) ||
                       !connected
                     }
-                    className="h-8 w-8 shrink-0"
+                    className="h-7 w-7 shrink-0"
                     aria-label="전송"
                   >
-                    <Send className="h-3.5 w-3.5" />
+                    <Send className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>전송 (Enter)</TooltipContent>
