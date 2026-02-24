@@ -34,6 +34,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Claude Code CLI 설치 (버전 고정)
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
+# pnpm 설치 (frontend TypeScript 검증용 node_modules 자동 설치)
+RUN npm install -g pnpm
+
 # uv + Python 의존성 복사
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY --from=builder /app/.venv /app/.venv

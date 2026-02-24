@@ -41,6 +41,7 @@ services:
       - GIT_USER_EMAIL=${GIT_USER_EMAIL}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - CORS_EXTRA_ORIGINS=${CORS_EXTRA_ORIGINS:-}
+      - FRONTEND_DIR=${FRONTEND_DIR:-}
     env_file:
       - .env.docker
     healthcheck:
