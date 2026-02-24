@@ -104,19 +104,19 @@ async def _handle_prompt(
             if workflow_phase_status == "completed":
                 workflow_phase = None
             else:
-                # 게이트 1: 워크플로우 미시작 상태 → 프롬프트 차단
+                # 게이트 1: 워크플로우 미시작 상태 → 자동 복구
                 if not workflow_phase:
-                    await ws.send_json(
-                        {
-                            "type": WsEventType.ERROR,
-                            "message": (
-                                "워크플로우가 활성화되어 있지만 시작되지 않았습니다. "
-                                "먼저 워크플로우를 시작해주세요. "
-                                "(Research → Plan → Implement)"
-                            ),
-                        }
+                    logger.warning(
+                        "워크플로우 자동 복구: session=%s (enabled=True, phase=None → research)",
+                        session_id,
                     )
-                    return
+                    await manager.update_settings(
+                        session_id,
+                        workflow_phase="research",
+                        workflow_phase_status="in_progress",
+                    )
+                    workflow_phase = "research"
+                    current_session = await manager.get(session_id)
 
                 # 게이트 2: 승인 대기 중 → 프롬프트 차단
                 if workflow_phase_status == "awaiting_approval":

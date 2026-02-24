@@ -320,6 +320,12 @@ class SessionManager:
             kwargs["workflow_original_prompt"] = workflow_original_prompt
         async with self._db.session() as session:
             repo = SessionRepository(session)
+            # 워크플로우 불변식: enabled=True → phase 보장
+            if kwargs.get("workflow_enabled") is True and workflow_phase is _UNSET:
+                existing = await repo.get_by_id(session_id)
+                if existing and not existing.workflow_phase:
+                    kwargs["workflow_phase"] = "research"
+                    kwargs["workflow_phase_status"] = "in_progress"
             entity = await repo.update_settings(session_id, **kwargs)
             await session.commit()
             return _session_to_dict(entity) if entity else None
@@ -374,6 +380,7 @@ class SessionManager:
             msg_repo = MessageRepository(session)
 
             # 1. 새 세션 생성 (설정 복사, claude_session_id 제외)
+            _fork_wf_enabled = source.get("workflow_enabled", False)
             entity = Session(
                 id=sid,
                 work_dir=source["work_dir"],
@@ -381,7 +388,9 @@ class SessionManager:
                 allowed_tools=source.get("allowed_tools"),
                 system_prompt=source.get("system_prompt"),
                 timeout_seconds=source.get("timeout_seconds"),
-                workflow_enabled=source.get("workflow_enabled", False),
+                workflow_enabled=_fork_wf_enabled,
+                workflow_phase="research" if _fork_wf_enabled else None,
+                workflow_phase_status="in_progress" if _fork_wf_enabled else None,
                 permission_mode=source.get("permission_mode", False),
                 permission_required_tools=source.get("permission_required_tools"),
                 model=source.get("model"),
