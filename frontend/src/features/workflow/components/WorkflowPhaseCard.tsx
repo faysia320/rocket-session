@@ -38,6 +38,7 @@ interface WorkflowPhaseCardProps {
   onOpenArtifact?: () => void;
   isApproving?: boolean;
   isRequestingRevision?: boolean;
+  disabled?: boolean;
 }
 
 export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
@@ -47,6 +48,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
   onOpenArtifact,
   isApproving = false,
   isRequestingRevision = false,
+  disabled = false,
 }: WorkflowPhaseCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showRevisionInput, setShowRevisionInput] = useState(false);
@@ -173,6 +175,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRevisionInput(true)}
+                disabled={disabled}
                 className="h-7 text-xs"
               >
                 <RotateCcw className="w-3.5 h-3.5 mr-1" />
@@ -182,7 +185,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                 variant="default"
                 size="sm"
                 onClick={handleApprove}
-                disabled={isApproving}
+                disabled={disabled || isApproving}
                 className="h-7 text-xs"
               >
                 <Check className="w-3.5 h-3.5 mr-1" />

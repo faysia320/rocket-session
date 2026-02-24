@@ -45,6 +45,7 @@ interface ArtifactViewerProps {
   onUpdateContent?: (content: string) => void;
   isApproving?: boolean;
   isRequestingRevision?: boolean;
+  disabled?: boolean;
 }
 
 export const ArtifactViewer = memo(function ArtifactViewer({
@@ -59,6 +60,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
   onUpdateContent,
   isApproving = false,
   isRequestingRevision = false,
+  disabled = false,
 }: ArtifactViewerProps) {
   type ContentViewMode = "markdown" | "source" | "edit";
   const [viewMode, setViewMode] = useState<ContentViewMode>("markdown");
@@ -333,6 +335,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
             isApproving={isApproving}
             isRequestingRevision={isRequestingRevision}
             isEditing={isEditing}
+            disabled={disabled}
           />
         ) : null}
       </SheetContent>

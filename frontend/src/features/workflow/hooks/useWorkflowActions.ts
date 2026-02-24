@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useApprovePhase, useRequestRevision, workflowKeys } from "./useWorkflow";
@@ -14,17 +14,51 @@ const PHASE_NAMES: Record<string, string> = {
 interface UseWorkflowActionsParams {
   sessionId: string;
   sendPrompt?: (prompt: string) => void;
+  workflowPhase?: string | null;
+  workflowPhaseStatus?: string | null;
 }
 
 export function useWorkflowActions({
   sessionId,
   sendPrompt,
+  workflowPhase,
+  workflowPhaseStatus,
 }: UseWorkflowActionsParams) {
   const queryClient = useQueryClient();
   const approveMutation = useApprovePhase(sessionId);
   const revisionMutation = useRequestRevision(sessionId);
   const [artifactViewerOpen, setArtifactViewerOpen] = useState(false);
   const [viewingArtifactId, setViewingArtifactId] = useState<number | null>(null);
+
+  // 새로고침 후 awaiting_approval 상태면 아티팩트 뷰어 자동 열기
+  const autoOpenedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      workflowPhaseStatus === "awaiting_approval" &&
+      workflowPhase &&
+      workflowPhase !== "implement" &&
+      !artifactViewerOpen
+    ) {
+      const key = `${sessionId}-${workflowPhase}-${workflowPhaseStatus}`;
+      if (autoOpenedKeyRef.current === key) return;
+      autoOpenedKeyRef.current = key;
+
+      workflowApi
+        .listArtifacts(sessionId)
+        .then((artifacts) => {
+          const latest = artifacts
+            .filter((a) => a.phase === workflowPhase)
+            .sort((a, b) => b.version - a.version)[0];
+          if (latest) {
+            setViewingArtifactId(latest.id);
+            setArtifactViewerOpen(true);
+          }
+        })
+        .catch(() => {
+          // 조용히 실패 — 사용자가 수동으로 열 수 있음
+        });
+    }
+  }, [sessionId, workflowPhase, workflowPhaseStatus, artifactViewerOpen]);
 
   const handleAdvancePhase = useCallback(
     async (feedback?: string) => {

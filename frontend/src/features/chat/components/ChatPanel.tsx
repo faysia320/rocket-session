@@ -284,7 +284,12 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     viewingArtifactId,
     isApproving,
     isRequestingRevision,
-  } = useWorkflowActions({ sessionId, sendPrompt });
+  } = useWorkflowActions({
+    sessionId,
+    sendPrompt,
+    workflowPhase: sessionInfo?.workflow_phase,
+    workflowPhaseStatus: sessionInfo?.workflow_phase_status,
+  });
 
   // 아티팩트 뷰어 데이터
   const { data: viewingArtifact } = useWorkflowArtifact(
@@ -688,6 +693,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           onUpdateContent={handleUpdateArtifactContent}
           isApproving={isApproving}
           isRequestingRevision={isRequestingRevision}
+          disabled={status === "running"}
         />
       </ErrorBoundary>
     </div>

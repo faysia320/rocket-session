@@ -91,6 +91,7 @@ export const MessageBubble = memo(function MessageBubble({
             onOpenArtifact={onOpenArtifact ? () => onOpenArtifact(message.workflow_phase ?? "plan") : undefined}
             isApproving={isApprovingPhase}
             isRequestingRevision={isRequestingRevision}
+            disabled={isRunning}
           />
         );
       }
