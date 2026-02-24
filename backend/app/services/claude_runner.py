@@ -580,6 +580,7 @@ class ClaudeRunner:
             )
 
         turn_state["result_received"] = True
+        turn_state["result_text"] = result_text  # finally 블록에서 사용
 
         result_event = {
             "type": WsEventType.RESULT,
@@ -956,7 +957,7 @@ class ClaudeRunner:
                 and workflow_service
                 and turn_state.get("result_received")
             ):
-                result_text = turn_state.get("text", "")
+                result_text = turn_state.get("result_text") or turn_state.get("text", "")
                 if result_text:
                     try:
                         await workflow_service.create_artifact(
@@ -980,6 +981,44 @@ class ClaudeRunner:
                             session_id,
                             exc_info=True,
                         )
+
+            # 워크플로우: implement 완료 → 아티팩트 저장 + 워크플로우 종료
+            elif (
+                workflow_phase == "implement"
+                and workflow_service
+                and turn_state.get("result_received")
+            ):
+                result_text = turn_state.get("result_text") or turn_state.get("text", "")
+                if result_text:
+                    try:
+                        await workflow_service.create_artifact(
+                            session_id=session_id,
+                            phase="implement",
+                            content=result_text,
+                        )
+                    except Exception:
+                        logger.warning(
+                            "세션 %s: Implement 아티팩트 저장 실패",
+                            session_id,
+                            exc_info=True,
+                        )
+                try:
+                    await session_manager.update_settings(
+                        session_id,
+                        workflow_phase=None,
+                        workflow_phase_status=None,
+                    )
+                    await ws_manager.broadcast_event(
+                        session_id,
+                        {"type": WsEventType.WORKFLOW_COMPLETED},
+                    )
+                    logger.info("워크플로우 완료: session=%s", session_id)
+                except Exception:
+                    logger.warning(
+                        "세션 %s: 워크플로우 완료 처리 실패",
+                        session_id,
+                        exc_info=True,
+                    )
 
             # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
             try:

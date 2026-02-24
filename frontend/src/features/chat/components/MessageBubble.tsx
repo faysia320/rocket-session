@@ -45,7 +45,7 @@ interface MessageBubbleProps {
   onRetryError?: (messageId: string) => void;
   onApprovePhase?: (feedback?: string) => void;
   onRequestRevision?: (feedback: string) => void;
-  onOpenArtifact?: (artifactId: number) => void;
+  onOpenArtifact?: (phase: string) => void;
   isApprovingPhase?: boolean;
   isRequestingRevision?: boolean;
   onAnswerQuestion?: (messageId: string, questionIndex: number, labels: string[]) => void;
@@ -89,7 +89,7 @@ export const MessageBubble = memo(function MessageBubble({
             message={message}
             onApprove={onApprovePhase}
             onRequestRevision={onRequestRevision}
-            onOpenArtifact={onOpenArtifact ? () => onOpenArtifact(0) : undefined}
+            onOpenArtifact={onOpenArtifact ? () => onOpenArtifact(message.workflow_phase ?? "plan") : undefined}
             isApproving={isApprovingPhase}
             isRequestingRevision={isRequestingRevision}
           />

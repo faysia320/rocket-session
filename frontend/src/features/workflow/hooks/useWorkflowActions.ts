@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useApprovePhase, useRequestRevision, workflowKeys } from "./useWorkflow";
+import { workflowApi } from "@/lib/api/workflow.api";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 
 const PHASE_NAMES: Record<string, string> = {
@@ -73,10 +74,22 @@ export function useWorkflowActions({
     [revisionMutation, sessionId, queryClient],
   );
 
-  const handleOpenArtifact = useCallback((artifactId: number) => {
-    setViewingArtifactId(artifactId);
-    setArtifactViewerOpen(true);
-  }, []);
+  const handleOpenArtifact = useCallback(async (phase: string) => {
+    try {
+      const artifacts = await workflowApi.listArtifacts(sessionId);
+      const latest = artifacts
+        .filter((a) => a.phase === phase)
+        .sort((a, b) => b.version - a.version)[0];
+      if (latest) {
+        setViewingArtifactId(latest.id);
+        setArtifactViewerOpen(true);
+      } else {
+        toast.info("해당 단계의 아티팩트가 아직 없습니다");
+      }
+    } catch {
+      toast.error("아티팩트를 불러오지 못했습니다");
+    }
+  }, [sessionId]);
 
   const handleCloseArtifact = useCallback(() => {
     setArtifactViewerOpen(false);

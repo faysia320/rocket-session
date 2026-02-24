@@ -22,7 +22,7 @@ interface ChatMessageListProps {
   onRetryError: (errorMsgId: string) => void;
   onApprovePhase: () => void;
   onRequestRevision: (feedback: string) => void;
-  onOpenArtifact: (artifactId: number) => void;
+  onOpenArtifact: (phase: string) => void;
   isApprovingPhase: boolean;
   isRequestingRevision: boolean;
   onAnswerQuestion: (toolUseId: string, questionIndex: number, selectedLabels: string[]) => void;
