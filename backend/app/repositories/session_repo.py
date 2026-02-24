@@ -217,4 +217,5 @@ def _session_to_dict(session: Session) -> dict:
         "worktree_name": session.worktree_name,
         "parent_session_id": session.parent_session_id,
         "forked_at_message_id": session.forked_at_message_id,
+        "workflow_original_prompt": session.workflow_original_prompt,
     }
