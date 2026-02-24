@@ -1,11 +1,16 @@
 """워크플로우 API 엔드포인트."""
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import (
+    get_claude_runner,
+    get_mcp_service,
     get_session_manager,
+    get_settings,
+    get_settings_service,
     get_workflow_service,
     get_ws_manager,
 )
@@ -21,6 +26,7 @@ from app.schemas.workflow import (
     UpdateArtifactRequest,
     WorkflowStatusResponse,
 )
+from app.services.claude_runner import ClaudeRunner, _auto_chain_done
 from app.services.session_manager import SessionManager
 from app.services.websocket_manager import WebSocketManager
 from app.services.workflow_service import WorkflowService
@@ -202,8 +208,12 @@ async def approve_phase(
     manager: SessionManager = Depends(get_session_manager),
     workflow: WorkflowService = Depends(get_workflow_service),
     ws_manager: WebSocketManager = Depends(get_ws_manager),
+    runner: ClaudeRunner = Depends(get_claude_runner),
+    mcp_service=Depends(get_mcp_service),
+    settings=Depends(get_settings),
+    settings_service=Depends(get_settings_service),
 ):
-    """현재 phase 승인 → 다음 phase 전환."""
+    """현재 phase 승인 → 다음 phase 전환 (Plan→Implement 자동 실행)."""
     session = await manager.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
@@ -223,6 +233,60 @@ async def approve_phase(
             "next_phase": result.get("next_phase"),
         },
     )
+
+    # Plan 승인 → Implement 자동 실행
+    next_phase = result.get("next_phase")
+    if next_phase == "implement":
+        try:
+            original_prompt = session.get("workflow_original_prompt", "")
+            impl_context = await workflow.build_phase_context(
+                session_id, "implement", original_prompt
+            )
+
+            # allowed_tools: 세션 > 글로벌 > env
+            global_settings = await settings_service.get()
+            allowed_tools = (
+                session.get("allowed_tools")
+                or global_settings.get("allowed_tools")
+                or settings.claude_allowed_tools
+            )
+
+            updated = await manager.get(session_id)
+
+            await ws_manager.broadcast_event(
+                session_id,
+                {
+                    "type": WsEventType.WORKFLOW_AUTO_CHAIN,
+                    "from_phase": "plan",
+                    "to_phase": "implement",
+                },
+            )
+
+            task = asyncio.create_task(
+                runner.run(
+                    updated,
+                    impl_context,
+                    allowed_tools,
+                    session_id,
+                    ws_manager,
+                    manager,
+                    mcp_service=mcp_service,
+                    workflow_phase="implement",
+                    workflow_service=workflow,
+                    original_prompt=original_prompt,
+                )
+            )
+            task.add_done_callback(
+                lambda t: _auto_chain_done(t, session_id, manager)
+            )
+            manager.set_runner_task(session_id, task)
+        except Exception:
+            logger.warning(
+                "세션 %s: Plan→Implement 자동 실행 실패",
+                session_id,
+                exc_info=True,
+            )
+
     return result
 
 
@@ -233,19 +297,68 @@ async def request_revision(
     manager: SessionManager = Depends(get_session_manager),
     workflow: WorkflowService = Depends(get_workflow_service),
     ws_manager: WebSocketManager = Depends(get_ws_manager),
+    runner: ClaudeRunner = Depends(get_claude_runner),
+    mcp_service=Depends(get_mcp_service),
+    settings=Depends(get_settings),
+    settings_service=Depends(get_settings_service),
 ):
-    """수정 요청 → 아티팩트 새 버전 생성."""
+    """수정 요청 → Plan 자동 재실행."""
     session = await manager.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
     result = await workflow.request_revision(session_id, session_manager=manager, feedback=req.feedback)
+    current_phase = result.get("phase")
 
     await ws_manager.broadcast_event(
         session_id,
         {
             "type": WsEventType.WORKFLOW_PHASE_REVISION,
-            "phase": result.get("phase"),
+            "phase": current_phase,
         },
     )
+
+    # Plan 수정 요청 → 자동 재실행
+    if current_phase == "plan":
+        try:
+            original_prompt = session.get("workflow_original_prompt", "")
+            revision_context = await workflow.build_revision_context(
+                session_id, original_prompt, req.feedback
+            )
+
+            # allowed_tools: 세션 > 글로벌 > env
+            global_settings = await settings_service.get()
+            allowed_tools = (
+                session.get("allowed_tools")
+                or global_settings.get("allowed_tools")
+                or settings.claude_allowed_tools
+            )
+
+            updated = await manager.get(session_id)
+
+            task = asyncio.create_task(
+                runner.run(
+                    updated,
+                    revision_context,
+                    allowed_tools,
+                    session_id,
+                    ws_manager,
+                    manager,
+                    mcp_service=mcp_service,
+                    workflow_phase="plan",
+                    workflow_service=workflow,
+                    original_prompt=original_prompt,
+                )
+            )
+            task.add_done_callback(
+                lambda t: _auto_chain_done(t, session_id, manager)
+            )
+            manager.set_runner_task(session_id, task)
+        except Exception:
+            logger.warning(
+                "세션 %s: Plan 수정 자동 재실행 실패",
+                session_id,
+                exc_info=True,
+            )
+
     return result

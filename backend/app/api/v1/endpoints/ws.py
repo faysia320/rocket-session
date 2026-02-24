@@ -35,7 +35,7 @@ def _on_runner_task_done(
     task: asyncio.Task, session_id: str, manager: SessionManager
 ) -> None:
     """runner task 완료 시 예외 로깅 + runner_task 참조 정리 콜백."""
-    manager.clear_runner_task(session_id)
+    manager.clear_runner_task_if_match(session_id, task)
     if task.cancelled():
         return
     exc = task.exception()
@@ -129,6 +129,12 @@ async def _handle_prompt(
 
             workflow_service = get_workflow_service()
 
+            # 워크플로우 최초 프롬프트 저장 (자동 체이닝에서 사용)
+            if not current_session.get("workflow_original_prompt"):
+                await manager.update_settings(
+                    session_id, workflow_original_prompt=prompt
+                )
+
             # Phase별 컨텍스트 프롬프트 구성 (Claude 전달용만 별도 변수)
             claude_prompt = prompt
             if workflow_phase and workflow_service:
@@ -211,6 +217,7 @@ async def _handle_prompt(
                 mcp_service=mcp_service,
                 workflow_phase=workflow_phase,
                 workflow_service=workflow_service,
+                original_prompt=prompt,
             )
         )
         task.add_done_callback(lambda t: _on_runner_task_done(t, session_id, manager))
