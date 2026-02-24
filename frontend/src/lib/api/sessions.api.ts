@@ -49,7 +49,7 @@ export const sessionsApi = {
     api.post<SessionInfo>("/api/sessions/", {
       work_dir: workDir || null,
       ...options,
-    }),
+    }, options?.worktree_name ? 150_000 : undefined),
 
   list: () => api.get<SessionInfo[]>("/api/sessions/"),
 
@@ -106,7 +106,7 @@ export const sessionsApi = {
     }),
 
   convertToWorktree: (sessionId: string, req: ConvertToWorktreeRequest) =>
-    api.post<SessionInfo>(`/api/sessions/${sessionId}/convert-to-worktree`, req),
+    api.post<SessionInfo>(`/api/sessions/${sessionId}/convert-to-worktree`, req, 150_000),
 
   stats: (id: string) => api.get<SessionStats>(`/api/sessions/${id}/stats`),
 

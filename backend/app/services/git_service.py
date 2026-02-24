@@ -314,6 +314,7 @@ class GitService:
         os.makedirs(os.path.join(cwd, ".claude", "worktrees"), exist_ok=True)
 
         # git worktree add -b worktree-<name> <path>
+        # Docker on WSL2 환경에서 워크트리 생성이 느릴 수 있으므로 120초 타임아웃
         returncode, _, stderr = await self._run_git_command(
             "worktree",
             "add",
@@ -321,8 +322,12 @@ class GitService:
             branch_name,
             worktree_path,
             cwd=cwd,
+            timeout=120.0,
         )
         if returncode != 0:
+            # 타임아웃이지만 파일시스템 작업은 완료된 경우 (부분 성공)
+            if stderr == "timeout" and os.path.isdir(worktree_path):
+                return worktree_path
             raise RuntimeError(f"워크트리 생성 실패: {stderr}")
 
         return worktree_path
@@ -350,7 +355,7 @@ class GitService:
             args.append("--force")
         args.append(worktree_path)
 
-        returncode, _, stderr = await self._run_git_command(*args, cwd=cwd)
+        returncode, _, stderr = await self._run_git_command(*args, cwd=cwd, timeout=60.0)
         if returncode != 0:
             raise RuntimeError(f"워크트리 삭제 실패: {stderr}")
 

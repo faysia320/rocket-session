@@ -305,7 +305,9 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             disabled={creating || !workDir.trim() || (useWorktree && !worktreeName.trim())}
           >
             <Rocket className="h-4 w-4 mr-2" />
-            {creating ? "Creating…" : "Create Session"}
+            {creating
+              ? (useWorktree && worktreeName.trim() ? "워크트리 생성 중…" : "Creating…")
+              : "Create Session"}
           </Button>
           <Button
             variant="outline"
