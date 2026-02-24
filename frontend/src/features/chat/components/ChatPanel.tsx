@@ -14,6 +14,7 @@ import { ChatDialogs } from "./ChatDialogs";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { ChatHeader } from "./ChatHeader";
 import { ChatInput } from "./ChatInput";
+import { PinnedTodoBar } from "./PinnedTodoBar";
 import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { FileChange, UserMsg } from "@/types";
@@ -59,6 +60,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     answerQuestion,
     confirmAndSendAnswers,
     pendingAnswerCount,
+    pinnedTodos,
   } = useClaudeSocket(sessionId);
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -530,7 +532,20 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           currentStatus={sessionInfo.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus ?? null}
           onPhaseClick={noop}
         />
-      ) : null}
+      ) : (
+        <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-muted/50 border-b border-border text-xs text-muted-foreground">
+          <span>읽기전용 모드 — 분석/검색만 가능합니다</span>
+          <button
+            type="button"
+            onClick={handleEnableWorkflow}
+            className="px-2 py-0.5 text-2xs font-medium text-primary bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
+          >
+            워크플로우 전환
+          </button>
+        </div>
+      )}
+
+      <PinnedTodoBar todos={pinnedTodos} />
 
       {/* 검색 바 */}
       {searchOpen ? (
@@ -567,19 +582,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         onAnswerQuestion={answerQuestion}
         onConfirmAnswers={confirmAndSendAnswers}
       />
-
-      {!sessionInfo?.workflow_enabled ? (
-        <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-muted/50 border-t border-border text-xs text-muted-foreground">
-          <span>읽기전용 모드 — 분석/검색만 가능합니다</span>
-          <button
-            type="button"
-            onClick={handleEnableWorkflow}
-            className="px-2 py-0.5 text-2xs font-medium text-primary bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
-          >
-            워크플로우 전환
-          </button>
-        </div>
-      ) : null}
 
       <ActivityStatusBar
         activeTools={activeTools}

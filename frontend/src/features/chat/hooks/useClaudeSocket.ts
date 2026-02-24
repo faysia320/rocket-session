@@ -650,6 +650,7 @@ export function useClaudeSocket(sessionId: string) {
     reconnectState: state.reconnectState,
     tokenUsage: state.tokenUsage,
     pendingAnswerCount: state.pendingAnswerCount,
+    pinnedTodos: state.pinnedTodos,
     sendPrompt,
     stopExecution,
     clearMessages,

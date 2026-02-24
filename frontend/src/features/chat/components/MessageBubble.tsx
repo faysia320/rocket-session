@@ -27,7 +27,6 @@ import type {
 } from "@/types";
 import { WorkflowPhaseCard } from "@/features/workflow/components/WorkflowPhaseCard";
 import { AskUserQuestionCard } from "./AskUserQuestionCard";
-import { TodoWriteMessage } from "./TodoWriteMessage";
 import { EditToolMessage } from "./EditToolMessage";
 import { BashToolMessage } from "./BashToolMessage";
 import { ReadToolMessage } from "./ReadToolMessage";
@@ -97,7 +96,7 @@ export const MessageBubble = memo(function MessageBubble({
       }
       return <ResultMessage message={message} animate={animate} />;
     case "tool_use":
-      if (message.tool === "TodoWrite") return <TodoWriteMessage message={message} />;
+      if (message.tool === "TodoWrite") return null; // PinnedTodoBar에서 처리
       if (["Edit", "MultiEdit", "Write"].includes(message.tool))
         return <EditToolMessage message={message} />;
       if (message.tool === "Bash") return <BashToolMessage message={message} />;

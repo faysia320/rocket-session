@@ -16,6 +16,12 @@ import { generateMessageId, RECONNECT_MAX_ATTEMPTS } from "./useClaudeSocket.uti
 // State
 // ---------------------------------------------------------------------------
 
+export interface TodoItem {
+  content: string;
+  status: "completed" | "in_progress" | "pending";
+  activeForm?: string;
+}
+
 export interface SessionState {
   claude_session_id?: string;
   work_dir?: string;
@@ -59,6 +65,8 @@ export interface ClaudeSocketState {
   tokenUsage: TokenUsage;
   /** answered && !sent 인 ask_user_question 메시지 수 (O(1) 조회용) */
   pendingAnswerCount: number;
+  /** PinnedTodoBar에 표시할 최신 TodoWrite 상태 */
+  pinnedTodos: TodoItem[];
 }
 
 export const initialState: ClaudeSocketState = {
@@ -82,6 +90,7 @@ export const initialState: ClaudeSocketState = {
     cacheReadTokens: 0,
   },
   pendingAnswerCount: 0,
+  pinnedTodos: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -268,6 +277,7 @@ export function claudeSocketReducer(
     case "WS_SESSION_STATE": {
       let newMessages = state.messages;
       let newTokenUsage = state.tokenUsage;
+      let lastTodoWriteTodos: TodoItem[] = [];
       const newStatus = action.isRunning ? ("running" as const) : state.status;
 
       if (!action.isReconnect && action.history) {
@@ -327,6 +337,16 @@ export function claudeSocketReducer(
             } as Message;
           });
 
+        // TodoWrite 메시지를 필터링하고 마지막 TodoWrite의 todos를 pinnedTodos로 설정
+        newMessages = newMessages.filter((m) => {
+          if (m.type === "tool_use" && (m as ToolUseMsg).tool === "TodoWrite") {
+            const input = (m as ToolUseMsg).input;
+            if (Array.isArray(input?.todos)) lastTodoWriteTodos = input.todos as TodoItem[];
+            return false;
+          }
+          return true;
+        });
+
         // 토큰 집계: text 메시지(result)만 대상 (tool 메시지 제외)
         let totalIn = 0,
           totalOut = 0,
@@ -370,6 +390,8 @@ export function claudeSocketReducer(
         pendingPermission: newPendingPermission,
         // history 재빌드 시 pendingAnswerCount 재계산
         pendingAnswerCount: recomputePendingAnswerCount(newMessages),
+        // history에서 마지막 TodoWrite 복원
+        ...(action.history ? { pinnedTodos: lastTodoWriteTodos } : {}),
       };
     }
 
@@ -454,7 +476,18 @@ export function claudeSocketReducer(
       };
     }
 
-    case "WS_TOOL_USE":
+    case "WS_TOOL_USE": {
+      // TodoWrite → pinnedTodos 갱신 (messages에 추가하지 않음)
+      if (action.data.tool === "TodoWrite") {
+        const todos = Array.isArray(action.data.input?.todos)
+          ? (action.data.input.todos as TodoItem[])
+          : [];
+        return {
+          ...state,
+          pinnedTodos: todos,
+          activeTools: [...state.activeTools, action.data],
+        };
+      }
       return {
         ...state,
         messages: [
@@ -463,6 +496,7 @@ export function claudeSocketReducer(
         ],
         activeTools: [...state.activeTools, action.data],
       };
+    }
 
     case "WS_TOOL_RESULT": {
       // 역방향 검색: tool_use는 보통 배열 끝 부근에 있으므로 O(1)에 가까움
@@ -867,6 +901,7 @@ export function claudeSocketReducer(
         fileChanges: [],
         tokenUsage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 },
         pendingAnswerCount: 0,
+        pinnedTodos: [],
         // 워크플로우 활성 시 Research 초기 상태로 리셋
         sessionInfo: state.sessionInfo?.workflow_enabled
           ? {
