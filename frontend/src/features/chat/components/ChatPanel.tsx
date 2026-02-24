@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,21 +9,19 @@ import { useWorkflowActions } from "@/features/workflow/hooks/useWorkflowActions
 import { WorkflowProgressBar } from "@/features/workflow/components/WorkflowProgressBar";
 import { ArtifactViewer } from "@/features/workflow/components/ArtifactViewer";
 import { useWorkflowArtifact } from "@/features/workflow/hooks/useWorkflow";
-import { MessageBubble } from "./MessageBubble";
+import { ChatMessageList } from "./ChatMessageList";
+import { ChatDialogs } from "./ChatDialogs";
 import { ChatSearchBar } from "./ChatSearchBar";
-import { PermissionDialog } from "./PermissionDialog";
 import { ChatHeader } from "./ChatHeader";
 import { ChatInput } from "./ChatInput";
 import { ActivityStatusBar } from "./ActivityStatusBar";
-import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileViewer } from "@/features/files/components/FileViewer";
 import type { FileChange, UserMsg } from "@/types";
-import type { WorkflowPhase } from "@/types/workflow";
+import type { WorkflowPhase, AnnotationType } from "@/types/workflow";
 import { useSessionStore } from "@/store";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { useSlashCommands } from "../hooks/useSlashCommands";
 import type { SlashCommand } from "../constants/slashCommands";
+import type { TrustLevel } from "./PermissionDialog";
 import { toast } from "sonner";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
@@ -32,11 +30,14 @@ import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
 import { useAddAnnotation, useUpdateAnnotation, useUpdateArtifact, useStartWorkflow } from "@/features/workflow/hooks/useWorkflow";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const noop = () => {};
+
 interface ChatPanelProps {
   sessionId: string;
 }
 
-export function ChatPanel({ sessionId }: ChatPanelProps) {
+export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) {
   const {
     connected,
     loading,
@@ -87,6 +88,21 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     () => unarchiveSession(sessionId),
     [unarchiveSession, sessionId],
   );
+
+  // P0: PermissionDialog 콜백 안정화 (타이머 리셋 방지)
+  const handlePermissionAllow = useCallback(
+    (id: string, trustLevel?: TrustLevel) => respondPermission(id, "allow", trustLevel),
+    [respondPermission],
+  );
+  const handlePermissionDeny = useCallback(
+    (id: string) => respondPermission(id, "deny"),
+    [respondPermission],
+  );
+
+  // P0: FileViewer onOpenChange 안정화
+  const handleFileViewerClose = useCallback((open: boolean) => {
+    if (!open) setSelectedFile(null);
+  }, []);
 
   const workDir = sessionInfo?.work_dir;
   const worktreeName = sessionInfo?.worktree_name;
@@ -220,12 +236,15 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       }
 
       // 2) TanStack Query 캐시 갱신 (세션 목록, 세션 통계 등)
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      // P0: Split View 시 focused pane만 갱신하여 중복 호출 방지
+      if (!isSplitView || focusedSessionId === sessionId) {
+        queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      }
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [virtualizer, queryClient]);
+  }, [virtualizer, queryClient, isSplitView, focusedSessionId, sessionId]);
 
   // 워크플로우 액션
   const {
@@ -246,8 +265,35 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     artifactViewerOpen && viewingArtifactId !== null,
   );
   const addAnnotationMut = useAddAnnotation(sessionId, viewingArtifactId ?? 0);
-  const updateAnnotationMut = useUpdateAnnotation(sessionId, viewingArtifactId ?? 0, 0);
+  const updateAnnotationMut = useUpdateAnnotation(sessionId, viewingArtifactId ?? 0);
   const updateArtifactMut = useUpdateArtifact(sessionId, viewingArtifactId ?? 0);
+
+  // P0: ArtifactViewer 인라인 콜백 안정화
+  const handleArtifactOpenChange = useCallback((open: boolean) => {
+    if (!open) handleCloseArtifact();
+  }, [handleCloseArtifact]);
+
+  const handleAddAnnotation = useCallback(
+    (lineStart: number, lineEnd: number | null, content: string, type: AnnotationType) => {
+      addAnnotationMut.mutate({ line_start: lineStart, line_end: lineEnd, content, annotation_type: type });
+    },
+    [addAnnotationMut],
+  );
+
+  const handleResolveAnnotation = useCallback(
+    (annId: number) => { updateAnnotationMut.mutate({ annotationId: annId, status: "resolved" }); },
+    [updateAnnotationMut],
+  );
+
+  const handleDismissAnnotation = useCallback(
+    (annId: number) => { updateAnnotationMut.mutate({ annotationId: annId, status: "dismissed" }); },
+    [updateAnnotationMut],
+  );
+
+  const handleUpdateArtifactContent = useCallback(
+    (content: string) => { updateArtifactMut.mutate({ content }); },
+    [updateArtifactMut],
+  );
 
   const {
     searchOpen,
@@ -259,11 +305,13 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     handleToggleSearch,
   } = useChatSearch({ messages, virtualizer, isSplitView, focusedSessionId, sessionId });
 
-  // 워크플로우 승인 대기 상태 감지
+  // P2: 워크플로우 승인 대기 상태 감지 — 원시값 의존성으로 최적화
+  const workflowEnabled = sessionInfo?.workflow_enabled;
+  const workflowPhaseStatus = sessionInfo?.workflow_phase_status;
   const waitingForWorkflowApproval = useMemo(() => {
-    if (!sessionInfo?.workflow_enabled) return false;
-    return sessionInfo.workflow_phase_status === "awaiting_approval";
-  }, [sessionInfo]);
+    if (!workflowEnabled) return false;
+    return workflowPhaseStatus === "awaiting_approval";
+  }, [workflowEnabled, workflowPhaseStatus]);
 
   // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
   const prevGapsRef = useRef<Record<number, "tight" | "normal" | "turn-start">>({});
@@ -486,9 +534,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         <WorkflowProgressBar
           currentPhase={(sessionInfo.workflow_phase as WorkflowPhase) ?? null}
           currentStatus={sessionInfo.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus ?? null}
-          onPhaseClick={(_phase) => {
-            // TODO: 해당 phase의 아티팩트 뷰어 열기
-          }}
+          onPhaseClick={noop}
         />
       ) : null}
 
@@ -505,94 +551,28 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       ) : null}
 
       {/* 메시지 영역 */}
-      <ScrollArea
-        className="flex-1"
-        viewportRef={scrollContainerRef}
-        viewportClassName="select-text pt-3 !overflow-x-hidden"
+      <ChatMessageList
+        messages={messages}
+        virtualizer={virtualizer}
+        searchQuery={searchQuery}
+        searchMatches={searchMatches}
+        messageGaps={messageGaps}
+        animateFromIndex={animateFromIndex}
+        scrollContainerRef={scrollContainerRef}
         onScroll={handleScroll}
-      >
-        {loading ? (
-          <div className="px-4 space-y-4 animate-pulse">
-            {Array.from({ length: Math.min(Math.max(3, 1), 5) }, (_, i) => (
-              <div key={i} className="space-y-2">
-                <div className="flex justify-end">
-                  <div className="h-10 w-48 bg-muted rounded-xl" />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="h-3 w-20 bg-muted rounded" />
-                  <div className="h-16 w-full bg-muted rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50 animate-[fadeIn_0.3s_ease]">
-            <div className="font-mono text-[32px] text-primary animate-[blink_1.2s_ease-in-out_infinite]">
-              {">"}_
-            </div>
-            <div className="font-mono text-md text-muted-foreground">
-              Claude Code에 프롬프트를 입력하세요
-            </div>
-          </div>
-        ) : (
-          <div
-            style={{
-              height: virtualizer.getTotalSize(),
-              width: "100%",
-              position: "relative",
-            }}
-          >
-            {virtualizer.getVirtualItems().map((virtualItem) => (
-              <div
-                key={messages[virtualItem.index].id}
-                data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <div
-                  className={[
-                    "px-4 min-w-0 overflow-hidden",
-                    messageGaps[virtualItem.index] === "tight"
-                      ? "pb-0.5"
-                      : messageGaps[virtualItem.index] === "turn-start"
-                        ? "pb-4"
-                        : "pb-2",
-                    searchQuery && searchMatches.includes(virtualItem.index)
-                      ? "ring-1 ring-primary/40 rounded-sm bg-primary/5"
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  <ErrorBoundary>
-                    <MessageBubble
-                      message={messages[virtualItem.index]}
-                      isRunning={status === "running" || activeTools.length > 0}
-                      searchQuery={searchQuery || undefined}
-                      animate={virtualItem.index >= animateFromIndex.current}
-                      onResend={handleResend}
-                      onRetryError={handleRetryFromError}
-                      onApprovePhase={handleAdvancePhase}
-                      onRequestRevision={handleRequestRevision}
-                      onOpenArtifact={handleOpenArtifact}
-                      isApprovingPhase={isApproving}
-                      isRequestingRevision={isRequestingRevision}
-                      onAnswerQuestion={answerQuestion}
-                      onConfirmAnswers={confirmAndSendAnswers}
-                    />
-                  </ErrorBoundary>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
+        status={status}
+        activeTools={activeTools}
+        loading={loading}
+        onResend={handleResend}
+        onRetryError={handleRetryFromError}
+        onApprovePhase={handleAdvancePhase}
+        onRequestRevision={handleRequestRevision}
+        onOpenArtifact={handleOpenArtifact}
+        isApprovingPhase={isApproving}
+        isRequestingRevision={isRequestingRevision}
+        onAnswerQuestion={answerQuestion}
+        onConfirmAnswers={confirmAndSendAnswers}
+      />
 
       <ActivityStatusBar
         activeTools={activeTools}
@@ -630,56 +610,29 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         />
       </div>
 
-      {/* Permission Dialog */}
-      <PermissionDialog
-        request={pendingPermission}
-        onAllow={(id, trustLevel) => respondPermission(id, "allow", trustLevel)}
-        onDeny={(id) => respondPermission(id, "deny")}
+      <ChatDialogs
+        permissionRequest={pendingPermission}
+        onAllow={handlePermissionAllow}
+        onDeny={handlePermissionDeny}
+        selectedFile={selectedFile}
+        onFileViewerClose={handleFileViewerClose}
+        sessionId={sessionId}
       />
-
-      {/* FileViewer Dialog */}
-      {selectedFile ? (
-        <FileViewer
-          sessionId={sessionId}
-          filePath={selectedFile.file}
-          tool={selectedFile.tool}
-          timestamp={selectedFile.timestamp}
-          open={!!selectedFile}
-          onOpenChange={(open) => {
-            if (!open) setSelectedFile(null);
-          }}
-        />
-      ) : null}
 
       {/* Artifact Viewer */}
       <ArtifactViewer
         open={artifactViewerOpen}
-        onOpenChange={(open) => {
-          if (!open) handleCloseArtifact();
-        }}
+        onOpenChange={handleArtifactOpenChange}
         artifact={viewingArtifact ?? null}
         onApprove={handleAdvancePhase}
         onRequestRevision={handleRequestRevision}
-        onAddAnnotation={(lineStart, lineEnd, content, type) => {
-          addAnnotationMut.mutate({
-            line_start: lineStart,
-            line_end: lineEnd,
-            content,
-            annotation_type: type,
-          });
-        }}
-        onResolveAnnotation={(_annId) => {
-          updateAnnotationMut.mutate({ status: "resolved" });
-        }}
-        onDismissAnnotation={(_annId) => {
-          updateAnnotationMut.mutate({ status: "dismissed" });
-        }}
-        onUpdateContent={(content) => {
-          updateArtifactMut.mutate({ content });
-        }}
+        onAddAnnotation={handleAddAnnotation}
+        onResolveAnnotation={handleResolveAnnotation}
+        onDismissAnnotation={handleDismissAnnotation}
+        onUpdateContent={handleUpdateArtifactContent}
         isApproving={isApproving}
         isRequestingRevision={isRequestingRevision}
       />
     </div>
   );
-}
+});

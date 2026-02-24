@@ -160,12 +160,11 @@ export function useAddAnnotation(sessionId: string, artifactId: number) {
 export function useUpdateAnnotation(
   sessionId: string,
   artifactId: number,
-  annotationId: number,
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: UpdateAnnotationRequest) =>
+    mutationFn: ({ annotationId, ...req }: UpdateAnnotationRequest & { annotationId: number }) =>
       workflowApi.updateAnnotation(sessionId, artifactId, annotationId, req),
     onSuccess: () => {
       queryClient.invalidateQueries({
