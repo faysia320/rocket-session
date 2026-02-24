@@ -407,3 +407,38 @@ class WorkflowService:
 
         # 알 수 없는 phase → 원본 프롬프트 반환
         return user_prompt
+
+    async def build_revision_context(
+        self, session_id: str, original_prompt: str, feedback: str
+    ) -> str:
+        """Plan 수정 요청 시 컨텍스트 구성: 이전 plan + 주석 + 피드백 + 원본 요구사항."""
+        parts: list[str] = []
+
+        async with self._db.session() as db_sess:
+            repo = SessionArtifactRepository(db_sess)
+
+            # Research 결과 주입
+            research = await repo.get_latest_by_phase(session_id, "research")
+            if research:
+                parts.append(f"## 연구 결과 (research.md)\n{research.content}")
+
+            # 이전 Plan (superseded) 내용 + 주석
+            plan = await repo.get_latest_by_phase(session_id, "plan")
+            if plan:
+                ann_repo = ArtifactAnnotationRepository(db_sess)
+                pending = await ann_repo.list_pending(plan.id)
+                if pending:
+                    annotated = await self.render_annotated_content(plan.id)
+                    parts.append(f"## 이전 계획 (수정 필요)\n{annotated}")
+                else:
+                    parts.append(f"## 이전 계획 (수정 필요)\n{plan.content}")
+
+        parts.append(f"## 수정 요청 피드백\n{feedback}")
+        parts.append(
+            "## 지시사항\n"
+            "위 피드백과 주석을 반영하여 구현 계획을 **수정**하세요.\n"
+            "변경할 파일, 구체적인 코드 변경 내용, 순서를 명시하세요.\n"
+            "**중요: 아직 코드를 수정하거나 구현하지 마세요.**\n\n"
+            f"## 원본 요청\n{original_prompt}"
+        )
+        return "\n\n".join(parts)

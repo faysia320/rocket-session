@@ -55,6 +55,7 @@ class Session(Base):
     parent_session_id: Mapped[str | None] = mapped_column(String, default=None)
     forked_at_message_id: Mapped[int | None] = mapped_column(Integer, default=None)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, default=None)
+    workflow_original_prompt: Mapped[str | None] = mapped_column(Text, default=None)
 
     # Relationships — lazy="raise"로 실수로 N+1 쿼리가 발생하는 것을 방지
     # 필요 시 selectinload()로 명시적으로 로드해야 함

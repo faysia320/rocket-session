@@ -68,6 +68,12 @@ class SessionProcessManager:
         """runner task 참조 제거."""
         self._runner_tasks.pop(session_id, None)
 
+    def clear_runner_task_if_match(self, session_id: str, task: asyncio.Task) -> None:
+        """현재 등록된 task와 동일한 경우에만 정리 (레이스컨디션 방지)."""
+        current = self._runner_tasks.get(session_id)
+        if current is task:
+            del self._runner_tasks[session_id]
+
     @property
     def active_session_ids(self) -> list[str]:
         """프로세스가 실행 중인 세션 ID 목록."""

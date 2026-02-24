@@ -62,6 +62,19 @@ class _AsyncProcessWrapper:
         return self._popen.returncode
 
 
+def _auto_chain_done(
+    task: asyncio.Task, session_id: str, manager: "SessionManager"
+) -> None:
+    """자동 체이닝 task 완료 콜백: task 일치 시에만 정리."""
+    manager.clear_runner_task_if_match(session_id, task)
+    if not task.cancelled() and task.exception():
+        logger.error(
+            "Auto-chain task 비정상 종료 (세션 %s): %s",
+            session_id,
+            task.exception(),
+        )
+
+
 class ClaudeRunner:
     """Claude Code CLI를 subprocess로 실행하고 출력을 파싱하여 브로드캐스트."""
 
@@ -697,6 +710,7 @@ class ClaudeRunner:
         mcp_service=None,
         workflow_phase: str | None = None,
         workflow_service=None,
+        original_prompt: str | None = None,
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
         await session_manager.update_status(session_id, SessionStatus.RUNNING)
@@ -868,9 +882,77 @@ class ClaudeRunner:
             ws_manager.clear_buffer(session_id)
             self._cleanup_mcp_config(mcp_config_path)
 
-            # 워크플로우: research/plan 완료 시 아티팩트 자동 저장
+            # 워크플로우: research 완료 → 아티팩트 저장 + Plan 자동 체이닝
             if (
-                workflow_phase in ("research", "plan")
+                workflow_phase == "research"
+                and workflow_service
+                and turn_state.get("result_received")
+            ):
+                result_text = turn_state.get("text", "")
+                if result_text:
+                    try:
+                        # 1) Research 아티팩트 저장
+                        await workflow_service.create_artifact(
+                            session_id=session_id,
+                            phase="research",
+                            content=result_text,
+                        )
+                        # 2) Research 자동 승인 + Plan 전환
+                        await workflow_service.approve_phase(
+                            session_id, session_manager=session_manager
+                        )
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {
+                                "type": WsEventType.WORKFLOW_PHASE_APPROVED,
+                                "phase": "research",
+                                "next_phase": "plan",
+                            },
+                        )
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {
+                                "type": WsEventType.WORKFLOW_AUTO_CHAIN,
+                                "from_phase": "research",
+                                "to_phase": "plan",
+                            },
+                        )
+                        # 3) Plan 자동 실행
+                        raw_prompt = original_prompt or prompt
+                        plan_context = await workflow_service.build_phase_context(
+                            session_id, "plan", raw_prompt
+                        )
+                        updated = await session_manager.get(session_id)
+                        plan_task = asyncio.create_task(
+                            self.run(
+                                updated,
+                                plan_context,
+                                allowed_tools,
+                                session_id,
+                                ws_manager,
+                                session_manager,
+                                mcp_service=mcp_service,
+                                workflow_phase="plan",
+                                workflow_service=workflow_service,
+                                original_prompt=raw_prompt,
+                            )
+                        )
+                        plan_task.add_done_callback(
+                            lambda t: _auto_chain_done(
+                                t, session_id, session_manager
+                            )
+                        )
+                        session_manager.set_runner_task(session_id, plan_task)
+                    except Exception:
+                        logger.warning(
+                            "세션 %s: Research→Plan 자동 체이닝 실패",
+                            session_id,
+                            exc_info=True,
+                        )
+
+            # 워크플로우: plan 완료 → 아티팩트 저장 + awaiting_approval
+            elif (
+                workflow_phase == "plan"
                 and workflow_service
                 and turn_state.get("result_received")
             ):
@@ -879,7 +961,7 @@ class ClaudeRunner:
                     try:
                         await workflow_service.create_artifact(
                             session_id=session_id,
-                            phase=workflow_phase,
+                            phase="plan",
                             content=result_text,
                         )
                         await session_manager.update_settings(
@@ -889,12 +971,12 @@ class ClaudeRunner:
                             session_id,
                             {
                                 "type": WsEventType.WORKFLOW_PHASE_COMPLETED,
-                                "phase": workflow_phase,
+                                "phase": "plan",
                             },
                         )
                     except Exception:
                         logger.warning(
-                            "세션 %s: 워크플로우 아티팩트 저장 실패",
+                            "세션 %s: Plan 아티팩트 저장 실패",
                             session_id,
                             exc_info=True,
                         )

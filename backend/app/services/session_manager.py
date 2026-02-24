@@ -161,6 +161,10 @@ class SessionManager:
     def clear_runner_task(self, session_id: str):
         self._process_manager.clear_runner_task(session_id)
 
+    def clear_runner_task_if_match(self, session_id: str, task: asyncio.Task) -> None:
+        """현재 등록된 task와 동일한 경우에만 정리 (레이스컨디션 방지)."""
+        self._process_manager.clear_runner_task_if_match(session_id, task)
+
     async def update_status(self, session_id: str, status: str):
         async with self._db.session() as session:
             repo = SessionRepository(session)
