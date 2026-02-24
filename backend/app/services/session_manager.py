@@ -304,49 +304,34 @@ class SessionManager:
         work_dir: str | None = None,
         worktree_name: str | None = None,
     ) -> dict | None:
-        kwargs = {}
-        if allowed_tools is not None:
-            kwargs["allowed_tools"] = allowed_tools
-        if system_prompt is not None:
-            kwargs["system_prompt"] = system_prompt
-        if timeout_seconds is not None:
-            kwargs["timeout_seconds"] = timeout_seconds
-        if workflow_enabled is not None:
-            kwargs["workflow_enabled"] = workflow_enabled
+        # None = "미전달" 필드: None이 아닌 값만 포함
+        maybe_fields = {
+            "allowed_tools": allowed_tools,
+            "system_prompt": system_prompt,
+            "timeout_seconds": timeout_seconds,
+            "workflow_enabled": workflow_enabled,
+            "permission_mode": permission_mode,
+            "permission_required_tools": permission_required_tools,
+            "name": name,
+            "model": model,
+            "max_turns": max_turns,
+            "max_budget_usd": max_budget_usd,
+            "system_prompt_mode": system_prompt_mode,
+            "disallowed_tools": disallowed_tools,
+            "mcp_server_ids": mcp_server_ids,
+            "additional_dirs": additional_dirs,
+            "fallback_model": fallback_model,
+            "parent_session_id": parent_session_id,
+            "forked_at_message_id": forked_at_message_id,
+            "work_dir": work_dir,
+            "worktree_name": worktree_name,
+        }
+        kwargs = {k: v for k, v in maybe_fields.items() if v is not None}
+        # _UNSET 센티넬 필드: None도 유효한 값 (DB에서 NULL로 설정)
         if workflow_phase is not _UNSET:
             kwargs["workflow_phase"] = workflow_phase
         if workflow_phase_status is not _UNSET:
             kwargs["workflow_phase_status"] = workflow_phase_status
-        if permission_mode is not None:
-            kwargs["permission_mode"] = permission_mode
-        if permission_required_tools is not None:
-            kwargs["permission_required_tools"] = permission_required_tools
-        if name is not None:
-            kwargs["name"] = name
-        if model is not None:
-            kwargs["model"] = model
-        if max_turns is not None:
-            kwargs["max_turns"] = max_turns
-        if max_budget_usd is not None:
-            kwargs["max_budget_usd"] = max_budget_usd
-        if system_prompt_mode is not None:
-            kwargs["system_prompt_mode"] = system_prompt_mode
-        if disallowed_tools is not None:
-            kwargs["disallowed_tools"] = disallowed_tools
-        if mcp_server_ids is not None:
-            kwargs["mcp_server_ids"] = mcp_server_ids
-        if additional_dirs is not None:
-            kwargs["additional_dirs"] = additional_dirs
-        if fallback_model is not None:
-            kwargs["fallback_model"] = fallback_model
-        if parent_session_id is not None:
-            kwargs["parent_session_id"] = parent_session_id
-        if forked_at_message_id is not None:
-            kwargs["forked_at_message_id"] = forked_at_message_id
-        if work_dir is not None:
-            kwargs["work_dir"] = work_dir
-        if worktree_name is not None:
-            kwargs["worktree_name"] = worktree_name
         async with self._db.session() as session:
             repo = SessionRepository(session)
             entity = await repo.update_settings(session_id, **kwargs)
@@ -389,58 +374,59 @@ class SessionManager:
     async def fork(
         self, source_session_id: str, message_id: int | None = None
     ) -> dict | None:
-        """세션 포크: 설정 복사 + 메시지 복사 + 메타데이터 설정."""
+        """세션 포크: 설정 복사 + 메시지 복사 + 메타데이터 설정 (단일 트랜잭션)."""
         source = await self.get(source_session_id)
         if not source:
             return None
 
-        # 포크 이름 생성
+        sid = str(uuid.uuid4())[:16]
+        created_at = datetime.now(timezone.utc).isoformat()
         source_name = source.get("name") or source["id"]
-        fork_name = f"{source_name} (fork)"
 
-        # 새 세션 생성 (설정 복사, claude_session_id는 제외)
-        new_session = await self.create(
-            work_dir=source["work_dir"],
-            allowed_tools=source.get("allowed_tools"),
-            system_prompt=source.get("system_prompt"),
-            timeout_seconds=source.get("timeout_seconds"),
-            permission_mode=source.get("permission_mode", False),
-            permission_required_tools=source.get("permission_required_tools"),
-            model=source.get("model"),
-            max_turns=source.get("max_turns"),
-            max_budget_usd=source.get("max_budget_usd"),
-            system_prompt_mode=source.get("system_prompt_mode", "replace"),
-            disallowed_tools=source.get("disallowed_tools"),
-            mcp_server_ids=source.get("mcp_server_ids"),
-            additional_dirs=source.get("additional_dirs"),
-            fallback_model=source.get("fallback_model"),
-        )
-
-        new_id = new_session["id"]
-
-        # 메타데이터 설정: 이름, parent, forked_at
-        await self.update_settings(
-            session_id=new_id,
-            name=fork_name,
-            parent_session_id=source_session_id,
-            forked_at_message_id=message_id,
-        )
-
-        # 메시지 복사
         async with self._db.session() as session:
-            repo = MessageRepository(session)
-            copied = await repo.copy_messages_to_session(
+            sess_repo = SessionRepository(session)
+            msg_repo = MessageRepository(session)
+
+            # 1. 새 세션 생성 (설정 복사, claude_session_id 제외)
+            entity = Session(
+                id=sid,
+                work_dir=source["work_dir"],
+                created_at=created_at,
+                allowed_tools=source.get("allowed_tools"),
+                system_prompt=source.get("system_prompt"),
+                timeout_seconds=source.get("timeout_seconds"),
+                workflow_enabled=source.get("workflow_enabled", False),
+                permission_mode=source.get("permission_mode", False),
+                permission_required_tools=source.get("permission_required_tools"),
+                model=source.get("model"),
+                max_turns=source.get("max_turns"),
+                max_budget_usd=source.get("max_budget_usd"),
+                system_prompt_mode=source.get("system_prompt_mode", "replace"),
+                disallowed_tools=source.get("disallowed_tools"),
+                mcp_server_ids=source.get("mcp_server_ids"),
+                additional_dirs=source.get("additional_dirs"),
+                fallback_model=source.get("fallback_model"),
+                # 메타데이터
+                name=f"{source_name} (fork)",
+                parent_session_id=source_session_id,
+                forked_at_message_id=message_id,
+            )
+            await sess_repo.add(entity)
+
+            # 2. 메시지 복사 (INSERT...SELECT)
+            copied = await msg_repo.copy_messages_to_session(
                 source_session_id=source_session_id,
-                target_session_id=new_id,
+                target_session_id=sid,
                 up_to_message_id=message_id,
             )
+
             await session.commit()
 
         logger.info(
-            "세션 포크: %s → %s (메시지 %d개 복사)", source_session_id, new_id, copied
+            "세션 포크: %s → %s (메시지 %d개 복사)", source_session_id, sid, copied
         )
 
-        return await self.get_with_counts(new_id)
+        return await self.get_with_counts(sid)
 
     @staticmethod
     def to_info_dict(session: dict) -> dict:
