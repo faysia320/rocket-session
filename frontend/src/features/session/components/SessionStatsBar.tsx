@@ -39,7 +39,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
   if (!stats || stats.total_messages === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-1 border-b border-border bg-card/50">
+    <div className="flex items-center gap-3 px-4 py-1 border-t border-border bg-secondary/50">
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1 cursor-default">
