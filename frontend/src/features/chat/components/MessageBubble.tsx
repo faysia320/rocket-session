@@ -97,6 +97,7 @@ export const MessageBubble = memo(function MessageBubble({
       return <ResultMessage message={message} animate={animate} />;
     case "tool_use":
       if (message.tool === "TodoWrite") return null; // PinnedTodoBar에서 처리
+      if (message.tool === "ExitPlanMode") return null; // WorkflowPhaseCard에서 처리
       if (["Edit", "MultiEdit", "Write"].includes(message.tool))
         return <EditToolMessage message={message} />;
       if (message.tool === "Bash") return <BashToolMessage message={message} />;

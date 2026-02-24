@@ -424,6 +424,17 @@ class ClaudeRunner:
                     )
                     continue
 
+                # ExitPlanMode 감지: 상세 플랜을 turn_state에 캡처하고
+                # 일반 tool_use 브로드캐스트를 건너뜀 (Plan 완료 시 아티팩트에 사용)
+                if tool_name == "ExitPlanMode":
+                    plan_content = tool_input.get("plan", "")
+                    allowed_prompts = tool_input.get("allowedPrompts", [])
+                    if plan_content:
+                        turn_state["exit_plan_content"] = plan_content
+                        turn_state["exit_plan_allowed_prompts"] = allowed_prompts
+                    turn_state["exit_plan_tool_id"] = tool_use_id
+                    continue
+
                 tool_event = {
                     "type": WsEventType.TOOL_USE,
                     "tool": tool_name,
@@ -527,6 +538,11 @@ class ClaudeRunner:
                 # AskUserQuestion의 tool_result는 프론트엔드에 전송하지 않음
                 if tool_use_id == turn_state.get("ask_user_question_tool_id"):
                     turn_state.pop("ask_user_question_tool_id", None)
+                    continue
+
+                # ExitPlanMode의 tool_result도 프론트엔드에 전송하지 않음
+                if tool_use_id == turn_state.get("exit_plan_tool_id"):
+                    turn_state.pop("exit_plan_tool_id", None)
                     continue
 
                 result_info = extract_tool_result_output(
@@ -957,7 +973,12 @@ class ClaudeRunner:
                 and workflow_service
                 and turn_state.get("result_received")
             ):
-                result_text = turn_state.get("result_text") or turn_state.get("text", "")
+                # ExitPlanMode의 상세 플랜이 있으면 우선 사용, 없으면 result_text 폴백
+                result_text = (
+                    turn_state.get("exit_plan_content")
+                    or turn_state.get("result_text")
+                    or turn_state.get("text", "")
+                )
                 if result_text:
                     try:
                         await workflow_service.create_artifact(
