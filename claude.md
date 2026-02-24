@@ -12,6 +12,7 @@
   - 코드 수정 후 서버 테스트가 필요하면 사용자에게 컨테이너 재시작을 안내할 것
   - 런타임 에러 디버깅 시 컨테이너 로그(`docker logs`)를 참조할 것
   - 파일 경로는 컨테이너 내부 경로 기준 (`/projects/rocket-session/`)
+  - Frontend TypeScript 검사는 로컬 `node_modules`가 필요함 → `cd frontend && pnpm install` 선행 필수
 
 ## 중요 규칙
 
