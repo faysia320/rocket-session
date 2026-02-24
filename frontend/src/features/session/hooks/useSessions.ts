@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -102,7 +102,7 @@ export function useSessions() {
       toast.error("세션 삭제에 실패했습니다");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
     },
   });
 
@@ -171,7 +171,7 @@ export function useSessions() {
       toast.error("세션 보관에 실패했습니다");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
     },
   });
 
@@ -204,7 +204,7 @@ export function useSessions() {
       toast.error("세션 보관 해제에 실패했습니다");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
     },
   });
 
@@ -219,7 +219,10 @@ export function useSessions() {
     queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
   }, [queryClient]);
 
-  const activeSessionId = extractSessionIdFromPath(location.pathname);
+  const activeSessionId = useMemo(
+    () => extractSessionIdFromPath(location.pathname),
+    [location.pathname],
+  );
 
   return {
     sessions,
@@ -250,21 +253,21 @@ export function useSessionMutations() {
       toast.error("세션 삭제에 실패했습니다");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
     },
   });
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => sessionsApi.archive(id),
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
     },
   });
 
   const unarchiveMutation = useMutation({
     mutationFn: (id: string) => sessionsApi.unarchive(id),
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
     },
   });
 
