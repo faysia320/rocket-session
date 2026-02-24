@@ -109,7 +109,11 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
 
   const workDir = sessionInfo?.work_dir;
   const worktreeName = sessionInfo?.worktree_name;
-  const { gitInfo } = useGitInfo(workDir ?? "");
+  // 워크트리 세션이면 워크트리 경로에서 Git 정보를 조회
+  const effectiveWorkDir = workDir && worktreeName
+    ? `${workDir}/.claude/worktrees/${worktreeName}`
+    : workDir;
+  const { gitInfo } = useGitInfo(effectiveWorkDir ?? "");
 
   const startWorkflow = useStartWorkflow(sessionId);
   const handleEnableWorkflow = useCallback(() => {
@@ -499,7 +503,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     <div ref={panelRef} className="relative flex-1 flex flex-col overflow-hidden">
       <ChatHeader
         connected={connected}
-        workDir={workDir}
+        workDir={effectiveWorkDir}
         gitInfo={gitInfo ?? null}
         worktreeName={worktreeName}
         status={status}
