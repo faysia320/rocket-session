@@ -10,6 +10,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app.models.event_types import WsEventType
 from app.models.session import SessionStatus
 from app.services.event_handler import (
     extract_result_data,
@@ -148,7 +149,7 @@ class JsonlWatcher:
         if session and session.get("status") == SessionStatus.IDLE:
             await self._session_manager.update_status(session_id, SessionStatus.RUNNING)
             await self._ws_manager.broadcast_event(
-                session_id, {"type": "status", "status": SessionStatus.RUNNING}
+                session_id, {"type": WsEventType.STATUS, "status": SessionStatus.RUNNING}
             )
 
         try:
@@ -196,7 +197,7 @@ class JsonlWatcher:
                     session_id, SessionStatus.IDLE
                 )
                 await self._ws_manager.broadcast_event(
-                    session_id, {"type": "status", "status": SessionStatus.IDLE}
+                    session_id, {"type": WsEventType.STATUS, "status": SessionStatus.IDLE}
                 )
 
     @staticmethod
@@ -237,7 +238,7 @@ class JsonlWatcher:
         else:
             # 알 수 없는 이벤트는 원본 그대로 전달
             await self._ws_manager.broadcast_event(
-                session_id, {"type": "event", "event": event}
+                session_id, {"type": WsEventType.EVENT, "event": event}
             )
 
     async def _handle_system_event(self, event: dict, session_id: str) -> None:
@@ -248,11 +249,11 @@ class JsonlWatcher:
             )
             await self._ws_manager.broadcast_event(
                 session_id,
-                {"type": "session_info", "claude_session_id": event["session_id"]},
+                {"type": WsEventType.SESSION_INFO, "claude_session_id": event["session_id"]},
             )
         else:
             await self._ws_manager.broadcast_event(
-                session_id, {"type": "event", "event": event}
+                session_id, {"type": WsEventType.EVENT, "event": event}
             )
 
     async def _handle_assistant_event(
@@ -276,7 +277,7 @@ class JsonlWatcher:
                     await self._ws_manager.broadcast_event(
                         session_id,
                         {
-                            "type": "thinking",
+                            "type": WsEventType.THINKING,
                             "text": thinking_text,
                             "timestamp": utc_now_iso(),
                         },
@@ -296,7 +297,7 @@ class JsonlWatcher:
                     await self._ws_manager.broadcast_event(
                         session_id,
                         {
-                            "type": "ask_user_question",
+                            "type": WsEventType.ASK_USER_QUESTION,
                             "questions": tool_input.get("questions", []),
                             "tool_use_id": tool_use_id,
                             "timestamp": utc_now_iso(),
@@ -307,7 +308,7 @@ class JsonlWatcher:
                 await self._ws_manager.broadcast_event(
                     session_id,
                     {
-                        "type": "tool_use",
+                        "type": WsEventType.TOOL_USE,
                         "tool": tool_name,
                         "input": tool_input,
                         "tool_use_id": tool_use_id,
@@ -345,7 +346,7 @@ class JsonlWatcher:
                     await self._ws_manager.broadcast_event(
                         session_id,
                         {
-                            "type": "file_change",
+                            "type": WsEventType.FILE_CHANGE,
                             "change": {
                                 "tool": tool_name,
                                 "file": file_path,
@@ -358,7 +359,7 @@ class JsonlWatcher:
             await self._ws_manager.broadcast_event(
                 session_id,
                 {
-                    "type": "assistant_text",
+                    "type": WsEventType.ASSISTANT_TEXT,
                     "text": turn_state["text"],
                     "timestamp": utc_now_iso(),
                 },
@@ -375,7 +376,7 @@ class JsonlWatcher:
                 await self._ws_manager.broadcast_event(
                     session_id,
                     {
-                        "type": "tool_result",
+                        "type": WsEventType.TOOL_RESULT,
                         "tool_use_id": tool_use_id,
                         **result_info,
                         "timestamp": utc_now_iso(),
@@ -415,7 +416,7 @@ class JsonlWatcher:
             )
 
         result_event = {
-            "type": "result",
+            "type": WsEventType.RESULT,
             "text": result_text,
             "is_error": is_error,
             "cost": cost_info,

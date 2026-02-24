@@ -8,13 +8,18 @@ from pathlib import Path
 
 import httpx
 
+from app.core.constants import (
+    USAGE_CACHE_ERROR_TTL,
+    USAGE_CACHE_TTL,
+    USAGE_HTTP_TIMEOUT,
+)
 from app.schemas.usage import PeriodUsage, UsageInfo
 
 logger = logging.getLogger(__name__)
 
 _API_URL = "https://api.anthropic.com/api/oauth/usage"
-_TIMEOUT = 10.0
-_CACHE_TTL = 60.0  # 60초 캐시
+_TIMEOUT = USAGE_HTTP_TIMEOUT
+_CACHE_TTL = USAGE_CACHE_TTL
 
 
 def _find_credentials_path() -> Path | None:
@@ -75,8 +80,8 @@ class UsageService:
 
             result = await self._fetch_usage()
             self._cache = result
-            # 에러 응답은 짧은 TTL(5초)로 캐싱하여 빠른 재시도 허용
-            self._cache_time = now if result.available else now - _CACHE_TTL + 5.0
+            # 에러 응답은 짧은 TTL로 캐싱하여 빠른 재시도 허용
+            self._cache_time = now if result.available else now - _CACHE_TTL + USAGE_CACHE_ERROR_TTL
             return result
 
     async def _fetch_usage(self) -> UsageInfo:

@@ -14,8 +14,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.core.config import Settings
+from app.core.constants import READONLY_TOOLS
 from app.models.event_types import CliEventType, WsEventType
 from app.models.session import SessionStatus
+from app.services.event_handler import extract_result_data, extract_tool_result_output
 from app.services.websocket_manager import WebSocketManager
 
 if TYPE_CHECKING:
@@ -115,14 +117,14 @@ class ClaudeRunner:
         if workflow_phase in ("research", "plan"):
             # 읽기 전용: --permission-mode plan + 제한된 도구
             cmd.extend(["--permission-mode", "plan"])
-            allowed_tools = "Read,Glob,Grep,WebFetch,WebSearch,TodoRead"
+            allowed_tools = READONLY_TOOLS
         elif workflow_phase == "implement":
             # 전체 도구 허용 (기존 allowed_tools 유지)
             pass
         elif not session.get("workflow_enabled"):
             # 비워크플로우 세션: 읽기전용 (분석/검색만 허용)
             cmd.extend(["--permission-mode", "plan"])
-            allowed_tools = "Read,Glob,Grep,WebFetch,WebSearch,TodoRead"
+            allowed_tools = READONLY_TOOLS
         elif session.get("permission_mode"):
             # Permission MCP는 _setup_mcp_config에서 통합 처리됨
             # permission_required_tools에 해당하는 도구는 allowedTools에서 제외
@@ -491,8 +493,8 @@ class ClaudeRunner:
                                             team.id, nickname, desc
                                         )
                                     )
-            except (RuntimeError, Exception):
-                pass  # TeamCoordinator 미초기화 시 무시
+            except Exception:
+                logger.debug("세션 %s: TeamCoordinator @delegate 처리 실패 (미초기화)", session_id)
 
     async def _handle_user_event(
         self,
@@ -514,26 +516,15 @@ class ClaudeRunner:
                     turn_state.pop("ask_user_question_tool_id", None)
                     continue
 
-                raw_content = block.get("content", "")
-                if isinstance(raw_content, list):
-                    output_text = "\n".join(
-                        item.get("text", "")
-                        for item in raw_content
-                        if item.get("type") == "text"
-                    )
-                else:
-                    output_text = str(raw_content)
-                full_length = len(output_text)
-                truncated = full_length > self._MAX_TOOL_OUTPUT_LENGTH
+                result_info = extract_tool_result_output(
+                    block, max_length=self._MAX_TOOL_OUTPUT_LENGTH
+                )
                 await ws_manager.broadcast_event(
                     session_id,
                     {
                         "type": WsEventType.TOOL_RESULT,
                         "tool_use_id": tool_use_id,
-                        "output": output_text[: self._MAX_TOOL_OUTPUT_LENGTH],
-                        "is_error": block.get("is_error", False),
-                        "is_truncated": truncated,
-                        "full_length": full_length if truncated else None,
+                        **result_info,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
@@ -542,9 +533,9 @@ class ClaudeRunner:
                 await session_manager.add_message(
                     session_id=session_id,
                     role="tool",
-                    content=output_text[: self._MAX_TOOL_OUTPUT_LENGTH],
+                    content=result_info["output"],
                     timestamp=datetime.now(timezone.utc).isoformat(),
-                    is_error=block.get("is_error", False),
+                    is_error=result_info["is_error"],
                     message_type="tool_result",
                     tool_use_id=tool_use_id,
                 )
@@ -558,22 +549,17 @@ class ClaudeRunner:
         turn_state: dict,
     ) -> None:
         """result 타입 이벤트 처리."""
-        result_text = event.get("result") or ""
-        # result 텍스트가 비어있으면 스트리밍된 텍스트를 폴백으로 사용
-        if not result_text and turn_state.get("text"):
-            result_text = turn_state["text"]
-        is_error = event.get("is_error", False)
-        cost_info = event.get("cost_usd", event.get("cost", None))
-        duration = event.get("duration_ms", None)
-        session_id_from_result = event.get("session_id", None)
-
-        # 토큰 사용량 추출
-        usage = event.get("usage", {})
-        input_tokens = usage.get("input_tokens")
-        output_tokens = usage.get("output_tokens")
-        cache_creation_tokens = usage.get("cache_creation_input_tokens")
-        cache_read_tokens = usage.get("cache_read_input_tokens")
-        model = turn_state.get("model")
+        data = extract_result_data(event, turn_state)
+        result_text = data["result_text"]
+        is_error = data["is_error"]
+        cost_info = data["cost"]
+        duration = data["duration_ms"]
+        session_id_from_result = data["session_id"]
+        input_tokens = data["input_tokens"]
+        output_tokens = data["output_tokens"]
+        cache_creation_tokens = data["cache_creation_tokens"]
+        cache_read_tokens = data["cache_read_tokens"]
+        model = data["model"]
 
         if session_id_from_result:
             await session_manager.update_claude_session_id(
@@ -920,7 +906,7 @@ class ClaudeRunner:
                 coordinator = get_team_coordinator()
                 last_text = turn_state.get("text") if turn_state else None
                 await coordinator.on_session_completed(session_id, last_text)
-            except (RuntimeError, Exception) as e:
+            except Exception as e:
                 # TeamCoordinator 미초기화 또는 오류 시 무시
                 if "초기화되지 않았습니다" not in str(e):
                     logger.warning("세션 %s: 팀 콜백 실패: %s", session_id, e)
