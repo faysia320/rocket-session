@@ -156,12 +156,12 @@ class TeamCoordinator:
         )
 
         # 메시지 저장 + 전송
-        ts = datetime.now(timezone.utc).isoformat()
+        ts_dt = datetime.now(timezone.utc)
         await self._session_manager.add_message(
             session_id=new_session_id,
             role="user",
             content=delegate_prompt,
-            timestamp=ts,
+            timestamp=ts_dt,
         )
         await self._ws_manager.broadcast_event(
             new_session_id,
@@ -170,7 +170,7 @@ class TeamCoordinator:
                 "message": {
                     "role": "user",
                     "content": delegate_prompt,
-                    "timestamp": ts,
+                    "timestamp": ts_dt.isoformat(),
                 },
             },
         )

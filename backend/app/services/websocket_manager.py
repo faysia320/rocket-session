@@ -26,7 +26,7 @@ class BufferedEvent:
     seq: int
     event_type: str
     payload: dict
-    timestamp: str
+    timestamp: datetime
 
 
 class WebSocketManager:
@@ -40,6 +40,7 @@ class WebSocketManager:
         self._event_queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=10000)
         self._flush_task: asyncio.Task | None = None
         self._heartbeat_task: asyncio.Task | None = None
+        self._pending_broadcasts: set[asyncio.Task] = set()
 
     def set_database(self, db: Database):
         """DB 참조 설정 (의존성 주입)."""
@@ -64,6 +65,10 @@ class WebSocketManager:
                 await self._heartbeat_task
             except asyncio.CancelledError:
                 pass
+        # 진행 중인 broadcast 완료 대기
+        if self._pending_broadcasts:
+            await asyncio.gather(*self._pending_broadcasts, return_exceptions=True)
+            self._pending_broadcasts.clear()
         await self._flush_events()
 
     async def _batch_writer_loop(self):
@@ -150,7 +155,7 @@ class WebSocketManager:
         """
         seq = self._next_seq(session_id)
         event_type = message.get("type", "unknown")
-        ts = datetime.now(timezone.utc).isoformat()
+        ts = datetime.now(timezone.utc)
 
         message_with_seq = {**message, "seq": seq}
 
@@ -181,7 +186,9 @@ class WebSocketManager:
                 )
 
         # fire-and-forget: 느린 WS 클라이언트가 stdout 파이프라인을 블로킹하지 않도록
-        asyncio.create_task(self.broadcast(session_id, message_with_seq))
+        task = asyncio.create_task(self.broadcast(session_id, message_with_seq))
+        self._pending_broadcasts.add(task)
+        task.add_done_callback(self._pending_broadcasts.discard)
         return seq
 
     async def broadcast(self, session_id: str, message: dict):

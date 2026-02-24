@@ -1,6 +1,8 @@
 """팀 메시지 모델."""
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -28,7 +30,7 @@ class TeamMessage(Base):
     message_type: Mapped[str] = mapped_column(String, nullable=False, default="info")
     metadata_json: Mapped[str | None] = mapped_column(Text, default=None)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
         Index("idx_team_messages_team_id", "team_id"),

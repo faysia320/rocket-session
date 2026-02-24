@@ -16,6 +16,7 @@ from app.services.event_handler import (
     extract_result_data,
     extract_tool_result_output,
     normalize_file_path,
+    utc_now,
     utc_now_iso,
 )
 from app.services.session_manager import SessionManager
@@ -321,7 +322,7 @@ class JsonlWatcher:
                     session_id=session_id,
                     role="assistant",
                     content="",
-                    timestamp=utc_now_iso(),
+                    timestamp=utc_now(),
                     message_type="tool_use",
                     tool_use_id=tool_use_id,
                     tool_name=tool_name,
@@ -339,9 +340,9 @@ class JsonlWatcher:
                         if work_dir
                         else raw_path
                     )
-                    ts = utc_now_iso()
+                    ts_dt = utc_now()
                     await self._session_manager.add_file_change(
-                        session_id, tool_name, file_path, ts
+                        session_id, tool_name, file_path, ts_dt
                     )
                     await self._ws_manager.broadcast_event(
                         session_id,
@@ -350,7 +351,7 @@ class JsonlWatcher:
                             "change": {
                                 "tool": tool_name,
                                 "file": file_path,
-                                "timestamp": ts,
+                                "timestamp": ts_dt.isoformat(),
                             },
                         },
                     )
@@ -388,7 +389,7 @@ class JsonlWatcher:
                     session_id=session_id,
                     role="tool",
                     content=result_info.get("output", ""),
-                    timestamp=utc_now_iso(),
+                    timestamp=utc_now(),
                     is_error=result_info.get("is_error", False),
                     message_type="tool_result",
                     tool_use_id=tool_use_id,
@@ -438,7 +439,7 @@ class JsonlWatcher:
             session_id=session_id,
             role="assistant",
             content=result_text,
-            timestamp=utc_now_iso(),
+            timestamp=utc_now(),
             cost=cost_info,
             duration_ms=duration,
             is_error=is_error,

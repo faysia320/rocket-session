@@ -78,12 +78,11 @@ class AnalyticsService:
         )
 
     @staticmethod
-    def _resolve_period(period: AnalyticsPeriod) -> tuple[str, str]:
+    def _resolve_period(period: AnalyticsPeriod) -> tuple[datetime, datetime]:
         now = datetime.now(timezone.utc)
         end_of_today = (now + timedelta(days=1)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
-        end = end_of_today.isoformat()
 
         if period == AnalyticsPeriod.TODAY:
             start_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -94,4 +93,4 @@ class AnalyticsService:
         else:
             start_dt = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
-        return start_dt.isoformat(), end
+        return start_dt, end_of_today

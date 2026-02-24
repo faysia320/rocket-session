@@ -123,7 +123,7 @@ class WorkflowService:
             artifact = await repo.get_latest_by_phase(session_id, current_phase)
             if artifact:
                 artifact.status = "approved"
-                artifact.updated_at = datetime.now(timezone.utc).isoformat()
+                artifact.updated_at = datetime.now(timezone.utc)
                 await db_sess.commit()
 
         # 다음 phase로 전환
@@ -163,7 +163,7 @@ class WorkflowService:
             raise ValueError(f"세션을 찾을 수 없습니다: {session_id}")
 
         current_phase = session_data.get("workflow_phase")
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         async with self._db.session() as db_sess:
             repo = SessionArtifactRepository(db_sess)
@@ -197,7 +197,7 @@ class WorkflowService:
         content: str,
     ) -> SessionArtifactInfo:
         """아티팩트 생성 (Claude 결과 자동 저장)."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
 
         async with self._db.session() as db_sess:
             repo = SessionArtifactRepository(db_sess)
@@ -249,7 +249,7 @@ class WorkflowService:
         self, artifact_id: int, content: str
     ) -> SessionArtifactInfo:
         """아티팩트 본문 직접 편집."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as db_sess:
             repo = SessionArtifactRepository(db_sess)
             artifact = await repo.get_with_annotations(artifact_id)
@@ -272,7 +272,7 @@ class WorkflowService:
         line_end: int | None = None,
     ) -> ArtifactAnnotationInfo:
         """인라인 주석 추가."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as db_sess:
             repo = ArtifactAnnotationRepository(db_sess)
             annotation = ArtifactAnnotation(

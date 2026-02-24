@@ -1,6 +1,8 @@
 """파일 변경 기록 모델."""
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -17,7 +19,7 @@ class FileChange(Base):
     )
     tool: Mapped[str] = mapped_column(String, nullable=False)
     file: Mapped[str] = mapped_column(Text, nullable=False)
-    timestamp: Mapped[str] = mapped_column(Text, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     # Relationship
     session: Mapped["Session"] = relationship("Session", back_populates="file_changes")

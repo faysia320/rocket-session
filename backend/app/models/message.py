@@ -1,6 +1,8 @@
 """메시지 모델."""
 
-from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,7 +22,7 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     cost: Mapped[float | None] = mapped_column(Float, default=None)
     duration_ms: Mapped[int | None] = mapped_column(Integer, default=None)
-    timestamp: Mapped[str] = mapped_column(Text, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_error: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     input_tokens: Mapped[int | None] = mapped_column(Integer, default=None)
     output_tokens: Mapped[int | None] = mapped_column(Integer, default=None)

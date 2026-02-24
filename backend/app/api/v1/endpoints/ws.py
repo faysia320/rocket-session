@@ -148,17 +148,17 @@ async def _handle_prompt(
                 auto_name += "…"
             await manager.update_settings(session_id, name=auto_name)
 
-        ts = datetime.now(timezone.utc).isoformat()
+        ts_dt = datetime.now(timezone.utc)
         await manager.add_message(
             session_id=session_id,
             role="user",
             content=prompt,
-            timestamp=ts,
+            timestamp=ts_dt,
         )
         user_msg = {
             "role": "user",
             "content": prompt,
-            "timestamp": ts,
+            "timestamp": ts_dt.isoformat(),
         }
         await ws_manager.broadcast_event(
             session_id, {"type": WsEventType.USER_MESSAGE, "message": user_msg}

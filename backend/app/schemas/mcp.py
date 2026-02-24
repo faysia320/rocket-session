@@ -1,5 +1,6 @@
 """MCP 서버 관련 Pydantic 스키마."""
 
+from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -40,8 +41,8 @@ class McpServerInfo(BaseModel):
     env: Optional[dict[str, str]] = None
     enabled: bool = True
     source: str = "manual"
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class SystemMcpServer(BaseModel):

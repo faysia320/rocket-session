@@ -78,7 +78,7 @@ class TemplateService:
         mcp_server_ids: list[str] | None = None,
     ) -> TemplateInfo:
         template_id = str(uuid.uuid4())[:16]
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as session:
             repo = TemplateRepository(session)
             tmpl = SessionTemplate(
@@ -124,7 +124,7 @@ class TemplateService:
         system_prompt_mode: str | None = None,
         mcp_server_ids: list[str] | None = None,
     ) -> TemplateInfo | None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         kwargs: dict = {"updated_at": now}
         if name is not None:
             kwargs["name"] = name

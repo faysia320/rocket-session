@@ -17,7 +17,7 @@ from app.core.config import Settings
 from app.core.constants import READONLY_TOOLS
 from app.models.event_types import CliEventType, WsEventType
 from app.models.session import SessionStatus
-from app.services.event_handler import extract_result_data, extract_tool_result_output
+from app.services.event_handler import extract_result_data, extract_tool_result_output, utc_now
 from app.services.websocket_manager import WebSocketManager
 
 if TYPE_CHECKING:
@@ -425,7 +425,7 @@ class ClaudeRunner:
                     session_id=session_id,
                     role="assistant",
                     content="",
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=utc_now(),
                     message_type="tool_use",
                     tool_use_id=tool_use_id,
                     tool_name=tool_name,
@@ -443,9 +443,9 @@ class ClaudeRunner:
                         if work_dir
                         else raw_path
                     )
-                    ts = datetime.now(timezone.utc).isoformat()
+                    ts_dt = utc_now()
                     await session_manager.add_file_change(
-                        session_id, tool_name, file_path, ts
+                        session_id, tool_name, file_path, ts_dt
                     )
                     await ws_manager.broadcast_event(
                         session_id,
@@ -454,7 +454,7 @@ class ClaudeRunner:
                             "change": {
                                 "tool": tool_name,
                                 "file": file_path,
-                                "timestamp": ts,
+                                "timestamp": ts_dt.isoformat(),
                             },
                         },
                     )
@@ -534,7 +534,7 @@ class ClaudeRunner:
                     session_id=session_id,
                     role="tool",
                     content=result_info["output"],
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=utc_now(),
                     is_error=result_info["is_error"],
                     message_type="tool_result",
                     tool_use_id=tool_use_id,
@@ -596,7 +596,7 @@ class ClaudeRunner:
             session_id=session_id,
             role="assistant",
             content=result_text,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=utc_now(),
             cost=cost_info,
             duration_ms=duration,
             is_error=is_error,
@@ -840,7 +840,7 @@ class ClaudeRunner:
                         session_id=session_id,
                         role="assistant",
                         content=turn_state["text"],
-                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        timestamp=utc_now(),
                         is_error=False,
                         model=turn_state.get("model"),
                     )

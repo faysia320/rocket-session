@@ -74,13 +74,8 @@ class EventRepository(BaseRepository[Event]):
 
     async def cleanup_old_events(self, max_age_hours: int = 24) -> int:
         """지정 시간 이전의 오래된 이벤트 삭제. 삭제된 행 수 반환."""
-        # PostgreSQL INTERVAL을 사용하여 ISO 타임스탬프 문자열 비교
         stmt = delete(Event).where(
-            Event.timestamp
-            < text(
-                f"to_char(NOW() - INTERVAL '{max_age_hours} hours', "
-                f"'YYYY-MM-DD\"T\"HH24:MI:SS')"
-            )
+            Event.timestamp < text(f"NOW() - INTERVAL '{max_age_hours} hours'")
         )
         result = await self._session.execute(stmt)
         return result.rowcount

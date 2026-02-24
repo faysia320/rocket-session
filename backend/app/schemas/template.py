@@ -1,5 +1,6 @@
 """세션 템플릿 관련 Pydantic 스키마."""
 
+from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -64,8 +65,8 @@ class TemplateInfo(BaseModel):
     mcp_server_ids: Optional[list[str]] = None
     additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class CreateTemplateFromSessionRequest(BaseModel):

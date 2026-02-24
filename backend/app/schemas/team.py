@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -23,8 +24,8 @@ class TeamMemberInfo(BaseModel):
     max_turns: int | None = None
     max_budget_usd: float | None = None
     mcp_server_ids: list[str] | None = None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class TaskSummary(BaseModel):
@@ -42,8 +43,8 @@ class TeamInfo(BaseModel):
     status: str
     lead_member_id: int | None = None
     config: dict | None = None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
     members: list[TeamMemberInfo] = []
     task_summary: TaskSummary = TaskSummary()
 
@@ -54,8 +55,8 @@ class TeamListItem(BaseModel):
     description: str | None = None
     status: str
     lead_member_id: int | None = None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
     member_count: int = 0
     task_summary: TaskSummary = TaskSummary()
 
@@ -124,8 +125,8 @@ class TeamTaskInfo(BaseModel):
     result_summary: str | None = None
     order_index: int = 0
     depends_on_task_id: int | None = None
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class CreateTaskRequest(BaseModel):
@@ -174,7 +175,7 @@ class TeamMessageInfo(BaseModel):
     message_type: str
     metadata_json: str | None = None
     is_read: bool = False
-    created_at: str
+    created_at: datetime
     from_nickname: str | None = None
 
 

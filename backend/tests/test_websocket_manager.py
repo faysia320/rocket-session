@@ -144,7 +144,7 @@ async def test_broadcast_event_stores_in_db(ws_manager_with_db, db):
             Session(
                 id=session_id,
                 work_dir="/tmp",
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(timezone.utc),
             )
         )
         await session.commit()
@@ -282,7 +282,7 @@ async def test_get_buffered_events_after_db_fallback(ws_manager_with_db, db):
             Session(
                 id=session_id,
                 work_dir="/tmp",
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(timezone.utc),
             )
         )
         await session.commit()
@@ -364,14 +364,14 @@ async def test_restore_seq_counters_from_db(ws_manager, db):
             Session(
                 id=session_id1,
                 work_dir="/tmp",
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(timezone.utc),
             )
         )
         await s_repo.add(
             Session(
                 id=session_id2,
                 work_dir="/tmp",
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(timezone.utc),
             )
         )
         await session.commit()
@@ -384,35 +384,35 @@ async def test_restore_seq_counters_from_db(ws_manager, db):
             seq=1,
             event_type="status",
             payload="{}",
-            timestamp="2024-01-01T00:00:00Z",
+            timestamp=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
         )
         await e_repo.add_event(
             session_id=session_id1,
             seq=2,
             event_type="assistant",
             payload="{}",
-            timestamp="2024-01-01T00:00:01Z",
+            timestamp=datetime(2024, 1, 1, 0, 0, 1, tzinfo=timezone.utc),
         )
         await e_repo.add_event(
             session_id=session_id2,
             seq=1,
             event_type="status",
             payload="{}",
-            timestamp="2024-01-01T00:00:02Z",
+            timestamp=datetime(2024, 1, 1, 0, 0, 2, tzinfo=timezone.utc),
         )
         await e_repo.add_event(
             session_id=session_id2,
             seq=2,
             event_type="tool_use",
             payload="{}",
-            timestamp="2024-01-01T00:00:03Z",
+            timestamp=datetime(2024, 1, 1, 0, 0, 3, tzinfo=timezone.utc),
         )
         await e_repo.add_event(
             session_id=session_id2,
             seq=3,
             event_type="result",
             payload="{}",
-            timestamp="2024-01-01T00:00:04Z",
+            timestamp=datetime(2024, 1, 1, 0, 0, 4, tzinfo=timezone.utc),
         )
         await session.commit()
 

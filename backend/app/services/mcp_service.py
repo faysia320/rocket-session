@@ -84,7 +84,7 @@ class McpService:
         source: str = "manual",
     ) -> McpServerInfo:
         server_id = str(uuid.uuid4())[:16]
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as session:
             repo = McpServerRepository(session)
             server = McpServer(
@@ -117,7 +117,7 @@ class McpService:
         env: dict[str, str] | None = None,
         enabled: bool | None = None,
     ) -> McpServerInfo | None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         kwargs: dict = {"updated_at": now}
         if name is not None:
             kwargs["name"] = name

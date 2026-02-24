@@ -1,6 +1,8 @@
 """세션 아티팩트 및 인라인 주석 모델."""
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -26,8 +28,8 @@ class SessionArtifact(Base):
     parent_artifact_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("session_artifacts.id", ondelete="SET NULL"), default=None
     )
-    created_at: Mapped[str] = mapped_column(Text, nullable=False)
-    updated_at: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     # Relationships
     annotations: Mapped[list["ArtifactAnnotation"]] = relationship(
@@ -62,7 +64,7 @@ class ArtifactAnnotation(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     annotation_type: Mapped[str] = mapped_column(String, default="comment")
     status: Mapped[str] = mapped_column(String, default="pending")
-    created_at: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     # Relationships
     artifact: Mapped["SessionArtifact"] = relationship(

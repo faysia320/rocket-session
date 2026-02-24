@@ -40,7 +40,7 @@ class TagService:
 
     async def create_tag(self, name: str, color: str = "#6366f1") -> TagInfo:
         tag_id = str(uuid.uuid4())[:16]
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as session:
             repo = TagRepository(session)
             tag = Tag(id=tag_id, name=name, color=color, created_at=now)
@@ -72,7 +72,7 @@ class TagService:
     async def add_tags_to_session(
         self, session_id: str, tag_ids: list[str]
     ) -> list[TagInfo]:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as session:
             repo = TagRepository(session)
             for tag_id in tag_ids:

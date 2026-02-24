@@ -33,8 +33,8 @@ class TestSessionManager:
         assert session["system_prompt"] == "Test prompt"
         assert session["timeout_seconds"] == 60
         assert session["created_at"]
-        # Verify UTC timestamp format
-        datetime.fromisoformat(session["created_at"])
+        # Verify created_at는 datetime 객체
+        assert isinstance(session["created_at"], datetime)
 
     async def test_create_session_with_permission_tools_json_serialization(
         self, session_manager
@@ -76,7 +76,7 @@ class TestSessionManager:
         session_id = created["id"]
 
         # Add messages and file changes
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(timezone.utc)
         await session_manager.add_message(
             session_id, "user", "Hello", timestamp
         )
@@ -262,7 +262,7 @@ class TestSessionManager:
         work_dir = tempfile.gettempdir()
         created = await session_manager.create(work_dir=work_dir)
         session_id = created["id"]
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(timezone.utc)
 
         await session_manager.add_message(
             session_id,
@@ -294,7 +294,7 @@ class TestSessionManager:
         work_dir = tempfile.gettempdir()
         created = await session_manager.create(work_dir=work_dir)
         session_id = created["id"]
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(timezone.utc)
 
         await session_manager.add_file_change(
             session_id,
@@ -370,7 +370,7 @@ class TestSessionManager:
         session_id = created["id"]
 
         # Add counts
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(timezone.utc)
         await session_manager.add_message(session_id, "user", "test", timestamp)
         await session_manager.add_file_change(
             session_id, "Write", "/test.txt", timestamp

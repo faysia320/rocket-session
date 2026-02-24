@@ -88,7 +88,7 @@ class TeamService:
         config: dict | None = None,
     ) -> TeamInfo:
         team_id = str(uuid.uuid4())[:16]
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as session:
             repo = TeamRepository(session)
             team = Team(
@@ -125,7 +125,7 @@ class TeamService:
             ]
 
     async def update_team(self, team_id: str, **kwargs) -> TeamInfo | None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         kwargs["updated_at"] = now
         async with self._db.session() as session:
             repo = TeamRepository(session)
@@ -158,7 +158,7 @@ class TeamService:
         max_budget_usd: float | None = None,
         mcp_server_ids: list | None = None,
     ) -> TeamMemberInfo:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as session:
             team_repo = TeamRepository(session)
             team = await team_repo.get_by_id(team_id)
@@ -195,7 +195,7 @@ class TeamService:
     async def update_member(
         self, team_id: str, member_id: int, **kwargs
     ) -> TeamMemberInfo | None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         kwargs["updated_at"] = now
         async with self._db.session() as session:
             member_repo = TeamMemberRepository(session)
@@ -212,7 +212,7 @@ class TeamService:
             team_repo = TeamRepository(session)
             team = await team_repo.get_by_id(team_id)
             if team and team.lead_member_id == member_id:
-                now = datetime.now(timezone.utc).isoformat()
+                now = datetime.now(timezone.utc)
                 await team_repo.update_team(
                     team_id, lead_member_id=None, updated_at=now
                 )
@@ -222,7 +222,7 @@ class TeamService:
             return removed
 
     async def set_lead(self, team_id: str, member_id: int) -> TeamInfo | None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as session:
             team_repo = TeamRepository(session)
             member_repo = TeamMemberRepository(session)

@@ -1,5 +1,6 @@
 """토큰 사용량 분석 응답 스키마."""
 
+from datetime import date, datetime
 from enum import Enum
 
 from pydantic import BaseModel
@@ -29,7 +30,7 @@ class TokenSummary(BaseModel):
 class DailyTokenUsage(BaseModel):
     """일별 토큰 사용량."""
 
-    date: str
+    date: date
     input_tokens: int = 0
     output_tokens: int = 0
     cache_read_tokens: int = 0
@@ -66,8 +67,8 @@ class AnalyticsResponse(BaseModel):
     """전체 분석 응답."""
 
     period: str
-    start_date: str
-    end_date: str
+    start_date: datetime
+    end_date: datetime
     summary: TokenSummary
     daily_usage: list[DailyTokenUsage]
     session_ranking: list[SessionTokenRanking]

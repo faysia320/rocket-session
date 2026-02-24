@@ -1,7 +1,10 @@
 """토큰 분석 Repository."""
 
-from sqlalchemy import func, select, text
+from datetime import datetime
+
+from sqlalchemy import cast, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.types import Date
 
 from app.models.message import Message
 from app.models.session import Session
@@ -13,12 +16,12 @@ class AnalyticsRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def get_summary(self, start: str, end: str) -> dict:
+    async def get_summary(self, start: datetime, end: datetime) -> dict:
         """기간 내 전체 토큰 요약 (assistant 메시지 기준).
 
         Args:
-            start: 시작 타임스탬프 (ISO 문자열, 이상)
-            end: 종료 타임스탬프 (ISO 문자열, 미만)
+            start: 시작 타임스탬프 (timezone-aware datetime, 이상)
+            end: 종료 타임스탬프 (timezone-aware datetime, 미만)
         """
         stmt = select(
             func.count().label("total_messages"),
@@ -44,15 +47,15 @@ class AnalyticsRepository:
         row = result.one()
         return dict(row._mapping)
 
-    async def get_daily_usage(self, start: str, end: str) -> list[dict]:
+    async def get_daily_usage(self, start: datetime, end: datetime) -> list[dict]:
         """일별 토큰 사용량 집계.
 
         Args:
-            start: 시작 타임스탬프 (ISO 문자열, 이상)
-            end: 종료 타임스탬프 (ISO 문자열, 미만)
+            start: 시작 타임스탬프 (timezone-aware datetime, 이상)
+            end: 종료 타임스탬프 (timezone-aware datetime, 미만)
         """
-        # PostgreSQL: LEFT(timestamp, 10)으로 날짜 추출 (ISO 문자열 기반)
-        date_col = func.left(Message.timestamp, 10).label("date")
+        # DateTime 컬럼에서 날짜 추출
+        date_col = cast(Message.timestamp, Date).label("date")
         stmt = (
             select(
                 date_col,
@@ -80,13 +83,13 @@ class AnalyticsRepository:
         return [dict(row._mapping) for row in result.all()]
 
     async def get_session_ranking(
-        self, start: str, end: str, limit: int = 20
+        self, start: datetime, end: datetime, limit: int = 20
     ) -> list[dict]:
         """세션별 토큰 사용량 랭킹 (상위 N개).
 
         Args:
-            start: 시작 타임스탬프 (ISO 문자열, 이상)
-            end: 종료 타임스탬프 (ISO 문자열, 미만)
+            start: 시작 타임스탬프 (timezone-aware datetime, 이상)
+            end: 종료 타임스탬프 (timezone-aware datetime, 미만)
             limit: 상위 N개 세션
         """
         # 세션별 주 사용 모델 서브쿼리: DISTINCT ON으로 단순화
@@ -149,12 +152,12 @@ class AnalyticsRepository:
         result = await self._session.execute(stmt)
         return [dict(row._mapping) for row in result.all()]
 
-    async def get_project_usage(self, start: str, end: str) -> list[dict]:
+    async def get_project_usage(self, start: datetime, end: datetime) -> list[dict]:
         """프로젝트(work_dir)별 토큰 사용량 집계.
 
         Args:
-            start: 시작 타임스탬프 (ISO 문자열, 이상)
-            end: 종료 타임스탬프 (ISO 문자열, 미만)
+            start: 시작 타임스탬프 (timezone-aware datetime, 이상)
+            end: 종료 타임스탬프 (timezone-aware datetime, 미만)
         """
         stmt = (
             select(

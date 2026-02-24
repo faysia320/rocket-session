@@ -37,7 +37,7 @@ class TeamMessageService:
                 message_type=message_type,
                 metadata_json=metadata_json,
                 is_read=False,
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(timezone.utc),
             )
             await repo.add(msg)
             await session.commit()

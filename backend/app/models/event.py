@@ -1,6 +1,8 @@
 """WebSocket 이벤트 버퍼 모델."""
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,7 +21,7 @@ class Event(Base):
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
     event_type: Mapped[str] = mapped_column(String, nullable=False)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    timestamp: Mapped[str] = mapped_column(Text, nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     # Relationship
     session: Mapped["Session"] = relationship("Session", back_populates="events")

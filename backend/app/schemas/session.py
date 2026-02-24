@@ -1,5 +1,6 @@
 """세션 관련 Pydantic 요청/응답 스키마."""
 
+from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -59,7 +60,7 @@ class SessionInfo(BaseModel):
     claude_session_id: Optional[str] = None
     work_dir: str
     status: str
-    created_at: str
+    created_at: datetime
     message_count: int = 0
     file_changes_count: int = 0
     allowed_tools: Optional[str] = None

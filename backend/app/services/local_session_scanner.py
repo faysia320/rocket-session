@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.core.database import Database
@@ -53,8 +54,6 @@ class LocalSessionScanner:
         since_mtime: float | None = None
         if since:
             try:
-                from datetime import datetime
-
                 dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
                 since_mtime = dt.timestamp()
             except (ValueError, TypeError):
@@ -490,12 +489,19 @@ class LocalSessionScanner:
                     if obj.get("isMeta"):
                         continue
 
-                    timestamp = obj.get("timestamp", "")
+                    ts_str = obj.get("timestamp", "")
+                    # JSONL 타임스탬프 문자열을 datetime 객체로 변환 (DB 저장용)
+                    try:
+                        ts_dt = datetime.fromisoformat(
+                            ts_str.replace("Z", "+00:00")
+                        ) if ts_str else datetime.now(timezone.utc)
+                    except (ValueError, TypeError):
+                        ts_dt = datetime.now(timezone.utc)
                     messages.append(
                         {
                             "role": message.get("role", msg_type),
                             "content": content,
-                            "timestamp": timestamp,
+                            "timestamp": ts_dt,
                         }
                     )
         except Exception:

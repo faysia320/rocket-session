@@ -1,5 +1,6 @@
 """워크플로우 관련 Pydantic 스키마."""
 
+from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -21,7 +22,7 @@ class ArtifactAnnotationInfo(BaseModel):
     content: str
     annotation_type: AnnotationType
     status: AnnotationStatusType
-    created_at: str
+    created_at: datetime
 
 
 class SessionArtifactInfo(BaseModel):
@@ -36,8 +37,8 @@ class SessionArtifactInfo(BaseModel):
     version: int
     parent_artifact_id: Optional[int] = None
     annotations: list[ArtifactAnnotationInfo] = []
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class StartWorkflowRequest(BaseModel):

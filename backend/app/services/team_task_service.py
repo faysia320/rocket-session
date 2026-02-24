@@ -62,7 +62,7 @@ class TeamTaskService:
         depends_on_task_id: int | None = None,
         created_by_member_id: int | None = None,
     ) -> TeamTaskInfo:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         async with self._db.session() as session:
             repo = TeamTaskRepository(session)
             tasks = await repo.list_by_team(team_id)

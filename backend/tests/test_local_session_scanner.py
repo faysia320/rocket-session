@@ -2,6 +2,7 @@
 
 import json
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -199,7 +200,8 @@ class TestParseMessages:
         assert len(messages) == 2
         assert messages[0]["role"] == "user"
         assert messages[0]["content"] == "Hello"
-        assert messages[0]["timestamp"] == "2024-01-01T00:00:00Z"
+        assert isinstance(messages[0]["timestamp"], datetime)
+        assert messages[0]["timestamp"] == datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         assert messages[1]["role"] == "assistant"
         assert messages[1]["content"] == "Hi there!"
 

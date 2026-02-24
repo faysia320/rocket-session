@@ -71,7 +71,7 @@ class TestSessionRepository:
             entity = Session(
                 id="test-session-1",
                 work_dir="/test/work/dir",
-                created_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(timezone.utc),
                 status="idle",
                 allowed_tools="Read,Write",
                 system_prompt="Test prompt",
@@ -111,7 +111,7 @@ class TestSessionRepository:
                     Session(
                         id=f"list-session-{i}",
                         work_dir=f"/test/dir/{i}",
-                        created_at=datetime.now(timezone.utc).isoformat(),
+                        created_at=datetime.now(timezone.utc),
                     )
                 )
             await session.commit()
@@ -129,7 +129,7 @@ class TestSessionRepository:
                 Session(
                     id="session-to-delete",
                     work_dir="/test",
-                    created_at=datetime.now(timezone.utc).isoformat(),
+                    created_at=datetime.now(timezone.utc),
                 )
             )
             await session.commit()
@@ -168,7 +168,7 @@ class TestMessageRepository:
                 Session(
                     id=session_id,
                     work_dir="/test",
-                    created_at=datetime.now(timezone.utc).isoformat(),
+                    created_at=datetime.now(timezone.utc),
                 )
             )
             await session.commit()
@@ -183,13 +183,13 @@ class TestMessageRepository:
                 session_id="msg-test",
                 role="user",
                 content="Hello",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(timezone.utc),
             )
             await repo.add_message(
                 session_id="msg-test",
                 role="assistant",
                 content="Hi there!",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(timezone.utc),
                 cost=0.001,
                 duration_ms=500,
             )
@@ -220,7 +220,7 @@ class TestMessageRepository:
                     session_id="msg-count",
                     role="user",
                     content=f"Message {i}",
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(timezone.utc),
                 )
             await session.commit()
 
@@ -245,7 +245,7 @@ class TestFileChangeRepository:
                 Session(
                     id="fc-test",
                     work_dir="/test",
-                    created_at=datetime.now(timezone.utc).isoformat(),
+                    created_at=datetime.now(timezone.utc),
                 )
             )
             await session.commit()
@@ -260,7 +260,7 @@ class TestFileChangeRepository:
                     session_id="fc-test",
                     tool=tool,
                     file=path,
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(timezone.utc),
                 )
                 session.add(fc)
             await session.commit()
@@ -286,7 +286,7 @@ class TestEventRepository:
                 Session(
                     id=session_id,
                     work_dir="/test",
-                    created_at=datetime.now(timezone.utc).isoformat(),
+                    created_at=datetime.now(timezone.utc),
                 )
             )
             await session.commit()
@@ -303,7 +303,7 @@ class TestEventRepository:
                     seq=i + 1,
                     event_type="test_event",
                     payload=json.dumps({"data": f"event-{i}"}),
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(timezone.utc),
                 )
             await session.commit()
 
@@ -327,7 +327,7 @@ class TestEventRepository:
                     seq=i + 1,
                     event_type="test",
                     payload="{}",
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(timezone.utc),
                 )
             await session.commit()
 
@@ -351,7 +351,7 @@ class TestEventRepository:
                         seq=j + 1,
                         event_type="test",
                         payload="{}",
-                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        timestamp=datetime.now(timezone.utc),
                     )
             await session.commit()
 
@@ -374,7 +374,7 @@ class TestEventRepository:
                     seq=i + 1,
                     event_type="test",
                     payload="{}",
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(timezone.utc),
                 )
             await session.commit()
 
@@ -399,7 +399,7 @@ class TestEventRepository:
                 session_id="cascade-test",
                 role="user",
                 content="Test",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(timezone.utc),
             )
             evt_repo = EventRepository(session)
             await evt_repo.add_event(
@@ -407,7 +407,7 @@ class TestEventRepository:
                 seq=1,
                 event_type="test",
                 payload="{}",
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(timezone.utc),
             )
             await session.commit()
 

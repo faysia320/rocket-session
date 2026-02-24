@@ -1,8 +1,9 @@
 """세션 모델 및 상태 열거형."""
 
+from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, Float, Index, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,7 +26,7 @@ class Session(Base):
     claude_session_id: Mapped[str | None] = mapped_column(String, default=None)
     work_dir: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="idle")
-    created_at: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     allowed_tools: Mapped[str | None] = mapped_column(Text, default=None)
     system_prompt: Mapped[str | None] = mapped_column(Text, default=None)
     timeout_seconds: Mapped[int | None] = mapped_column(Integer, default=None)

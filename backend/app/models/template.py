@@ -1,6 +1,8 @@
 """세션 템플릿 모델."""
 
-from sqlalchemy import Boolean, Float, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,5 +34,5 @@ class SessionTemplate(Base):
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
     additional_dirs: Mapped[list | None] = mapped_column(JSONB, default=None)
     fallback_model: Mapped[str | None] = mapped_column(String, default=None)
-    created_at: Mapped[str] = mapped_column(Text, nullable=False)
-    updated_at: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
