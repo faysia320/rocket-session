@@ -1,8 +1,26 @@
-FROM python:3.11-slim AS base
+# ── Stage 1: Python 의존성 빌드 ──
+FROM python:3.11-slim AS builder
 
-# Node.js 22 LTS 설치 (Claude Code CLI 필요) + asyncpg 빌드 의존성 (libpq-dev)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates git libpq-dev gcc && \
+    libpq-dev gcc && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
+
+
+# ── Stage 2: 런타임 ──
+FROM python:3.11-slim AS runtime
+
+# Claude Code CLI 버전 고정 (업데이트 시 이 값만 변경)
+ARG CLAUDE_CODE_VERSION=2.1.51
+
+# 런타임 의존성만 설치 (빌드 도구 제외)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates git libpq5 && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
@@ -13,17 +31,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get update && apt-get install -y gh && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Claude Code CLI 설치
-RUN npm install -g @anthropic-ai/claude-code
+# Claude Code CLI 설치 (버전 고정)
+RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
-# uv 설치
+# uv + Python 의존성 복사
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/pyproject.toml /app/uv.lock /app/
 
 WORKDIR /app
-
-# 의존성 먼저 설치 (캐시 활용)
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev
 
 # 앱 코드 복사
 COPY app/ app/

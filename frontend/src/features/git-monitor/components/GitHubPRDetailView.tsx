@@ -22,6 +22,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { DiffViewer } from "@/features/files/components/DiffViewer";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useGitHubPRDetail } from "../hooks/useGitHubPRDetail";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 
@@ -325,7 +326,9 @@ export function GitHubPRDetailView({
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : diffText ? (
-                  <DiffViewer diff={diffText} />
+                  <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
+                    <DiffViewer diff={diffText} />
+                  </ErrorBoundary>
                 ) : (
                   <div className="font-mono text-xs text-muted-foreground py-8 text-center">
                     Diff 없음

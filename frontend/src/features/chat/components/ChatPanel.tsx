@@ -15,6 +15,7 @@ import { ChatSearchBar } from "./ChatSearchBar";
 import { ChatHeader } from "./ChatHeader";
 import { ChatInput } from "./ChatInput";
 import { ActivityStatusBar } from "./ActivityStatusBar";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { FileChange, UserMsg } from "@/types";
 import type { WorkflowPhase, AnnotationType } from "@/types/workflow";
 import { useSessionStore } from "@/store";
@@ -620,19 +621,21 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       />
 
       {/* Artifact Viewer */}
-      <ArtifactViewer
-        open={artifactViewerOpen}
-        onOpenChange={handleArtifactOpenChange}
-        artifact={viewingArtifact ?? null}
-        onApprove={handleAdvancePhase}
-        onRequestRevision={handleRequestRevision}
-        onAddAnnotation={handleAddAnnotation}
-        onResolveAnnotation={handleResolveAnnotation}
-        onDismissAnnotation={handleDismissAnnotation}
-        onUpdateContent={handleUpdateArtifactContent}
-        isApproving={isApproving}
-        isRequestingRevision={isRequestingRevision}
-      />
+      <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive p-4">아티팩트를 표시할 수 없습니다</div>}>
+        <ArtifactViewer
+          open={artifactViewerOpen}
+          onOpenChange={handleArtifactOpenChange}
+          artifact={viewingArtifact ?? null}
+          onApprove={handleAdvancePhase}
+          onRequestRevision={handleRequestRevision}
+          onAddAnnotation={handleAddAnnotation}
+          onResolveAnnotation={handleResolveAnnotation}
+          onDismissAnnotation={handleDismissAnnotation}
+          onUpdateContent={handleUpdateArtifactContent}
+          isApproving={isApproving}
+          isRequestingRevision={isRequestingRevision}
+        />
+      </ErrorBoundary>
     </div>
   );
 });

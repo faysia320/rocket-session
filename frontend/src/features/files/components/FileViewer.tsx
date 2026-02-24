@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { DiffViewer } from "./DiffViewer";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { cn, formatTime } from "@/lib/utils";
 import { getToolBadgeStyle } from "../constants/toolColors";
 
@@ -152,7 +153,9 @@ export function FileViewer({
               </div>
             ) : activeTab === "diff" ? (
               diff ? (
-                <DiffViewer diff={diff} />
+                <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
+                  <DiffViewer diff={diff} />
+                </ErrorBoundary>
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="font-mono text-xs text-muted-foreground mb-1">

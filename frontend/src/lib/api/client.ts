@@ -7,6 +7,19 @@ import { config } from "@/config/env";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+/** HTTP 상태 코드를 포함하는 API 에러. */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly detail?: string;
+
+  constructor(message: string, status: number, detail?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -38,7 +51,11 @@ class ApiClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
+        throw new ApiError(
+          error.detail || `HTTP ${response.status}`,
+          response.status,
+          error.detail,
+        );
       }
 
       return response.json();
@@ -61,7 +78,11 @@ class ApiClient {
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
+        throw new ApiError(
+          error.detail || `HTTP ${response.status}`,
+          response.status,
+          error.detail,
+        );
       }
       return response.text();
     } finally {
@@ -78,7 +99,7 @@ class ApiClient {
     try {
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new ApiError(`HTTP ${response.status}`, response.status);
       }
       return response.blob();
     } finally {
@@ -101,7 +122,11 @@ class ApiClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: "Upload failed" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
+        throw new ApiError(
+          error.detail || `HTTP ${response.status}`,
+          response.status,
+          error.detail,
+        );
       }
 
       return response.json();

@@ -789,28 +789,29 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | String (PK) | 아티팩트 ID |
+| id | Integer (PK, auto) | 아티팩트 ID |
 | session_id | String (FK → sessions) | 세션 참조 |
 | phase | String | research / plan |
 | title | String | 아티팩트 제목 |
 | content | Text | 아티팩트 내용 (Markdown) |
 | status | String | draft / final |
-| created_at | Text | 생성 시각 |
-| updated_at | Text | 수정 시각 |
+| version | Integer | 버전 번호 (기본값: 1) |
+| parent_artifact_id | Integer (FK → session_artifacts, nullable) | 이전 버전 참조 |
+| created_at | DateTime(tz) | 생성 시각 |
+| updated_at | DateTime(tz) | 수정 시각 |
 
 ### artifact_annotations (아티팩트 인라인 주석)
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| id | String (PK) | 주석 ID |
-| artifact_id | String (FK → session_artifacts) | 아티팩트 참조 |
+| id | Integer (PK, auto) | 주석 ID |
+| artifact_id | Integer (FK → session_artifacts) | 아티팩트 참조 |
 | line_start | Integer | 시작 행 번호 |
-| line_end | Integer | 끝 행 번호 |
+| line_end | Integer (nullable) | 끝 행 번호 |
 | content | Text | 주석 내용 |
 | annotation_type | String | comment / suggestion / issue |
-| status | String | open / resolved |
-| author | String | user / assistant |
-| created_at | Text | 생성 시각 |
+| status | String | pending / resolved |
+| created_at | DateTime(tz) | 생성 시각 |
 
 ### file_changes (파일 변경 기록)
 

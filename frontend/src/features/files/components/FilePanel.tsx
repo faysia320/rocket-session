@@ -5,6 +5,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DiffViewer } from "./DiffViewer";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { cn, formatTime } from "@/lib/utils";
 import { getToolBadgeStyle } from "../constants/toolColors";
@@ -217,7 +218,9 @@ function MergedFileChangeItem({ sessionId, item, onFullView }: MergedFileChangeI
               </div>
             ) : diff !== null ? (
               diff.trim() ? (
-                <DiffViewer diff={diff} />
+                <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
+                  <DiffViewer diff={diff} />
+                </ErrorBoundary>
               ) : (
                 <div className="flex items-center justify-center py-4">
                   <span className="font-mono text-xs text-muted-foreground">변경사항 없음</span>

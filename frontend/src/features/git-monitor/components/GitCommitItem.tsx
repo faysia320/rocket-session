@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import { DiffViewer } from "@/features/files/components/DiffViewer";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { GitCommitEntry } from "@/types";
 
 interface GitCommitItemProps {
@@ -74,7 +75,9 @@ export function GitCommitItem({ repoPath, commit }: GitCommitItemProps) {
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : diff ? (
-            <DiffViewer diff={diff} />
+            <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
+              <DiffViewer diff={diff} />
+            </ErrorBoundary>
           ) : (
             <div className="font-mono text-xs text-muted-foreground py-4 text-center">
               변경 사항 없음

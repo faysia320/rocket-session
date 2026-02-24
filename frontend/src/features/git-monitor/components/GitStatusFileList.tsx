@@ -11,6 +11,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { DiffViewer } from "@/features/files/components/DiffViewer";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import type { GitStatusFile } from "@/types";
 
@@ -84,7 +85,9 @@ function GitStatusFileItem({ repoPath, file }: { repoPath: string; file: GitStat
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : diff !== null ? (
-            <DiffViewer diff={diff} />
+            <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
+              <DiffViewer diff={diff} />
+            </ErrorBoundary>
           ) : null}
         </div>
       </CollapsibleContent>
