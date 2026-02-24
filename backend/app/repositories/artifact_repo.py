@@ -1,6 +1,6 @@
 """아티팩트 및 주석 Repository."""
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import selectinload
 
 from app.models.session_artifact import ArtifactAnnotation, SessionArtifact
@@ -49,6 +49,30 @@ class SessionArtifactRepository(BaseRepository[SessionArtifact]):
         )
         result = await self._session.execute(stmt)
         return result.scalars().first()
+
+    async def delete_by_session(self, session_id: str) -> int:
+        """세션의 모든 아티팩트 삭제 (주석은 CASCADE로 자동 삭제)."""
+        # 먼저 해당 세션의 아티팩트 ID 목록 조회
+        id_stmt = select(SessionArtifact.id).where(
+            SessionArtifact.session_id == session_id
+        )
+        result = await self._session.execute(id_stmt)
+        artifact_ids = list(result.scalars().all())
+
+        if artifact_ids:
+            # 주석 먼저 삭제
+            ann_stmt = delete(ArtifactAnnotation).where(
+                ArtifactAnnotation.artifact_id.in_(artifact_ids)
+            )
+            await self._session.execute(ann_stmt)
+
+            # 아티팩트 삭제
+            art_stmt = delete(SessionArtifact).where(
+                SessionArtifact.session_id == session_id
+            )
+            result = await self._session.execute(art_stmt)
+            return result.rowcount
+        return 0
 
 
 class ArtifactAnnotationRepository(BaseRepository[ArtifactAnnotation]):

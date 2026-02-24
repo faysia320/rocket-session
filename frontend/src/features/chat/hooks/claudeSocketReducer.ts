@@ -867,6 +867,14 @@ export function claudeSocketReducer(
         fileChanges: [],
         tokenUsage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 },
         pendingAnswerCount: 0,
+        // 워크플로우 활성 시 Research 초기 상태로 리셋
+        sessionInfo: state.sessionInfo?.workflow_enabled
+          ? {
+              ...state.sessionInfo,
+              workflow_phase: "research",
+              workflow_phase_status: "in_progress",
+            }
+          : state.sessionInfo,
       };
 
     case "ADD_SYSTEM_MESSAGE":

@@ -68,6 +68,25 @@ class WorkflowService:
 
     # ─── 워크플로우 제어 ───
 
+    async def reset_workflow(self, session_id: str, session_manager) -> None:
+        """워크플로우 상태를 초기(Research) 상태로 리셋하고 아티팩트를 삭제."""
+        # 1. 아티팩트 + 주석 삭제
+        async with self._db.session() as db_sess:
+            repo = SessionArtifactRepository(db_sess)
+            deleted = await repo.delete_by_session(session_id)
+            await db_sess.commit()
+            if deleted:
+                logger.info("아티팩트 삭제: session=%s, count=%d", session_id, deleted)
+
+        # 2. 워크플로우 상태 초기화 (research, in_progress)
+        await session_manager.update_settings(
+            session_id,
+            workflow_phase="research",
+            workflow_phase_status="in_progress",
+            workflow_original_prompt=None,
+        )
+        logger.info("워크플로우 리셋: session=%s → research/in_progress", session_id)
+
     async def start_workflow(
         self,
         session_id: str,

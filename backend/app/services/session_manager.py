@@ -286,7 +286,7 @@ class SessionManager:
         forked_at_message_id: int | None = None,
         work_dir: str | None = None,
         worktree_name: str | None = None,
-        workflow_original_prompt: str | None = None,
+        workflow_original_prompt: str | None | object = _UNSET,
     ) -> dict | None:
         # None = "미전달" 필드: None이 아닌 값만 포함
         maybe_fields = {
@@ -309,7 +309,6 @@ class SessionManager:
             "forked_at_message_id": forked_at_message_id,
             "work_dir": work_dir,
             "worktree_name": worktree_name,
-            "workflow_original_prompt": workflow_original_prompt,
         }
         kwargs = {k: v for k, v in maybe_fields.items() if v is not None}
         # _UNSET 센티넬 필드: None도 유효한 값 (DB에서 NULL로 설정)
@@ -317,6 +316,8 @@ class SessionManager:
             kwargs["workflow_phase"] = workflow_phase
         if workflow_phase_status is not _UNSET:
             kwargs["workflow_phase_status"] = workflow_phase_status
+        if workflow_original_prompt is not _UNSET:
+            kwargs["workflow_original_prompt"] = workflow_original_prompt
         async with self._db.session() as session:
             repo = SessionRepository(session)
             entity = await repo.update_settings(session_id, **kwargs)

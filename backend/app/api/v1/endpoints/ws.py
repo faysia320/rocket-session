@@ -239,14 +239,19 @@ async def _handle_clear(
     manager: SessionManager,
     ws_manager: WebSocketManager,
 ) -> None:
-    """clear 메시지 처리: 대화 기록 삭제 + claude_session_id 초기화 → 새 대화 시작."""
+    """clear 메시지 처리: 대화 기록 삭제 + claude_session_id 초기화 + 워크플로우 리셋 → 새 대화 시작."""
     # 1. Claude CLI 세션 ID 초기화 (다음 프롬프트에서 --resume 없이 새 대화)
     await manager.update_claude_session_id(session_id, "")
     # 2. DB에서 메시지/파일변경/이벤트 삭제
     await manager.clear_history(session_id)
-    # 3. 인메모리 이벤트 버퍼 + seq 카운터 초기화
+    # 3. 워크플로우 활성 시 상태 리셋 (Research 초기 상태 + 아티팩트 삭제)
+    current_session = await manager.get(session_id)
+    if current_session and current_session.get("workflow_enabled"):
+        workflow_service = get_workflow_service()
+        await workflow_service.reset_workflow(session_id, manager)
+    # 4. 인메모리 이벤트 버퍼 + seq 카운터 초기화
     ws_manager.reset_session(session_id)
-    # 4. 클라이언트에 직접 알림 (reset 후이므로 broadcast_event 대신 broadcast 사용)
+    # 5. 클라이언트에 직접 알림 (reset 후이므로 broadcast_event 대신 broadcast 사용)
     await ws_manager.broadcast(
         session_id,
         {
