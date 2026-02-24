@@ -9,7 +9,7 @@ import {
   PanelLeft,
   Sun,
   Moon,
-  Search,
+  Command,
   Bell,
   BellOff,
   Settings,
@@ -148,7 +148,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
               onClick={openPalette}
               aria-label="명령 팔레트 (Ctrl+K)"
             >
-              <Search className="h-4 w-4" />
+              <Command className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">명령 팔레트 ⌘K</TooltipContent>
@@ -231,7 +231,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
               Actions
             </DropdownMenuLabel>
             <DropdownMenuItem className="gap-2 sm:hidden" onClick={openPalette}>
-              <Search className="h-4 w-4" />
+              <Command className="h-4 w-4" />
               명령 팔레트
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2 sm:hidden" onClick={handleNotificationToggle}>
