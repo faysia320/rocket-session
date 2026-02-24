@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     """환경 변수 기반 설정."""
 
     claude_work_dir: str = os.path.expanduser("~")
+    workspaces_root: str = "/workspaces"
     claude_allowed_tools: str = (
         "Read,Write,Edit,MultiEdit,Bash,Glob,Grep,WebFetch,WebSearch,TodoRead,TodoWrite"
     )

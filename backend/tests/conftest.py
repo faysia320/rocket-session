@@ -90,6 +90,7 @@ _TRUNCATE_TABLES = [
     "file_changes",
     "messages",
     "sessions",
+    "workspaces",
     "mcp_servers",
     "tags",
     "session_templates",

@@ -701,3 +701,74 @@ class GitService:
                 del self._git_cache[repo_path]
 
             return True, commit_hash, ""
+
+    # ─── Pull / Push ───
+
+    async def pull(
+        self, repo_path: str, rebase: bool = True
+    ) -> tuple[bool, str]:
+        """git pull 실행.
+
+        Returns:
+            (success, message)
+        """
+        validated = self._validate_path(repo_path)
+        cwd = str(validated)
+
+        args = [*self._GIT_CROSS_PLATFORM_OPTS, "pull"]
+        if rebase:
+            args.append("--rebase")
+
+        async with self._get_git_lock(cwd):
+            rc, stdout, stderr = await self._run_git_command(
+                *args, cwd=cwd, timeout=120.0
+            )
+
+        if rc != 0:
+            error = stderr if stderr != "timeout" else "pull 타임아웃"
+            return False, f"git pull 실패: {error}"
+
+        # 캐시 무효화
+        if repo_path in self._git_cache:
+            del self._git_cache[repo_path]
+
+        return True, stdout or "Already up to date."
+
+    async def push(
+        self,
+        repo_path: str,
+        remote: str = "origin",
+        branch: str | None = None,
+    ) -> tuple[bool, str, str | None]:
+        """git push 실행.
+
+        Returns:
+            (success, message, commit_hash)
+        """
+        validated = self._validate_path(repo_path)
+        cwd = str(validated)
+
+        args = [*self._GIT_CROSS_PLATFORM_OPTS, "push", remote]
+        if branch:
+            args.append(branch)
+
+        async with self._get_git_lock(cwd):
+            rc, stdout, stderr = await self._run_git_command(
+                *args, cwd=cwd, timeout=120.0
+            )
+
+        if rc != 0:
+            error = stderr if stderr != "timeout" else "push 타임아웃"
+            return False, f"git push 실패: {error}", None
+
+        # 현재 HEAD 해시
+        rc_hash, hash_out, _ = await self._run_git_command(
+            "rev-parse", "--short", "HEAD", cwd=cwd
+        )
+        commit_hash = hash_out if rc_hash == 0 else None
+
+        # 캐시 무효화
+        if repo_path in self._git_cache:
+            del self._git_cache[repo_path]
+
+        return True, stdout or stderr or "push 완료", commit_hash

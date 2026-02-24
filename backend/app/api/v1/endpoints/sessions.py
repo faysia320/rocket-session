@@ -14,6 +14,7 @@ from app.api.dependencies import (
     get_settings_service,
     get_tag_service,
     get_template_service,
+    get_workspace_service,
     get_ws_manager,
 )
 from app.api.v1.endpoints.permissions import clear_session_trusted
@@ -34,6 +35,7 @@ from app.services.mcp_service import McpService
 from app.services.search_service import SearchService
 from app.services.tag_service import TagService
 from app.services.session_manager import SessionManager
+from app.services.workspace_service import WorkspaceService
 from app.services.settings_service import SettingsService
 from app.services.template_service import TemplateService
 from app.services.websocket_manager import WebSocketManager
@@ -50,6 +52,7 @@ async def create_session(
     mcp_service: McpService = Depends(get_mcp_service),
     template_service: TemplateService = Depends(get_template_service),
     git: GitService = Depends(get_git_service),
+    workspace_service: WorkspaceService = Depends(get_workspace_service),
 ):
     global_settings = await settings_service.get()
 
@@ -60,13 +63,22 @@ async def create_session(
         if not tpl:
             raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
 
-    # work_dir 우선순위: 요청 > 템플릿 > 글로벌 > env
-    work_dir = (
-        req.work_dir
-        or (tpl.work_dir if tpl else None)
-        or global_settings.get("work_dir")
-        or settings.claude_work_dir
-    )
+    # work_dir 우선순위: workspace_id > 요청 > 템플릿 > 글로벌 > env
+    workspace_id = req.workspace_id
+    if workspace_id:
+        ws = await workspace_service.get(workspace_id)
+        if not ws:
+            raise HTTPException(status_code=404, detail="워크스페이스를 찾을 수 없습니다")
+        if ws["status"] != "ready":
+            raise HTTPException(status_code=400, detail="워크스페이스가 준비되지 않았습니다")
+        work_dir = ws["local_path"]
+    else:
+        work_dir = (
+            req.work_dir
+            or (tpl.work_dir if tpl else None)
+            or global_settings.get("work_dir")
+            or settings.claude_work_dir
+        )
 
     # 각 필드 우선순위: 요청값 > 템플릿값
     system_prompt = (
@@ -162,6 +174,7 @@ async def create_session(
         fallback_model=fallback_model,
         worktree_name=req.worktree_name,
         workflow_enabled=workflow_enabled or False,
+        workspace_id=workspace_id,
     )
     session_with_counts = await manager.get_with_counts(session["id"]) or session
     return manager.to_info(session_with_counts)

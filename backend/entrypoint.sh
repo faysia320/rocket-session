@@ -18,7 +18,7 @@ if [ -n "$GITHUB_TOKEN" ]; then
   export GH_TOKEN="${GITHUB_TOKEN}"
 fi
 
-# safe directory 설정 (/projects 하위 모든 디렉토리)
+# safe directory 설정 (모든 디렉토리)
 git config --global --add safe.directory '*'
 
 # .claude.json 방어 로직: 파일 바인드 마운트 시 호스트에 파일이 없으면
@@ -38,16 +38,7 @@ if [ ! -f "/root/.claude.json" ]; then
   fi
 fi
 
-# ── Frontend node_modules 자동 설치 ──
-# FRONTEND_DIR 환경변수가 설정되어 있고, package.json이 존재하는 경우에만 실행
-if [ -n "$FRONTEND_DIR" ] && [ -f "${FRONTEND_DIR}/package.json" ]; then
-  if [ -d "${FRONTEND_DIR}/node_modules" ]; then
-    echo "[entrypoint] Frontend node_modules already exists, skipping."
-  else
-    echo "[entrypoint] Installing frontend node_modules at ${FRONTEND_DIR} ..."
-    (cd "${FRONTEND_DIR}" && pnpm install --frozen-lockfile 2>&1 | sed 's/^/[pnpm] /')
-    echo "[entrypoint] Frontend node_modules install complete."
-  fi
-fi
+# 워크스페이스 루트 디렉토리 생성
+mkdir -p "${WORKSPACES_ROOT:-/workspaces}"
 
 exec "$@"

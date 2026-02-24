@@ -32,6 +32,7 @@ from app.services.template_service import TemplateService
 from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
 from app.services.workflow_service import WorkflowService
+from app.services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,7 @@ class ServiceRegistry:
         self.search_service: SearchService | None = None
         self.analytics_service: AnalyticsService | None = None
         self.workflow_service: WorkflowService | None = None
+        self.workspace_service: WorkspaceService | None = None
 
     def _require(self, name: str) -> Any:
         """서비스가 초기화되었는지 확인하고 반환."""
@@ -116,6 +118,7 @@ class ServiceRegistry:
         self.search_service = SearchService(self.database)
         self.analytics_service = AnalyticsService(self.database)
         self.workflow_service = WorkflowService(self.database)
+        self.workspace_service = WorkspaceService(self.database, self.git_service)
         self.jsonl_watcher = JsonlWatcher(self.session_manager, self.ws_manager)
 
         # 서버 재시작 시 stale running 세션 → idle 복구
@@ -136,6 +139,10 @@ class ServiceRegistry:
             event_repo = EventRepository(session)
             await event_repo.cleanup_old_events(max_age_hours=24)
             await session.commit()
+
+        # stale 워크스페이스 복구 (cloning/deleting 상태)
+        if self.workspace_service:
+            await self.workspace_service.cleanup_stale()
 
     async def shutdown(self) -> None:
         """앱 종료 시 서비스 정리."""
@@ -265,6 +272,10 @@ def get_analytics_service() -> AnalyticsService:
 
 def get_workflow_service() -> WorkflowService:
     return _registry._require("workflow_service")
+
+
+def get_workspace_service() -> WorkspaceService:
+    return _registry._require("workspace_service")
 
 
 # --- 앱 라이프사이클 (레지스트리 위임) ---

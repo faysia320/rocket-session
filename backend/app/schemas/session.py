@@ -26,6 +26,7 @@ class CreateSessionRequest(BaseModel):
     fallback_model: Optional[str] = None
     worktree_name: Optional[str] = None
     template_id: Optional[str] = None
+    workspace_id: Optional[str] = None
 
 
 class UpdateSessionRequest(BaseModel):
@@ -80,6 +81,7 @@ class SessionInfo(BaseModel):
     mcp_server_ids: Optional[list[str]] = None
     additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
+    workspace_id: Optional[str] = None
     worktree_name: Optional[str] = None
     parent_session_id: Optional[str] = None
     forked_at_message_id: Optional[int] = None

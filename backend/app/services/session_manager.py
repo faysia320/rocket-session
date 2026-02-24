@@ -56,6 +56,7 @@ class SessionManager:
         fallback_model: str | None = None,
         worktree_name: str | None = None,
         workflow_enabled: bool = False,
+        workspace_id: str | None = None,
     ) -> dict:
         sid = str(uuid.uuid4())[:16]
         created_at = datetime.now(timezone.utc)
@@ -82,6 +83,7 @@ class SessionManager:
                 additional_dirs=additional_dirs,
                 fallback_model=fallback_model,
                 worktree_name=worktree_name,
+                workspace_id=workspace_id,
             )
             await repo.add(entity)
             await session.commit()
@@ -358,6 +360,7 @@ class SessionManager:
             mcp_server_ids=session.get("mcp_server_ids"),
             additional_dirs=session.get("additional_dirs"),
             fallback_model=session.get("fallback_model"),
+            workspace_id=session.get("workspace_id"),
             worktree_name=session.get("worktree_name"),
             parent_session_id=session.get("parent_session_id"),
             forked_at_message_id=session.get("forked_at_message_id"),

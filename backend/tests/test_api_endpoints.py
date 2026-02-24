@@ -27,6 +27,7 @@ from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
 from app.services.template_service import TemplateService
 from app.services.websocket_manager import WebSocketManager
+from app.services.workspace_service import WorkspaceService
 from tests.conftest import _TEST_DB_URL
 
 
@@ -49,6 +50,7 @@ async def test_client():
         await session.execute(text("DELETE FROM file_changes"))
         await session.execute(text("DELETE FROM messages"))
         await session.execute(text("DELETE FROM sessions"))
+        await session.execute(text("DELETE FROM workspaces"))
         await session.commit()
 
     # Create test services
@@ -80,6 +82,8 @@ async def test_client():
     app.dependency_overrides[deps.get_github_service] = lambda: gh_svc
     skills_svc = SkillsService()
     app.dependency_overrides[deps.get_skills_service] = lambda: skills_svc
+    workspace_svc = WorkspaceService(db, git_svc)
+    app.dependency_overrides[deps.get_workspace_service] = lambda: workspace_svc
 
     # Create client
     transport = ASGITransport(app=app)

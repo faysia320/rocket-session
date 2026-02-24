@@ -33,6 +33,7 @@ export interface SessionInfo {
   mcp_server_ids?: string[] | null;
   additional_dirs?: string[] | null;
   fallback_model?: string | null;
+  workspace_id?: string | null;
   worktree_name?: string | null;
   parent_session_id?: string | null;
   forked_at_message_id?: number | null;
@@ -58,6 +59,7 @@ export interface CreateSessionRequest {
   fallback_model?: string | null;
   template_id?: string | null;
   worktree_name?: string | null;
+  workspace_id?: string | null;
 }
 
 export interface UpdateSessionRequest {

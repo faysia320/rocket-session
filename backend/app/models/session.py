@@ -51,6 +51,7 @@ class Session(Base):
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
     additional_dirs: Mapped[list | None] = mapped_column(JSONB, default=None)
     fallback_model: Mapped[str | None] = mapped_column(String, default=None)
+    workspace_id: Mapped[str | None] = mapped_column(String, default=None)
     worktree_name: Mapped[str | None] = mapped_column(String, default=None)
     parent_session_id: Mapped[str | None] = mapped_column(String, default=None)
     forked_at_message_id: Mapped[int | None] = mapped_column(Integer, default=None)
@@ -89,4 +90,5 @@ class Session(Base):
         Index("idx_sessions_work_dir", "work_dir"),
         Index("idx_sessions_search_vector", "search_vector", postgresql_using="gin"),
         Index("idx_sessions_parent_session_id", "parent_session_id"),
+        Index("idx_sessions_workspace_id", "workspace_id"),
     )
