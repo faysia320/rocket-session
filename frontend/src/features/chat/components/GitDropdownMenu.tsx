@@ -62,10 +62,10 @@ export const GitDropdownMenu = memo(function GitDropdownMenu({
     onSendPrompt("/git-merge-rebase");
   }, [onSendPrompt]);
 
-  if (!gitInfo?.is_git_repo) return null;
-
   const isWorktreeSession = !!worktreeName;
-  const hasCommits = gitInfo.ahead > 0;
+  if (!gitInfo?.is_git_repo && !isWorktreeSession) return null;
+
+  const hasCommits = (gitInfo?.ahead ?? 0) > 0;
   const showCommit = hasChanges;
   const showPR = hasChanges || hasCommits;
   const showRebase = isWorktreeSession;

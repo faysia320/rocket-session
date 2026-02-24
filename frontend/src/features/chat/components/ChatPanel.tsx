@@ -477,6 +477,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       try {
         await sessionsApi.convertToWorktree(sessionId, { worktree_name: name });
         queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["git-info"] });
         toast.success(`워크트리로 전환되었습니다. (worktree-${name})`);
         reconnect();
       } catch (err) {
