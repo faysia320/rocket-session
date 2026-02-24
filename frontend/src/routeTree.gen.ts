@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as OfficeRouteImport } from './routes/office'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as GitMonitorRouteImport } from './routes/git-monitor'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -18,6 +19,11 @@ import { Route as TeamTeamIdRouteImport } from './routes/team/$teamId'
 import { Route as SessionNewRouteImport } from './routes/session/new'
 import { Route as SessionSessionIdRouteImport } from './routes/session/$sessionId'
 
+const OfficeRoute = OfficeRouteImport.update({
+  id: '/office',
+  path: '/office',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/git-monitor': typeof GitMonitorRoute
   '/history': typeof HistoryRoute
+  '/office': typeof OfficeRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
   '/team/$teamId': typeof TeamTeamIdRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/git-monitor': typeof GitMonitorRoute
   '/history': typeof HistoryRoute
+  '/office': typeof OfficeRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
   '/team/$teamId': typeof TeamTeamIdRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/git-monitor': typeof GitMonitorRoute
   '/history': typeof HistoryRoute
+  '/office': typeof OfficeRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
   '/team/$teamId': typeof TeamTeamIdRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/git-monitor'
     | '/history'
+    | '/office'
     | '/session/$sessionId'
     | '/session/new'
     | '/team/$teamId'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/git-monitor'
     | '/history'
+    | '/office'
     | '/session/$sessionId'
     | '/session/new'
     | '/team/$teamId'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/git-monitor'
     | '/history'
+    | '/office'
     | '/session/$sessionId'
     | '/session/new'
     | '/team/$teamId'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   GitMonitorRoute: typeof GitMonitorRoute
   HistoryRoute: typeof HistoryRoute
+  OfficeRoute: typeof OfficeRoute
   SessionSessionIdRoute: typeof SessionSessionIdRoute
   SessionNewRoute: typeof SessionNewRoute
   TeamTeamIdRoute: typeof TeamTeamIdRoute
@@ -136,6 +149,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/office': {
+      id: '/office'
+      path: '/office'
+      fullPath: '/office'
+      preLoaderRoute: typeof OfficeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/history': {
       id: '/history'
       path: '/history'
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   GitMonitorRoute: GitMonitorRoute,
   HistoryRoute: HistoryRoute,
+  OfficeRoute: OfficeRoute,
   SessionSessionIdRoute: SessionSessionIdRoute,
   SessionNewRoute: SessionNewRoute,
   TeamTeamIdRoute: TeamTeamIdRoute,

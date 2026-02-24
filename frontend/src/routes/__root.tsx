@@ -14,6 +14,11 @@ const TeamSidebar = lazy(() =>
     default: m.TeamSidebar,
   })),
 );
+const OfficeView = lazy(() =>
+  import("@/features/office/components/OfficeView").then((m) => ({
+    default: m.OfficeView,
+  })),
+);
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { useTeams } from "@/features/team/hooks/useTeams";
 import { useSessionStore } from "@/store";
@@ -40,6 +45,7 @@ function RootComponent() {
     location.pathname.startsWith("/session");
 
   const isTeamArea = location.pathname.startsWith("/team");
+  const isOfficeArea = location.pathname.startsWith("/office");
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
@@ -52,6 +58,8 @@ function RootComponent() {
           <SessionLayout />
         ) : isTeamArea ? (
           <TeamLayout />
+        ) : isOfficeArea ? (
+          <OfficeLayout />
         ) : (
           <Outlet />
         )}
@@ -368,6 +376,25 @@ const SplitViewPagination = memo(function SplitViewPagination({
     </div>
   );
 });
+
+/**
+ * OfficeLayout: 사이드바 없이 전체 화면 오피스 뷰.
+ * useSessions()로 세션 목록 폴링 활성화 (useAgentSync가 이 캐시를 읽음).
+ */
+function OfficeLayout() {
+  useSessions();
+
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden">
+        <Suspense fallback={<LoadingSkeleton />}>
+          <OfficeView />
+        </Suspense>
+      </main>
+      <UsageFooter />
+    </div>
+  );
+}
 
 function LoadingSkeleton() {
   return (
