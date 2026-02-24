@@ -333,7 +333,7 @@ export const ChatInput = memo(function ChatInput({
 
           <Textarea
             ref={textareaRef}
-            className="flex-1 font-mono text-sm bg-transparent border-0 outline-none resize-none min-h-8 leading-[20px] py-[6px] focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="flex-1 font-mono text-sm bg-transparent border-0 outline-none resize-none min-h-9 leading-[20px] py-2 focus-visible:ring-0 focus-visible:ring-offset-0"
             value={input}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
