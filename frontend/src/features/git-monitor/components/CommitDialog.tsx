@@ -23,7 +23,7 @@ interface CommitDialogProps {
 type CommitMode = "manual" | "ai";
 
 export function CommitDialog({ open, onOpenChange, repoPath, workspacePath }: CommitDialogProps) {
-  const [mode, setMode] = useState<CommitMode>("manual");
+  const [mode, setMode] = useState<CommitMode>("ai");
   const [message, setMessage] = useState("");
   const commitMutation = useStageAndCommit(repoPath);
   const { createSession } = useCreateSession();
@@ -75,19 +75,6 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath }: Co
             type="button"
             className={cn(
               "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded font-mono text-xs transition-colors",
-              mode === "manual"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-            onClick={() => setMode("manual")}
-          >
-            <GitCommitHorizontal className="h-3 w-3" />
-            수동 커밋
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded font-mono text-xs transition-colors",
               mode === "ai"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
@@ -97,10 +84,53 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath }: Co
             <Sparkles className="h-3 w-3" />
             AI 커밋
           </button>
+          <button
+            type="button"
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded font-mono text-xs transition-colors",
+              mode === "manual"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            onClick={() => setMode("manual")}
+          >
+            <GitCommitHorizontal className="h-3 w-3" />
+            수동 커밋
+          </button>
         </div>
 
-        {/* 수동 커밋 모드 */}
-        {mode === "manual" ? (
+        {/* 커밋 모드 콘텐츠 */}
+        {mode === "ai" ? (
+          <div className="space-y-3">
+            <p className="font-mono text-xs text-muted-foreground">
+              새 세션을 열고 <code className="bg-muted px-1 py-0.5 rounded">/git-commit</code> 스킬을 실행합니다.
+              변경사항을 분석하여 커밋 메시지를 자동 생성합니다.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-mono text-xs"
+                onClick={() => onOpenChange(false)}
+              >
+                취소
+              </Button>
+              <Button
+                size="sm"
+                className="font-mono text-xs"
+                onClick={handleAiCommit}
+                disabled={isCreatingSession}
+              >
+                {isCreatingSession ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <Sparkles className="h-3 w-3 mr-1" />
+                )}
+                세션 열기
+              </Button>
+            </div>
+          </div>
+        ) : (
           <div className="space-y-3">
             <Textarea
               placeholder="커밋 메시지를 입력하세요..."
@@ -137,36 +167,6 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath }: Co
                   Stage All & Commit
                 </Button>
               </div>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="font-mono text-xs text-muted-foreground">
-              새 세션을 열고 <code className="bg-muted px-1 py-0.5 rounded">/git-commit</code> 스킬을 실행합니다.
-              변경사항을 분석하여 커밋 메시지를 자동 생성합니다.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-mono text-xs"
-                onClick={() => onOpenChange(false)}
-              >
-                취소
-              </Button>
-              <Button
-                size="sm"
-                className="font-mono text-xs"
-                onClick={handleAiCommit}
-                disabled={isCreatingSession}
-              >
-                {isCreatingSession ? (
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                ) : (
-                  <Sparkles className="h-3 w-3 mr-1" />
-                )}
-                세션 열기
-              </Button>
             </div>
           </div>
         )}
