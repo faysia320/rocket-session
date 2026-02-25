@@ -1,6 +1,7 @@
 import { FolderGit2, GitBranch, AlertCircle, Check, Plus, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { WorkspaceInfo, WorkspaceStatus } from "@/types/workspace";
@@ -105,7 +106,7 @@ export function GitMonitorRepoList({
           <Plus className="h-3 w-3" />
         </Button>
       </div>
-      <div className="flex-1 overflow-auto">
+      <ScrollArea className="flex-1">
         {workspaces.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full px-4 text-center">
             <FolderGit2 className="h-6 w-6 text-muted-foreground/30 mb-2" />
@@ -121,7 +122,7 @@ export function GitMonitorRepoList({
             />
           ))
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

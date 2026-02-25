@@ -53,6 +53,7 @@ import { GitMonitorRepoList } from "./GitMonitorRepoList";
 import { GitRepoStatusTab } from "./GitRepoStatusTab";
 import { GitCommitHistoryTab } from "./GitCommitHistoryTab";
 import { GitHubPRTab } from "./GitHubPRTab";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { BranchSelect } from "./BranchSelect";
 import { CommitDialog } from "./CommitDialog";
 import type { WorkspaceInfo } from "@/types/workspace";
@@ -469,9 +470,11 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
           <div className="shrink-0 px-4 pt-3 pb-1">
             <h3 className="font-mono text-xs font-semibold text-muted-foreground">Status</h3>
           </div>
-          <div className="flex-1 overflow-auto px-4 py-2">
-            <GitRepoStatusTab repoPath={workspace.local_path} />
-          </div>
+          <ScrollArea className="flex-1">
+            <div className="px-4 py-2">
+              <GitRepoStatusTab repoPath={workspace.local_path} />
+            </div>
+          </ScrollArea>
         </div>
 
         {/* 우측: Commits */}
@@ -479,9 +482,11 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
           <div className="shrink-0 px-4 pt-3 pb-1">
             <h3 className="font-mono text-xs font-semibold text-muted-foreground">Commits</h3>
           </div>
-          <div className="flex-1 overflow-auto px-4 py-2">
-            <GitCommitHistoryTab repoPath={workspace.local_path} />
-          </div>
+          <ScrollArea className="flex-1">
+            <div className="px-4 py-2">
+              <GitCommitHistoryTab repoPath={workspace.local_path} />
+            </div>
+          </ScrollArea>
         </div>
       </div>
 
