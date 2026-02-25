@@ -614,6 +614,7 @@ class ClaudeRunner:
 
         turn_state["result_received"] = True
         turn_state["result_text"] = result_text  # finally 블록에서 사용
+        turn_state["is_error"] = is_error  # 워크플로우 체이닝 방지용
 
         result_event = {
             "type": WsEventType.RESULT,
@@ -921,6 +922,7 @@ class ClaudeRunner:
                 workflow_phase == "research"
                 and workflow_service
                 and turn_state.get("result_received")
+                and not turn_state.get("is_error")
             ):
                 result_text = turn_state.get("text", "")
                 if result_text:
@@ -989,6 +991,7 @@ class ClaudeRunner:
                 workflow_phase == "plan"
                 and workflow_service
                 and turn_state.get("result_received")
+                and not turn_state.get("is_error")
             ):
                 # ExitPlanMode의 상세 플랜이 있으면 우선 사용, 없으면 result_text 폴백
                 result_text = (
@@ -1025,6 +1028,7 @@ class ClaudeRunner:
                 workflow_phase == "implement"
                 and workflow_service
                 and turn_state.get("result_received")
+                and not turn_state.get("is_error")
             ):
                 result_text = turn_state.get("result_text") or turn_state.get("text", "")
                 if result_text:
