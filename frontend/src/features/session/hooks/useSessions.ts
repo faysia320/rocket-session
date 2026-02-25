@@ -5,6 +5,27 @@ import { toast } from "sonner";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { sessionKeys } from "./sessionKeys";
 import type { SessionInfo, SessionStatus } from "@/types";
+import { useSessionStore } from "@/store/useSessionStore";
+import type { QueryClient } from "@tanstack/react-query";
+
+/** Split Mode에서 삭제/아카이브 후 이동할 경로를 결정한다. */
+function getPostDeleteTarget(
+  deletedId: string,
+  pathname: string,
+  queryClient: QueryClient,
+): string | null {
+  if (!pathname.includes(deletedId)) return null;
+
+  if (useSessionStore.getState().viewMode === "split") {
+    const sessions = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list()) ?? [];
+    const remaining = sessions.filter((s) => s.id !== deletedId && s.status !== "archived");
+    if (remaining.length > 0) {
+      return `/session/${remaining[0].id}`;
+    }
+  }
+
+  return "/";
+}
 
 /**
  * 세션 생성 전용 훅.
@@ -113,11 +134,10 @@ export function useSessions() {
   const deleteSession = useCallback(
     async (id: string) => {
       await deleteMutation.mutateAsync(id);
-      if (location.pathname.includes(id)) {
-        navigate({ to: "/" });
-      }
+      const target = getPostDeleteTarget(id, location.pathname, queryClient);
+      if (target) navigate({ to: target });
     },
-    [deleteMutation, navigate, location.pathname],
+    [deleteMutation, navigate, location.pathname, queryClient],
   );
 
   const selectSession = useCallback(
@@ -182,11 +202,10 @@ export function useSessions() {
   const archiveSession = useCallback(
     async (id: string) => {
       await archiveMutation.mutateAsync(id);
-      if (location.pathname.includes(id)) {
-        navigate({ to: "/" });
-      }
+      const target = getPostDeleteTarget(id, location.pathname, queryClient);
+      if (target) navigate({ to: target });
     },
-    [archiveMutation, navigate, location.pathname],
+    [archiveMutation, navigate, location.pathname, queryClient],
   );
 
   const unarchiveMutation = useMutation({
@@ -278,11 +297,10 @@ export function useSessionMutations() {
   const deleteSession = useCallback(
     async (id: string) => {
       await deleteMutation.mutateAsync(id);
-      if (location.pathname.includes(id)) {
-        navigate({ to: "/" });
-      }
+      const target = getPostDeleteTarget(id, location.pathname, queryClient);
+      if (target) navigate({ to: target });
     },
-    [deleteMutation, navigate, location.pathname],
+    [deleteMutation, navigate, location.pathname, queryClient],
   );
 
   const archiveSession = useCallback(
