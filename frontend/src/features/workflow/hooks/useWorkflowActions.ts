@@ -82,6 +82,10 @@ export function useWorkflowActions({
         queryClient.invalidateQueries({
           queryKey: sessionKeys.detail(sessionId),
         });
+
+        // 승인 성공 시 아티팩트 뷰어 자동 닫기
+        setArtifactViewerOpen(false);
+        setViewingArtifactId(null);
       } catch {
         // 에러 토스트는 mutation onError에서 처리
       }
