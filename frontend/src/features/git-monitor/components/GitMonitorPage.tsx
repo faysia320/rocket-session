@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { GitBranch, Plus, Loader2, AlertTriangle } from "lucide-react";
+import { GitBranch, Plus, Loader2, AlertTriangle, MoreVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -9,20 +9,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/useMediaQuery";
-import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
+import { useWorkspaces, useDeleteWorkspace } from "@/features/workspace/hooks/useWorkspaces";
 import { WorkspaceCreateDialog } from "@/features/workspace/components/WorkspaceCreateDialog";
 import { GitMonitorRepoList } from "./GitMonitorRepoList";
 import { GitRepoStatusTab } from "./GitRepoStatusTab";
 import { GitCommitHistoryTab } from "./GitCommitHistoryTab";
 import { GitHubPRTab } from "./GitHubPRTab";
 import type { WorkspaceInfo } from "@/types/workspace";
+import { toast } from "sonner";
 
 export function GitMonitorPage() {
   const { data: workspaces, isLoading } = useWorkspaces();
+  const deleteMutation = useDeleteWorkspace();
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<WorkspaceInfo | null>(null);
   const isMobile = useIsMobile();
 
   const readyWorkspaces = workspaces ?? [];
@@ -34,6 +53,20 @@ export function GitMonitorPage() {
 
   const handleSelect = useCallback((id: string) => setSelectedWorkspaceId(id), []);
   const handleAdd = useCallback(() => setCreateOpen(true), []);
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    const deletedId = deleteTarget.id;
+    setDeleteTarget(null);
+    try {
+      await deleteMutation.mutateAsync(deletedId);
+      if (selectedWorkspaceId === deletedId) {
+        setSelectedWorkspaceId(null);
+      }
+      toast.success("워크스페이스가 삭제되었습니다");
+    } catch {
+      toast.error("워크스페이스 삭제에 실패했습니다");
+    }
+  }, [deleteTarget, deleteMutation, selectedWorkspaceId]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -103,7 +136,7 @@ export function GitMonitorPage() {
 
             {/* 선택된 워크스페이스 상태에 따른 렌더링 */}
             {selectedWorkspace ? (
-              <WorkspaceContent workspace={selectedWorkspace} />
+              <WorkspaceContent workspace={selectedWorkspace} onDelete={setDeleteTarget} />
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <span className="font-mono text-sm text-muted-foreground">
@@ -116,6 +149,27 @@ export function GitMonitorPage() {
       )}
 
       <WorkspaceCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>워크스페이스 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteTarget?.name}</strong> 워크스페이스를 삭제하시겠습니까?
+              클론된 파일과 모든 데이터가 영구적으로 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -143,7 +197,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-function WorkspaceContent({ workspace }: { workspace: WorkspaceInfo }) {
+function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; onDelete: (ws: WorkspaceInfo) => void }) {
   if (workspace.status === "cloning") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3">
@@ -202,6 +256,23 @@ function WorkspaceContent({ workspace }: { workspace: WorkspaceInfo }) {
         {workspace.behind ? (
           <span className="font-mono text-2xs text-destructive shrink-0">↓{workspace.behind}</span>
         ) : null}
+        <div className="flex-1" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label="워크스페이스 옵션">
+              <MoreVertical className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive font-mono text-xs"
+              onClick={() => onDelete(workspace)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              워크스페이스 삭제
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* 좌우 2분할: Status/Commits (좌) | Pull Requests (우) */}
