@@ -82,7 +82,7 @@ export const MessageBubble = memo(function MessageBubble({
     case "assistant_text":
       return <AssistantText message={message} isStreaming={isRunning} animate={animate} />;
     case "result":
-      if (message.workflow_phase && message.workflow_phase !== "implement") {
+      if (message.workflow_phase === "plan") {
         return (
           <WorkflowPhaseCard
             message={message}

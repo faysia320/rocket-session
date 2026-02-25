@@ -27,22 +27,6 @@ function getPhaseState(
   return "waiting";
 }
 
-function getStatusLabel(status: WorkflowPhaseStatus | null): string {
-  switch (status) {
-    case "in_progress":
-      return "진행 중";
-    case "awaiting_approval":
-      return "검토 대기";
-    case "approved":
-      return "승인됨";
-    case "revision_requested":
-      return "수정 요청됨";
-    case "completed":
-      return "완료됨";
-    default:
-      return "대기 중";
-  }
-}
 
 interface WorkflowProgressBarProps {
   currentPhase: WorkflowPhase | null;
@@ -111,11 +95,6 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
                 )}
               />
               <span>{phase.label}</span>
-              {isActive && currentStatus ? (
-                <span className="text-[10px] opacity-75">
-                  ({getStatusLabel(currentStatus)})
-                </span>
-              ) : null}
             </button>
           </div>
         );

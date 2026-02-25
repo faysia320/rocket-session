@@ -19,11 +19,6 @@ const PHASE_CONFIG: Record<
   string,
   { icon: typeof Search; label: string; color: string }
 > = {
-  research: {
-    icon: Search,
-    label: "Research",
-    color: "text-info",
-  },
   plan: {
     icon: FileText,
     label: "Plan",
