@@ -3,7 +3,6 @@ import { FolderOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useGitInfo } from "../hooks/useGitInfo";
-import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 import { GitInfoCard } from "./GitInfoCard";
 import { DirectoryBrowser } from "./DirectoryBrowser";
 import { WorktreePanel } from "./WorktreePanel";
@@ -14,7 +13,6 @@ interface DirectoryPickerProps {
 }
 
 export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
-  const { data: globalSettings } = useGlobalSettings();
   const [browserOpen, setBrowserOpen] = useState(false);
   const { gitInfo, isLoading } = useGitInfo(value);
 
@@ -50,7 +48,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
       <DirectoryBrowser
         open={browserOpen}
         onOpenChange={setBrowserOpen}
-        initialPath={value || globalSettings?.root_dir || "~"}
+        initialPath={value || "~"}
         onSelect={onChange}
       />
     </div>

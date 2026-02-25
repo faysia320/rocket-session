@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileStack, Plus, X, Check } from "lucide-react";
+import { FileStack, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
 import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
 import { AVAILABLE_TOOLS, PERMISSION_TOOLS } from "@/features/session/constants/tools";
 import { useCreateTemplate, useUpdateTemplate } from "@/features/template/hooks/useTemplates";
@@ -29,7 +28,6 @@ interface TemplateFormDialogProps {
 interface TemplateFormData {
   name: string;
   description: string;
-  work_dir: string;
   model: string;
   fallback_model: string;
   system_prompt: string;
@@ -42,14 +40,12 @@ interface TemplateFormData {
   permission_mode: boolean;
   permission_required_tools: string[];
   mcp_server_ids: string[];
-  additional_dirs: string[];
 }
 
 function getInitialFormData(template?: TemplateInfo | null): TemplateFormData {
   return {
     name: template?.name ?? "",
     description: template?.description ?? "",
-    work_dir: template?.work_dir ?? "",
     model: template?.model ?? "",
     fallback_model: template?.fallback_model ?? "",
     system_prompt: template?.system_prompt ?? "",
@@ -66,7 +62,6 @@ function getInitialFormData(template?: TemplateInfo | null): TemplateFormData {
     permission_mode: template?.permission_mode ?? false,
     permission_required_tools: template?.permission_required_tools ?? [],
     mcp_server_ids: template?.mcp_server_ids ?? [],
-    additional_dirs: template?.additional_dirs ?? [],
   };
 }
 
@@ -94,7 +89,6 @@ export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFor
     const payload: CreateTemplateRequest = {
       name: formData.name.trim(),
       description: formData.description.trim() || undefined,
-      work_dir: formData.work_dir.trim() || undefined,
       model: formData.model || undefined,
       fallback_model: formData.fallback_model.trim() || undefined,
       system_prompt: formData.system_prompt.trim() || undefined,
@@ -111,10 +105,6 @@ export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFor
           ? formData.permission_required_tools
           : undefined,
       mcp_server_ids: formData.mcp_server_ids.length > 0 ? formData.mcp_server_ids : undefined,
-      additional_dirs:
-        formData.additional_dirs.filter((d) => d.trim()).length > 0
-          ? formData.additional_dirs.filter((d) => d.trim())
-          : undefined,
     };
 
     if (isEditMode) {
@@ -166,66 +156,6 @@ export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFor
                 value={formData.description}
                 onChange={(e) => update("description", e.target.value)}
               />
-            </div>
-
-            <Separator />
-
-            {/* ── 작업 환경 ── */}
-            <div className="space-y-2">
-              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                WORKING DIRECTORY
-              </Label>
-              <p className="font-mono text-2xs text-muted-foreground/70">
-                템플릿 적용 시 기본 작업 디렉토리입니다.
-              </p>
-              <DirectoryPicker value={formData.work_dir} onChange={(v) => update("work_dir", v)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                ADDITIONAL DIRECTORIES
-              </Label>
-              <p className="font-mono text-2xs text-muted-foreground/70">
-                --add-dir 플래그로 전달할 추가 디렉토리입니다.
-              </p>
-              <div className="space-y-1.5">
-                {formData.additional_dirs.map((dir, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5">
-                    <DirectoryPicker
-                      value={dir}
-                      onChange={(v) =>
-                        update(
-                          "additional_dirs",
-                          formData.additional_dirs.map((d, i) => (i === idx ? v : d)),
-                        )
-                      }
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0"
-                      onClick={() =>
-                        update(
-                          "additional_dirs",
-                          formData.additional_dirs.filter((_, i) => i !== idx),
-                        )
-                      }
-                      aria-label="디렉토리 삭제"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="font-mono text-xs gap-1"
-                  onClick={() => update("additional_dirs", [...formData.additional_dirs, ""])}
-                >
-                  <Plus className="h-3 w-3" />
-                  디렉토리 추가
-                </Button>
-              </div>
             </div>
 
             <Separator />
@@ -456,7 +386,7 @@ export function TemplateFormDialog({ open, onOpenChange, template }: TemplateFor
             disabled={!formData.name.trim() || isPending}
           >
             <Check className="h-3.5 w-3.5" />
-            {isPending ? (isEditMode ? "저장 중…" : "생성 중…") : isEditMode ? "저장" : "생성"}
+            {isPending ? (isEditMode ? "저장 중\u2026" : "생성 중\u2026") : isEditMode ? "저장" : "생성"}
           </Button>
           <Button variant="ghost" className="font-mono text-xs" onClick={() => onOpenChange(false)}>
             취소

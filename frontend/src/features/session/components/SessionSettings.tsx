@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { sessionsApi } from "@/lib/api/sessions.api";
-import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
+import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
+import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
 import { SaveAsTemplateDialog } from "@/features/template/components/SaveAsTemplateDialog";
 import { AVAILABLE_TOOLS, PERMISSION_TOOLS } from "../constants/tools";
@@ -41,9 +42,11 @@ export function SessionSettings({
   const [systemPromptMode, setSystemPromptMode] = useState<"replace" | "append">("replace");
   const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
-  const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
+  const [additionalWorkspaceIds, setAdditionalWorkspaceIds] = useState<string[]>([]);
   const [fallbackModel, setFallbackModel] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const { data: workspaces } = useWorkspaces();
 
   const loadSession = useCallback(async () => {
     try {
@@ -58,12 +61,24 @@ export function SessionSettings({
         s.disallowed_tools ? s.disallowed_tools.split(",").map((t) => t.trim()) : [],
       );
       setMcpServerIds(s.mcp_server_ids ?? []);
-      setAdditionalDirs(s.additional_dirs ?? []);
       setFallbackModel(s.fallback_model ?? "");
+
+      // additional_dirs(경로)를 워크스페이스 ID로 역매칭
+      if (s.additional_dirs && s.additional_dirs.length > 0 && workspaces) {
+        const ids = s.additional_dirs
+          .map((dirPath: string) => {
+            const ws = workspaces.find((w) => w.local_path === dirPath && w.status === "ready");
+            return ws?.id ?? null;
+          })
+          .filter((id): id is string => id !== null);
+        setAdditionalWorkspaceIds(ids);
+      } else {
+        setAdditionalWorkspaceIds([]);
+      }
     } catch {
       toast.error("세션 설정을 불러오지 못했습니다.");
     }
-  }, [sessionId]);
+  }, [sessionId, workspaces]);
 
   useEffect(() => {
     if (open) {
@@ -79,6 +94,15 @@ export function SessionSettings({
     setSaving(true);
     try {
       const timeoutSec = timeoutMinutes ? Number(timeoutMinutes) * 60 : null;
+
+      // 워크스페이스 ID → local_path 변환
+      const additionalDirPaths = additionalWorkspaceIds
+        .map((wsId) => {
+          const ws = workspaces?.find((w) => w.id === wsId);
+          return ws?.local_path ?? null;
+        })
+        .filter((p): p is string => p !== null);
+
       await sessionsApi.update(sessionId, {
         system_prompt: systemPrompt || null,
         timeout_seconds: timeoutSec,
@@ -89,10 +113,7 @@ export function SessionSettings({
         system_prompt_mode: systemPromptMode,
         disallowed_tools: disallowedTools.length > 0 ? disallowedTools.join(",") : null,
         mcp_server_ids: mcpServerIds.length > 0 ? mcpServerIds : null,
-        additional_dirs:
-          additionalDirs.filter((d) => d.trim()).length > 0
-            ? additionalDirs.filter((d) => d.trim())
-            : null,
+        additional_dirs: additionalDirPaths.length > 0 ? additionalDirPaths : null,
         fallback_model: fallbackModel || null,
       });
       toast.success("설정이 저장되었습니다.");
@@ -161,29 +182,36 @@ export function SessionSettings({
               />
             </div>
 
-            {/* Additional Directories */}
+            {/* Additional Workspaces */}
             <div className="space-y-2">
               <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                ADDITIONAL DIRECTORIES
+                ADDITIONAL WORKSPACES
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                --add-dir 플래그로 전달할 추가 디렉토리입니다.
+                --add-dir 플래그로 전달할 추가 워크스페이스입니다.
               </p>
               <div className="space-y-1.5">
-                {additionalDirs.map((dir, idx) => (
+                {additionalWorkspaceIds.map((wsId, idx) => (
                   <div key={idx} className="flex items-center gap-1.5">
-                    <DirectoryPicker
-                      value={dir}
-                      onChange={(v) =>
-                        setAdditionalDirs((prev) => prev.map((d, i) => (i === idx ? v : d)))
-                      }
-                    />
+                    <div className="flex-1">
+                      <WorkspaceSelector
+                        value={wsId}
+                        onChange={(v) =>
+                          setAdditionalWorkspaceIds((prev) =>
+                            prev.map((id, i) => (i === idx ? (v ?? "") : id)),
+                          )
+                        }
+                        excludeIds={additionalWorkspaceIds.filter((_, i) => i !== idx)}
+                      />
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0"
-                      onClick={() => setAdditionalDirs((prev) => prev.filter((_, i) => i !== idx))}
-                      aria-label="디렉토리 삭제"
+                      onClick={() =>
+                        setAdditionalWorkspaceIds((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      aria-label="워크스페이스 삭제"
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
@@ -193,10 +221,10 @@ export function SessionSettings({
                   variant="outline"
                   size="sm"
                   className="font-mono text-xs gap-1"
-                  onClick={() => setAdditionalDirs((prev) => [...prev, ""])}
+                  onClick={() => setAdditionalWorkspaceIds((prev) => [...prev, ""])}
                 >
                   <Plus className="h-3 w-3" />
-                  디렉토리 추가
+                  워크스페이스 추가
                 </Button>
               </div>
             </div>
@@ -329,7 +357,7 @@ export function SessionSettings({
             disabled={saving}
           >
             <Save className="h-3.5 w-3.5 mr-1.5" />
-            {saving ? "Saving…" : "Save Settings"}
+            {saving ? "Saving\u2026" : "Save Settings"}
           </Button>
           <SaveAsTemplateDialog sessionId={sessionId}>
             <Button variant="outline" className="w-full font-mono text-xs gap-1.5">

@@ -2,7 +2,6 @@ export interface TemplateInfo {
   id: string;
   name: string;
   description?: string | null;
-  work_dir?: string | null;
   system_prompt?: string | null;
   allowed_tools?: string | null;
   disallowed_tools?: string | null;
@@ -15,7 +14,6 @@ export interface TemplateInfo {
   max_budget_usd?: number | null;
   system_prompt_mode?: string | null;
   mcp_server_ids?: string[] | null;
-  additional_dirs?: string[] | null;
   fallback_model?: string | null;
   created_at: string;
   updated_at: string;
@@ -24,7 +22,6 @@ export interface TemplateInfo {
 export interface CreateTemplateRequest {
   name: string;
   description?: string | null;
-  work_dir?: string | null;
   system_prompt?: string | null;
   allowed_tools?: string | null;
   disallowed_tools?: string | null;
@@ -37,7 +34,6 @@ export interface CreateTemplateRequest {
   max_budget_usd?: number | null;
   system_prompt_mode?: string | null;
   mcp_server_ids?: string[] | null;
-  additional_dirs?: string[] | null;
   fallback_model?: string | null;
 }
 

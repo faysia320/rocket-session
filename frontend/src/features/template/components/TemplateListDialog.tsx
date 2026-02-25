@@ -148,11 +148,6 @@ export function TemplateListDialog({ children }: TemplateListDialogProps) {
                       </p>
                     ) : null}
                     <div className="flex items-center gap-2 mt-1">
-                      {tpl.work_dir ? (
-                        <span className="font-mono text-2xs text-muted-foreground/60 truncate max-w-[200px]">
-                          {tpl.work_dir}
-                        </span>
-                      ) : null}
                       {tpl.system_prompt ? (
                         <span
                           className={cn(

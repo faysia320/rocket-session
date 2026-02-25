@@ -88,6 +88,14 @@ export type {
 export { DEFAULT_NOTIFICATION_SETTINGS, CATEGORY_LABELS } from "./notification";
 export type { TagInfo, CreateTagRequest, UpdateTagRequest } from "./tag";
 export type {
+  WorkspaceStatus,
+  WorkspaceInfo,
+  CreateWorkspaceRequest,
+  UpdateWorkspaceRequest,
+  WorkspaceSyncRequest,
+  WorkspaceSyncResponse,
+} from "./workspace";
+export type {
   AnalyticsPeriod,
   TokenSummary,
   DailyTokenUsage,

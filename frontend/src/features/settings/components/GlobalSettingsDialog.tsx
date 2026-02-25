@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
+import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
 import { McpServerManager } from "@/features/mcp/components/McpServerManager";
 import { NotificationSettingsPanel } from "@/features/notification/components/NotificationSettingsPanel";
 import { useGlobalSettings, useUpdateGlobalSettings } from "../hooks/useGlobalSettings";
@@ -26,7 +26,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
   const { data: settings } = useGlobalSettings();
   const updateMutation = useUpdateGlobalSettings();
 
-  const [workDir, setWorkDir] = useState("");
+  const [defaultWorkspaceId, setDefaultWorkspaceId] = useState<string | null>(null);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [workflowEnabled, setWorkflowEnabled] = useState(false);
@@ -35,14 +35,14 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
   const [model, setModel] = useState("");
   const [systemPromptMode, setSystemPromptMode] = useState<"replace" | "append">("replace");
   const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
-  const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
+  const [additionalWorkspaceIds, setAdditionalWorkspaceIds] = useState<string[]>([]);
   const [fallbackModel, setFallbackModel] = useState("");
   const [globallyTrustedTools, setGloballyTrustedTools] = useState<string[]>([]);
 
   // 다이얼로그 열릴 때 현재 글로벌 설정값으로 초기화
   useEffect(() => {
     if (open && settings) {
-      setWorkDir(settings.work_dir ?? "");
+      setDefaultWorkspaceId(settings.default_workspace_id ?? null);
       setSystemPrompt(settings.system_prompt ?? "");
       setTimeoutMinutes(
         settings.timeout_seconds ? String(Math.round(settings.timeout_seconds / 60)) : "",
@@ -55,7 +55,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
       setDisallowedTools(
         settings.disallowed_tools ? settings.disallowed_tools.split(",").map((t) => t.trim()) : [],
       );
-      setAdditionalDirs(settings.additional_dirs ?? []);
+      setAdditionalWorkspaceIds(settings.default_additional_workspace_ids ?? []);
       setFallbackModel(settings.fallback_model ?? "");
       setGloballyTrustedTools(settings.globally_trusted_tools ?? []);
     }
@@ -69,7 +69,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
     try {
       const timeoutSec = timeoutMinutes ? Number(timeoutMinutes) * 60 : null;
       await updateMutation.mutateAsync({
-        work_dir: workDir || null,
+        default_workspace_id: defaultWorkspaceId,
         allowed_tools: AVAILABLE_TOOLS.join(","),
         system_prompt: systemPrompt || null,
         timeout_seconds: timeoutSec,
@@ -82,10 +82,8 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
         max_budget_usd: null,
         system_prompt_mode: systemPromptMode,
         disallowed_tools: disallowedTools.length > 0 ? disallowedTools.join(",") : null,
-        additional_dirs:
-          additionalDirs.filter((d) => d.trim()).length > 0
-            ? additionalDirs.filter((d) => d.trim())
-            : null,
+        default_additional_workspace_ids:
+          additionalWorkspaceIds.length > 0 ? additionalWorkspaceIds : null,
         fallback_model: fallbackModel || null,
         globally_trusted_tools: globallyTrustedTools.length > 0 ? globallyTrustedTools : null,
       });
@@ -108,40 +106,50 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
 
         <div className="flex-1 overflow-y-auto -mx-6 px-6">
           <div className="space-y-5 pt-2 pb-1">
-            {/* Working Directory */}
+            {/* Default Workspace */}
             <div className="space-y-2">
               <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                WORKING DIRECTORY
+                DEFAULT WORKSPACE
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                새 세션 생성 시 기본 작업 디렉토리입니다.
+                새 세션 생성 시 기본으로 사용할 워크스페이스입니다.
               </p>
-              <DirectoryPicker value={workDir} onChange={setWorkDir} />
+              <WorkspaceSelector value={defaultWorkspaceId} onChange={setDefaultWorkspaceId} />
             </div>
 
-            {/* Additional Directories */}
+            {/* Additional Workspaces */}
             <div className="space-y-2">
               <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                ADDITIONAL DIRECTORIES
+                ADDITIONAL WORKSPACES
               </Label>
               <p className="font-mono text-2xs text-muted-foreground/70">
-                Claude CLI에 --add-dir 플래그로 전달할 추가 디렉토리입니다.
+                Claude CLI에 --add-dir 플래그로 전달할 추가 워크스페이스입니다.
               </p>
               <div className="space-y-1.5">
-                {additionalDirs.map((dir, idx) => (
+                {additionalWorkspaceIds.map((wsId, idx) => (
                   <div key={idx} className="flex items-center gap-1.5">
-                    <DirectoryPicker
-                      value={dir}
-                      onChange={(v) =>
-                        setAdditionalDirs((prev) => prev.map((d, i) => (i === idx ? v : d)))
-                      }
-                    />
+                    <div className="flex-1">
+                      <WorkspaceSelector
+                        value={wsId}
+                        onChange={(v) =>
+                          setAdditionalWorkspaceIds((prev) =>
+                            prev.map((id, i) => (i === idx ? (v ?? "") : id)),
+                          )
+                        }
+                        excludeIds={[
+                          ...(defaultWorkspaceId ? [defaultWorkspaceId] : []),
+                          ...additionalWorkspaceIds.filter((_, i) => i !== idx),
+                        ]}
+                      />
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0"
-                      onClick={() => setAdditionalDirs((prev) => prev.filter((_, i) => i !== idx))}
-                      aria-label="디렉토리 삭제"
+                      onClick={() =>
+                        setAdditionalWorkspaceIds((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      aria-label="워크스페이스 삭제"
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
@@ -151,10 +159,10 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                   variant="outline"
                   size="sm"
                   className="font-mono text-xs gap-1"
-                  onClick={() => setAdditionalDirs((prev) => [...prev, ""])}
+                  onClick={() => setAdditionalWorkspaceIds((prev) => [...prev, ""])}
                 >
                   <Plus className="h-3 w-3" />
-                  디렉토리 추가
+                  워크스페이스 추가
                 </Button>
               </div>
             </div>

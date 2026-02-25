@@ -1,7 +1,6 @@
 /** 글로벌 설정 타입 */
 export interface GlobalSettings {
-  root_dir?: string;
-  work_dir?: string | null;
+  default_workspace_id?: string | null;
   allowed_tools?: string | null;
   system_prompt?: string | null;
   timeout_seconds?: number | null;
@@ -15,7 +14,7 @@ export interface GlobalSettings {
   disallowed_tools?: string | null;
   mcp_server_ids?: string[] | null;
   globally_trusted_tools?: string[] | null;
-  additional_dirs?: string[] | null;
+  default_additional_workspace_ids?: string[] | null;
   fallback_model?: string | null;
 }
 
