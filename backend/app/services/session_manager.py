@@ -18,6 +18,7 @@ from app.repositories.event_repo import EventRepository
 from app.repositories.file_change_repo import FileChangeRepository
 from app.repositories.message_repo import MessageRepository
 from app.repositories.session_repo import SessionRepository, _session_to_dict
+from app.repositories.token_snapshot_repo import TokenSnapshotRepository
 from app.schemas.session import SessionInfo
 from app.services.session_process_manager import SessionProcessManager
 
@@ -226,6 +227,39 @@ class SessionManager:
                 tool_input=tool_input,
             )
             await session.commit()
+
+    async def add_token_snapshot(
+        self,
+        session_id: str,
+        work_dir: str,
+        timestamp: "str | datetime",
+        workflow_phase: str | None = None,
+        model: str | None = None,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        cache_creation_tokens: int = 0,
+        cache_read_tokens: int = 0,
+    ):
+        """토큰 스냅샷을 token_snapshots 테이블에 기록 (세션 삭제와 무관하게 보존)."""
+        from app.models.token_snapshot import TokenSnapshot
+
+        if isinstance(timestamp, str):
+            timestamp = datetime.fromisoformat(timestamp)
+
+        async with self._db.session() as session:
+            repo = TokenSnapshotRepository(session)
+            snapshot = TokenSnapshot(
+                session_id=session_id,
+                work_dir=work_dir,
+                workflow_phase=workflow_phase,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_creation_tokens=cache_creation_tokens,
+                cache_read_tokens=cache_read_tokens,
+                timestamp=timestamp,
+            )
+            await repo.add(snapshot)
 
     async def get_history(self, session_id: str) -> list[dict]:
         async with self._db.session() as session:

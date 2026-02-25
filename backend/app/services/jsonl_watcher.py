@@ -462,6 +462,22 @@ class JsonlWatcher:
             model=model,
         )
 
+        # 토큰 스냅샷 기록 (세션 삭제와 무관하게 보존)
+        try:
+            await self._session_manager.add_token_snapshot(
+                session_id=session_id,
+                work_dir=turn_state.get("work_dir", ""),
+                timestamp=utc_now(),
+                workflow_phase=None,
+                model=model,
+                input_tokens=input_tokens or 0,
+                output_tokens=output_tokens or 0,
+                cache_creation_tokens=cache_creation_tokens or 0,
+                cache_read_tokens=cache_read_tokens or 0,
+            )
+        except Exception:
+            logger.warning("토큰 스냅샷 기록 실패: session=%s", session_id, exc_info=True)
+
         # turn_state 리셋 (다음 턴 준비)
         turn_state["text"] = ""
         turn_state["model"] = None

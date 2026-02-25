@@ -4,11 +4,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import PurePosixPath
 
 from app.core.database import Database
-from app.repositories.analytics_repo import AnalyticsRepository
+from app.repositories.token_snapshot_repo import TokenSnapshotRepository
 from app.schemas.analytics import (
     AnalyticsPeriod,
     AnalyticsResponse,
     DailyTokenUsage,
+    PhaseTokenUsage,
     ProjectTokenUsage,
     SessionTokenRanking,
     TokenSummary,
@@ -27,11 +28,12 @@ class AnalyticsService:
         start, end = self._resolve_period(period)
 
         async with self._db.session() as session:
-            repo = AnalyticsRepository(session)
+            repo = TokenSnapshotRepository(session)
             summary_raw = await repo.get_summary(start, end)
             daily_raw = await repo.get_daily_usage(start, end)
             sessions_raw = await repo.get_session_ranking(start, end, limit=20)
             projects_raw = await repo.get_project_usage(start, end)
+            phases_raw = await repo.get_phase_usage(start, end)
 
         total_tokens = summary_raw.get("total_input_tokens", 0) + summary_raw.get(
             "total_output_tokens", 0
@@ -66,6 +68,7 @@ class AnalyticsService:
             )
             for row in projects_raw
         ]
+        phase_usage = [PhaseTokenUsage(**row) for row in phases_raw]
 
         return AnalyticsResponse(
             period=period.value,
@@ -75,6 +78,7 @@ class AnalyticsService:
             daily_usage=daily_usage,
             session_ranking=session_ranking,
             project_usage=project_usage,
+            phase_usage=phase_usage,
         )
 
     @staticmethod

@@ -63,6 +63,17 @@ class ProjectTokenUsage(BaseModel):
     session_count: int = 0
 
 
+class PhaseTokenUsage(BaseModel):
+    """워크플로우 Phase별 토큰 사용량."""
+
+    workflow_phase: str | None = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
+    turn_count: int = 0
+
+
 class AnalyticsResponse(BaseModel):
     """전체 분석 응답."""
 
@@ -73,3 +84,4 @@ class AnalyticsResponse(BaseModel):
     daily_usage: list[DailyTokenUsage]
     session_ranking: list[SessionTokenRanking]
     project_usage: list[ProjectTokenUsage]
+    phase_usage: list[PhaseTokenUsage] = []
