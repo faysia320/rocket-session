@@ -1,5 +1,16 @@
 import { useState, useCallback } from "react";
-import { GitBranch, GitPullRequest, Plus, Loader2, AlertTriangle, MoreVertical, Trash2 } from "lucide-react";
+import {
+  GitBranch,
+  GitPullRequest,
+  GitCommitHorizontal,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Plus,
+  Loader2,
+  AlertTriangle,
+  MoreVertical,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,13 +43,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/useMediaQuery";
-import { useWorkspaces, useDeleteWorkspace } from "@/features/workspace/hooks/useWorkspaces";
+import { useWorkspaces, useDeleteWorkspace, useSyncWorkspace } from "@/features/workspace/hooks/useWorkspaces";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { WorkspaceCreateDialog } from "@/features/workspace/components/WorkspaceCreateDialog";
 import { useGhStatus, useGitHubPRs } from "../hooks/useGitHubPRs";
 import { GitMonitorRepoList } from "./GitMonitorRepoList";
 import { GitRepoStatusTab } from "./GitRepoStatusTab";
 import { GitCommitHistoryTab } from "./GitCommitHistoryTab";
 import { GitHubPRTab } from "./GitHubPRTab";
+import { BranchSelect } from "./BranchSelect";
+import { CommitDialog } from "./CommitDialog";
 import type { WorkspaceInfo } from "@/types/workspace";
 import { toast } from "sonner";
 
@@ -204,6 +218,42 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 }
 
 function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; onDelete: (ws: WorkspaceInfo) => void }) {
+  // 모든 hooks를 early return 전에 호출 (rules of hooks)
+  const isReady = workspace.status === "ready";
+  const { data: ghStatus } = useGhStatus(isReady ? workspace.local_path : "");
+  const ghReady = ghStatus?.installed && ghStatus?.authenticated;
+  const { data: openPrData } = useGitHubPRs(
+    isReady ? workspace.local_path : "",
+    "open",
+    (ghReady && isReady) ?? false,
+  );
+  const openPrCount = openPrData?.prs?.length ?? 0;
+  const [prDialogOpen, setPrDialogOpen] = useState(false);
+  const [commitDialogOpen, setCommitDialogOpen] = useState(false);
+
+  const syncMutation = useSyncWorkspace();
+  const isSyncing = syncMutation.isPending;
+
+  const handlePull = useCallback(() => {
+    syncMutation.mutate(
+      { id: workspace.id, data: { action: "pull" } },
+      {
+        onSuccess: (res) => toast.success(res.message || "Pull 완료"),
+        onError: () => toast.error("Pull에 실패했습니다"),
+      },
+    );
+  }, [syncMutation, workspace.id]);
+
+  const handlePush = useCallback(() => {
+    syncMutation.mutate(
+      { id: workspace.id, data: { action: "push" } },
+      {
+        onSuccess: (res) => toast.success(res.message || "Push 완료"),
+        onError: () => toast.error("Push에 실패했습니다"),
+      },
+    );
+  }, [syncMutation, workspace.id]);
+
   if (workspace.status === "cloning") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3">
@@ -237,13 +287,6 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
     );
   }
 
-  // ready 상태: 액션 바 + Status | Commits 2분할
-  const { data: ghStatus } = useGhStatus(workspace.local_path);
-  const ghReady = ghStatus?.installed && ghStatus?.authenticated;
-  const { data: openPrData } = useGitHubPRs(workspace.local_path, "open", ghReady ?? false);
-  const openPrCount = openPrData?.prs?.length ?? 0;
-  const [prDialogOpen, setPrDialogOpen] = useState(false);
-
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* 액션 바 */}
@@ -251,12 +294,11 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
         <span className="font-mono text-sm font-semibold text-foreground truncate">
           {workspace.name}
         </span>
-        {workspace.current_branch ? (
-          <Badge variant="secondary" className="font-mono text-2xs px-1.5 py-0 shrink-0">
-            <GitBranch className="h-2.5 w-2.5 mr-0.5" />
-            {workspace.current_branch}
-          </Badge>
-        ) : null}
+        <BranchSelect
+          repoPath={workspace.local_path}
+          currentBranch={workspace.current_branch ?? null}
+          disabled={isSyncing}
+        />
         {workspace.is_dirty ? (
           <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 text-warning border-warning/30 shrink-0">
             변경됨
@@ -278,7 +320,68 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
           <GitPullRequest className="h-2.5 w-2.5" />
           PR {openPrCount}
         </Badge>
+
         <div className="flex-1" />
+
+        {/* Git 액션 버튼 */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-1.5 font-mono text-2xs shrink-0"
+              onClick={handlePull}
+              disabled={isSyncing}
+              aria-label="Pull"
+            >
+              {isSyncing && syncMutation.variables?.data.action === "pull" ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <ArrowDownToLine className="h-3 w-3" />
+              )}
+              Pull
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="font-mono text-xs">git pull --rebase</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-1.5 font-mono text-2xs shrink-0"
+              onClick={handlePush}
+              disabled={isSyncing}
+              aria-label="Push"
+            >
+              {isSyncing && syncMutation.variables?.data.action === "push" ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <ArrowUpFromLine className="h-3 w-3" />
+              )}
+              Push
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="font-mono text-xs">git push</TooltipContent>
+        </Tooltip>
+        {workspace.is_dirty ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 gap-1 px-1.5 font-mono text-2xs shrink-0 text-success"
+                onClick={() => setCommitDialogOpen(true)}
+                aria-label="Commit"
+              >
+                <GitCommitHorizontal className="h-3 w-3" />
+                Commit
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">변경사항 커밋</TooltipContent>
+          </Tooltip>
+        ) : null}
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label="워크스페이스 옵션">
@@ -331,6 +434,14 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Commit Dialog */}
+      <CommitDialog
+        open={commitDialogOpen}
+        onOpenChange={setCommitDialogOpen}
+        repoPath={workspace.local_path}
+        workspacePath={workspace.local_path}
+      />
     </div>
   );
 }
