@@ -426,14 +426,24 @@ class ClaudeRunner:
                 if tool_name == "AskUserQuestion":
                     turn_state["ask_user_question_tool_id"] = tool_use_id
                     turn_state["should_terminate"] = True
+                    question_timestamp = datetime.now(timezone.utc).isoformat()
+                    question_list = tool_input.get("questions", [])
                     await ws_manager.broadcast_event(
                         session_id,
                         {
                             "type": WsEventType.ASK_USER_QUESTION,
-                            "questions": tool_input.get("questions", []),
+                            "questions": question_list,
                             "tool_use_id": tool_use_id,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": question_timestamp,
                         },
+                    )
+                    # 세션 전환/새로고침 시 복원을 위해 인메모리 저장
+                    from app.api.v1.endpoints.pending_questions import set_pending_question
+                    set_pending_question(
+                        session_id=session_id,
+                        questions=question_list,
+                        tool_use_id=tool_use_id,
+                        timestamp=question_timestamp,
                     )
                     continue
 

@@ -16,6 +16,10 @@ from app.api.dependencies import (
     get_workflow_service,
     get_ws_manager,
 )
+from app.api.v1.endpoints.pending_questions import (
+    clear_pending_question,
+    get_pending_question,
+)
 from app.api.v1.endpoints.permissions import get_pending, respond_permission
 from app.core.constants import READONLY_TOOLS
 from app.models.event_types import WsEventType
@@ -173,6 +177,9 @@ async def _handle_prompt(
         await ws_manager.broadcast_event(
             session_id, {"type": WsEventType.USER_MESSAGE, "message": user_msg}
         )
+
+        # 대기 중인 AskUserQuestion 클리어 (사용자가 답변 또는 새 프롬프트 전송)
+        clear_pending_question(session_id)
 
         # 글로벌 기본값으로 세션 설정 병합 (세션에 값이 없는 필드만)
         merged_session = dict(current_session) if current_session else {}
@@ -369,6 +376,14 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                         "tool_input": entry["tool_input"],
                     }
                     break
+            # 대기 중인 AskUserQuestion 복원
+            pending_q = get_pending_question(session_id)
+            if pending_q:
+                pending_interactions["ask_user_question"] = {
+                    "questions": pending_q["questions"],
+                    "tool_use_id": pending_q["tool_use_id"],
+                    "timestamp": pending_q["timestamp"],
+                }
             if pending_interactions:
                 state_msg["pending_interactions"] = pending_interactions
 

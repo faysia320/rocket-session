@@ -71,6 +71,11 @@ export function useClaudeSocket(sessionId: string) {
                     tool_name: string;
                     tool_input: Record<string, unknown>;
                   };
+                  ask_user_question?: {
+                    questions: AskUserQuestionItem[];
+                    tool_use_id: string;
+                    timestamp: string;
+                  };
                 })
               : null,
           fileChanges: data.file_changes
@@ -78,6 +83,26 @@ export function useClaudeSocket(sessionId: string) {
             : null,
         };
         dispatch(action);
+
+        // 대기 중인 AskUserQuestion 복원 (세션 전환/새로고침 후 카드 복구)
+        if (
+          !data.is_reconnect &&
+          data.pending_interactions &&
+          (data.pending_interactions as Record<string, unknown>).ask_user_question
+        ) {
+          const aq = (data.pending_interactions as Record<string, unknown>)
+            .ask_user_question as {
+            questions: AskUserQuestionItem[];
+            tool_use_id: string;
+            timestamp: string;
+          };
+          dispatch({
+            type: "WS_ASK_USER_QUESTION",
+            questions: aq.questions,
+            toolUseId: aq.tool_use_id,
+            timestamp: aq.timestamp,
+          });
+        }
 
         // 현재 턴 이벤트가 있으면 순차 재생 (세션 전환/새로고침 후 복구)
         // latest_seq 업데이트 전에 수행하여 seq 중복 체크에 걸리지 않도록 함

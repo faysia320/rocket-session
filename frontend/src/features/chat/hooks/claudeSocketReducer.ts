@@ -139,6 +139,11 @@ export type ClaudeSocketAction =
           tool_name: string;
           tool_input: Record<string, unknown>;
         };
+        ask_user_question?: {
+          questions: AskUserQuestionItem[];
+          tool_use_id: string;
+          timestamp: string;
+        };
       } | null;
       fileChanges: FileChange[] | null;
     }

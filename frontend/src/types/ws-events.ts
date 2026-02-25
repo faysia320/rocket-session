@@ -41,6 +41,11 @@ export interface WsSessionStateEvent extends WsBaseEvent {
       tool_name: string;
       tool_input: Record<string, unknown>;
     };
+    ask_user_question?: {
+      questions: AskUserQuestionItem[];
+      tool_use_id: string;
+      timestamp: string;
+    };
   } | null;
 }
 

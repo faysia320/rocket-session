@@ -16,6 +16,7 @@ from app.api.dependencies import (
     get_workspace_service,
     get_ws_manager,
 )
+from app.api.v1.endpoints.pending_questions import clear_pending_question
 from app.api.v1.endpoints.permissions import clear_session_trusted
 from app.models.session import SessionStatus
 from app.schemas.search import PaginatedSessionsResponse
@@ -474,9 +475,10 @@ async def delete_session(
     deleted = await manager.delete(session_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-    # 인메모리 자원 정리 (seq 카운터, 이벤트 버퍼, 세션 신뢰 도구)
+    # 인메모리 자원 정리 (seq 카운터, 이벤트 버퍼, 세션 신뢰 도구, 대기 질문)
     ws_manager.reset_session(session_id)
     clear_session_trusted(session_id)
+    clear_pending_question(session_id)
     return {"status": "deleted"}
 
 
