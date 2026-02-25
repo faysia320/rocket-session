@@ -340,21 +340,25 @@ class JsonlWatcher:
                         if work_dir
                         else raw_path
                     )
-                    ts_dt = utc_now()
-                    await self._session_manager.add_file_change(
-                        session_id, tool_name, file_path, ts_dt
-                    )
-                    await self._ws_manager.broadcast_event(
-                        session_id,
-                        {
-                            "type": WsEventType.FILE_CHANGE,
-                            "change": {
-                                "tool": tool_name,
-                                "file": file_path,
-                                "timestamp": ts_dt.isoformat(),
+                    normalized = file_path.replace("\\", "/")
+                    if normalized.startswith(".claude/plans/") or "/.claude/plans/" in normalized:
+                        pass
+                    else:
+                        ts_dt = utc_now()
+                        await self._session_manager.add_file_change(
+                            session_id, tool_name, file_path, ts_dt
+                        )
+                        await self._ws_manager.broadcast_event(
+                            session_id,
+                            {
+                                "type": WsEventType.FILE_CHANGE,
+                                "change": {
+                                    "tool": tool_name,
+                                    "file": file_path,
+                                    "timestamp": ts_dt.isoformat(),
+                                },
                             },
-                        },
-                    )
+                        )
 
         if has_new_text and turn_state["text"]:
             await self._ws_manager.broadcast_event(
