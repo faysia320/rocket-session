@@ -79,7 +79,18 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
   );
 
   const handleNavClick = useCallback(
-    (to: string) => {
+    (e: React.MouseEvent, to: string) => {
+      // Ctrl+Click (Win/Linux) / Cmd+Click (Mac) → 새 탭
+      if (e.ctrlKey || e.metaKey) {
+        window.open(to, "_blank");
+        return;
+      }
+      // Shift+Click → 새 창
+      if (e.shiftKey) {
+        window.open(to);
+        return;
+      }
+
       if (to === "/") {
         // Sessions 클릭 → 세션 홈(대시보드 뷰)으로 이동
         setViewMode("dashboard");
@@ -127,7 +138,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
               "h-8 gap-1.5 font-mono text-xs px-3",
               isActive(item.to) && "bg-muted text-foreground",
             )}
-            onClick={() => handleNavClick(item.to)}
+            onClick={(e) => handleNavClick(e, item.to)}
             aria-label={item.label}
           >
             <item.icon className="h-3.5 w-3.5" />
@@ -220,7 +231,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
               <DropdownMenuItem
                 key={item.to}
                 className={cn("gap-2", isActive(item.to) && "bg-muted")}
-                onClick={() => handleNavClick(item.to)}
+                onClick={(e) => handleNavClick(e, item.to)}
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
