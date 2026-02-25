@@ -525,7 +525,6 @@ rocket-session/
 │   │   │   ├── layout/                # 레이아웃 (Split View 등)
 │   │   │   ├── workspace/             # 워크스페이스 관리
 │   │   │   ├── team/                  # 팀 채팅
-│   │   │   ├── office/                # Office 뷰
 │   │   │   ├── tags/                  # 태그 관리
 │   │   │   └── template/              # 세션 템플릿
 │   │   └── lib/api/                   # API 클라이언트
