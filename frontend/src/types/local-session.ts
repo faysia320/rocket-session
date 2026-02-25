@@ -1,3 +1,9 @@
+export interface WorkspaceMatch {
+  workspace_id: string;
+  workspace_name: string;
+  local_path: string;
+}
+
 export interface LocalSessionMeta {
   session_id: string;
   project_dir: string;
@@ -11,11 +17,13 @@ export interface LocalSessionMeta {
   message_count: number;
   already_imported: boolean;
   continuation_ids: string[];
+  matched_workspace: WorkspaceMatch | null;
 }
 
 export interface ImportLocalSessionRequest {
   session_id: string;
   project_dir: string;
+  workspace_id?: string | null;
 }
 
 export interface ImportLocalSessionResponse {

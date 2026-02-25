@@ -58,6 +58,7 @@ export type {
   GitRepoScanResponse,
 } from "./filesystem";
 export type {
+  WorkspaceMatch,
   LocalSessionMeta,
   ImportLocalSessionRequest,
   ImportLocalSessionResponse,

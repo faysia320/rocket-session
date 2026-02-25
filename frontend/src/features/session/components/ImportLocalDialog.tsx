@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronsUpDown,
+  Box,
 } from "lucide-react";
 import {
   Dialog,
@@ -17,13 +18,21 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { localSessionsApi } from "@/lib/api/local-sessions.api";
-import type { LocalSessionMeta } from "@/types";
+import { workspacesApi } from "@/lib/api/workspaces.api";
+import type { LocalSessionMeta, WorkspaceInfo } from "@/types";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 interface ImportLocalDialogProps {
@@ -33,7 +42,7 @@ interface ImportLocalDialogProps {
 }
 
 type FlatItem =
-  | { type: "group-header"; cwd: string; count: number }
+  | { type: "group-header"; cwd: string; count: number; matchedWorkspaceId: string | null }
   | { type: "session"; meta: LocalSessionMeta };
 
 function getYesterdayISO(): string {
@@ -45,6 +54,8 @@ function getYesterdayISO(): string {
 
 export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLocalDialogProps) {
   const [sessions, setSessions] = useState<LocalSessionMeta[]>([]);
+  const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
+  const [workspaceOverrides, setWorkspaceOverrides] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,9 +67,15 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
     if (!open) return;
     setLoading(true);
     setError(null);
-    localSessionsApi
-      .scan({ since: getYesterdayISO() })
-      .then(setSessions)
+    setWorkspaceOverrides({});
+    Promise.all([
+      localSessionsApi.scan({ since: getYesterdayISO() }),
+      workspacesApi.list(),
+    ])
+      .then(([scanned, wsList]) => {
+        setSessions(scanned);
+        setWorkspaces(wsList.filter((ws) => ws.status === "ready"));
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [open]);
@@ -66,9 +83,15 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
   const handleImport = async (meta: LocalSessionMeta) => {
     setImporting(meta.session_id);
     try {
+      const workspaceId =
+        workspaceOverrides[meta.cwd] ??
+        meta.matched_workspace?.workspace_id ??
+        undefined;
+
       const result = await localSessionsApi.import({
         session_id: meta.session_id,
         project_dir: meta.project_dir,
+        workspace_id: workspaceId ?? null,
       });
       setSessions((prev) =>
         prev.map((s) => (s.session_id === meta.session_id ? { ...s, already_imported: true } : s)),
@@ -118,7 +141,9 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
   const flatItems = useMemo(() => {
     const result: FlatItem[] = [];
     for (const [cwd, items] of Object.entries(filtered)) {
-      result.push({ type: "group-header", cwd, count: items.length });
+      // 그룹 내 첫 세션의 matched_workspace에서 워크스페이스 ID 추출
+      const matchedWsId = items[0]?.matched_workspace?.workspace_id ?? null;
+      result.push({ type: "group-header", cwd, count: items.length, matchedWorkspaceId: matchedWsId });
       if (!collapsedGroups.has(cwd)) {
         for (const s of items) {
           result.push({ type: "session", meta: s });
@@ -198,33 +223,44 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
                       }}
                     >
                       {item.type === "group-header" ? (
-                        <button
-                          type="button"
-                          className="flex items-center gap-1.5 mb-2 h-9 w-full text-left hover:bg-muted/50 rounded-sm px-1 -mx-1 transition-colors"
-                          onClick={() => toggleGroup(item.cwd)}
-                          aria-expanded={!collapsedGroups.has(item.cwd)}
-                          aria-label={`${truncateCwd(item.cwd)} 그룹 ${collapsedGroups.has(item.cwd) ? "펼치기" : "접기"}`}
-                        >
-                          {collapsedGroups.has(item.cwd) ? (
-                            <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                          ) : (
-                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                          )}
-                          <FolderOpen className="h-3 w-3 text-muted-foreground shrink-0" />
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="font-mono text-2xs text-muted-foreground truncate">
-                                {truncateCwd(item.cwd)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="font-mono text-xs">
-                              {item.cwd}
-                            </TooltipContent>
-                          </Tooltip>
-                          <Badge variant="secondary" className="font-mono text-[9px] ml-auto">
-                            {item.count}
-                          </Badge>
-                        </button>
+                        <div className="flex items-center gap-1.5 mb-2 h-9">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 h-full flex-1 min-w-0 text-left hover:bg-muted/50 rounded-sm px-1 -mx-1 transition-colors"
+                            onClick={() => toggleGroup(item.cwd)}
+                            aria-expanded={!collapsedGroups.has(item.cwd)}
+                            aria-label={`${truncateCwd(item.cwd)} 그룹 ${collapsedGroups.has(item.cwd) ? "펼치기" : "접기"}`}
+                          >
+                            {collapsedGroups.has(item.cwd) ? (
+                              <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                            )}
+                            <FolderOpen className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="font-mono text-2xs text-muted-foreground truncate">
+                                  {truncateCwd(item.cwd)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="font-mono text-xs">
+                                {item.cwd}
+                              </TooltipContent>
+                            </Tooltip>
+                            <Badge variant="secondary" className="font-mono text-[9px] ml-auto shrink-0">
+                              {item.count}
+                            </Badge>
+                          </button>
+                          <WorkspaceBadge
+                            cwd={item.cwd}
+                            matchedWorkspaceId={item.matchedWorkspaceId}
+                            workspaces={workspaces}
+                            overrideId={workspaceOverrides[item.cwd]}
+                            onOverride={(wsId) =>
+                              setWorkspaceOverrides((prev) => ({ ...prev, [item.cwd]: wsId }))
+                            }
+                          />
+                        </div>
                       ) : (
                         <div className="mb-1">
                           <SessionRow
@@ -314,6 +350,68 @@ function SessionRow({
         )}
       </Button>
     </div>
+  );
+}
+
+function WorkspaceBadge({
+  cwd,
+  matchedWorkspaceId,
+  workspaces,
+  overrideId,
+  onOverride,
+}: {
+  cwd: string;
+  matchedWorkspaceId: string | null;
+  workspaces: WorkspaceInfo[];
+  overrideId: string | undefined;
+  onOverride: (wsId: string) => void;
+}) {
+  // 워크스페이스가 없으면 표시 안 함
+  if (workspaces.length === 0) return null;
+
+  const effectiveId = overrideId ?? matchedWorkspaceId;
+  const matched = effectiveId
+    ? workspaces.find((ws) => ws.id === effectiveId)
+    : null;
+
+  // 자동 매칭 성공 + 수동 변경 없음: Badge 표시
+  if (matched && !overrideId) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge
+            variant="outline"
+            className="font-mono text-[9px] shrink-0 cursor-default border-success/30 text-success"
+          >
+            <Box className="h-2.5 w-2.5 mr-0.5" />
+            {matched.name}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent className="font-mono text-xs">
+          {matched.local_path}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // 매칭 실패 또는 수동 변경: Select 드롭다운
+  return (
+    <Select value={effectiveId ?? ""} onValueChange={onOverride}>
+      <SelectTrigger
+        className="h-6 w-[120px] shrink-0 font-mono text-[9px] px-1.5 border-border/50"
+        aria-label={`${cwd} 워크스페이스 선택`}
+      >
+        <Box className="h-2.5 w-2.5 mr-0.5 shrink-0 text-muted-foreground" />
+        <SelectValue placeholder="워크스페이스" />
+      </SelectTrigger>
+      <SelectContent>
+        {workspaces.map((ws) => (
+          <SelectItem key={ws.id} value={ws.id} className="font-mono text-xs">
+            {ws.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

@@ -3,6 +3,12 @@
 from pydantic import BaseModel
 
 
+class WorkspaceMatch(BaseModel):
+    workspace_id: str
+    workspace_name: str
+    local_path: str
+
+
 class LocalSessionMeta(BaseModel):
     session_id: str
     project_dir: str
@@ -16,11 +22,13 @@ class LocalSessionMeta(BaseModel):
     message_count: int = 0
     already_imported: bool = False
     continuation_ids: list[str] = []
+    matched_workspace: WorkspaceMatch | None = None
 
 
 class ImportLocalSessionRequest(BaseModel):
     session_id: str
     project_dir: str
+    workspace_id: str | None = None
 
 
 class ImportLocalSessionResponse(BaseModel):

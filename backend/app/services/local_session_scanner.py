@@ -279,7 +279,12 @@ class LocalSessionScanner:
             return None
 
     async def import_session(
-        self, session_id: str, project_dir: str, session_manager: SessionManager
+        self,
+        session_id: str,
+        project_dir: str,
+        session_manager: SessionManager,
+        workspace_id: str | None = None,
+        work_dir_override: str | None = None,
     ) -> ImportLocalSessionResponse:
         """로컬 세션을 대시보드로 import.
 
@@ -314,7 +319,10 @@ class LocalSessionScanner:
         )
 
         # 대시보드 세션 생성
-        dashboard_session = await session_manager.create(work_dir=meta.cwd)
+        dashboard_session = await session_manager.create(
+            work_dir=work_dir_override or meta.cwd,
+            workspace_id=workspace_id,
+        )
         dashboard_id = dashboard_session["id"]
 
         # claude_session_id 연결 (--resume에 사용)
