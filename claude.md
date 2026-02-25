@@ -91,6 +91,8 @@
   - Git 모니터 (상태 추적, 커밋, PR 생성, Rebase)
   - 전문 검색 (PostgreSQL TSVECTOR 기반)
   - 글로벌 설정 (새 세션의 기본값 일괄 관리)
+  - 워크스페이스 관리 (Git clone 기반, 자동 의존성 설치, Pull/Push 동기화)
+  - 팀 채팅 (다중 Claude 에이전트 팀 협업, Coordinator가 작업 분배)
 - **동작 방식**: FastAPI 백엔드가 Claude Code CLI를 subprocess로 실행하고, `--output-format stream-json`으로 출력을 파싱하여 WebSocket으로 프론트엔드에 전달. 모든 데이터는 PostgreSQL에 영속 저장
 
 ---
@@ -165,7 +167,9 @@ rocket-session/
 │   │   │           ├── templates.py  # 세션 템플릿
 │   │   │           ├── tags.py       # 세션 태그
 │   │   │           ├── analytics.py  # 분석 데이터
-│   │   │           └── workflow.py   # 워크플로우 관리
+│   │   │           ├── workflow.py   # 워크플로우 관리
+│   │   │           ├── workspaces.py  # 워크스페이스 CRUD + 동기화
+│   │   │           └── teams.py       # 팀 채팅
 │   │   ├── models/
 │   │   │   ├── base.py               # SQLAlchemy DeclarativeBase
 │   │   │   ├── session.py            # Session ORM 모델
@@ -177,7 +181,11 @@ rocket-session/
 │   │   │   ├── global_settings.py    # GlobalSettings ORM 모델
 │   │   │   ├── mcp_server.py         # McpServer ORM 모델
 │   │   │   ├── tag.py                # Tag + SessionTag ORM 모델
-│   │   │   └── template.py           # SessionTemplate ORM 모델
+│   │   │   ├── template.py           # SessionTemplate ORM 모델
+│   │   │   ├── workspace.py         # Workspace ORM 모델
+│   │   │   ├── team.py              # Team ORM 모델
+│   │   │   ├── team_message.py      # TeamMessage ORM 모델
+│   │   │   └── team_task.py         # TeamTask ORM 모델
 │   │   ├── repositories/
 │   │   │   ├── base.py               # BaseRepository
 │   │   │   ├── session_repo.py       # SessionRepository
@@ -190,7 +198,11 @@ rocket-session/
 │   │   │   ├── template_repo.py      # TemplateRepository
 │   │   │   ├── search_repo.py        # SearchRepository
 │   │   │   ├── analytics_repo.py     # AnalyticsRepository
-│   │   │   └── artifact_repo.py      # ArtifactRepository
+│   │   │   ├── artifact_repo.py      # ArtifactRepository
+│   │   │   ├── workspace_repo.py    # WorkspaceRepository
+│   │   │   ├── team_repo.py         # TeamRepository
+│   │   │   ├── team_task_repo.py    # TeamTaskRepository
+│   │   │   └── team_message_repo.py # TeamMessageRepository
 │   │   ├── schemas/
 │   │   │   ├── session.py            # 세션 Request/Response 스키마
 │   │   │   ├── workflow.py           # 워크플로우 스키마
@@ -202,7 +214,9 @@ rocket-session/
 │   │   │   ├── template.py           # 템플릿 스키마
 │   │   │   ├── tag.py                # 태그 스키마
 │   │   │   ├── analytics.py          # 분석 스키마
-│   │   │   └── search.py             # 검색 스키마
+│   │   │   ├── search.py             # 검색 스키마
+│   │   │   ├── workspace.py         # 워크스페이스 스키마
+│   │   │   └── team.py              # 팀 스키마
 │   │   └── services/
 │   │       ├── session_manager.py    # 세션 생명주기 관리
 │   │       ├── claude_runner.py      # Claude CLI subprocess + JSON 스트림 파싱
@@ -219,9 +233,18 @@ rocket-session/
 │   │       ├── jsonl_watcher.py      # JSONL 세션 실시간 감시
 │   │       ├── event_handler.py      # 이벤트 처리
 │   │       ├── workflow_service.py   # 워크플로우 3단계 관리 (Research → Plan → Implement)
-│   │       └── permission_mcp_server.py # Permission MCP 서버 (stdio)
-│   ├── alembic/                      # Alembic 마이그레이션
-│   │   ├── versions/                 # 마이그레이션 버전 파일
+│   │       ├── permission_mcp_server.py # Permission MCP 서버 (stdio)
+│   │       ├── workspace_service.py   # Git clone 기반 워크스페이스 관리
+│   │       ├── git_service.py         # Git 작업 래퍼 (clone, checkout, pull/push)
+│   │       ├── github_service.py      # GitHub API 연동 (PR 생성 등)
+│   │       ├── skills_service.py      # 슬래시 명령어 스킬 관리
+│   │       ├── session_process_manager.py # 세션별 프로세스 관리
+│   │       ├── team_service.py        # 팀 관리
+│   │       ├── team_coordinator.py    # 팀 작업 분배 코디네이터
+│   │       ├── team_task_service.py   # 팀 작업 관리
+│   │       └── team_message_service.py # 팀 메시지 관리
+│   ├── migrations/                       # Alembic 마이그레이션
+│   │   ├── versions/                     # 마이그레이션 버전 파일
 │   │   └── env.py
 │   ├── alembic.ini                   # Alembic 설정
 │   ├── tests/                        # pytest 테스트
@@ -248,6 +271,11 @@ rocket-session/
 │   │   │   ├── tag.ts                # 태그 타입
 │   │   │   ├── settings.ts           # 설정 타입
 │   │   │   ├── notification.ts       # 알림 타입
+│   │   │   ├── analytics.ts           # 분석 타입
+│   │   │   ├── template.ts            # 템플릿 타입
+│   │   │   ├── workspace.ts           # 워크스페이스 타입
+│   │   │   ├── team.ts                # 팀 타입
+│   │   │   ├── ws-events.ts           # WebSocket 이벤트 타입
 │   │   │   └── index.ts              # barrel export
 │   │   ├── store/
 │   │   │   ├── useSessionStore.ts    # Zustand - 활성 세션 ID, UI 상태
@@ -291,10 +319,19 @@ rocket-session/
 │   │   │   ├── notification/         # 알림 시스템
 │   │   │   │   ├── components/       # NotificationSettingsPanel
 │   │   │   │   └── hooks/            # useNotificationCenter, useNotificationSettings
-│   │   │   └── command-palette/      # 명령 팔레트 (Ctrl+K)
-│   │   │       ├── components/       # CommandPaletteProvider
-│   │   │       ├── commands/         # git.ts, chat.ts, session.ts
-│   │   │       └── hooks/            # useGlobalShortcuts
+│   │   │   ├── command-palette/      # 명령 팔레트 (Ctrl+K)
+│   │   │   │   ├── components/       # CommandPaletteProvider
+│   │   │   │   ├── commands/         # git.ts, chat.ts, session.ts
+│   │   │   │   └── hooks/            # useGlobalShortcuts
+│   │   │   ├── analytics/             # 분석 대시보드
+│   │   │   ├── dashboard/             # 대시보드 뷰
+│   │   │   ├── history/               # 히스토리 뷰
+│   │   │   ├── layout/                # 레이아웃 (Split View 등)
+│   │   │   ├── workspace/             # 워크스페이스 관리
+│   │   │   ├── team/                  # 팀 채팅
+│   │   │   ├── office/                # Office 뷰
+│   │   │   ├── tags/                  # 태그 관리
+│   │   │   └── template/              # 세션 템플릿
 │   │   └── lib/
 │   │       ├── utils.ts              # cn() 유틸리티 (clsx + tailwind-merge)
 │   │       └── api/                  # ApiClient + 도메인별 API 함수
@@ -356,9 +393,10 @@ rocket-session/
                     │
 ┌─────────────────────────────────────────────────────────────┐
 │              PostgreSQL (asyncpg + SQLAlchemy ORM)            │
-│  sessions · messages · file_changes · events                 │
+│  sessions · messages · file_changes · events · workspaces    │
 │  session_artifacts · artifact_annotations                    │
 │  global_settings · mcp_servers · tags · session_templates     │
+│  teams · team_messages · team_tasks                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -398,6 +436,15 @@ rocket-session/
 | `WorkflowService` | 3단계 워크플로우 관리 (Research → Plan → Implement) | PostgreSQL |
 | `JsonlWatcher` | JSONL 세션 파일 실시간 감시 | 인메모리 |
 | `EventHandler` | WebSocket 이벤트 처리/라우팅 | 없음 (stateless) |
+| `WorkspaceService` | Git clone 기반 워크스페이스 관리 | PostgreSQL + 비동기 clone task |
+| `GitService` | Git 작업 래퍼 (clone, checkout, worktree, pull/push) | 없음 (stateless) |
+| `GitHubService` | GitHub API 연동 (PR 생성 등) | 없음 |
+| `SkillsService` | 슬래시 명령어 스킬 관리 | 없음 (stateless) |
+| `SessionProcessManager` | 세션별 프로세스 관리 (PID 추적 등) | 인메모리 |
+| `TeamService` | 팀 생명주기 관리 | PostgreSQL |
+| `TeamCoordinator` | 팀 작업 분배 코디네이터 | 인메모리 |
+| `TeamTaskService` | 팀 작업 관리 | PostgreSQL |
+| `TeamMessageService` | 팀 메시지 관리 | PostgreSQL |
 
 > **참고**: 세션/메시지/파일 변경/이벤트는 PostgreSQL에 영속 저장됩니다. 프로세스 핸들만 인메모리로 관리되어 서버 재시작 시 실행 중인 세션의 프로세스 연결은 끊어집니다.
 
@@ -666,8 +713,11 @@ DATABASE_URL=postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_ses
 CLAUDE_ALLOWED_TOOLS=Read,Write,Edit,MultiEdit,Bash,Glob,Grep,WebFetch,WebSearch,TodoRead,TodoWrite  # 허용 도구
 BACKEND_HOST=0.0.0.0                      # 서버 호스트
 BACKEND_PORT=8101                         # 서버 포트
-UPLOAD_DIR=/tmp/rocket-session-uploads    # 파일 업로드 디렉토리
-CORS_ORIGINS=http://localhost:8100,http://localhost:8101  # CORS 허용 출처
+UPLOAD_DIR=/app/uploads                   # 파일 업로드 디렉토리
+CORS_EXTRA_ORIGINS=                       # 추가 CORS 허용 출처
+GIT_USER_NAME=                            # Git 커밋 사용자 이름
+GIT_USER_EMAIL=                           # Git 커밋 이메일
+GITHUB_TOKEN=                             # GitHub API 토큰 (PR 생성 등)
 ```
 
 ---
@@ -732,7 +782,7 @@ pnpm preview                               # 빌드 미리보기
 
 ## 10. 데이터베이스 스키마
 
-PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic (`backend/alembic/`)
+PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic (`backend/migrations/`)
 
 ### sessions (세션 메타데이터)
 
@@ -762,6 +812,7 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | additional_dirs | JSONB | 추가 작업 디렉토리 목록 |
 | fallback_model | String | 폴백 모델명 |
 | worktree_name | String | Git 워크트리 이름 |
+| workspace_id | String (FK → workspaces) | 워크스페이스 참조 |
 | parent_session_id | String | 포크 원본 세션 ID |
 | forked_at_message_id | Integer | 포크 시점 메시지 ID |
 | search_vector | TSVECTOR | 전문 검색 인덱스 (GIN) |
@@ -834,12 +885,27 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | payload | JSONB | JSON 페이로드 |
 | timestamp | Text | 생성 시각 |
 
+### workspaces (워크스페이스)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | String (PK) | 워크스페이스 ID |
+| name | String | 워크스페이스 이름 |
+| repo_url | Text | Git 저장소 URL |
+| branch | String | 기본 브랜치명 |
+| local_path | Text | 로컬 클론 경로 (/workspaces/{id}) |
+| status | String | cloning / ready / error / deleting |
+| error_message | Text | 오류 메시지 |
+| disk_usage_mb | Float | 디스크 사용량 (MB) |
+| created_at | DateTime(tz) | 생성 시각 |
+| updated_at | DateTime(tz) | 수정 시각 |
+
 ### global_settings (글로벌 설정)
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | id | String (PK) | 설정 ID (기본값: "default") |
-| work_dir | Text | 기본 작업 디렉토리 |
+| default_workspace_id | String | 기본 워크스페이스 ID |
 | allowed_tools | Text | 기본 허용 도구 |
 | system_prompt | Text | 기본 시스템 프롬프트 |
 | timeout_seconds | Integer | 기본 타임아웃 |
@@ -905,6 +971,40 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | created_at | Text | 생성 시각 |
 | updated_at | Text | 수정 시각 |
 
+### teams (팀)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | String (PK) | 팀 ID |
+| name | String | 팀 이름 |
+| workspace_id | String (FK → workspaces) | 워크스페이스 참조 |
+| goal | Text | 팀 목표/작업 설명 |
+| status | String | idle / running / completed / error |
+| created_at | DateTime(tz) | 생성 시각 |
+
+### team_messages (팀 메시지)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | Integer (PK, auto) | 메시지 ID |
+| team_id | String (FK → teams) | 팀 참조 |
+| role | String | user / coordinator / agent |
+| content | Text | 메시지 내용 |
+| sender_name | String | 발신자 이름 |
+| created_at | DateTime(tz) | 생성 시각 |
+
+### team_tasks (팀 작업)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | String (PK) | 작업 ID |
+| team_id | String (FK → teams) | 팀 참조 |
+| session_id | String (FK → sessions) | 담당 세션 참조 |
+| description | Text | 작업 설명 |
+| status | String | pending / in_progress / completed / error |
+| result | Text | 작업 결과 |
+| created_at | DateTime(tz) | 생성 시각 |
+
 > **마이그레이션**: Alembic으로 관리됩니다. `database.py`의 `initialize()` 메서드가 서버 시작 시 `alembic upgrade head`를 프로그래매틱으로 실행합니다. 새 마이그레이션 생성: `cd backend && uv run alembic revision --autogenerate -m "설명"`
 
 ---
@@ -947,7 +1047,7 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | `backend/app/core/database.py`        | PostgreSQL 엔진 + Alembic 마이그레이션 |
 | `backend/app/models/`                 | SQLAlchemy ORM 모델             |
 | `backend/app/repositories/`           | 데이터 접근 계층 (Repository)   |
-| `backend/alembic/`                    | Alembic 마이그레이션 파일       |
+| `backend/migrations/`                 | Alembic 마이그레이션 파일       |
 | `docker-compose.yml`                  | Docker Compose 구성             |
 | `backend/Dockerfile`                  | 백엔드 컨테이너 설정            |
 | `frontend/Dockerfile`                 | 프론트엔드 컨테이너 + nginx     |

@@ -15,7 +15,8 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                  API Layer (FastAPI)                         │
 │  Sessions · Files · Filesystem · Usage · Permissions · WS   │
-│  Settings · MCP · Templates · Tags · Analytics              │
+│  Settings · MCP · Templates · Tags · Analytics · Workspaces │
+│  Teams · Workflow                                            │
 └─────────────────────────────────────────────────────────────┘
                     │ subprocess (asyncio)
 ┌─────────────────────────────────────────────────────────────┐
@@ -26,8 +27,9 @@
                     │
 ┌─────────────────────────────────────────────────────────────┐
 │              PostgreSQL (asyncpg + SQLAlchemy ORM)            │
-│  sessions · messages · file_changes · events                 │
+│  sessions · messages · file_changes · events · workspaces    │
 │  global_settings · mcp_servers · tags · session_templates     │
+│  teams · team_messages · team_tasks                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -55,6 +57,8 @@
 - **전문 검색** — PostgreSQL TSVECTOR 기반 세션 전문 검색
 - **글로벌 설정** — 새 세션의 기본값을 일괄 관리
 - **JSONL 실시간 감시** — 로컬 Claude 세션 파일 변경 자동 감지
+- **워크스페이스** — Git clone 기반 워크스페이스 관리 (자동 의존성 설치, Pull/Push 동기화)
+- **팀 채팅** — 다중 Claude 에이전트 팀 협업 (Coordinator가 작업 분배)
 
 ## UI 구조 (컴포넌트 맵)
 
@@ -340,7 +344,7 @@ http://localhost:8100 에서 접속
 ```bash
 # 환경 변수 설정
 cp .env.docker.example .env.docker
-# CLAUDE_AUTH_DIR, HOST_PROJECTS_DIR 수정
+# CLAUDE_AUTH_DIR, CLAUDE_AUTH_FILE 수정
 
 docker compose up -d
 ```
@@ -369,7 +373,7 @@ rocket-session/
 │   │   ├── main.py                    # FastAPI 앱 팩토리 + CORS + 라이프사이클
 │   │   ├── core/
 │   │   │   ├── config.py              # Pydantic BaseSettings
-│   │   │   └── database.py            # PostgreSQL + SQLAlchemy 엔진 + Alembic 마이그레이션
+│   │   │   └── database.py            # PostgreSQL + SQLAlchemy 엔진 + 마이그레이션
 │   │   ├── api/
 │   │   │   ├── dependencies.py        # DI 싱글턴 프로바이더
 │   │   │   └── v1/
@@ -388,7 +392,9 @@ rocket-session/
 │   │   │           ├── templates.py   # 세션 템플릿
 │   │   │           ├── tags.py        # 세션 태그
 │   │   │           ├── analytics.py   # 분석 데이터
-│   │   │           └── workflow.py   # 워크플로우 관리
+│   │   │           ├── workflow.py    # 워크플로우 관리
+│   │   │           ├── workspaces.py  # 워크스페이스 CRUD + 동기화
+│   │   │           └── teams.py       # 팀 채팅
 │   │   ├── models/
 │   │   │   ├── base.py              # SQLAlchemy Base 클래스
 │   │   │   ├── session.py           # Session ORM 모델
@@ -400,7 +406,11 @@ rocket-session/
 │   │   │   ├── global_settings.py   # GlobalSettings ORM 모델
 │   │   │   ├── mcp_server.py        # McpServer ORM 모델
 │   │   │   ├── tag.py               # Tag + SessionTag ORM 모델
-│   │   │   └── template.py          # SessionTemplate ORM 모델
+│   │   │   ├── template.py          # SessionTemplate ORM 모델
+│   │   │   ├── workspace.py         # Workspace ORM 모델
+│   │   │   ├── team.py              # Team ORM 모델
+│   │   │   ├── team_message.py      # TeamMessage ORM 모델
+│   │   │   └── team_task.py         # TeamTask ORM 모델
 │   │   ├── repositories/
 │   │   │   ├── base.py              # BaseRepository
 │   │   │   ├── session_repo.py      # SessionRepository
@@ -413,39 +423,54 @@ rocket-session/
 │   │   │   ├── template_repo.py     # TemplateRepository
 │   │   │   ├── search_repo.py       # SearchRepository
 │   │   │   ├── analytics_repo.py    # AnalyticsRepository
-│   │   │   └── artifact_repo.py     # ArtifactRepository
-│   │   ├── schemas/                   # Pydantic 스키마
-│   │   │   ├── session.py
-│   │   │   ├── workflow.py           # 워크플로우 스키마
-│   │   │   ├── usage.py
-│   │   │   ├── filesystem.py
-│   │   │   ├── local_session.py
-│   │   │   ├── settings.py           # 글로벌 설정 스키마
-│   │   │   ├── mcp.py               # MCP 서버 스키마
-│   │   │   ├── template.py           # 템플릿 스키마
-│   │   │   ├── tag.py                # 태그 스키마
-│   │   │   ├── analytics.py          # 분석 스키마
-│   │   │   └── search.py             # 검색 스키마
-│   │   ├── services/
-│   │   │   ├── session_manager.py     # 세션 생명주기 관리
-│   │   │   ├── claude_runner.py       # Claude CLI subprocess + JSON 스트림 파싱
-│   │   │   ├── websocket_manager.py   # WS 연결 관리 + 이벤트 버퍼링
-│   │   │   ├── usage_service.py       # ccusage CLI 사용량 조회
-│   │   │   ├── filesystem_service.py  # 파일시스템 + Git 워크트리
-│   │   │   ├── local_session_scanner.py # 로컬 세션 스캐너
-│   │   │   ├── settings_service.py    # 글로벌 설정 관리
-│   │   │   ├── mcp_service.py         # MCP 서버 관리
-│   │   │   ├── template_service.py    # 세션 템플릿 관리
-│   │   │   ├── tag_service.py         # 태그 관리
-│   │   │   ├── search_service.py      # 전문 검색 (TSVECTOR)
-│   │   │   ├── analytics_service.py   # 분석 데이터 집계
-│   │   │   ├── jsonl_watcher.py       # JSONL 세션 실시간 감시
-│   │   │   ├── event_handler.py       # 이벤트 처리
-│   │   │   ├── workflow_service.py   # 워크플로우 3단계 관리
-│   │   │   └── permission_mcp_server.py # Permission MCP 서버
-│   │   └── alembic/                      # Alembic 마이그레이션
-│   │       ├── versions/                 # 마이그레이션 버전 파일
-│   │       └── env.py
+│   │   │   ├── artifact_repo.py     # ArtifactRepository
+│   │   │   ├── workspace_repo.py    # WorkspaceRepository
+│   │   │   ├── team_repo.py         # TeamRepository
+│   │   │   ├── team_task_repo.py    # TeamTaskRepository
+│   │   │   └── team_message_repo.py # TeamMessageRepository
+│   │   ├── schemas/
+│   │   │   ├── session.py           # 세션 스키마
+│   │   │   ├── workflow.py          # 워크플로우 스키마
+│   │   │   ├── usage.py             # 사용량 스키마
+│   │   │   ├── filesystem.py        # 파일시스템 + Git 스키마
+│   │   │   ├── local_session.py     # 로컬 세션 스키마
+│   │   │   ├── settings.py          # 글로벌 설정 스키마
+│   │   │   ├── mcp.py              # MCP 서버 스키마
+│   │   │   ├── template.py          # 템플릿 스키마
+│   │   │   ├── tag.py               # 태그 스키마
+│   │   │   ├── analytics.py         # 분석 스키마
+│   │   │   ├── search.py            # 검색 스키마
+│   │   │   ├── workspace.py         # 워크스페이스 스키마
+│   │   │   └── team.py              # 팀 스키마
+│   │   └── services/
+│   │       ├── session_manager.py     # 세션 생명주기 관리
+│   │       ├── session_process_manager.py # 세션별 프로세스 관리
+│   │       ├── claude_runner.py       # Claude CLI subprocess + JSON 스트림 파싱
+│   │       ├── websocket_manager.py   # WS 연결 관리 + 이벤트 버퍼링
+│   │       ├── usage_service.py       # ccusage CLI 사용량 조회
+│   │       ├── filesystem_service.py  # 파일시스템 + Git 워크트리
+│   │       ├── git_service.py         # Git 작업 래퍼 (clone, checkout, pull/push)
+│   │       ├── github_service.py      # GitHub API 연동 (PR 생성 등)
+│   │       ├── skills_service.py      # 슬래시 명령어 스킬 관리
+│   │       ├── local_session_scanner.py # 로컬 세션 스캐너
+│   │       ├── settings_service.py    # 글로벌 설정 관리
+│   │       ├── mcp_service.py         # MCP 서버 관리
+│   │       ├── template_service.py    # 세션 템플릿 관리
+│   │       ├── tag_service.py         # 태그 관리
+│   │       ├── search_service.py      # 전문 검색 (TSVECTOR)
+│   │       ├── analytics_service.py   # 분석 데이터 집계
+│   │       ├── jsonl_watcher.py       # JSONL 세션 실시간 감시
+│   │       ├── event_handler.py       # 이벤트 처리
+│   │       ├── workflow_service.py    # 워크플로우 3단계 관리
+│   │       ├── workspace_service.py   # Git clone 기반 워크스페이스 관리
+│   │       ├── permission_mcp_server.py # Permission MCP 서버
+│   │       ├── team_service.py        # 팀 관리
+│   │       ├── team_coordinator.py    # 팀 작업 분배 코디네이터
+│   │       ├── team_task_service.py   # 팀 작업 관리
+│   │       └── team_message_service.py # 팀 메시지 관리
+│   ├── migrations/                    # Alembic 마이그레이션
+│   │   ├── versions/                  # 마이그레이션 버전 파일
+│   │   └── env.py
 │   ├── alembic.ini                   # Alembic 설정
 │   ├── tests/
 │   ├── Dockerfile
@@ -457,17 +482,23 @@ rocket-session/
 │   │   ├── App.tsx                    # Provider 래핑
 │   │   ├── index.css                  # Deep Space 테마 (HSL CSS 변수)
 │   │   ├── config/env.ts              # 환경 설정
-│   │   ├── types/                     # 타입 정의
+│   │   ├── types/
 │   │   │   ├── session.ts             # SessionInfo, SessionStatus
-│   │   │   ├── workflow.ts           # Workflow 타입 (Phase, Artifact, Annotation)
+│   │   │   ├── workflow.ts            # Workflow 타입
 │   │   │   ├── message.ts             # Message, FileChange, WebSocketEvent
-│   │   │   ├── usage.ts              # Usage 타입
-│   │   │   ├── filesystem.ts         # FileSystem, Git 타입
-│   │   │   ├── local-session.ts      # LocalSession 타입
-│   │   │   ├── mcp.ts                # MCP 서버 타입
-│   │   │   ├── tag.ts                # 태그 타입
-│   │   │   ├── settings.ts           # 설정 타입
-│   │   │   └── notification.ts       # 알림 타입
+│   │   │   ├── usage.ts               # Usage 타입
+│   │   │   ├── filesystem.ts          # FileSystem, Git 타입
+│   │   │   ├── local-session.ts       # LocalSession 타입
+│   │   │   ├── mcp.ts                 # MCP 서버 타입
+│   │   │   ├── tag.ts                 # 태그 타입
+│   │   │   ├── settings.ts            # 설정 타입
+│   │   │   ├── notification.ts        # 알림 타입
+│   │   │   ├── analytics.ts           # 분석 타입
+│   │   │   ├── template.ts            # 템플릿 타입
+│   │   │   ├── workspace.ts           # 워크스페이스 타입
+│   │   │   ├── team.ts                # 팀 타입
+│   │   │   ├── ws-events.ts           # WebSocket 이벤트 타입
+│   │   │   └── index.ts              # barrel export
 │   │   ├── store/                     # Zustand 스토어
 │   │   ├── routes/                    # TanStack Router (파일 기반)
 │   │   │   ├── __root.tsx             # 루트 레이아웃
@@ -479,7 +510,7 @@ rocket-session/
 │   │   ├── features/
 │   │   │   ├── session/               # 세션 관리 (Sidebar, Settings, Import)
 │   │   │   ├── chat/                  # 채팅 (ChatPanel, MessageBubble, Input, Permission)
-│   │   │   ├── workflow/             # 워크플로우 (ProgressBar, PhaseCard, ArtifactViewer, ApprovalBar)
+│   │   │   ├── workflow/              # 워크플로우 (ProgressBar, PhaseCard, Artifact)
 │   │   │   ├── files/                 # 파일 (FilePanel, FileViewer, DiffViewer)
 │   │   │   ├── directory/             # 디렉토리 (Browser, Picker, Git, Worktree)
 │   │   │   ├── usage/                 # 사용량 (UsageFooter)
@@ -487,12 +518,27 @@ rocket-session/
 │   │   │   ├── mcp/                   # MCP 서버 관리 (설정, 연결)
 │   │   │   ├── settings/              # 글로벌 설정
 │   │   │   ├── notification/          # 알림 시스템 (사운드, 설정)
-│   │   │   └── command-palette/       # 명령 팔레트 (Ctrl+K)
+│   │   │   ├── command-palette/       # 명령 팔레트 (Ctrl+K)
+│   │   │   ├── analytics/             # 분석 대시보드
+│   │   │   ├── dashboard/             # 대시보드 뷰 (카드 그리드 + Git Monitor)
+│   │   │   ├── history/               # 히스토리 뷰
+│   │   │   ├── layout/                # 레이아웃 (Split View 등)
+│   │   │   ├── workspace/             # 워크스페이스 관리
+│   │   │   ├── team/                  # 팀 채팅
+│   │   │   ├── office/                # Office 뷰
+│   │   │   ├── tags/                  # 태그 관리
+│   │   │   └── template/              # 세션 템플릿
 │   │   └── lib/api/                   # API 클라이언트
 │   ├── design-system/                 # 디자인 토큰 + ESLint + Tailwind 플러그인
 │   ├── Dockerfile
 │   ├── nginx.conf
 │   └── package.json
+│
+├── cli/                               # NPX CLI 패키지
+│   ├── index.mjs                      # CLI 명령어 라우터
+│   ├── commands/                      # CLI 명령어 (start, stop, status, logs, init, config)
+│   ├── lib/                           # 유틸리티 (env, docker, preflight, paths, logger)
+│   └── templates/                     # docker-compose.yml 템플릿
 │
 ├── docker-compose.yml
 ├── CLAUDE.md                          # 개발 가이드
@@ -587,23 +633,48 @@ rocket-session/
 | `POST` | `/api/v1/sessions/{id}/workflow/approve` | 현재 단계 승인 |
 | `POST` | `/api/v1/sessions/{id}/workflow/request-revision` | 수정 요청 |
 
+### Workspaces
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/workspaces/` | 워크스페이스 목록 |
+| `POST` | `/api/v1/workspaces/` | 워크스페이스 생성 (Git clone 시작) |
+| `GET` | `/api/v1/workspaces/{id}` | 워크스페이스 상세 |
+| `PATCH` | `/api/v1/workspaces/{id}` | 워크스페이스 수정 |
+| `DELETE` | `/api/v1/workspaces/{id}` | 워크스페이스 삭제 |
+| `POST` | `/api/v1/workspaces/{id}/sync` | 워크스페이스 동기화 (Pull/Push) |
+
+### Teams
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| `POST` | `/api/v1/teams/` | 팀 생성 |
+| `GET` | `/api/v1/teams/` | 팀 목록 |
+| `GET` | `/api/v1/teams/{id}` | 팀 상세 |
+| `DELETE` | `/api/v1/teams/{id}` | 팀 삭제 |
+| `POST` | `/api/v1/teams/{id}/message` | 팀 메시지 전송 |
+| `GET` | `/api/v1/teams/{id}/messages` | 팀 메시지 목록 |
+| `POST` | `/api/v1/teams/{id}/stop` | 팀 중지 |
+
 ## 데이터베이스 스키마
 
 PostgreSQL + SQLAlchemy ORM, 마이그레이션: Alembic:
 
 | 테이블 | 설명 |
 |--------|------|
-| `sessions` | 세션 메타데이터 (id, status, work_dir, workflow_enabled/phase/phase_status, model, max_turns 등) |
+| `sessions` | 세션 메타데이터 (id, status, work_dir, workspace_id, workflow_enabled/phase/phase_status, model, max_turns 등) |
 | `messages` | 대화 기록 (role, content, cost, duration_ms, input_tokens, output_tokens, model) |
 | `file_changes` | 파일 변경 기록 (tool, file, timestamp) |
 | `events` | WebSocket 이벤트 버퍼 (seq, event_type, payload -- JSONB) -- 재연결 복구용 |
-| `global_settings` | 글로벌 기본 설정 (모든 세션 옵션의 기본값) |
+| `workspaces` | 워크스페이스 (repo_url, branch, local_path, status, disk_usage_mb) |
+| `global_settings` | 글로벌 기본 설정 (default_workspace_id, 모든 세션 옵션의 기본값) |
 | `mcp_servers` | MCP 서버 설정 (name, transport_type, command, url, env) |
 | `tags` | 태그 정의 (name, color) |
 | `session_tags` | 세션-태그 다대다 연결 |
 | `session_templates` | 세션 템플릿 (name, description, 모든 세션 옵션) |
 | `session_artifacts` | 워크플로우 아티팩트 (phase, title, content, status) |
 | `artifact_annotations` | 아티팩트 인라인 주석 (line_start/end, content, type, status) |
+| `teams` | 팀 (name, workspace_id, goal, status) |
+| `team_messages` | 팀 대화 기록 (team_id, role, content) |
+| `team_tasks` | 팀 작업 (team_id, session_id, description, status) |
 
 ## 동작 방식
 
