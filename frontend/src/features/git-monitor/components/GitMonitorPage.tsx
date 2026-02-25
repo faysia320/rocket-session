@@ -1,7 +1,12 @@
 import { useState, useCallback } from "react";
-import { GitBranch, Plus, Loader2, AlertTriangle, MoreVertical, Trash2 } from "lucide-react";
+import { GitBranch, GitPullRequest, Plus, Loader2, AlertTriangle, MoreVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -29,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useWorkspaces, useDeleteWorkspace } from "@/features/workspace/hooks/useWorkspaces";
 import { WorkspaceCreateDialog } from "@/features/workspace/components/WorkspaceCreateDialog";
+import { useGhStatus, useGitHubPRs } from "../hooks/useGitHubPRs";
 import { GitMonitorRepoList } from "./GitMonitorRepoList";
 import { GitRepoStatusTab } from "./GitRepoStatusTab";
 import { GitCommitHistoryTab } from "./GitCommitHistoryTab";
@@ -231,7 +237,13 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
     );
   }
 
-  // ready 상태: 액션 바 + Status/Commits | Pull Requests
+  // ready 상태: 액션 바 + Status | Commits 2분할
+  const { data: ghStatus } = useGhStatus(workspace.local_path);
+  const ghReady = ghStatus?.installed && ghStatus?.authenticated;
+  const { data: openPrData } = useGitHubPRs(workspace.local_path, "open", ghReady ?? false);
+  const openPrCount = openPrData?.prs?.length ?? 0;
+  const [prDialogOpen, setPrDialogOpen] = useState(false);
+
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* 액션 바 */}
@@ -256,6 +268,16 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
         {workspace.behind ? (
           <span className="font-mono text-2xs text-destructive shrink-0">↓{workspace.behind}</span>
         ) : null}
+        <Badge
+          variant="default"
+          className="font-mono text-2xs px-1.5 py-0 shrink-0 cursor-pointer gap-1 hover:bg-primary/80"
+          onClick={() => setPrDialogOpen(true)}
+          role="button"
+          aria-label={`Pull Requests: ${openPrCount}개 열림`}
+        >
+          <GitPullRequest className="h-2.5 w-2.5" />
+          PR {openPrCount}
+        </Badge>
         <div className="flex-1" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -275,37 +297,40 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
         </DropdownMenu>
       </div>
 
-      {/* 좌우 2분할: Status/Commits (좌) | Pull Requests (우) */}
+      {/* 좌우 2분할: Status (좌) | Commits (우) */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* 좌측: Status / Commits 서브탭 */}
+        {/* 좌측: Status */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden border-r border-border">
-          <Tabs defaultValue="status" className="flex-1 flex flex-col min-h-0">
-            <TabsList className="mx-4 mt-3 shrink-0">
-              <TabsTrigger value="status" className="gap-1.5 font-mono text-xs">
-                Status
-              </TabsTrigger>
-              <TabsTrigger value="commits" className="gap-1.5 font-mono text-xs">
-                Commits
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="status" className="flex-1 overflow-auto px-4 py-3 m-0">
-              <GitRepoStatusTab repoPath={workspace.local_path} />
-            </TabsContent>
-
-            <TabsContent value="commits" className="flex-1 overflow-auto px-4 py-3 m-0">
-              <GitCommitHistoryTab repoPath={workspace.local_path} />
-            </TabsContent>
-          </Tabs>
+          <div className="shrink-0 px-4 pt-3 pb-1">
+            <h3 className="font-mono text-xs font-semibold text-muted-foreground">Status</h3>
+          </div>
+          <div className="flex-1 overflow-auto px-4 py-2">
+            <GitRepoStatusTab repoPath={workspace.local_path} />
+          </div>
         </div>
 
-        {/* 우측: Pull Requests */}
+        {/* 우측: Commits */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className="flex-1 overflow-auto px-4 py-3">
-            <GitHubPRTab repoPath={workspace.local_path} />
+          <div className="shrink-0 px-4 pt-3 pb-1">
+            <h3 className="font-mono text-xs font-semibold text-muted-foreground">Commits</h3>
+          </div>
+          <div className="flex-1 overflow-auto px-4 py-2">
+            <GitCommitHistoryTab repoPath={workspace.local_path} />
           </div>
         </div>
       </div>
+
+      {/* PR Dialog */}
+      <Dialog open={prDialogOpen} onOpenChange={setPrDialogOpen}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col overflow-hidden p-0 gap-0" aria-describedby={undefined}>
+          <DialogHeader className="px-6 py-4 border-b border-border shrink-0">
+            <DialogTitle className="font-mono text-sm font-semibold">Pull Requests</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto px-6 py-4">
+            <GitHubPRTab repoPath={workspace.local_path} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
