@@ -146,12 +146,7 @@ class JsonlWatcher:
         if session:
             turn_state["work_dir"] = session.get("work_dir", "")
 
-        # 세션이 IDLE인 경우에만 RUNNING으로 전환 (ERROR 상태 덮어쓰기 방지)
-        if session and session.get("status") == SessionStatus.IDLE:
-            await self._session_manager.update_status(session_id, SessionStatus.RUNNING)
-            await self._ws_manager.broadcast_event(
-                session_id, {"type": WsEventType.STATUS, "status": SessionStatus.RUNNING}
-            )
+        activated_running = False
 
         try:
             while True:
@@ -167,6 +162,19 @@ class JsonlWatcher:
                     logger.info("JSONL 파일 삭제됨 (stat 실패), 감시 종료: %s", path)
                     break
                 if current_size > file_size:
+                    # 실제 새 데이터 감지 시에만 RUNNING 전환
+                    if not activated_running:
+                        session_now = await self._session_manager.get(session_id)
+                        if session_now and session_now.get("status") == SessionStatus.IDLE:
+                            await self._session_manager.update_status(
+                                session_id, SessionStatus.RUNNING
+                            )
+                            await self._ws_manager.broadcast_event(
+                                session_id,
+                                {"type": WsEventType.STATUS, "status": SessionStatus.RUNNING},
+                            )
+                        activated_running = True
+
                     # 새 데이터 있음
                     new_lines = await asyncio.to_thread(
                         self._read_new_lines, path, file_size
