@@ -17,6 +17,20 @@ class DirectoryListResponse(BaseModel):
     entries: list[DirectoryEntry]
 
 
+class GitRepoEntry(BaseModel):
+    """스캔으로 발견된 Git 저장소 항목."""
+
+    name: str
+    path: str
+
+
+class GitRepoScanResponse(BaseModel):
+    """Git 저장소 스캔 결과."""
+
+    repos: list[GitRepoEntry]
+    scanned_path: str
+
+
 class GitInfo(BaseModel):
     is_git_repo: bool = False
     branch: Optional[str] = None

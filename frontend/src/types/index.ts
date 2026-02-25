@@ -54,6 +54,8 @@ export type {
   PRReviewJobResponse,
   PRReviewStatusResponse,
   PRReviewSubmitResponse,
+  GitRepoEntry,
+  GitRepoScanResponse,
 } from "./filesystem";
 export type {
   LocalSessionMeta,

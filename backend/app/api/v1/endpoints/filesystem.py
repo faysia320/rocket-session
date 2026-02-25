@@ -16,6 +16,7 @@ from app.schemas.filesystem import (
     GitHubPRListResponse,
     GitInfo,
     GitLogResponse,
+    GitRepoScanResponse,
     GitStatusResponse,
     PRReviewJobResponse,
     PRReviewRequest,
@@ -44,6 +45,21 @@ async def list_directory(
         raise HTTPException(status_code=400, detail=str(e))
     except PermissionError:
         raise HTTPException(status_code=403, detail="접근 권한이 없습니다")
+
+
+@router.get("/scan-git-repos", response_model=GitRepoScanResponse)
+async def scan_git_repos(
+    path: str = Query(
+        default="", description="탐색 시작 경로 (미지정 시 작업 디렉토리 부모)"
+    ),
+    max_depth: int = Query(default=2, ge=1, le=4, description="최대 탐색 깊이"),
+    fs: FilesystemService = Depends(get_filesystem_service),
+):
+    """지정 경로 아래에서 Git 저장소를 스캔합니다."""
+    try:
+        return await fs.scan_git_repos(path, max_depth)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/git-info", response_model=GitInfo)

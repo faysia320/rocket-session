@@ -11,12 +11,14 @@ import { useWorkspaces } from "../hooks/useWorkspaces";
 interface WorkspaceSelectorProps {
   value: string | null;
   onChange: (workspaceId: string | null) => void;
+  excludeIds?: string[];
 }
 
-export function WorkspaceSelector({ value, onChange }: WorkspaceSelectorProps) {
+export function WorkspaceSelector({ value, onChange, excludeIds }: WorkspaceSelectorProps) {
   const { data: workspaces, isLoading } = useWorkspaces();
 
-  const readyWorkspaces = workspaces?.filter((ws) => ws.status === "ready") ?? [];
+  const readyWorkspaces = (workspaces?.filter((ws) => ws.status === "ready") ?? [])
+    .filter((ws) => !excludeIds?.includes(ws.id));
 
   if (isLoading) {
     return (

@@ -13,6 +13,8 @@ from pathlib import Path
 from app.schemas.filesystem import (
     DirectoryEntry,
     DirectoryListResponse,
+    GitRepoEntry,
+    GitRepoScanResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -108,3 +110,65 @@ class FilesystemService:
             parent=parent,
             entries=entries,
         )
+
+    async def scan_git_repos(
+        self, path: str = "", max_depth: int = 2
+    ) -> GitRepoScanResponse:
+        """지정 경로 아래에서 Git 저장소를 재귀 탐색합니다.
+
+        Args:
+            path: 탐색 시작 경로 (미지정 시 root_dir의 부모 또는 홈 디렉토리)
+            max_depth: 최대 탐색 깊이 (기본: 2)
+        """
+        if path:
+            expanded = os.path.expanduser(path)
+            base = Path(expanded).resolve()
+        elif self._root_dir:
+            # root_dir의 부모 디렉토리에서 스캔 (형제 저장소도 발견하기 위해)
+            parent = self._root_dir.parent
+            base = parent if parent != self._root_dir else self._root_dir
+        else:
+            base = Path.home()
+
+        if not base.exists() or not base.is_dir():
+            raise ValueError(f"경로가 존재하지 않습니다: {path or str(base)}")
+
+        skip_names = frozenset(
+            {
+                "node_modules",
+                "__pycache__",
+                ".venv",
+                "venv",
+                "dist",
+                "build",
+                "target",
+                ".cache",
+                ".npm",
+                ".pnpm-store",
+            }
+        )
+
+        def _scan(target: Path, remaining: int) -> list[GitRepoEntry]:
+            repos: list[GitRepoEntry] = []
+            if remaining <= 0:
+                return repos
+            try:
+                for item in sorted(target.iterdir()):
+                    if item.name.startswith("."):
+                        continue
+                    if not item.is_dir():
+                        continue
+                    if item.name in skip_names:
+                        continue
+                    if (item / ".git").exists():
+                        repos.append(
+                            GitRepoEntry(name=item.name, path=str(item))
+                        )
+                    elif remaining > 1:
+                        repos.extend(_scan(item, remaining - 1))
+            except PermissionError:
+                pass
+            return repos
+
+        repos = await asyncio.to_thread(_scan, base, max_depth)
+        return GitRepoScanResponse(repos=repos, scanned_path=str(base))

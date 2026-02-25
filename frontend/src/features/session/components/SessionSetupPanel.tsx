@@ -1,17 +1,16 @@
 import { useState, useEffect, useRef } from "react";
-import { Rocket, GitBranch, FolderPlus, Globe, Plus, X, Workflow } from "lucide-react";
+import { Rocket, GitBranch, Globe, Plus, X, Workflow, ExternalLink } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
-import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 import { TemplateSelector } from "@/features/template/components/TemplateSelector";
 import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
-import { WorkspaceCreateDialog } from "@/features/workspace/components/WorkspaceCreateDialog";
+import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import type { TemplateInfo } from "@/types";
 
 interface SessionSetupPanelProps {
@@ -32,20 +31,20 @@ interface SessionSetupPanelProps {
 }
 
 export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps) {
-  const [workDir, setWorkDir] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [creating, setCreating] = useState(false);
   const [useWorktree, setUseWorktree] = useState(false);
   const [worktreeName, setWorktreeName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [additionalDirs, setAdditionalDirs] = useState<string[]>([]);
+  const [additionalWorkspaceIds, setAdditionalWorkspaceIds] = useState<string[]>([]);
   const [fallbackModel, setFallbackModel] = useState("");
   const [workflowEnabled, setWorkflowEnabled] = useState(true);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
-  const [wsCreateOpen, setWsCreateOpen] = useState(false);
   const { data: globalSettings } = useGlobalSettings();
-  const { gitInfo } = useGitInfo(workDir);
+  const { data: workspaces } = useWorkspaces();
+
+  const readyWorkspaces = workspaces?.filter((ws) => ws.status === "ready") ?? [];
 
   // 글로벌 설정의 기본값이 이미 적용되었는지 추적
   const globalAppliedRef = useRef(false);
@@ -53,9 +52,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   // 글로벌 기본값 적용
   useEffect(() => {
     if (!globalAppliedRef.current && globalSettings) {
-      if (!workDir && globalSettings.work_dir) {
-        setWorkDir(globalSettings.work_dir);
-      }
       if (globalSettings.workflow_enabled) {
         setWorkflowEnabled(true);
       }
@@ -69,17 +65,11 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       return;
     }
     setSelectedTemplateId(template.id);
-    if (template.work_dir) {
-      setWorkDir(template.work_dir);
-    }
     if (template.system_prompt) {
       setSystemPrompt(template.system_prompt);
     }
     if (template.timeout_seconds) {
       setTimeoutMinutes(String(template.timeout_seconds / 60));
-    }
-    if (template.additional_dirs?.length) {
-      setAdditionalDirs(template.additional_dirs);
     }
     if (template.fallback_model) {
       setFallbackModel(template.fallback_model);
@@ -108,9 +98,12 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       if (selectedTemplateId) {
         options.template_id = selectedTemplateId;
       }
-      const validDirs = additionalDirs.filter((d) => d.trim());
-      if (validDirs.length > 0) {
-        options.additional_dirs = validDirs;
+      // additionalWorkspaceIds → local_path 배열로 변환
+      const additionalPaths = additionalWorkspaceIds
+        .map((id) => readyWorkspaces.find((ws) => ws.id === id)?.local_path)
+        .filter(Boolean) as string[];
+      if (additionalPaths.length > 0) {
+        options.additional_dirs = additionalPaths;
       }
       if (fallbackModel.trim()) {
         options.fallback_model = fallbackModel.trim();
@@ -123,7 +116,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         options.workspace_id = selectedWorkspaceId;
       }
       onCreate(
-        selectedWorkspaceId ? undefined : workDir.trim(),
+        undefined,
         Object.keys(options).length > 0 ? options : undefined,
       );
     } catch {
@@ -162,43 +155,27 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         <div className="space-y-2">
           <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-2">
             <Globe className="h-3.5 w-3.5" />
-            WORKSPACE
+            WORKSPACE <span className="text-destructive">*</span>
           </Label>
           <p className="font-mono text-2xs text-muted-foreground/70">
             Git 저장소를 클론한 워크스페이스를 선택합니다.
           </p>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <WorkspaceSelector
-                value={selectedWorkspaceId}
-                onChange={setSelectedWorkspaceId}
-              />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="font-mono text-xs shrink-0"
-              onClick={() => setWsCreateOpen(true)}
-            >
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              새 워크스페이스
-            </Button>
-          </div>
+          <WorkspaceSelector
+            value={selectedWorkspaceId}
+            onChange={setSelectedWorkspaceId}
+            excludeIds={additionalWorkspaceIds}
+          />
+          <Link
+            to="/git-monitor"
+            className="inline-flex items-center gap-1 font-mono text-2xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            워크스페이스 관리 →
+          </Link>
         </div>
 
-        {/* Working Directory (워크스페이스 미선택 시에만) */}
-        {!selectedWorkspaceId ? (
-          <div className="space-y-2">
-            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-              WORKING DIRECTORY {!selectedWorkspaceId ? <span className="text-destructive">*</span> : null}
-            </Label>
-            <DirectoryPicker value={workDir} onChange={setWorkDir} />
-          </div>
-        ) : null}
-
-        {/* Git Worktree */}
-        {gitInfo?.is_git_repo ? (
+        {/* Git Worktree (워크스페이스 선택 시 항상 표시) */}
+        {selectedWorkspaceId ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label
@@ -228,25 +205,31 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           </div>
         ) : null}
 
-        {/* Additional Directories */}
+        {/* Additional Workspaces */}
         <div className="space-y-2">
           <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-2">
-            <FolderPlus className="h-3.5 w-3.5" />
-            ADDITIONAL DIRECTORIES
+            <Globe className="h-3.5 w-3.5" />
+            ADDITIONAL WORKSPACES
           </Label>
           <p className="font-mono text-2xs text-muted-foreground/70">
-            Claude가 접근할 추가 디렉토리입니다. (--add-dir 플래그)
+            Claude가 접근할 추가 워크스페이스입니다. (--add-dir 플래그)
           </p>
-          {additionalDirs.map((dir, idx) => (
+          {additionalWorkspaceIds.map((wsId, idx) => (
             <div key={idx} className="flex gap-2 items-center">
               <div className="flex-1">
-                <DirectoryPicker
-                  value={dir}
+                <WorkspaceSelector
+                  value={wsId}
                   onChange={(val) => {
-                    const updated = [...additionalDirs];
-                    updated[idx] = val;
-                    setAdditionalDirs(updated);
+                    if (val) {
+                      const updated = [...additionalWorkspaceIds];
+                      updated[idx] = val;
+                      setAdditionalWorkspaceIds(updated);
+                    }
                   }}
+                  excludeIds={[
+                    ...(selectedWorkspaceId ? [selectedWorkspaceId] : []),
+                    ...additionalWorkspaceIds.filter((_, i) => i !== idx),
+                  ]}
                 />
               </div>
               <Button
@@ -254,8 +237,8 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                onClick={() => setAdditionalDirs(additionalDirs.filter((_, i) => i !== idx))}
-                aria-label="디렉토리 제거"
+                onClick={() => setAdditionalWorkspaceIds(additionalWorkspaceIds.filter((_, i) => i !== idx))}
+                aria-label="워크스페이스 제거"
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
@@ -266,10 +249,10 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             variant="outline"
             size="sm"
             className="font-mono text-xs"
-            onClick={() => setAdditionalDirs([...additionalDirs, ""])}
+            onClick={() => setAdditionalWorkspaceIds([...additionalWorkspaceIds, ""])}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
-            디렉토리 추가
+            워크스페이스 추가
           </Button>
         </div>
 
@@ -345,7 +328,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           <Button
             className="flex-1 font-mono text-sm font-semibold"
             onClick={handleCreate}
-            disabled={creating || (!selectedWorkspaceId && !workDir.trim()) || (useWorktree && !worktreeName.trim())}
+            disabled={creating || !selectedWorkspaceId || (useWorktree && !worktreeName.trim())}
           >
             <Rocket className="h-4 w-4 mr-2" />
             {creating
@@ -363,7 +346,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         </div>
       </Card>
 
-      <WorkspaceCreateDialog open={wsCreateOpen} onOpenChange={setWsCreateOpen} />
     </div>
   );
 }

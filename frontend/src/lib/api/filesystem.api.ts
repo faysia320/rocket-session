@@ -15,11 +15,19 @@ import type {
   PRReviewSubmitResponse,
   WorktreeListResponse,
   SkillListResponse,
+  GitRepoScanResponse,
 } from "@/types";
 
 export const filesystemApi = {
   listDirectory: (path: string = "~") =>
     api.get<DirectoryListResponse>(`/api/fs/list?path=${encodeURIComponent(path)}`),
+
+  scanGitRepos: (path?: string, maxDepth?: number) => {
+    const params = new URLSearchParams();
+    if (path) params.set("path", path);
+    if (maxDepth) params.set("max_depth", String(maxDepth));
+    return api.get<GitRepoScanResponse>(`/api/fs/scan-git-repos?${params}`);
+  },
 
   getGitInfo: (path: string) =>
     api.get<GitInfo>(`/api/fs/git-info?path=${encodeURIComponent(path)}`),

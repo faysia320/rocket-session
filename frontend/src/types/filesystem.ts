@@ -13,6 +13,16 @@ export interface DirectoryListResponse {
   entries: DirectoryEntry[];
 }
 
+export interface GitRepoEntry {
+  name: string;
+  path: string;
+}
+
+export interface GitRepoScanResponse {
+  repos: GitRepoEntry[];
+  scanned_path: string;
+}
+
 export interface GitInfo {
   is_git_repo: boolean;
   branch: string | null;
