@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -51,7 +51,9 @@ class Session(Base):
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
     additional_dirs: Mapped[list | None] = mapped_column(JSONB, default=None)
     fallback_model: Mapped[str | None] = mapped_column(String, default=None)
-    workspace_id: Mapped[str | None] = mapped_column(String, default=None)
+    workspace_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("workspaces.id", ondelete="SET NULL"), default=None
+    )
     worktree_name: Mapped[str | None] = mapped_column(String, default=None)
     parent_session_id: Mapped[str | None] = mapped_column(String, default=None)
     forked_at_message_id: Mapped[int | None] = mapped_column(Integer, default=None)
@@ -79,6 +81,11 @@ class Session(Base):
         "SessionTag",
         back_populates="session",
         cascade="all, delete-orphan",
+        lazy="raise",
+    )
+    workspace: Mapped["Workspace | None"] = relationship(
+        "Workspace",
+        back_populates="sessions",
         lazy="raise",
     )
 
