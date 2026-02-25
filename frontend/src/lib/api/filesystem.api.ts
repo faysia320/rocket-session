@@ -20,6 +20,7 @@ import type {
   GitCheckoutResponse,
   GitStageResponse,
   GitCommitResponse,
+  GitFetchResponse,
 } from "@/types";
 
 export const filesystemApi = {
@@ -128,4 +129,7 @@ export const filesystemApi = {
 
   commitGit: (path: string, message: string) =>
     api.post<GitCommitResponse>("/api/fs/git-commit", { path, message }),
+
+  fetchRemote: (path: string) =>
+    api.post<GitFetchResponse>("/api/fs/git-fetch", { path }),
 };

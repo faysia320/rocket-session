@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronsUpDown, GitBranch, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, GitBranch, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,7 +12,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { useGitBranches, useCheckoutBranch } from "../hooks/useGitActions";
+import { useGitBranches, useCheckoutBranch, useFetchRemote } from "../hooks/useGitActions";
 
 interface BranchSelectProps {
   repoPath: string;
@@ -24,6 +24,7 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
   const [open, setOpen] = useState(false);
   const { data, isLoading } = useGitBranches(repoPath);
   const checkoutMutation = useCheckoutBranch(repoPath);
+  const fetchMutation = useFetchRemote(repoPath);
 
   const branches = data?.branches ?? [];
 
@@ -55,7 +56,22 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
         <Command>
-          <CommandInput placeholder="브랜치 검색..." className="h-8 text-xs" />
+          <div className="flex items-center gap-1 px-1">
+            <CommandInput placeholder="브랜치 검색..." className="h-8 text-xs flex-1" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              disabled={fetchMutation.isPending}
+              onClick={(e) => {
+                e.stopPropagation();
+                fetchMutation.mutate();
+              }}
+              aria-label="원격 브랜치 갱신"
+            >
+              <RefreshCw className={cn("h-3 w-3", fetchMutation.isPending && "animate-spin")} />
+            </Button>
+          </div>
           <CommandList>
             <CommandEmpty className="py-3 text-xs">
               {isLoading ? (

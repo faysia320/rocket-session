@@ -60,6 +60,7 @@ export type {
   GitCheckoutResponse,
   GitStageResponse,
   GitCommitResponse,
+  GitFetchResponse,
 } from "./filesystem";
 export type {
   WorkspaceMatch,

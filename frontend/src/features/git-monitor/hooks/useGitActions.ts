@@ -52,3 +52,20 @@ export function useStageAndCommit(repoPath: string) {
     },
   });
 }
+
+/** 원격 ref 갱신 (git fetch --prune). */
+export function useFetchRemote(repoPath: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => filesystemApi.fetchRemote(repoPath),
+    onSuccess: (data) => {
+      toast.success(data.message || "원격 브랜치 갱신 완료");
+      queryClient.invalidateQueries({ queryKey: ["git-branches", repoPath] });
+      queryClient.invalidateQueries({ queryKey: ["git-info"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
+    onError: () => {
+      toast.error("원격 갱신에 실패했습니다");
+    },
+  });
+}

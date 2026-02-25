@@ -208,3 +208,8 @@ export interface GitCommitResponse {
   commit_hash: string;
   error?: string | null;
 }
+
+export interface GitFetchResponse {
+  success: boolean;
+  message: string;
+}
