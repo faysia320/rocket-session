@@ -9,7 +9,6 @@ import type {
   AskUserQuestionItem,
   MessageUpdate,
 } from "@/types";
-import type { WorkflowCommitSuggestion } from "@/types/workflow";
 import { getWsUrl, getBackoffDelay, RECONNECT_MAX_ATTEMPTS } from "./useClaudeSocket.utils";
 import {
   claudeSocketReducer,
@@ -76,9 +75,6 @@ export function useClaudeSocket(sessionId: string) {
               : null,
           fileChanges: data.file_changes
             ? (data.file_changes as FileChange[])
-            : null,
-          commitSuggestion: data.commit_suggestion
-            ? (data.commit_suggestion as WorkflowCommitSuggestion)
             : null,
         };
         dispatch(action);
@@ -260,7 +256,6 @@ export function useClaudeSocket(sessionId: string) {
       case "workflow_completed":
         dispatch({
           type: "WS_WORKFLOW_COMPLETED",
-          commitSuggestion: data.commit_suggestion as import("@/types/workflow").WorkflowCommitSuggestion | undefined,
         });
         break;
 
@@ -620,10 +615,6 @@ export function useClaudeSocket(sessionId: string) {
     connect();
   }, [connect]);
 
-  const clearCommitSuggestion = useCallback(() => {
-    dispatch({ type: "CLEAR_COMMIT_SUGGESTION" });
-  }, []);
-
   const respondPermission = useCallback(
     (
       permissionId: string,
@@ -665,7 +656,6 @@ export function useClaudeSocket(sessionId: string) {
     tokenUsage: state.tokenUsage,
     pendingAnswerCount: state.pendingAnswerCount,
     pinnedTodos: state.pinnedTodos,
-    commitSuggestion: state.commitSuggestion,
     sendPrompt,
     stopExecution,
     clearMessages,
@@ -676,6 +666,5 @@ export function useClaudeSocket(sessionId: string) {
     answerQuestion,
     confirmAnswers,
     confirmAndSendAnswers,
-    clearCommitSuggestion,
   };
 }

@@ -17,7 +17,6 @@ import {
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { FileChange, GitInfo, ToolUseMsg } from "@/types";
-import type { WorkflowCommitSuggestion } from "@/types/workflow";
 import type { ReconnectState } from "../hooks/useClaudeSocket";
 interface ChatHeaderProps {
   connected: boolean;
@@ -47,9 +46,6 @@ interface ChatHeaderProps {
   onFork?: () => void;
   workflowEnabled?: boolean;
   onEnableWorkflow?: () => void;
-  commitSuggestion?: WorkflowCommitSuggestion | null;
-  onCommitSuccess?: (hash: string) => void;
-  onDismissCommit?: () => void;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -79,9 +75,6 @@ export const ChatHeader = memo(function ChatHeader({
   onFork,
   workflowEnabled,
   onEnableWorkflow,
-  commitSuggestion,
-  onCommitSuccess,
-  onDismissCommit,
 }: ChatHeaderProps) {
   const isEffectivelyRunning = status === "running" || activeTools.length > 0;
 
@@ -241,9 +234,6 @@ export const ChatHeader = memo(function ChatHeader({
                 sessionId={sessionId}
                 fileChanges={fileChanges}
                 onFileClick={onFileClick}
-                commitSuggestion={commitSuggestion}
-                onCommitSuccess={onCommitSuccess}
-                onDismissCommit={onDismissCommit}
               />
             </SheetContent>
           </Sheet>

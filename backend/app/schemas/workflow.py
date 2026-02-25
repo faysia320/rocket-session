@@ -88,29 +88,3 @@ class RequestRevisionRequest(BaseModel):
     """수정 요청."""
 
     feedback: str = Field(..., min_length=1)
-
-
-# ─── 커밋 관련 스키마 ───
-
-
-class WorkflowCommitSuggestion(BaseModel):
-    """워크플로우 커밋 메시지 제안."""
-
-    title: str
-    body: str
-    full_message: str
-    changed_files: list[str] = []
-
-
-class WorkflowCommitRequest(BaseModel):
-    """워크플로우 커밋 실행 요청."""
-
-    message: str = Field(..., min_length=1)
-
-
-class WorkflowCommitResponse(BaseModel):
-    """워크플로우 커밋 실행 결과."""
-
-    success: bool
-    commit_hash: str = ""
-    error: Optional[str] = None

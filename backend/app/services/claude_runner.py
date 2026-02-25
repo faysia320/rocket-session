@@ -1043,25 +1043,9 @@ class ClaudeRunner:
                         workflow_phase_status="completed",
                     )
 
-                    # 커밋 메시지 자동 생성
-                    commit_suggestion = None
-                    try:
-                        suggestion = await workflow_service.generate_commit_suggestion(
-                            session_id
-                        )
-                        commit_suggestion = suggestion
-                    except Exception:
-                        logger.warning(
-                            "세션 %s: 커밋 메시지 자동 생성 실패",
-                            session_id,
-                            exc_info=True,
-                        )
-
-                    event_payload: dict = {"type": WsEventType.WORKFLOW_COMPLETED}
-                    if commit_suggestion:
-                        event_payload["commit_suggestion"] = commit_suggestion
-
-                    await ws_manager.broadcast_event(session_id, event_payload)
+                    await ws_manager.broadcast_event(
+                        session_id, {"type": WsEventType.WORKFLOW_COMPLETED}
+                    )
                     logger.info("워크플로우 완료: session=%s", session_id)
                 except Exception:
                     logger.warning(

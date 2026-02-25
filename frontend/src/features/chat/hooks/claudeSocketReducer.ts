@@ -9,7 +9,6 @@ import type {
   AskUserQuestionItem,
   MessageUpdate,
 } from "@/types";
-import type { WorkflowCommitSuggestion } from "@/types/workflow";
 import { getMessageText } from "@/types";
 import { generateMessageId, RECONNECT_MAX_ATTEMPTS } from "./useClaudeSocket.utils";
 
@@ -68,8 +67,6 @@ export interface ClaudeSocketState {
   pendingAnswerCount: number;
   /** PinnedTodoBar에 표시할 최신 TodoWrite 상태 */
   pinnedTodos: TodoItem[];
-  /** 워크플로우 완료 시 자동 생성된 커밋 메시지 제안 */
-  commitSuggestion: WorkflowCommitSuggestion | null;
 }
 
 export const initialState: ClaudeSocketState = {
@@ -94,7 +91,6 @@ export const initialState: ClaudeSocketState = {
   },
   pendingAnswerCount: 0,
   pinnedTodos: [],
-  commitSuggestion: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -145,7 +141,6 @@ export type ClaudeSocketAction =
         };
       } | null;
       fileChanges: FileChange[] | null;
-      commitSuggestion: WorkflowCommitSuggestion | null;
     }
   | { type: "WS_SESSION_INFO"; claudeSessionId: string }
   | { type: "WS_STATUS"; status: "idle" | "running" | "error" }
@@ -190,9 +185,8 @@ export type ClaudeSocketAction =
   | { type: "WS_WORKFLOW_PHASE_COMPLETED"; phase: string }
   | { type: "WS_WORKFLOW_PHASE_APPROVED"; phase: string; nextPhase: string | null }
   | { type: "WS_WORKFLOW_PHASE_REVISION"; phase: string }
-  | { type: "WS_WORKFLOW_COMPLETED"; commitSuggestion?: WorkflowCommitSuggestion }
+  | { type: "WS_WORKFLOW_COMPLETED" }
   | { type: "WS_WORKFLOW_DATA_CHANGED"; eventType: string; artifactId?: number }
-  | { type: "CLEAR_COMMIT_SUGGESTION" }
   // User actions
   | { type: "ANSWER_QUESTION"; messageId: string; questionIndex: number; selectedLabels: string[] }
   | { type: "CONFIRM_ANSWERS"; messageId: string }
@@ -401,8 +395,6 @@ export function claudeSocketReducer(
         ...(action.history ? { pinnedTodos: lastTodoWriteTodos } : {}),
         // DB에서 file_changes 복원 (재연결/최초 연결 시)
         ...(action.fileChanges ? { fileChanges: action.fileChanges } : {}),
-        // 워크플로우 완료 시 commit_suggestion 복원
-        ...(action.commitSuggestion ? { commitSuggestion: action.commitSuggestion } : {}),
       };
     }
 
@@ -839,11 +831,7 @@ export function claudeSocketReducer(
               workflow_phase_status: "completed",
             }
           : state.sessionInfo,
-        commitSuggestion: action.commitSuggestion ?? null,
       };
-
-    case "CLEAR_COMMIT_SUGGESTION":
-      return { ...state, commitSuggestion: null };
 
     case "WS_RAW":
       return {

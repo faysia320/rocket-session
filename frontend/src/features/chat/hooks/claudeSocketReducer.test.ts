@@ -220,7 +220,6 @@ describe("claudeSocketReducer", () => {
       currentTurnEvents: null,
       pendingInteractions: null,
       fileChanges: null,
-      commitSuggestion: null,
     });
     expect(result.loading).toBe(false);
     expect(result.messages).toHaveLength(2);

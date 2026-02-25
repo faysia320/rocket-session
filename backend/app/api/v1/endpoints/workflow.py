@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import (
     get_claude_runner,
-    get_git_service,
     get_mcp_service,
     get_session_manager,
     get_settings,
@@ -25,13 +24,9 @@ from app.schemas.workflow import (
     StartWorkflowRequest,
     UpdateAnnotationRequest,
     UpdateArtifactRequest,
-    WorkflowCommitRequest,
-    WorkflowCommitResponse,
-    WorkflowCommitSuggestion,
     WorkflowStatusResponse,
 )
 from app.services.claude_runner import ClaudeRunner, _auto_chain_done
-from app.services.git_service import GitService
 from app.services.session_manager import SessionManager
 from app.services.websocket_manager import WebSocketManager
 from app.services.workflow_service import WorkflowService
@@ -367,71 +362,3 @@ async def request_revision(
             )
 
     return result
-
-
-@router.get(
-    "/commit-suggestion",
-    response_model=WorkflowCommitSuggestion,
-)
-async def get_commit_suggestion(
-    session_id: str,
-    workflow: WorkflowService = Depends(get_workflow_service),
-):
-    """워크플로우 기반 커밋 메시지 제안 조회."""
-    try:
-        suggestion = await workflow.generate_commit_suggestion(session_id)
-        return suggestion
-    except Exception:
-        logger.warning(
-            "세션 %s: 커밋 메시지 생성 실패", session_id, exc_info=True
-        )
-        raise HTTPException(status_code=500, detail="커밋 메시지 생성 실패")
-
-
-@router.post(
-    "/commit",
-    response_model=WorkflowCommitResponse,
-)
-async def commit_workflow(
-    session_id: str,
-    req: WorkflowCommitRequest,
-    manager: SessionManager = Depends(get_session_manager),
-    git_service: GitService = Depends(get_git_service),
-    ws_manager: WebSocketManager = Depends(get_ws_manager),
-):
-    """워크플로우 커밋 실행 (stage + commit)."""
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-
-    work_dir = session.get("work_dir", "")
-    worktree_name = session.get("worktree_name")
-    if worktree_name:
-        effective_dir = f"{work_dir}/.claude/worktrees/{worktree_name}"
-    else:
-        effective_dir = work_dir
-
-    # 전체 파일 스테이징
-    ok, err = await git_service.stage_files(effective_dir)
-    if not ok:
-        return WorkflowCommitResponse(success=False, error=err)
-
-    # 커밋 실행
-    ok, commit_hash, err = await git_service.commit(effective_dir, req.message)
-    if not ok:
-        return WorkflowCommitResponse(success=False, error=err)
-
-    # 커밋 후 자동 push
-    push_ok, push_msg, _ = await git_service.push(effective_dir)
-    if not push_ok:
-        logger.warning("자동 push 실패 (commit은 성공): %s", push_msg)
-
-    await ws_manager.broadcast_event(
-        session_id,
-        {
-            "type": WsEventType.WORKFLOW_COMMIT_COMPLETED,
-            "commit_hash": commit_hash,
-        },
-    )
-
-    return WorkflowCommitResponse(success=True, commit_hash=commit_hash)

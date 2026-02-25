@@ -4,14 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CommitSection } from "./CommitSection";
 import { DiffViewer } from "./DiffViewer";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { cn, formatTime } from "@/lib/utils";
 import { getToolBadgeStyle } from "../constants/toolColors";
 import type { FileChange } from "@/types";
-import type { WorkflowCommitSuggestion } from "@/types/workflow";
 
 /** 동일 파일의 변경 이력을 병합한 항목 */
 interface MergedFileChange {
@@ -55,32 +53,18 @@ interface FilePanelProps {
   sessionId: string;
   fileChanges?: FileChange[];
   onFileClick?: (change: FileChange) => void;
-  commitSuggestion?: WorkflowCommitSuggestion | null;
-  onCommitSuccess?: (hash: string) => void;
-  onDismissCommit?: () => void;
 }
 
 export const FilePanel = memo(function FilePanel({
   sessionId,
   fileChanges = [],
   onFileClick,
-  commitSuggestion,
-  onCommitSuccess,
-  onDismissCommit,
 }: FilePanelProps) {
   const merged = useMemo(() => mergeFileChanges(fileChanges), [fileChanges]);
   const uniqueCount = merged.length;
 
   return (
     <div className="flex flex-col overflow-hidden flex-1 min-h-0">
-      {commitSuggestion && onCommitSuccess && onDismissCommit ? (
-        <CommitSection
-          sessionId={sessionId}
-          suggestion={commitSuggestion}
-          onCommitSuccess={onCommitSuccess}
-          onDismiss={onDismissCommit}
-        />
-      ) : null}
       <div className="flex items-center gap-2 px-3.5 pr-12 py-2.5 border-b border-border">
         <span className="text-sm">{"\u{1F4C1}"}</span>
         <span className="font-mono text-xs font-semibold text-foreground flex-1">File Changes</span>

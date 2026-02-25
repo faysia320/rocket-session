@@ -324,19 +324,6 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                 "is_reconnect": True,
                 "is_running": is_running,
             }
-            # 워크플로우 완료 상태이면 commit_suggestion 재생성
-            session_info = manager.to_info_dict(session_with_counts)
-            if (
-                session_info.get("workflow_enabled")
-                and session_info.get("workflow_phase_status") == "completed"
-            ):
-                try:
-                    wf_svc = get_workflow_service()
-                    reconnect_msg["commit_suggestion"] = (
-                        await wf_svc.generate_commit_suggestion(session_id)
-                    )
-                except Exception:
-                    pass
             await ws.send_json(reconnect_msg)
             # 놓친 이벤트 조회 및 전송
             missed = await ws_manager.get_buffered_events_after(session_id, last_seq)
@@ -384,19 +371,6 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                     break
             if pending_interactions:
                 state_msg["pending_interactions"] = pending_interactions
-
-            # 워크플로우 완료 상태이면 commit_suggestion 재생성
-            if (
-                session_info.get("workflow_enabled")
-                and session_info.get("workflow_phase_status") == "completed"
-            ):
-                try:
-                    wf_svc = get_workflow_service()
-                    state_msg["commit_suggestion"] = (
-                        await wf_svc.generate_commit_suggestion(session_id)
-                    )
-                except Exception:
-                    pass
 
             await ws.send_json(state_msg)
 
