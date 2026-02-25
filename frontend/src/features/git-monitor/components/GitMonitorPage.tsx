@@ -277,7 +277,7 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
     syncMutation.mutate(
       { id: workspace.id, data: { action: "pull" } },
       {
-        onSuccess: (res) => toast.success(res.message || "Pull 완료"),
+        onSuccess: () => toast.success("Pull 완료"),
         onError: () => toast.error("Pull에 실패했습니다"),
       },
     );
@@ -287,7 +287,7 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
     syncMutation.mutate(
       { id: workspace.id, data: { action: "push" } },
       {
-        onSuccess: (res) => toast.success(res.message || "Push 완료"),
+        onSuccess: () => toast.success("Push 완료"),
         onError: () => toast.error("Push에 실패했습니다"),
       },
     );
