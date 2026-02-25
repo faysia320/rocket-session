@@ -421,6 +421,11 @@ async def commit_workflow(
     if not ok:
         return WorkflowCommitResponse(success=False, error=err)
 
+    # 커밋 후 자동 push
+    push_ok, push_msg, _ = await git_service.push(effective_dir)
+    if not push_ok:
+        logger.warning("자동 push 실패 (commit은 성공): %s", push_msg)
+
     await ws_manager.broadcast_event(
         session_id,
         {
