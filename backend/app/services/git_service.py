@@ -778,6 +778,30 @@ class GitService:
                 return False, f"git add 실패: {stderr}"
             return True, ""
 
+    async def unstage_files(
+        self, repo_path: str, files: list[str] | None = None
+    ) -> tuple[bool, str]:
+        """파일 언스테이징. files=None이면 git reset HEAD (전체).
+
+        Returns:
+            (success, error_message)
+        """
+        validated = self._validate_path(repo_path)
+        if not self._is_within_root(validated):
+            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+        cwd = str(validated)
+
+        async with self._get_git_lock(cwd):
+            if files:
+                args = [*self._GIT_CROSS_PLATFORM_OPTS, "restore", "--staged", "--"] + files
+            else:
+                args = [*self._GIT_CROSS_PLATFORM_OPTS, "reset", "HEAD"]
+
+            rc, _, stderr = await self._run_git_command(*args, cwd=cwd, timeout=30.0)
+            if rc != 0:
+                return False, f"git unstage 실패: {stderr}"
+            return True, ""
+
     async def commit(
         self, repo_path: str, message: str
     ) -> tuple[bool, str, str]:

@@ -279,7 +279,26 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
       { id: workspace.id, data: { action: "pull" } },
       {
         onSuccess: () => toast.success("Pull 완료"),
-        onError: () => toast.error("Pull에 실패했습니다"),
+        onError: (error: unknown) => {
+          const message = error instanceof Error ? error.message : "";
+          const hasUncommitted =
+            message.includes("unstaged changes") ||
+            message.includes("uncommitted changes") ||
+            message.includes("Your local changes") ||
+            message.includes("would be overwritten");
+
+          if (hasUncommitted) {
+            toast.error("Pull에 실패했습니다", {
+              description:
+                "커밋되지 않은 변경사항이 있습니다. 먼저 변경사항을 Stage → Commit 후 다시 시도하세요.",
+              duration: 6000,
+            });
+          } else {
+            toast.error("Pull에 실패했습니다", {
+              description: message || undefined,
+            });
+          }
+        },
       },
     );
   }, [syncMutation, workspace.id]);

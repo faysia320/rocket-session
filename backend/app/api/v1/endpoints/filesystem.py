@@ -26,6 +26,8 @@ from app.schemas.filesystem import (
     GitRepoScanResponse,
     GitStageRequest,
     GitStageResponse,
+    GitUnstageRequest,
+    GitUnstageResponse,
     GitStatusResponse,
     PRReviewJobResponse,
     PRReviewRequest,
@@ -311,6 +313,20 @@ async def stage_git_files(
         if not success:
             raise HTTPException(status_code=400, detail=error)
         return GitStageResponse(success=True)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/git-unstage", response_model=GitUnstageResponse)
+async def unstage_git_files(
+    req: GitUnstageRequest,
+    git: GitService = Depends(get_git_service),
+):
+    try:
+        success, error = await git.unstage_files(req.path, req.files)
+        if not success:
+            raise HTTPException(status_code=400, detail=error)
+        return GitUnstageResponse(success=True)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

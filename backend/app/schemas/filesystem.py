@@ -261,6 +261,16 @@ class GitStageResponse(BaseModel):
     error: Optional[str] = None
 
 
+class GitUnstageRequest(BaseModel):
+    path: str
+    files: Optional[list[str]] = None  # None = git reset HEAD
+
+
+class GitUnstageResponse(BaseModel):
+    success: bool
+    error: Optional[str] = None
+
+
 class GitCommitRequest(BaseModel):
     path: str
     message: str

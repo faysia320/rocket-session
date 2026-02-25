@@ -204,6 +204,11 @@ export interface GitStageResponse {
   error?: string | null;
 }
 
+export interface GitUnstageResponse {
+  success: boolean;
+  error?: string | null;
+}
+
 export interface GitCommitResponse {
   success: boolean;
   commit_hash: string;

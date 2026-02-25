@@ -53,6 +53,40 @@ export function useStageAndCommit(repoPath: string) {
   });
 }
 
+/** 개별 파일 스테이징 (git add). */
+export function useStageFiles(repoPath: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (files?: string[]) =>
+      filesystemApi.stageGitFiles(repoPath, files),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["git-status", repoPath] });
+      queryClient.invalidateQueries({ queryKey: ["git-info"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
+    onError: () => {
+      toast.error("파일 스테이징에 실패했습니다");
+    },
+  });
+}
+
+/** 개별 파일 언스테이징 (git restore --staged). */
+export function useUnstageFiles(repoPath: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (files?: string[]) =>
+      filesystemApi.unstageGitFiles(repoPath, files),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["git-status", repoPath] });
+      queryClient.invalidateQueries({ queryKey: ["git-info"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
+    onError: () => {
+      toast.error("파일 언스테이징에 실패했습니다");
+    },
+  });
+}
+
 /** 원격 ref 갱신 (git fetch --prune). */
 export function useFetchRemote(repoPath: string) {
   const queryClient = useQueryClient();

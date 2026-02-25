@@ -19,6 +19,7 @@ import type {
   GitBranchListResponse,
   GitCheckoutResponse,
   GitStageResponse,
+  GitUnstageResponse,
   GitCommitResponse,
   GitFetchResponse,
 } from "@/types";
@@ -123,6 +124,12 @@ export const filesystemApi = {
 
   stageGitFiles: (path: string, files?: string[]) =>
     api.post<GitStageResponse>("/api/fs/git-stage", {
+      path,
+      files: files ?? null,
+    }),
+
+  unstageGitFiles: (path: string, files?: string[]) =>
+    api.post<GitUnstageResponse>("/api/fs/git-unstage", {
       path,
       files: files ?? null,
     }),

@@ -59,6 +59,7 @@ export type {
   GitBranchListResponse,
   GitCheckoutResponse,
   GitStageResponse,
+  GitUnstageResponse,
   GitCommitResponse,
   GitFetchResponse,
 } from "./filesystem";
