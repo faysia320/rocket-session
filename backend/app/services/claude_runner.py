@@ -263,6 +263,19 @@ class ClaudeRunner:
         mcp_config_path = self._write_mcp_config(session_id, config)
         cmd.extend(["--mcp-config", str(mcp_config_path)])
 
+        # MCP 도구 패턴을 --allowedTools에 자동 병합
+        # config에서 서버 이름 추출 (permission 서버 제외)
+        server_names = [
+            name for name in config.get("mcpServers", {}) if name != "permission"
+        ]
+        if server_names:
+            mcp_patterns = ",".join(f"mcp__{name}__*" for name in server_names)
+            try:
+                idx = cmd.index("--allowedTools")
+                cmd[idx + 1] = f"{cmd[idx + 1]},{mcp_patterns}"
+            except ValueError:
+                pass  # --allowedTools 없으면 모든 도구 허용 → 추가 불필요
+
         if has_permission:
             cmd.extend(["--permission-prompt-tool", "mcp__permission__handle_request"])
 
