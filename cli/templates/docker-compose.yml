@@ -10,7 +10,7 @@ services:
       - ${CLAUDE_AUTH_DIR}:/root/.claude
       - ${HOST_PROJECTS_DIR}:/projects
     environment:
-      - CLAUDE_WORK_DIR=/projects
+      - WORKSPACES_ROOT=/projects
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=8101
       - UPLOAD_DIR=/app/uploads

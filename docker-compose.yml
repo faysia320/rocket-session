@@ -33,7 +33,6 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://rocket:${POSTGRES_PASSWORD:-rocket_secret}@postgres:5432/rocket_session
       - POSTGRES_HOST=postgres
-      - CLAUDE_WORK_DIR=/workspaces
       - WORKSPACES_ROOT=/workspaces
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=8101
