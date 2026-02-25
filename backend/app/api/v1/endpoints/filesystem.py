@@ -16,6 +16,8 @@ from app.schemas.filesystem import (
     GitCheckoutResponse,
     GitCommitRequest,
     GitCommitResponse,
+    GitFetchRequest,
+    GitFetchResponse,
     GitHubCLIStatus,
     GitHubPRDetail,
     GitHubPRListResponse,
@@ -319,5 +321,20 @@ async def commit_git(
         if not success:
             raise HTTPException(status_code=400, detail=error)
         return GitCommitResponse(success=True, commit_hash=commit_hash)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/git-fetch", response_model=GitFetchResponse)
+async def fetch_git_remote(
+    req: GitFetchRequest,
+    git: GitService = Depends(get_git_service),
+):
+    """git fetch --prune 실행."""
+    try:
+        success, message = await git.fetch_remote(req.path)
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+        return GitFetchResponse(success=True, message=message)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

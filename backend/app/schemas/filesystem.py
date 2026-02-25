@@ -269,3 +269,12 @@ class GitCommitResponse(BaseModel):
     success: bool
     commit_hash: str = ""
     error: Optional[str] = None
+
+
+class GitFetchRequest(BaseModel):
+    path: str
+
+
+class GitFetchResponse(BaseModel):
+    success: bool
+    message: str = ""

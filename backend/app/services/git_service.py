@@ -642,9 +642,13 @@ class GitService:
     # ─── 브랜치 관련 ───
 
     async def list_branches(
-        self, repo_path: str
+        self, repo_path: str, *, fetch: bool = True
     ) -> tuple[list[str], str | None]:
-        """로컬 브랜치 목록과 현재 브랜치 반환.
+        """로컬 + 원격 브랜치 목록과 현재 브랜치 반환.
+
+        Args:
+            repo_path: Git 저장소 경로
+            fetch: True이면 목록 조회 전 git fetch --prune 실행
 
         Returns:
             (branches, current_branch)
@@ -654,17 +658,38 @@ class GitService:
             raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated)
 
-        rc_list, list_out, _ = await self._run_git_command(
+        # 원격 ref 갱신 (새 브랜치 감지)
+        if fetch:
+            await self._run_git_command(
+                "fetch", "--prune", "--quiet", cwd=cwd, timeout=30.0
+            )
+
+        rc_local, local_out, _ = await self._run_git_command(
             "branch", "--list", "--format=%(refname:short)", cwd=cwd
+        )
+        rc_remote, remote_out, _ = await self._run_git_command(
+            "branch", "-r", "--format=%(refname:short)", cwd=cwd
         )
         rc_cur, cur_out, _ = await self._run_git_command(
             "branch", "--show-current", cwd=cwd
         )
 
-        branches: list[str] = []
-        if rc_list == 0 and list_out:
-            branches = [b.strip() for b in list_out.split("\n") if b.strip()]
+        local_branches: list[str] = []
+        if rc_local == 0 and local_out:
+            local_branches = [b.strip() for b in local_out.split("\n") if b.strip()]
 
+        remote_branches: list[str] = []
+        if rc_remote == 0 and remote_out:
+            for raw in remote_out.split("\n"):
+                name = raw.strip()
+                if not name or "/HEAD" in name:
+                    continue
+                # origin/feature-x → feature-x
+                short = name.split("/", 1)[1] if "/" in name else name
+                if short not in local_branches:
+                    remote_branches.append(short)
+
+        branches = local_branches + remote_branches
         current = cur_out.strip() if rc_cur == 0 and cur_out else None
         return branches, current
 
@@ -832,3 +857,34 @@ class GitService:
             del self._git_cache[repo_path]
 
         return True, stdout or stderr or "push 완료", commit_hash
+
+    async def fetch_remote(
+        self, repo_path: str, prune: bool = True
+    ) -> tuple[bool, str]:
+        """git fetch 실행.
+
+        Returns:
+            (success, message)
+        """
+        validated = self._validate_path(repo_path)
+        if not self._is_within_root(validated):
+            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+        cwd = str(validated)
+
+        args = ["fetch"]
+        if prune:
+            args.append("--prune")
+
+        rc, stdout, stderr = await self._run_git_command(
+            *args, cwd=cwd, timeout=60.0
+        )
+
+        if rc != 0:
+            error = stderr if stderr != "timeout" else "fetch 타임아웃"
+            return False, f"git fetch 실패: {error}"
+
+        # 캐시 무효화
+        if repo_path in self._git_cache:
+            del self._git_cache[repo_path]
+
+        return True, stdout or "fetch 완료"
