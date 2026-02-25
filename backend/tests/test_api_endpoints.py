@@ -5,7 +5,6 @@ Tests all REST API endpoints with real FastAPI app and PostgreSQL test database.
 Uses httpx.AsyncClient for async requests and overrides dependencies for testing.
 """
 
-import tempfile
 from datetime import datetime, timezone
 
 import pytest
@@ -30,6 +29,9 @@ from app.services.websocket_manager import WebSocketManager
 from app.services.workspace_service import WorkspaceService
 from tests.conftest import _TEST_DB_URL
 
+TEST_WORKSPACE_ID = "test-workspace-id"
+TEST_WORKSPACE_PATH = "/workspaces/test"
+
 
 @pytest_asyncio.fixture
 async def test_client():
@@ -51,6 +53,22 @@ async def test_client():
         await session.execute(text("DELETE FROM messages"))
         await session.execute(text("DELETE FROM sessions"))
         await session.execute(text("DELETE FROM workspaces"))
+        await session.commit()
+
+    # 테스트용 워크스페이스 생성
+    from app.models.workspace import Workspace
+
+    async with db.session() as session:
+        workspace = Workspace(
+            id=TEST_WORKSPACE_ID,
+            name="test-workspace",
+            repo_url="https://github.com/test/repo",
+            branch="main",
+            local_path=TEST_WORKSPACE_PATH,
+            status="ready",
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(workspace)
         await session.commit()
 
     # Create test services
@@ -94,12 +112,9 @@ async def test_client():
 
 
 # Helper function
-async def create_test_session(client: AsyncClient, work_dir: str | None = None) -> dict:
+async def create_test_session(client: AsyncClient, workspace_id: str | None = None) -> dict:
     """Helper function to create a test session."""
-    payload = {}
-    if work_dir:
-        payload["work_dir"] = work_dir
-
+    payload = {"workspace_id": workspace_id or TEST_WORKSPACE_ID}
     response = await client.post("/api/sessions/", json=payload)
     assert response.status_code == 200
     return response.json()
@@ -125,28 +140,25 @@ class TestHealthEndpoint:
 class TestSessionCRUD:
     """Tests for session CRUD operations."""
 
-    async def test_create_session_with_work_dir(self, test_client: AsyncClient):
-        """Should create session with provided work_dir."""
-        work_dir = "/test/path"
-        response = await test_client.post("/api/sessions/", json={"work_dir": work_dir})
+    async def test_create_session_with_workspace(self, test_client: AsyncClient):
+        """Should create session with provided workspace_id."""
+        response = await test_client.post(
+            "/api/sessions/", json={"workspace_id": TEST_WORKSPACE_ID}
+        )
 
         assert response.status_code == 200
         data = response.json()
         assert "id" in data
-        assert data["work_dir"] == work_dir
+        assert data["work_dir"] == TEST_WORKSPACE_PATH
         assert data["status"] == "idle"
         assert data["workflow_enabled"] is False
         assert data["permission_mode"] is False
 
-    async def test_create_session_without_work_dir(self, test_client: AsyncClient):
-        """Should create session with default work_dir from settings."""
+    async def test_create_session_without_workspace(self, test_client: AsyncClient):
+        """Should return 400 when no workspace_id is provided."""
         response = await test_client.post("/api/sessions/", json={})
 
-        assert response.status_code == 200
-        data = response.json()
-        assert "id" in data
-        assert data["work_dir"] == tempfile.gettempdir()
-        assert data["status"] == "idle"
+        assert response.status_code == 400
 
     async def test_list_sessions_empty(self, test_client: AsyncClient):
         """Should return empty list when no sessions exist."""
@@ -159,8 +171,8 @@ class TestSessionCRUD:
     async def test_list_sessions_with_data(self, test_client: AsyncClient):
         """Should return list of sessions after creation."""
         # Create two sessions
-        await create_test_session(test_client, "/path1")
-        await create_test_session(test_client, "/path2")
+        await create_test_session(test_client)
+        await create_test_session(test_client)
 
         response = await test_client.get("/api/sessions/")
 
@@ -171,7 +183,7 @@ class TestSessionCRUD:
 
     async def test_get_session_by_id(self, test_client: AsyncClient):
         """Should return session details by ID."""
-        created = await create_test_session(test_client, "/test")
+        created = await create_test_session(test_client)
         session_id = created["id"]
 
         response = await test_client.get(f"/api/sessions/{session_id}")
@@ -179,7 +191,7 @@ class TestSessionCRUD:
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == session_id
-        assert data["work_dir"] == "/test"
+        assert data["work_dir"] == TEST_WORKSPACE_PATH
 
     async def test_get_session_not_found(self, test_client: AsyncClient):
         """Should return 404 for non-existent session."""
@@ -340,7 +352,7 @@ class TestSessionWorkflow:
 
     async def test_create_session_default_workflow(self, test_client: AsyncClient):
         """Should create session with workflow disabled by default."""
-        response = await test_client.post("/api/sessions/", json={"work_dir": "/test"})
+        response = await test_client.post("/api/sessions/", json={"workspace_id": TEST_WORKSPACE_ID})
 
         assert response.status_code == 200
         data = response.json()
@@ -353,7 +365,7 @@ class TestSessionWorkflow:
         response = await test_client.post(
             "/api/sessions/",
             json={
-                "work_dir": "/test",
+                "workspace_id": TEST_WORKSPACE_ID,
                 "workflow_enabled": True,
             },
         )
@@ -367,7 +379,7 @@ class TestSessionWorkflow:
         response = await test_client.post(
             "/api/sessions/",
             json={
-                "work_dir": "/test",
+                "workspace_id": TEST_WORKSPACE_ID,
                 "permission_mode": True,
                 "permission_required_tools": ["Write", "Edit", "Bash"],
             },
