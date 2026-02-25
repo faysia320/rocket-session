@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronsUpDown, GitBranch, Loader2, RefreshCw } from "lucide-react";
+import { Check, ChevronsUpDown, GitBranch, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -13,7 +13,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { useGitBranches, useCheckoutBranch, useFetchRemote } from "../hooks/useGitActions";
+import { useGitBranches, useCheckoutBranch } from "../hooks/useGitActions";
 
 interface BranchSelectProps {
   repoPath: string;
@@ -28,7 +28,6 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
   const [open, setOpen] = useState(false);
   const { data, isLoading } = useGitBranches(repoPath);
   const checkoutMutation = useCheckoutBranch(repoPath);
-  const fetchMutation = useFetchRemote(repoPath);
 
   const defaultBranch = data?.default_branch ?? null;
   const allBranches = data?.branches ?? [];
@@ -89,11 +88,7 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
         )}
       />
       {branch}
-      {branch === currentBranch ? (
-        <Badge variant="secondary" className="ml-auto text-2xs px-1 py-0">
-          현재
-        </Badge>
-      ) : branch === defaultBranch ? (
+      {branch === defaultBranch ? (
         <Badge variant="outline" className="ml-auto text-2xs px-1 py-0">
           default
         </Badge>
@@ -119,22 +114,7 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
         <Command>
-          <div className="flex items-center gap-1 px-1">
-            <CommandInput placeholder="브랜치 검색..." className="h-8 text-xs flex-1" />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 shrink-0"
-              disabled={fetchMutation.isPending}
-              onClick={(e) => {
-                e.stopPropagation();
-                fetchMutation.mutate();
-              }}
-              aria-label="원격 브랜치 갱신"
-            >
-              <RefreshCw className={cn("h-3 w-3", fetchMutation.isPending && "animate-spin")} />
-            </Button>
-          </div>
+          <CommandInput placeholder="브랜치 검색..." className="h-8 text-xs" />
           <CommandList className="max-h-60 overflow-y-auto">
             <CommandEmpty className="py-3 text-xs">
               {isLoading ? (

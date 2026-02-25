@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   GitBranch,
   GitPullRequest,
@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   MoreVertical,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +47,7 @@ import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useWorkspaces, useDeleteWorkspace, useSyncWorkspace } from "@/features/workspace/hooks/useWorkspaces";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { WorkspaceCreateDialog } from "@/features/workspace/components/WorkspaceCreateDialog";
+import { useFetchRemote } from "../hooks/useGitActions";
 import { useGhStatus, useGitHubPRs } from "../hooks/useGitHubPRs";
 import { GitMonitorRepoList } from "./GitMonitorRepoList";
 import { GitRepoStatusTab } from "./GitRepoStatusTab";
@@ -217,6 +219,18 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
+/** 상대 시간 포맷 (예: "방금", "2분 전", "1시간 전") */
+function formatRelativeTime(ts: number | null): string {
+  if (!ts) return "";
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 10) return "방금";
+  if (diff < 60) return `${diff}초 전`;
+  const mins = Math.floor(diff / 60);
+  if (mins < 60) return `${mins}분 전`;
+  const hours = Math.floor(mins / 60);
+  return `${hours}시간 전`;
+}
+
 function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; onDelete: (ws: WorkspaceInfo) => void }) {
   // 모든 hooks를 early return 전에 호출 (rules of hooks)
   const isReady = workspace.status === "ready";
@@ -230,6 +244,31 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
   const openPrCount = openPrData?.prs?.length ?? 0;
   const [prDialogOpen, setPrDialogOpen] = useState(false);
   const [commitDialogOpen, setCommitDialogOpen] = useState(false);
+
+  // Fetch 관련
+  const fetchMutation = useFetchRemote(isReady ? workspace.local_path : "");
+  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
+  const [, setTick] = useState(0); // 상대 시간 갱신용
+  const tickRef = useRef<ReturnType<typeof setInterval>>();
+
+  // 30초마다 상대 시간 표시 갱신
+  useEffect(() => {
+    if (lastFetchedAt) {
+      tickRef.current = setInterval(() => setTick((t) => t + 1), 30_000);
+    }
+    return () => { if (tickRef.current) clearInterval(tickRef.current); };
+  }, [lastFetchedAt]);
+
+  // 워크스페이스 변경 시 fetch 시간 초기화
+  useEffect(() => {
+    setLastFetchedAt(null);
+  }, [workspace.id]);
+
+  const handleFetch = useCallback(() => {
+    fetchMutation.mutate(undefined, {
+      onSuccess: () => setLastFetchedAt(Date.now()),
+    });
+  }, [fetchMutation]);
 
   const syncMutation = useSyncWorkspace();
   const isSyncing = syncMutation.isPending;
@@ -307,9 +346,6 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
         {workspace.ahead ? (
           <span className="font-mono text-2xs text-success shrink-0">↑{workspace.ahead}</span>
         ) : null}
-        {workspace.behind ? (
-          <span className="font-mono text-2xs text-destructive shrink-0">↓{workspace.behind}</span>
-        ) : null}
         <Badge
           variant="default"
           className="font-mono text-2xs px-1.5 py-0 shrink-0 cursor-pointer gap-1 hover:bg-primary/80"
@@ -322,6 +358,29 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
         </Badge>
 
         <div className="flex-1" />
+
+        {/* Fetch 버튼 + 마지막 fetch 시간 */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-1.5 font-mono text-2xs shrink-0"
+              onClick={handleFetch}
+              disabled={fetchMutation.isPending || isSyncing}
+              aria-label="Fetch"
+            >
+              <RefreshCw className={`h-3 w-3 ${fetchMutation.isPending ? "animate-spin" : ""}`} />
+              Fetch
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="font-mono text-xs">git fetch --prune</TooltipContent>
+        </Tooltip>
+        {lastFetchedAt ? (
+          <span className="font-mono text-2xs text-muted-foreground shrink-0">
+            {formatRelativeTime(lastFetchedAt)}
+          </span>
+        ) : null}
 
         {/* Git 액션 버튼 */}
         <Tooltip>
@@ -340,6 +399,9 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
                 <ArrowDownToLine className="h-3 w-3" />
               )}
               Pull
+              {workspace.behind ? (
+                <span className="text-destructive">({workspace.behind})</span>
+              ) : null}
             </Button>
           </TooltipTrigger>
           <TooltipContent className="font-mono text-xs">git pull --rebase</TooltipContent>
