@@ -98,4 +98,5 @@ class SearchService:
             system_prompt_mode=session.get("system_prompt_mode", "replace"),
             disallowed_tools=session.get("disallowed_tools"),
             mcp_server_ids=mcp_ids,
+            workspace_id=session.get("workspace_id"),
         )

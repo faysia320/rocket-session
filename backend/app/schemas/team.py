@@ -120,7 +120,8 @@ class TeamTaskInfo(BaseModel):
     assigned_member_id: int | None = None
     assigned_nickname: str | None = None
     created_by_member_id: int | None = None
-    work_dir: str
+    workspace_id: str | None = None
+    workspace_name: str | None = None
     session_id: str | None = None
     result_summary: str | None = None
     order_index: int = 0
@@ -133,7 +134,7 @@ class CreateTaskRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     priority: Literal["low", "medium", "high"] = "medium"
-    work_dir: str = Field(..., min_length=1)
+    workspace_id: str = Field(..., min_length=1)
     assigned_member_id: Optional[int] = None
     depends_on_task_id: Optional[int] = None
 
@@ -145,7 +146,7 @@ class UpdateTaskRequest(BaseModel):
         Literal["pending", "in_progress", "completed", "failed", "cancelled"]
     ] = None
     priority: Optional[Literal["low", "medium", "high"]] = None
-    work_dir: Optional[str] = None
+    workspace_id: Optional[str] = None
     assigned_member_id: Optional[int] = None
     order_index: Optional[int] = None
 

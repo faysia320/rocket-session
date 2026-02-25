@@ -224,7 +224,7 @@ async def create_task(
         title=req.title,
         description=req.description,
         priority=req.priority,
-        work_dir=req.work_dir,
+        workspace_id=req.workspace_id,
         assigned_member_id=req.assigned_member_id,
         depends_on_task_id=req.depends_on_task_id,
     )

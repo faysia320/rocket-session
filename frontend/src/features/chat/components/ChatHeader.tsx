@@ -136,7 +136,7 @@ export const ChatHeader = memo(function ChatHeader({
             </button>
           ) : null}
         </div>
-        {/* 2줄: 작업 디렉토리 + Git 브랜치 */}
+        {/* 2줄: 워크스페이스 경로 + Git 브랜치 */}
         {workDir || gitInfo?.branch ? (
           <div className="hidden md:flex items-center gap-1.5 pl-4">
             {workDir ? (

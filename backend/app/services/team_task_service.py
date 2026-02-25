@@ -3,8 +3,11 @@
 import logging
 from datetime import datetime, timezone
 
+from sqlalchemy import select
+
 from app.core.database import Database
 from app.models.team_task import TeamTask
+from app.models.workspace import Workspace
 from app.repositories.team_repo import TeamMemberRepository
 from app.repositories.team_task_repo import TeamTaskRepository
 from app.schemas.team import TaskSummary, TeamTaskInfo
@@ -20,7 +23,9 @@ class TeamTaskService:
 
     @staticmethod
     def _task_to_info(
-        task: TeamTask, assigned_nickname: str | None = None
+        task: TeamTask,
+        assigned_nickname: str | None = None,
+        workspace_name: str | None = None,
     ) -> TeamTaskInfo:
         return TeamTaskInfo(
             id=task.id,
@@ -32,7 +37,8 @@ class TeamTaskService:
             assigned_member_id=task.assigned_member_id,
             assigned_nickname=assigned_nickname,
             created_by_member_id=task.created_by_member_id,
-            work_dir=task.work_dir,
+            workspace_id=task.workspace_id,
+            workspace_name=workspace_name,
             session_id=task.session_id,
             result_summary=task.result_summary,
             order_index=task.order_index,
@@ -49,13 +55,38 @@ class TeamTaskService:
         member = await member_repo.get_member_by_id(member_id)
         return member.nickname if member else None
 
+    @staticmethod
+    async def _resolve_workspace_name(
+        session, workspace_id: str | None
+    ) -> str | None:
+        """워크스페이스 ID로 이름 조회."""
+        if not workspace_id:
+            return None
+        result = await session.execute(
+            select(Workspace.name).where(Workspace.id == workspace_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def _resolve_workspace_names(
+        session, workspace_ids: list[str]
+    ) -> dict[str, str]:
+        """여러 워크스페이스 ID에 대한 이름 맵 조회."""
+        unique_ids = list(set(wid for wid in workspace_ids if wid))
+        if not unique_ids:
+            return {}
+        result = await session.execute(
+            select(Workspace.id, Workspace.name).where(Workspace.id.in_(unique_ids))
+        )
+        return dict(result.all())
+
     # ── CRUD ──
 
     async def create_task(
         self,
         team_id: str,
         title: str,
-        work_dir: str,
+        workspace_id: str | None = None,
         description: str | None = None,
         priority: str = "medium",
         assigned_member_id: int | None = None,
@@ -76,7 +107,7 @@ class TeamTaskService:
                 priority=priority,
                 assigned_member_id=assigned_member_id,
                 created_by_member_id=created_by_member_id,
-                work_dir=work_dir,
+                workspace_id=workspace_id,
                 order_index=order_index,
                 depends_on_task_id=depends_on_task_id,
                 created_at=now,
@@ -84,8 +115,11 @@ class TeamTaskService:
             )
             await repo.add(task)
             nickname = await self._resolve_nickname(session, assigned_member_id)
+            ws_name = await self._resolve_workspace_name(session, workspace_id)
             await session.commit()
-            return self._task_to_info(task, assigned_nickname=nickname)
+            return self._task_to_info(
+                task, assigned_nickname=nickname, workspace_name=ws_name
+            )
 
     async def get_task(self, task_id: int) -> TeamTaskInfo | None:
         async with self._db.session() as session:
@@ -94,7 +128,10 @@ class TeamTaskService:
             if not task:
                 return None
             nickname = await self._resolve_nickname(session, task.assigned_member_id)
-            return self._task_to_info(task, assigned_nickname=nickname)
+            ws_name = await self._resolve_workspace_name(session, task.workspace_id)
+            return self._task_to_info(
+                task, assigned_nickname=nickname, workspace_name=ws_name
+            )
 
     async def list_tasks(
         self, team_id: str, status: str | None = None
@@ -105,9 +142,14 @@ class TeamTaskService:
             member_repo = TeamMemberRepository(session)
             members = await member_repo.get_members(team_id)
             nick_map = {m.id: m.nickname for m in members}
+            ws_name_map = await self._resolve_workspace_names(
+                session, [t.workspace_id for t in tasks]
+            )
             return [
                 self._task_to_info(
-                    t, assigned_nickname=nick_map.get(t.assigned_member_id)
+                    t,
+                    assigned_nickname=nick_map.get(t.assigned_member_id),
+                    workspace_name=ws_name_map.get(t.workspace_id),
                 )
                 for t in tasks
             ]
@@ -119,8 +161,11 @@ class TeamTaskService:
             if not task:
                 return None
             nickname = await self._resolve_nickname(session, task.assigned_member_id)
+            ws_name = await self._resolve_workspace_name(session, task.workspace_id)
             await session.commit()
-            return self._task_to_info(task, assigned_nickname=nickname)
+            return self._task_to_info(
+                task, assigned_nickname=nickname, workspace_name=ws_name
+            )
 
     async def delete_task(self, task_id: int) -> bool:
         async with self._db.session() as session:
@@ -138,8 +183,11 @@ class TeamTaskService:
             if not task:
                 return None
             nickname = await self._resolve_nickname(session, member_id)
+            ws_name = await self._resolve_workspace_name(session, task.workspace_id)
             await session.commit()
-            return self._task_to_info(task, assigned_nickname=nickname)
+            return self._task_to_info(
+                task, assigned_nickname=nickname, workspace_name=ws_name
+            )
 
     async def complete_task(
         self, task_id: int, result_summary: str | None = None
@@ -150,8 +198,11 @@ class TeamTaskService:
             if not task:
                 return None
             nickname = await self._resolve_nickname(session, task.assigned_member_id)
+            ws_name = await self._resolve_workspace_name(session, task.workspace_id)
             await session.commit()
-            return self._task_to_info(task, assigned_nickname=nickname)
+            return self._task_to_info(
+                task, assigned_nickname=nickname, workspace_name=ws_name
+            )
 
     # ── 순서 ──
 

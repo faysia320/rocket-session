@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DirectoryPicker } from "@/features/directory/components/DirectoryPicker";
+import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
 import type {
   TeamTaskInfo,
   CreateTaskRequest,
@@ -48,7 +48,7 @@ export function TeamTaskCreateDialog({
   const [title, setTitle] = useState(editTask?.title ?? "");
   const [description, setDescription] = useState(editTask?.description ?? "");
   const [priority, setPriority] = useState<TaskPriority>(editTask?.priority ?? "medium");
-  const [workDir, setWorkDir] = useState(editTask?.work_dir ?? "");
+  const [workspaceId, setWorkspaceId] = useState(editTask?.workspace_id ?? "");
   const [assignedMemberId, setAssignedMemberId] = useState(
     editTask?.assigned_member_id != null ? String(editTask.assigned_member_id) : "",
   );
@@ -59,7 +59,7 @@ export function TeamTaskCreateDialog({
       setTitle(editTask.title);
       setDescription(editTask.description ?? "");
       setPriority(editTask.priority);
-      setWorkDir(editTask.work_dir);
+      setWorkspaceId(editTask.workspace_id ?? "");
       setAssignedMemberId(
         editTask.assigned_member_id != null ? String(editTask.assigned_member_id) : "",
       );
@@ -68,7 +68,7 @@ export function TeamTaskCreateDialog({
       setTitle("");
       setDescription("");
       setPriority("medium");
-      setWorkDir("");
+      setWorkspaceId("");
       setAssignedMemberId("");
     }
     onOpenChange(next);
@@ -81,16 +81,16 @@ export function TeamTaskCreateDialog({
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
-        work_dir: workDir.trim() || undefined,
+        workspace_id: workspaceId || undefined,
         assigned_member_id: assignedMemberId ? Number(assignedMemberId) : undefined,
       });
     } else {
-      if (!workDir.trim()) return;
+      if (!workspaceId) return;
       await onCreate({
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
-        work_dir: workDir.trim(),
+        workspace_id: workspaceId,
         assigned_member_id: assignedMemberId ? Number(assignedMemberId) : undefined,
       });
     }
@@ -129,12 +129,15 @@ export function TeamTaskCreateDialog({
             />
           </div>
 
-          {/* 작업 디렉토리 */}
+          {/* 워크스페이스 */}
           <div className="space-y-1.5">
             <label className="font-mono text-xs text-muted-foreground">
-              작업 디렉토리 {isEdit ? "" : "*"}
+              워크스페이스 {isEdit ? "" : "*"}
             </label>
-            <DirectoryPicker value={workDir} onChange={setWorkDir} />
+            <WorkspaceSelector
+              value={workspaceId || null}
+              onChange={(v) => setWorkspaceId(v ?? "")}
+            />
           </div>
 
           {/* 우선순위 */}
@@ -177,7 +180,7 @@ export function TeamTaskCreateDialog({
           <Button
             className="w-full font-mono text-sm"
             onClick={handleSubmit}
-            disabled={!title.trim() || (!isEdit && !workDir.trim()) || isCreating}
+            disabled={!title.trim() || (!isEdit && !workspaceId) || isCreating}
           >
             {isCreating
               ? isEdit

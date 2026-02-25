@@ -57,7 +57,7 @@ export function TeamTaskDelegateDialog({
                 </div>
               ) : null}
               <div className="font-mono text-2xs text-muted-foreground/70 mt-1">
-                작업 디렉토리: {task.work_dir}
+                워크스페이스: {task.workspace_name || "\u2014"}
               </div>
             </div>
 

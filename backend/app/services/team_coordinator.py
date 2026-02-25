@@ -14,6 +14,7 @@ from starlette.websockets import WebSocketState
 
 from app.core.database import Database
 from app.models.event_types import WsEventType
+from app.models.workspace import Workspace
 from app.repositories.team_repo import TeamMemberRepository, TeamRepository
 from app.repositories.team_task_repo import TeamTaskRepository
 
@@ -95,7 +96,7 @@ class TeamCoordinator:
         member_id: int | None = None,
         prompt: str | None = None,
     ) -> dict:
-        """태스크를 멤버에게 위임. 멤버 설정 + 태스크 work_dir로 세션을 동적 생성."""
+        """태스크를 멤버에게 위임. 멤버 설정 + 워크스페이스 경로로 세션을 동적 생성."""
         async with self._db.session() as db_sess:
             task_repo = TeamTaskRepository(db_sess)
             task = await task_repo.get_by_id(task_id)
@@ -112,6 +113,22 @@ class TeamCoordinator:
             if not member or member.team_id != team_id:
                 raise ValueError("대상 멤버를 찾을 수 없습니다")
 
+            # 워크스페이스에서 local_path 조회
+            work_dir = "/tmp"
+            workspace_id = task.workspace_id
+            if workspace_id:
+                from sqlalchemy import select
+
+                ws_result = await db_sess.execute(
+                    select(Workspace.local_path, Workspace.status).where(
+                        Workspace.id == workspace_id
+                    )
+                )
+                ws_row = ws_result.one_or_none()
+                if not ws_row or ws_row.status != "ready":
+                    raise ValueError("워크스페이스가 준비되지 않았습니다")
+                work_dir = ws_row.local_path
+
             # 태스크 선점
             if task.status == "pending":
                 task = await task_repo.claim_task(task_id, target_member_id)
@@ -119,9 +136,10 @@ class TeamCoordinator:
                     raise ValueError("태스크를 선점할 수 없습니다")
                 await db_sess.commit()
 
-        # 세션 동적 생성 (멤버 페르소나 설정 + 태스크 work_dir)
+        # 세션 동적 생성 (멤버 페르소나 설정 + 워크스페이스 경로)
         session_data = await self._session_manager.create(
-            work_dir=task.work_dir,
+            work_dir=work_dir,
+            workspace_id=workspace_id,
             allowed_tools=member.allowed_tools or "",
             system_prompt=member.system_prompt,
             model=member.model,
@@ -358,13 +376,19 @@ class TeamCoordinator:
             )
             return
 
-        # 리드 태스크의 work_dir 상속 (같은 팀의 최근 태스크에서)
-        work_dir = "/tmp"
+        # 리드 태스크의 workspace_id 상속 (같은 팀의 최근 태스크에서)
+        workspace_id = None
         async with self._db.session() as db_session:
             task_repo = TeamTaskRepository(db_session)
             existing_tasks = await task_repo.list_by_team(team_id)
             if existing_tasks:
-                work_dir = existing_tasks[0].work_dir
+                workspace_id = existing_tasks[0].workspace_id
+
+        if not workspace_id:
+            logger.warning(
+                "팀 %s: 자동 위임 시 workspace_id를 찾을 수 없습니다", team_id
+            )
+            return
 
         # 태스크 생성
         task_service = TeamTaskService(self._db)
@@ -372,7 +396,7 @@ class TeamCoordinator:
             team_id=team_id,
             title=description[:100],
             description=description,
-            work_dir=work_dir,
+            workspace_id=workspace_id,
             priority="medium",
             assigned_member_id=target.id,
         )

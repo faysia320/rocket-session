@@ -162,7 +162,7 @@ export const TeamTaskCard = memo(function TeamTaskCard({
         </DropdownMenu>
       </div>
 
-      {/* 푸터: 담당자 + 작업 디렉토리 */}
+      {/* 푸터: 담당자 + 워크스페이스 */}
       <div className="mt-2 pt-2 border-t border-border/50 space-y-1">
         {assignedMember ? (
           <div className="flex items-center gap-1.5">
@@ -173,7 +173,7 @@ export const TeamTaskCard = memo(function TeamTaskCard({
           </div>
         ) : null}
         <div className="font-mono text-2xs text-muted-foreground/50 truncate">
-          {task.work_dir}
+          {task.workspace_name || "\u2014"}
         </div>
       </div>
 

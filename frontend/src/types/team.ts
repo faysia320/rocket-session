@@ -110,7 +110,8 @@ export interface TeamTaskInfo {
   assigned_member_id: number | null;
   assigned_nickname: string | null;
   created_by_member_id: number | null;
-  work_dir: string;
+  workspace_id: string | null;
+  workspace_name: string | null;
   session_id: string | null;
   result_summary: string | null;
   order_index: number;
@@ -123,7 +124,7 @@ export interface CreateTaskRequest {
   title: string;
   description?: string;
   priority?: TaskPriority;
-  work_dir: string;
+  workspace_id: string;
   assigned_member_id?: number;
   depends_on_task_id?: number;
 }
@@ -133,7 +134,7 @@ export interface UpdateTaskRequest {
   description?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
-  work_dir?: string;
+  workspace_id?: string;
   assigned_member_id?: number;
   order_index?: number;
 }

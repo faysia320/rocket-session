@@ -9,19 +9,23 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown as ChevronDownIcon,
   ArrowUpDown,
   Calendar,
   Tag,
   Filter,
   FileSearch,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { cn, truncatePath } from "@/lib/utils";
 import { useSessionSearch } from "../hooks/useSessionSearch";
 import { useTags } from "@/features/tags/hooks/useTags";
+import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import { TagBadgeList } from "@/features/tags/components/TagBadgeList";
 import { TagManagerDialog } from "@/features/tags/components/TagManagerDialog";
 import type { SessionInfo, TagInfo } from "@/types";
@@ -57,6 +61,7 @@ export function HistoryPage() {
   const [sort, setSort] = useState("created_at");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
+  const [groupByWorkspace, setGroupByWorkspace] = useState(false);
 
   // F#7: useRef + setTimeout 디바운스 (state 기반 타이머 제거 → 불필요한 리렌더 방지)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,9 +102,43 @@ export function HistoryPage() {
 
   const { data, isLoading, isError } = useSessionSearch(searchParams);
   const { data: allTags = [] } = useTags();
+  const { data: workspaces } = useWorkspaces();
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
   const hasActiveFilters = !!status || selectedTagIds.length > 0 || !!dateFrom || !!dateTo;
+
+  const workspaceMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (workspaces) {
+      for (const ws of workspaces) {
+        map.set(ws.id, ws.name);
+      }
+    }
+    return map;
+  }, [workspaces]);
+
+  const groupedSessions = useMemo(() => {
+    if (!groupByWorkspace || !data?.items) return null;
+
+    const groups = new Map<string | null, SessionInfo[]>();
+    for (const session of data.items) {
+      const key = session.workspace_id ?? null;
+      const list = groups.get(key);
+      if (list) {
+        list.push(session);
+      } else {
+        groups.set(key, [session]);
+      }
+    }
+
+    return Array.from(groups.entries()).sort(([a], [b]) => {
+      if (a === null) return 1;
+      if (b === null) return -1;
+      const nameA = workspaceMap.get(a) ?? a;
+      const nameB = workspaceMap.get(b) ?? b;
+      return nameA.localeCompare(nameB);
+    });
+  }, [groupByWorkspace, data?.items, workspaceMap]);
 
   const clearFilters = () => {
     setQuery("");
@@ -343,6 +382,25 @@ export function HistoryPage() {
             </PopoverContent>
           </Popover>
 
+          {/* 워크스페이스 그룹핑 토글 */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-7 gap-1 px-2 font-mono text-2xs",
+                  groupByWorkspace && "border-primary/30 bg-primary/10 text-primary",
+                )}
+                onClick={() => setGroupByWorkspace(!groupByWorkspace)}
+              >
+                <Layers className="h-3 w-3" />
+                그룹
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>워크스페이스별 그룹핑</TooltipContent>
+          </Tooltip>
+
           {/* 필터 초기화 */}
           {hasActiveFilters ? (
             <Button
@@ -385,6 +443,17 @@ export function HistoryPage() {
               </Button>
             ) : null}
           </div>
+        ) : groupByWorkspace && groupedSessions ? (
+          <div className="divide-y divide-border">
+            {groupedSessions.map(([wsId, sessions]) => (
+              <WorkspaceGroup
+                key={wsId ?? "__none__"}
+                workspaceName={wsId ? workspaceMap.get(wsId) ?? wsId : null}
+                sessions={sessions}
+                onSessionClick={handleSessionClick}
+              />
+            ))}
+          </div>
         ) : (
           <div className="divide-y divide-border">
             {data?.items.map((session) => (
@@ -425,6 +494,49 @@ export function HistoryPage() {
     </div>
   );
 }
+
+/** 워크스페이스별 Collapsible 그룹 */
+const WorkspaceGroup = memo(function WorkspaceGroup({
+  workspaceName,
+  sessions,
+  onSessionClick,
+}: {
+  workspaceName: string | null;
+  sessions: SessionInfo[];
+  onSessionClick: (sessionId: string) => void;
+}) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="w-full flex items-center gap-2 px-6 py-2 bg-muted/30 hover:bg-muted/50 transition-colors sticky top-0 z-10"
+        >
+          {open ? (
+            <ChevronDownIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          )}
+          <span className="font-mono text-xs font-semibold text-foreground truncate">
+            {workspaceName ?? "워크스페이스 미지정"}
+          </span>
+          <span className="font-mono text-2xs text-muted-foreground shrink-0">
+            ({sessions.length})
+          </span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="divide-y divide-border/50">
+          {sessions.map((session) => (
+            <HistorySessionRow key={session.id} session={session} onClick={onSessionClick} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+});
 
 /** F#8: memo로 감싸 부모 리렌더 시 불필요한 행 렌더링 방지 */
 const HistorySessionRow = memo(function HistorySessionRow({

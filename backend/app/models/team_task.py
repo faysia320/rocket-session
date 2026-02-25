@@ -11,8 +11,8 @@ from app.models.base import Base
 class TeamTask(Base):
     """team_tasks 테이블 ORM 모델.
 
-    태스크는 고유한 work_dir을 가지며,
-    위임 시 멤버 설정 + 태스크 work_dir로 세션이 동적 생성됩니다.
+    태스크는 워크스페이스(workspace_id)를 참조하며,
+    위임 시 멤버 설정 + 워크스페이스 경로로 세션이 동적 생성됩니다.
     """
 
     __tablename__ = "team_tasks"
@@ -31,7 +31,9 @@ class TeamTask(Base):
     created_by_member_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("team_members.id", ondelete="SET NULL"), default=None
     )
-    work_dir: Mapped[str] = mapped_column(Text, nullable=False)
+    workspace_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("workspaces.id", ondelete="SET NULL"), default=None
+    )
     session_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("sessions.id", ondelete="SET NULL"), default=None
     )

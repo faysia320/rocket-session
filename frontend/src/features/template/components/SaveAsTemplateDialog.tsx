@@ -74,7 +74,7 @@ export function SaveAsTemplateDialog({ sessionId, children }: SaveAsTemplateDial
             />
           </div>
           <p className="font-mono text-2xs text-muted-foreground/70">
-            현재 세션의 작업 디렉토리, 시스템 프롬프트, 도구 설정 등이 템플릿에 저장됩니다.
+            현재 세션의 시스템 프롬프트, 도구 설정 등이 템플릿에 저장됩니다.
           </p>
           <Button
             className="w-full font-mono text-xs gap-1.5"
