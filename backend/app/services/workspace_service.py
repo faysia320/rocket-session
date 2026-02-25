@@ -246,11 +246,26 @@ class WorkspaceService:
             await session.commit()
 
     async def list_all(self) -> list[dict]:
-        """전체 워크스페이스 목록."""
+        """전체 워크스페이스 목록 (ready 워크스페이스는 Git 실시간 정보 포함)."""
         async with self._db.session() as db_session:
             repo = WorkspaceRepository(db_session)
             entities = await repo.list_all()
-            return [_workspace_to_dict(e) for e in entities]
+            results = [_workspace_to_dict(e) for e in entities]
+
+        # ready 워크스페이스에 Git 실시간 정보 병렬 조회
+        async def _enrich(ws: dict) -> dict:
+            if ws["status"] == "ready" and os.path.isdir(ws["local_path"]):
+                try:
+                    git_info = await self._git.get_git_info(ws["local_path"])
+                    ws["current_branch"] = git_info.branch
+                    ws["is_dirty"] = git_info.is_dirty
+                    ws["ahead"] = git_info.ahead
+                    ws["behind"] = git_info.behind
+                except Exception:
+                    pass
+            return ws
+
+        return list(await asyncio.gather(*[_enrich(ws) for ws in results]))
 
     async def get(self, workspace_id: str) -> dict | None:
         """워크스페이스 상세 조회 (ready 시 Git 정보 포함)."""
