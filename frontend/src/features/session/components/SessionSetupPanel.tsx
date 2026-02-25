@@ -11,6 +11,14 @@ import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 import { TemplateSelector } from "@/features/template/components/TemplateSelector";
 import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
+import { useGitBranches } from "@/features/git-monitor/hooks/useGitActions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { TemplateInfo } from "@/types";
 
 interface SessionSetupPanelProps {
@@ -25,6 +33,7 @@ interface SessionSetupPanelProps {
       worktree_name?: string;
       workflow_enabled?: boolean;
       workspace_id?: string;
+      branch?: string;
     },
   ) => void;
   onCancel: () => void;
@@ -46,6 +55,14 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
 
   const readyWorkspaces = workspaces?.filter((ws) => ws.status === "ready") ?? [];
 
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
+
+  // 선택된 워크스페이스의 local_path로 브랜치 목록 조회
+  const selectedWorkspaceLocalPath = readyWorkspaces.find(
+    (ws) => ws.id === selectedWorkspaceId,
+  )?.local_path ?? "";
+  const { data: branchData } = useGitBranches(selectedWorkspaceLocalPath);
+
   // 글로벌 설정의 기본값이 이미 적용되었는지 추적
   const globalAppliedRef = useRef(false);
 
@@ -58,6 +75,11 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       globalAppliedRef.current = true;
     }
   }, [globalSettings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 워크스페이스 변경 시 브랜치 선택 초기화
+  useEffect(() => {
+    setSelectedBranch(null);
+  }, [selectedWorkspaceId]);
 
   const handleTemplateSelect = (template: TemplateInfo | null) => {
     if (!template) {
@@ -88,6 +110,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         worktree_name?: string;
         workflow_enabled?: boolean;
         workspace_id?: string;
+        branch?: string;
       } = {};
       if (systemPrompt.trim()) {
         options.system_prompt = systemPrompt.trim();
@@ -114,6 +137,9 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       options.workflow_enabled = workflowEnabled;
       if (selectedWorkspaceId) {
         options.workspace_id = selectedWorkspaceId;
+      }
+      if (selectedBranch) {
+        options.branch = selectedBranch;
       }
       onCreate(
         undefined,
@@ -173,6 +199,35 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             워크스페이스 관리 →
           </Link>
         </div>
+
+        {/* Branch Selection */}
+        {selectedWorkspaceId && branchData ? (
+          <div className="space-y-2">
+            <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-2">
+              <GitBranch className="h-3.5 w-3.5" />
+              BRANCH
+            </Label>
+            <p className="font-mono text-2xs text-muted-foreground/70">
+              세션을 시작할 브랜치를 선택합니다. 미선택 시 현재 브랜치를 사용합니다.
+            </p>
+            <Select
+              value={selectedBranch ?? ""}
+              onValueChange={(val) => setSelectedBranch(val || null)}
+            >
+              <SelectTrigger className="font-mono text-xs bg-input border-border">
+                <SelectValue placeholder={branchData.current_branch ? `현재: ${branchData.current_branch}` : "브랜치 선택…"} />
+              </SelectTrigger>
+              <SelectContent>
+                {branchData.branches.map((branch) => (
+                  <SelectItem key={branch} value={branch} className="font-mono text-xs">
+                    {branch}
+                    {branch === branchData.current_branch ? " (현재)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
 
         {/* Git Worktree (워크스페이스 선택 시 항상 표시) */}
         {selectedWorkspaceId ? (

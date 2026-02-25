@@ -27,6 +27,7 @@ class CreateSessionRequest(BaseModel):
     worktree_name: Optional[str] = None
     template_id: Optional[str] = None
     workspace_id: Optional[str] = None
+    branch: Optional[str] = None
 
 
 class UpdateSessionRequest(BaseModel):

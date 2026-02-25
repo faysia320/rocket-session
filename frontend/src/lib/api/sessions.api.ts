@@ -46,6 +46,7 @@ export const sessionsApi = {
       worktree_name?: string;
       workspace_id?: string;
       workflow_enabled?: boolean;
+      branch?: string;
     },
   ) =>
     api.post<SessionInfo>("/api/sessions/", {

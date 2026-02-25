@@ -140,6 +140,12 @@ async def create_session(
         enabled_servers = await mcp_service.list_servers()
         mcp_server_ids = [s.id for s in enabled_servers if s.enabled]
 
+    # branch 지정 시 워크트리 생성 전 체크아웃
+    if req.branch:
+        success, msg = await git.checkout_branch(work_dir, req.branch)
+        if not success:
+            raise HTTPException(status_code=400, detail=msg)
+
     # worktree_name이 있으면 워크트리 즉시 생성
     if req.worktree_name and work_dir:
         try:
