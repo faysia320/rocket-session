@@ -643,15 +643,17 @@ class GitService:
 
     async def list_branches(
         self, repo_path: str, *, fetch: bool = True
-    ) -> tuple[list[str], str | None]:
-        """로컬 + 원격 브랜치 목록과 현재 브랜치 반환.
+    ) -> tuple[list[str], str | None, str | None]:
+        """로컬 + 원격 브랜치 목록과 현재/기본 브랜치 반환.
+
+        브랜치는 최근 커밋 날짜 순으로 정렬됩니다.
 
         Args:
             repo_path: Git 저장소 경로
             fetch: True이면 목록 조회 전 git fetch --prune 실행
 
         Returns:
-            (branches, current_branch)
+            (branches, current_branch, default_branch)
         """
         validated = self._validate_path(repo_path)
         if not self._is_within_root(validated):
@@ -664,34 +666,53 @@ class GitService:
                 "fetch", "--prune", "--quiet", cwd=cwd, timeout=30.0
             )
 
-        rc_local, local_out, _ = await self._run_git_command(
-            "branch", "--list", "--format=%(refname:short)", cwd=cwd
-        )
-        rc_remote, remote_out, _ = await self._run_git_command(
-            "branch", "-r", "--format=%(refname:short)", cwd=cwd
-        )
-        rc_cur, cur_out, _ = await self._run_git_command(
-            "branch", "--show-current", cwd=cwd
+        # 로컬 브랜치 (최근 커밋 순), 원격 브랜치, 현재 브랜치, 기본 브랜치 병렬 조회
+        (
+            (rc_local, local_out, _),
+            (rc_remote, remote_out, _),
+            (rc_cur, cur_out, _),
+            (rc_default, default_out, _),
+        ) = await asyncio.gather(
+            self._run_git_command(
+                "branch", "--list", "--sort=-committerdate",
+                "--format=%(refname:short)", cwd=cwd,
+            ),
+            self._run_git_command(
+                "branch", "-r", "--sort=-committerdate",
+                "--format=%(refname:short)", cwd=cwd,
+            ),
+            self._run_git_command("branch", "--show-current", cwd=cwd),
+            self._run_git_command(
+                "symbolic-ref", "refs/remotes/origin/HEAD",
+                "--short", cwd=cwd,
+            ),
         )
 
         local_branches: list[str] = []
         if rc_local == 0 and local_out:
             local_branches = [b.strip() for b in local_out.split("\n") if b.strip()]
 
-        remote_branches: list[str] = []
+        # 원격 전용 브랜치 (로컬에 없는 것만, 순서 유지)
+        remote_only: list[str] = []
         if rc_remote == 0 and remote_out:
             for raw in remote_out.split("\n"):
                 name = raw.strip()
                 if not name or "/HEAD" in name:
                     continue
-                # origin/feature-x → feature-x
                 short = name.split("/", 1)[1] if "/" in name else name
                 if short not in local_branches:
-                    remote_branches.append(short)
+                    remote_only.append(short)
 
-        branches = local_branches + remote_branches
+        branches = local_branches + remote_only
         current = cur_out.strip() if rc_cur == 0 and cur_out else None
-        return branches, current
+
+        # 기본 브랜치: origin/main → main
+        default_branch: str | None = None
+        if rc_default == 0 and default_out:
+            ref = default_out.strip()
+            default_branch = ref.split("/", 1)[1] if "/" in ref else ref
+
+        return branches, current, default_branch
 
     async def checkout_branch(
         self, repo_path: str, branch: str

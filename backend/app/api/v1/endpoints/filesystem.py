@@ -277,8 +277,12 @@ async def list_git_branches(
     git: GitService = Depends(get_git_service),
 ):
     try:
-        branches, current = await git.list_branches(path)
-        return GitBranchListResponse(branches=branches, current_branch=current)
+        branches, current, default_branch = await git.list_branches(path)
+        return GitBranchListResponse(
+            branches=branches,
+            current_branch=current,
+            default_branch=default_branch,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

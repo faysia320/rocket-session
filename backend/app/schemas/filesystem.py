@@ -234,10 +234,11 @@ class PRReviewSubmitResponse(BaseModel):
 
 
 class GitBranchListResponse(BaseModel):
-    """로컬 브랜치 목록."""
+    """브랜치 목록 (최근 커밋 순 정렬)."""
 
     branches: list[str] = []
     current_branch: Optional[str] = None
+    default_branch: Optional[str] = None
 
 
 class GitCheckoutRequest(BaseModel):

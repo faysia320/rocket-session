@@ -191,6 +191,7 @@ export interface PRReviewSubmitResponse {
 export interface GitBranchListResponse {
   branches: string[];
   current_branch: string | null;
+  default_branch: string | null;
 }
 
 export interface GitCheckoutResponse {
