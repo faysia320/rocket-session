@@ -4,11 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { DiffViewer } from "./DiffViewer";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
-import { sessionsApi } from "@/lib/api/sessions.api";
 import { cn, formatTime } from "@/lib/utils";
 import { getToolBadgeStyle } from "../constants/toolColors";
+import { useDiffFetch } from "../hooks/useDiffFetch";
 import type { FileChange } from "@/types";
 
 /** 동일 파일의 변경 이력을 병합한 항목 */
@@ -233,6 +234,35 @@ export const FilePanel = memo(function FilePanel({
   );
 });
 
+// ─── HoverCard Diff 콘텐츠 ──────────────────────────────────────────────────
+
+function DiffHoverContent({ diff, loading }: { diff: string | null; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (diff === null) return null;
+  if (!diff.trim()) {
+    return (
+      <div className="flex items-center justify-center py-6">
+        <span className="font-mono text-xs text-muted-foreground">변경사항 없음</span>
+      </div>
+    );
+  }
+  return (
+    <div className="max-h-[400px] overflow-auto">
+      <ErrorBoundary
+        fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}
+      >
+        <DiffViewer diff={diff} />
+      </ErrorBoundary>
+    </div>
+  );
+}
+
 /** 절대 경로이면 마지막 3세그먼트로 축약, 상대 경로는 그대로 표시 */
 function shortenFilePath(filePath: string): string {
   // Windows/Unix 절대 경로 감지
@@ -250,51 +280,29 @@ interface MergedFileChangeItemProps {
 }
 
 function MergedFileChangeItem({ sessionId, item, onFullView }: MergedFileChangeItemProps) {
-  const [open, setOpen] = useState(false);
-  const [diff, setDiff] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { diff, loading, fetchIfNeeded } = useDiffFetch(sessionId, item.file);
 
   const handleOpenChange = useCallback(
-    async (isOpen: boolean) => {
-      setOpen(isOpen);
-      if (isOpen && diff === null) {
-        setLoading(true);
-        try {
-          const result = await sessionsApi.fileDiff(sessionId, item.file);
-          setDiff(result);
-        } catch {
-          setDiff("");
-        } finally {
-          setLoading(false);
-        }
-      }
+    (isOpen: boolean) => {
+      if (isOpen) fetchIfNeeded();
     },
-    [sessionId, item.file, diff],
+    [fetchIfNeeded],
   );
 
-  const handleFullView = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onFullView?.(item.latest);
-    },
-    [onFullView, item.latest],
-  );
+  const handleClick = useCallback(() => {
+    onFullView?.(item.latest);
+  }, [onFullView, item.latest]);
 
   return (
-    <Collapsible open={open} onOpenChange={handleOpenChange} className="mb-1.5">
-      <CollapsibleTrigger asChild>
+    <HoverCard openDelay={300} closeDelay={150} onOpenChange={handleOpenChange}>
+      <HoverCardTrigger asChild>
         <button
           type="button"
-          className="w-full text-left p-2 px-2.5 bg-secondary border border-border rounded-sm animate-[fadeIn_0.2s_ease] hover:border-primary/30 hover:bg-secondary/80 transition-colors cursor-pointer"
-          aria-label={`Diff 보기: ${item.file}`}
+          onClick={handleClick}
+          className="w-full text-left p-2 px-2.5 bg-secondary border border-border rounded-sm animate-[fadeIn_0.2s_ease] hover:border-primary/30 hover:bg-secondary/80 transition-colors cursor-pointer mb-1.5"
+          aria-label={`파일 보기: ${item.file}`}
         >
           <div className="flex items-center gap-1.5 mb-1">
-            <ChevronRight
-              className={cn(
-                "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150",
-                open && "rotate-90",
-              )}
-            />
             {item.tools.map((tool) => (
               <Badge
                 key={tool}
@@ -315,50 +323,35 @@ function MergedFileChangeItem({ sessionId, item, onFullView }: MergedFileChangeI
             </span>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0"
-                  onClick={handleFullView}
+                <span
+                  className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0 inline-flex"
                   aria-label={`전체 보기: ${item.file}`}
                 >
                   <Maximize2 className="h-3 w-3 text-muted-foreground" />
-                </button>
+                </span>
               </TooltipTrigger>
               <TooltipContent>전체 보기</TooltipContent>
             </Tooltip>
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="font-mono text-xs text-primary break-all pl-5">
+              <div className="font-mono text-xs text-primary break-all pl-1">
                 {shortenFilePath(item.file)}
               </div>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">{item.file}</TooltipContent>
           </Tooltip>
         </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="border border-t-0 border-border rounded-b-sm bg-background">
-          <div className="max-h-[300px] overflow-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : diff !== null ? (
-              diff.trim() ? (
-                <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
-                  <DiffViewer diff={diff} />
-                </ErrorBoundary>
-              ) : (
-                <div className="flex items-center justify-center py-4">
-                  <span className="font-mono text-xs text-muted-foreground">변경사항 없음</span>
-                </div>
-              )
-            ) : null}
-          </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="left"
+        align="start"
+        sideOffset={8}
+        className="w-[480px] max-h-[400px] overflow-hidden p-0"
+      >
+        <DiffHoverContent diff={diff} loading={loading} />
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 
@@ -437,52 +430,30 @@ function FileTreeFolderNode({ node, depth, sessionId, onFullView }: FileTreeNode
 }
 
 function FileTreeFileNode({ node, depth, sessionId, onFullView }: FileTreeNodeComponentProps) {
-  const [open, setOpen] = useState(false);
-  const [diff, setDiff] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const item = node.fileChange!;
+  const { diff, loading, fetchIfNeeded } = useDiffFetch(sessionId, item.file);
 
   const handleOpenChange = useCallback(
-    async (isOpen: boolean) => {
-      setOpen(isOpen);
-      if (isOpen && diff === null) {
-        setLoading(true);
-        try {
-          const result = await sessionsApi.fileDiff(sessionId, item.file);
-          setDiff(result);
-        } catch {
-          setDiff("");
-        } finally {
-          setLoading(false);
-        }
-      }
+    (isOpen: boolean) => {
+      if (isOpen) fetchIfNeeded();
     },
-    [sessionId, item.file, diff],
+    [fetchIfNeeded],
   );
 
-  const handleFullView = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onFullView?.(item.latest);
-    },
-    [onFullView, item.latest],
-  );
+  const handleClick = useCallback(() => {
+    onFullView?.(item.latest);
+  }, [onFullView, item.latest]);
 
   return (
-    <Collapsible open={open} onOpenChange={handleOpenChange}>
-      <CollapsibleTrigger asChild>
+    <HoverCard openDelay={300} closeDelay={150} onOpenChange={handleOpenChange}>
+      <HoverCardTrigger asChild>
         <button
           type="button"
+          onClick={handleClick}
           className="w-full flex items-center gap-1.5 py-1 px-1.5 rounded-sm hover:bg-muted/50 transition-colors cursor-pointer"
           style={{ paddingLeft: depth * 16 + 8 }}
-          aria-label={`Diff 보기: ${node.name}`}
+          aria-label={`파일 보기: ${node.name}`}
         >
-          <ChevronRight
-            className={cn(
-              "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150",
-              open && "rotate-90",
-            )}
-          />
           <FileCode className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <span className="font-mono text-xs text-primary truncate">{node.name}</span>
           {item.tools.map((tool) => (
@@ -498,43 +469,25 @@ function FileTreeFileNode({ node, depth, sessionId, onFullView }: FileTreeNodeCo
           </span>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0"
-                onClick={handleFullView}
+              <span
+                className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0 inline-flex"
                 aria-label={`전체 보기: ${item.file}`}
               >
                 <Maximize2 className="h-3 w-3 text-muted-foreground" />
-              </button>
+              </span>
             </TooltipTrigger>
             <TooltipContent>전체 보기</TooltipContent>
           </Tooltip>
         </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div
-          className="border border-border rounded-sm bg-background"
-          style={{ marginLeft: depth * 16 + 28 }}
-        >
-          <div className="max-h-[300px] overflow-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : diff !== null ? (
-              diff.trim() ? (
-                <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
-                  <DiffViewer diff={diff} />
-                </ErrorBoundary>
-              ) : (
-                <div className="flex items-center justify-center py-4">
-                  <span className="font-mono text-xs text-muted-foreground">변경사항 없음</span>
-                </div>
-              )
-            ) : null}
-          </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+      </HoverCardTrigger>
+      <HoverCardContent
+        side="left"
+        align="start"
+        sideOffset={8}
+        className="w-[480px] max-h-[400px] overflow-hidden p-0"
+      >
+        <DiffHoverContent diff={diff} loading={loading} />
+      </HoverCardContent>
+    </HoverCard>
   );
 }
