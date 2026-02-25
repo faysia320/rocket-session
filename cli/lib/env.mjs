@@ -7,7 +7,7 @@ import { getEnvFile, getDataDir, getPackageRoot, getClaudeAuthDir } from './path
 
 const DEFAULTS = {
   CLAUDE_AUTH_DIR: '',
-  HOST_PROJECTS_DIR: '',
+  CLAUDE_AUTH_FILE: '',
   ROCKET_DATA_DIR: '',
   ROCKET_PORT: '8100',
   CLAUDE_ALLOWED_TOOLS: 'Read,Write,Edit,Bash',
@@ -44,7 +44,7 @@ export function mergeOptions(flags, options = {}) {
 
   return {
     claudeAuthDir: flags.claudeAuthDir || env.CLAUDE_AUTH_DIR || getClaudeAuthDir(),
-    projectsDir: flags.projectsDir || env.HOST_PROJECTS_DIR || '',
+    claudeAuthFile: flags.claudeAuthFile || env.CLAUDE_AUTH_FILE || '',
     dataDir: flags.dataDir || getDataDir(options),
     port: flags.port || env.ROCKET_PORT || DEFAULTS.ROCKET_PORT,
     allowedTools:
@@ -63,7 +63,7 @@ export function writeEnvFile(merged, options = {}) {
   const lines = [
     `# Rocket Session 설정 (자동 생성)`,
     `CLAUDE_AUTH_DIR=${merged.claudeAuthDir}`,
-    `HOST_PROJECTS_DIR=${merged.projectsDir}`,
+    `CLAUDE_AUTH_FILE=${merged.claudeAuthFile}`,
     `ROCKET_DATA_DIR=${merged.dataDir}`,
     `ROCKET_PORT=${merged.port}`,
     `CLAUDE_ALLOWED_TOOLS=${merged.allowedTools}`,

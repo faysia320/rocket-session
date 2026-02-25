@@ -107,10 +107,6 @@ export async function runAllChecks(options) {
     return { passed: false, results };
   }
 
-  const projectsDir = checkPath(options.projectsDir, '프로젝트 디렉토리');
-  results.push({ name: 'Projects Dir', ...projectsDir });
-  if (!projectsDir.ok) return { passed: false, results };
-
   const port = await checkPort(options.port || 8100);
   results.push({ name: 'Port', ...port });
   if (!port.ok) return { passed: false, results };

@@ -73,7 +73,7 @@ function setConfig(flags) {
   // .env 파일에 직접 key=value 쓰기
   const merged = mergeOptions({
     claudeAuthDir: env.CLAUDE_AUTH_DIR,
-    projectsDir: env.HOST_PROJECTS_DIR,
+    claudeAuthFile: env.CLAUDE_AUTH_FILE,
     dataDir: getDataDir({ dataDir: flags.dataDir }),
     port: env.ROCKET_PORT,
     allowedTools: env.CLAUDE_ALLOWED_TOOLS,

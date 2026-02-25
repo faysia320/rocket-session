@@ -42,26 +42,10 @@ export default async function start(flags) {
   // 옵션 병합 (CLI 플래그 > .env > 기본값)
   const merged = mergeOptions(flags);
 
-  // 대화형 모드: projects-dir이 없으면 물어봄
-  if (!merged.projectsDir) {
-    if (flags.json) {
-      log.json({ error: 'projects-dir is required' });
-      process.exit(1);
-    }
-    merged.projectsDir = await ask(
-      '프로젝트 디렉토리 경로를 입력하세요 (Claude가 작업할 디렉토리)',
-    );
-    if (!merged.projectsDir) {
-      log.error('프로젝트 디렉토리는 필수입니다. --projects-dir 옵션을 사용하세요.');
-      process.exit(1);
-    }
-  }
-
   // [1/5] 사전 검사
   log.step(1, TOTAL_STEPS, 'Docker 환경 확인 중…');
   const { passed, results } = await runAllChecks({
     claudeAuthDir: merged.claudeAuthDir,
-    projectsDir: merged.projectsDir,
     port: Number(merged.port),
   });
 

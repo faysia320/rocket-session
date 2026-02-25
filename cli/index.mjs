@@ -79,8 +79,9 @@ Global Options:
   --json            JSON 출력 모드 (LLM 자동화용)
 
 Examples:
-  npx rocket-session start --projects-dir ~/workspace
-  npx rocket-session start --projects-dir ~/workspace --port 9000
+  npx rocket-session init
+  npx rocket-session start
+  npx rocket-session start --port 9000
   npx rocket-session stop
   npx rocket-session status --json
   npx rocket-session logs -f

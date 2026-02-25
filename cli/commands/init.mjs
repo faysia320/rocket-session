@@ -22,8 +22,8 @@ function ask(question, defaultValue = '') {
 export default async function init(flags) {
   log.banner();
 
-  // 비대화형: 모든 플래그가 제공되면 바로 생성
-  if (flags.projectsDir) {
+  // 비대화형: claudeAuthDir 플래그가 제공되면 바로 생성
+  if (flags.claudeAuthDir) {
     const merged = mergeOptions(flags);
     ensureDataDir({ dataDir: merged.dataDir });
     const envPath = writeEnvFile(merged, { dataDir: merged.dataDir });
@@ -34,14 +34,6 @@ export default async function init(flags) {
 
   // 대화형 모드
   log.info('Rocket Session 설정을 생성합니다.\n');
-
-  const projectsDir = await ask(
-    '프로젝트 디렉토리 (Claude가 작업할 디렉토리 경로)',
-  );
-  if (!projectsDir) {
-    log.error('프로젝트 디렉토리는 필수입니다.');
-    process.exit(1);
-  }
 
   const claudeAuthDir = await ask(
     'Claude 인증 디렉토리',
@@ -54,7 +46,6 @@ export default async function init(flags) {
 
   const merged = mergeOptions({
     ...flags,
-    projectsDir,
     claudeAuthDir,
     port,
     gitUserName,
