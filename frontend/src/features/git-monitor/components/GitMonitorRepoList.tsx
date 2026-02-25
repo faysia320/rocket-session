@@ -23,42 +23,57 @@ function RepoItem({ workspace, selected, onSelect }: RepoItemProps) {
     <button
       type="button"
       className={cn(
-        "w-full flex items-center gap-1.5 px-3 py-2 transition-colors border-l-2 text-left",
+        "w-full flex flex-col gap-0.5 px-3 py-2 transition-colors border-l-2 text-left",
         selected ? "bg-muted/70 border-l-primary" : "hover:bg-muted/30 border-l-transparent",
       )}
       onClick={onSelect}
       aria-label={`워크스페이스 ${workspace.name} 선택`}
     >
-      <FolderGit2 className="h-3 w-3 text-info shrink-0" />
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="font-mono text-xs text-foreground truncate flex-1">
-            {workspace.name}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent className="font-mono text-xs">{workspace.repo_url}</TooltipContent>
-      </Tooltip>
+      {/* 1행: Repo 이름 */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        <FolderGit2 className="h-3 w-3 text-info shrink-0" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="font-mono text-xs text-foreground truncate">
+              {workspace.name}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="font-mono text-xs">{workspace.repo_url}</TooltipContent>
+        </Tooltip>
+      </div>
 
-      {workspace.status === "ready" ? (
-        <>
-          {workspace.current_branch ? (
-            <Badge
-              variant="secondary"
-              className="font-mono text-2xs px-1 py-0 shrink-0 max-w-[80px] truncate"
-            >
-              <GitBranch className="h-2 w-2 mr-0.5 shrink-0" />
-              {workspace.current_branch}
-            </Badge>
-          ) : null}
-          {workspace.is_dirty ? (
-            <AlertCircle className="h-2.5 w-2.5 text-warning shrink-0" />
-          ) : (
-            <Check className="h-2.5 w-2.5 text-success shrink-0" />
-          )}
-        </>
-      ) : (
-        STATUS_ICON[workspace.status]
-      )}
+      {/* 2행: Branch + Clean 여부 */}
+      <div className="flex items-center gap-1.5 pl-[18px]">
+        {workspace.status === "ready" ? (
+          <>
+            {workspace.current_branch ? (
+              <Badge
+                variant="secondary"
+                className="font-mono text-2xs px-1 py-0 shrink-0 max-w-[100px] truncate"
+              >
+                <GitBranch className="h-2 w-2 mr-0.5 shrink-0" />
+                {workspace.current_branch}
+              </Badge>
+            ) : null}
+            {workspace.is_dirty ? (
+              <span className="flex items-center gap-0.5 text-2xs text-warning">
+                <AlertCircle className="h-2.5 w-2.5 shrink-0" />
+                dirty
+              </span>
+            ) : (
+              <span className="flex items-center gap-0.5 text-2xs text-success">
+                <Check className="h-2.5 w-2.5 shrink-0" />
+                clean
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="flex items-center gap-1 text-2xs text-muted-foreground">
+            {STATUS_ICON[workspace.status]}
+            {workspace.status}
+          </span>
+        )}
+      </div>
     </button>
   );
 }
