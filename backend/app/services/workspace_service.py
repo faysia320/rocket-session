@@ -56,11 +56,19 @@ class WorkspaceService:
     ) -> dict:
         """워크스페이스 생성 + 비동기 clone 시작."""
         wid = str(uuid.uuid4())[:16]
-        local_path = os.path.join(self._workspaces_root, wid)
 
-        # repo URL에서 이름 추출 (미지정 시)
+        # repo URL에서 이름 추출 (미지정 시) — 경로 생성에 사용하므로 먼저 처리
         if not name:
             name = repo_url.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
+
+        # 레포명 기반 경로 생성 (중복 시 suffix)
+        dir_name = name
+        local_path = os.path.join(self._workspaces_root, dir_name)
+        counter = 2
+        while os.path.exists(local_path):
+            dir_name = f"{name}-{counter}"
+            local_path = os.path.join(self._workspaces_root, dir_name)
+            counter += 1
 
         now = datetime.now(timezone.utc)
         async with self._db.session() as session:
