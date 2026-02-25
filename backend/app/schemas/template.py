@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 class CreateTemplateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
-    work_dir: Optional[str] = None
     system_prompt: Optional[str] = None
     allowed_tools: Optional[str] = None
     disallowed_tools: Optional[str] = None
@@ -22,14 +21,12 @@ class CreateTemplateRequest(BaseModel):
     max_budget_usd: Optional[float] = Field(None, gt=0)
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     mcp_server_ids: Optional[list[str]] = None
-    additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
 
 
 class UpdateTemplateRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
-    work_dir: Optional[str] = None
     system_prompt: Optional[str] = None
     allowed_tools: Optional[str] = None
     disallowed_tools: Optional[str] = None
@@ -42,7 +39,6 @@ class UpdateTemplateRequest(BaseModel):
     max_budget_usd: Optional[float] = Field(None, gt=0)
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     mcp_server_ids: Optional[list[str]] = None
-    additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
 
 
@@ -50,7 +46,6 @@ class TemplateInfo(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    work_dir: Optional[str] = None
     system_prompt: Optional[str] = None
     allowed_tools: Optional[str] = None
     disallowed_tools: Optional[str] = None
@@ -63,7 +58,6 @@ class TemplateInfo(BaseModel):
     max_budget_usd: Optional[float] = None
     system_prompt_mode: str = "replace"
     mcp_server_ids: Optional[list[str]] = None
-    additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
     created_at: datetime
     updated_at: datetime

@@ -28,7 +28,6 @@ class TemplateService:
             id=tmpl.id,
             name=tmpl.name,
             description=tmpl.description,
-            work_dir=tmpl.work_dir,
             system_prompt=tmpl.system_prompt,
             allowed_tools=tmpl.allowed_tools,
             disallowed_tools=tmpl.disallowed_tools,
@@ -41,6 +40,7 @@ class TemplateService:
             max_budget_usd=tmpl.max_budget_usd,
             system_prompt_mode=tmpl.system_prompt_mode or "replace",
             mcp_server_ids=tmpl.mcp_server_ids,
+            fallback_model=tmpl.fallback_model,
             created_at=tmpl.created_at,
             updated_at=tmpl.updated_at,
         )
@@ -63,7 +63,6 @@ class TemplateService:
         self,
         name: str,
         description: str | None = None,
-        work_dir: str | None = None,
         system_prompt: str | None = None,
         allowed_tools: str | None = None,
         disallowed_tools: str | None = None,
@@ -76,6 +75,7 @@ class TemplateService:
         max_budget_usd: float | None = None,
         system_prompt_mode: str | None = None,
         mcp_server_ids: list[str] | None = None,
+        fallback_model: str | None = None,
     ) -> TemplateInfo:
         template_id = str(uuid.uuid4())[:16]
         now = datetime.now(timezone.utc)
@@ -85,7 +85,6 @@ class TemplateService:
                 id=template_id,
                 name=name,
                 description=description,
-                work_dir=work_dir,
                 system_prompt=system_prompt,
                 allowed_tools=allowed_tools,
                 disallowed_tools=disallowed_tools,
@@ -98,6 +97,7 @@ class TemplateService:
                 max_budget_usd=max_budget_usd,
                 system_prompt_mode=system_prompt_mode or "replace",
                 mcp_server_ids=mcp_server_ids,
+                fallback_model=fallback_model,
                 created_at=now,
                 updated_at=now,
             )
@@ -110,7 +110,6 @@ class TemplateService:
         template_id: str,
         name: str | None = None,
         description: str | None = None,
-        work_dir: str | None = None,
         system_prompt: str | None = None,
         allowed_tools: str | None = None,
         disallowed_tools: str | None = None,
@@ -123,6 +122,7 @@ class TemplateService:
         max_budget_usd: float | None = None,
         system_prompt_mode: str | None = None,
         mcp_server_ids: list[str] | None = None,
+        fallback_model: str | None = None,
     ) -> TemplateInfo | None:
         now = datetime.now(timezone.utc)
         kwargs: dict = {"updated_at": now}
@@ -130,8 +130,6 @@ class TemplateService:
             kwargs["name"] = name
         if description is not None:
             kwargs["description"] = description
-        if work_dir is not None:
-            kwargs["work_dir"] = work_dir
         if system_prompt is not None:
             kwargs["system_prompt"] = system_prompt
         if allowed_tools is not None:
@@ -156,6 +154,8 @@ class TemplateService:
             kwargs["system_prompt_mode"] = system_prompt_mode
         if mcp_server_ids is not None:
             kwargs["mcp_server_ids"] = mcp_server_ids
+        if fallback_model is not None:
+            kwargs["fallback_model"] = fallback_model
         async with self._db.session() as session:
             repo = TemplateRepository(session)
             tmpl = await repo.update_template(template_id, **kwargs)
@@ -187,7 +187,6 @@ class TemplateService:
         return await self.create_template(
             name=name,
             description=description,
-            work_dir=entity.work_dir,
             system_prompt=entity.system_prompt,
             allowed_tools=entity.allowed_tools,
             disallowed_tools=entity.disallowed_tools,
@@ -200,6 +199,7 @@ class TemplateService:
             max_budget_usd=entity.max_budget_usd,
             system_prompt_mode=entity.system_prompt_mode,
             mcp_server_ids=entity.mcp_server_ids,
+            fallback_model=entity.fallback_model,
         )
 
     # ── Export / Import ──────────────────────────────────────
@@ -231,7 +231,6 @@ class TemplateService:
         return await self.create_template(
             name=name,
             description=data.description,
-            work_dir=data.work_dir,
             system_prompt=data.system_prompt,
             allowed_tools=data.allowed_tools,
             disallowed_tools=data.disallowed_tools,
@@ -244,4 +243,5 @@ class TemplateService:
             max_budget_usd=data.max_budget_usd,
             system_prompt_mode=data.system_prompt_mode,
             mcp_server_ids=data.mcp_server_ids,
+            fallback_model=data.fallback_model,
         )

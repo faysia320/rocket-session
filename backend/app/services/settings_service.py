@@ -23,7 +23,7 @@ class SettingsService:
                 return {}
             return {
                 "id": entity.id,
-                "work_dir": entity.work_dir,
+                "default_workspace_id": entity.default_workspace_id,
                 "allowed_tools": entity.allowed_tools,
                 "system_prompt": entity.system_prompt,
                 "timeout_seconds": entity.timeout_seconds,
@@ -37,13 +37,13 @@ class SettingsService:
                 "disallowed_tools": entity.disallowed_tools,
                 "mcp_server_ids": entity.mcp_server_ids,
                 "globally_trusted_tools": entity.globally_trusted_tools,
-                "additional_dirs": entity.additional_dirs,
+                "default_additional_workspace_ids": entity.default_additional_workspace_ids,
                 "fallback_model": entity.fallback_model,
             }
 
     async def update(
         self,
-        work_dir: str | None = None,
+        default_workspace_id: str | None = None,
         allowed_tools: str | None = None,
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
@@ -57,13 +57,13 @@ class SettingsService:
         disallowed_tools: str | None = None,
         mcp_server_ids: list[str] | None = None,
         globally_trusted_tools: list[str] | None = None,
-        additional_dirs: list[str] | None = None,
+        default_additional_workspace_ids: list[str] | None = None,
         fallback_model: str | None = None,
     ) -> dict:
         """글로벌 설정 업데이트 후 최신 상태 반환. JSONB 필드는 직접 저장."""
         kwargs: dict = {}
-        if work_dir is not None:
-            kwargs["work_dir"] = work_dir
+        if default_workspace_id is not None:
+            kwargs["default_workspace_id"] = default_workspace_id
         if allowed_tools is not None:
             kwargs["allowed_tools"] = allowed_tools
         if system_prompt is not None:
@@ -90,8 +90,8 @@ class SettingsService:
             kwargs["mcp_server_ids"] = mcp_server_ids
         if globally_trusted_tools is not None:
             kwargs["globally_trusted_tools"] = globally_trusted_tools
-        if additional_dirs is not None:
-            kwargs["additional_dirs"] = additional_dirs
+        if default_additional_workspace_ids is not None:
+            kwargs["default_additional_workspace_ids"] = default_additional_workspace_ids
         if fallback_model is not None:
             kwargs["fallback_model"] = fallback_model
         async with self._db.session() as session:
@@ -102,7 +102,7 @@ class SettingsService:
                 return {}
             return {
                 "id": entity.id,
-                "work_dir": entity.work_dir,
+                "default_workspace_id": entity.default_workspace_id,
                 "allowed_tools": entity.allowed_tools,
                 "system_prompt": entity.system_prompt,
                 "timeout_seconds": entity.timeout_seconds,
@@ -116,6 +116,6 @@ class SettingsService:
                 "disallowed_tools": entity.disallowed_tools,
                 "mcp_server_ids": entity.mcp_server_ids,
                 "globally_trusted_tools": entity.globally_trusted_tools,
-                "additional_dirs": entity.additional_dirs,
+                "default_additional_workspace_ids": entity.default_additional_workspace_ids,
                 "fallback_model": entity.fallback_model,
             }

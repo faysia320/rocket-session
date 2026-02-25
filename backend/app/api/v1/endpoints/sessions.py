@@ -10,7 +10,6 @@ from app.api.dependencies import (
     get_mcp_service,
     get_search_service,
     get_session_manager,
-    get_settings,
     get_settings_service,
     get_tag_service,
     get_template_service,
@@ -18,7 +17,6 @@ from app.api.dependencies import (
     get_ws_manager,
 )
 from app.api.v1.endpoints.permissions import clear_session_trusted
-from app.core.config import Settings
 from app.models.session import SessionStatus
 from app.schemas.search import PaginatedSessionsResponse
 from app.schemas.session import (
@@ -46,7 +44,6 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 @router.post("/", response_model=SessionInfo)
 async def create_session(
     req: CreateSessionRequest,
-    settings: Settings = Depends(get_settings),
     manager: SessionManager = Depends(get_session_manager),
     settings_service: SettingsService = Depends(get_settings_service),
     mcp_service: McpService = Depends(get_mcp_service),
@@ -63,22 +60,19 @@ async def create_session(
         if not tpl:
             raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
 
-    # work_dir 우선순위: workspace_id > 요청 > 템플릿 > 글로벌 > env
-    workspace_id = req.workspace_id
-    if workspace_id:
-        ws = await workspace_service.get(workspace_id)
-        if not ws:
-            raise HTTPException(status_code=404, detail="워크스페이스를 찾을 수 없습니다")
-        if ws["status"] != "ready":
-            raise HTTPException(status_code=400, detail="워크스페이스가 준비되지 않았습니다")
-        work_dir = ws["local_path"]
-    else:
-        work_dir = (
-            req.work_dir
-            or (tpl.work_dir if tpl else None)
-            or global_settings.get("work_dir")
-            or settings.claude_work_dir
+    # workspace_id 우선순위: 요청 > 글로벌 기본값
+    workspace_id = req.workspace_id or global_settings.get("default_workspace_id")
+    if not workspace_id:
+        raise HTTPException(
+            status_code=400,
+            detail="워크스페이스를 선택해주세요. 글로벌 설정에서 기본 워크스페이스를 지정하거나 세션 생성 시 워크스페이스를 선택하세요.",
         )
+    ws = await workspace_service.get(workspace_id)
+    if not ws:
+        raise HTTPException(status_code=404, detail="워크스페이스를 찾을 수 없습니다")
+    if ws["status"] != "ready":
+        raise HTTPException(status_code=400, detail="워크스페이스가 준비되지 않았습니다")
+    work_dir = ws["local_path"]
 
     # 각 필드 우선순위: 요청값 > 템플릿값
     system_prompt = (
@@ -131,11 +125,7 @@ async def create_session(
         else (tpl.workflow_enabled if tpl else None)
     )
 
-    additional_dirs = (
-        req.additional_dirs
-        if req.additional_dirs is not None
-        else (tpl.additional_dirs if tpl else None)
-    )
+    additional_dirs = req.additional_dirs
     fallback_model = (
         req.fallback_model
         if req.fallback_model is not None

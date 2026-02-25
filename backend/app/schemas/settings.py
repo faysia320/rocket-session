@@ -6,8 +6,7 @@ from pydantic import BaseModel
 
 
 class GlobalSettingsResponse(BaseModel):
-    root_dir: str = ""
-    work_dir: Optional[str] = None
+    default_workspace_id: Optional[str] = None
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = None
@@ -20,13 +19,13 @@ class GlobalSettingsResponse(BaseModel):
     system_prompt_mode: str = "replace"
     disallowed_tools: Optional[str] = None
     mcp_server_ids: Optional[list[str]] = None
-    additional_dirs: Optional[list[str]] = None
+    default_additional_workspace_ids: Optional[list[str]] = None
     fallback_model: Optional[str] = None
     globally_trusted_tools: Optional[list[str]] = None
 
 
 class UpdateGlobalSettingsRequest(BaseModel):
-    work_dir: Optional[str] = None
+    default_workspace_id: Optional[str] = None
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = None
@@ -39,6 +38,6 @@ class UpdateGlobalSettingsRequest(BaseModel):
     system_prompt_mode: Optional[str] = None
     disallowed_tools: Optional[str] = None
     mcp_server_ids: Optional[list[str]] = None
-    additional_dirs: Optional[list[str]] = None
+    default_additional_workspace_ids: Optional[list[str]] = None
     fallback_model: Optional[str] = None
     globally_trusted_tools: Optional[list[str]] = None

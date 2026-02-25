@@ -13,7 +13,7 @@ class GlobalSettings(Base):
     __tablename__ = "global_settings"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default="default")
-    work_dir: Mapped[str | None] = mapped_column(Text, default=None)
+    default_workspace_id: Mapped[str | None] = mapped_column(String, default=None)
     allowed_tools: Mapped[str | None] = mapped_column(Text, default=None)
     system_prompt: Mapped[str | None] = mapped_column(Text, default=None)
     timeout_seconds: Mapped[int | None] = mapped_column(Integer, default=None)
@@ -26,6 +26,8 @@ class GlobalSettings(Base):
     system_prompt_mode: Mapped[str | None] = mapped_column(String, default="replace")
     disallowed_tools: Mapped[str | None] = mapped_column(Text, default=None)
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
-    additional_dirs: Mapped[list | None] = mapped_column(JSONB, default=None)
+    default_additional_workspace_ids: Mapped[list | None] = mapped_column(
+        JSONB, default=None
+    )
     fallback_model: Mapped[str | None] = mapped_column(String, default=None)
     globally_trusted_tools: Mapped[list | None] = mapped_column(JSONB, default=None)

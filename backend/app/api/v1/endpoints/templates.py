@@ -30,7 +30,6 @@ async def create_template(
     return await service.create_template(
         name=req.name,
         description=req.description,
-        work_dir=req.work_dir,
         system_prompt=req.system_prompt,
         allowed_tools=req.allowed_tools,
         disallowed_tools=req.disallowed_tools,
@@ -43,6 +42,7 @@ async def create_template(
         max_budget_usd=req.max_budget_usd,
         system_prompt_mode=req.system_prompt_mode,
         mcp_server_ids=req.mcp_server_ids,
+        fallback_model=req.fallback_model,
     )
 
 
@@ -97,7 +97,6 @@ async def update_template(
         template_id=template_id,
         name=req.name,
         description=req.description,
-        work_dir=req.work_dir,
         system_prompt=req.system_prompt,
         allowed_tools=req.allowed_tools,
         disallowed_tools=req.disallowed_tools,
@@ -110,6 +109,7 @@ async def update_template(
         max_budget_usd=req.max_budget_usd,
         system_prompt_mode=req.system_prompt_mode,
         mcp_server_ids=req.mcp_server_ids,
+        fallback_model=req.fallback_model,
     )
     if not updated:
         raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")

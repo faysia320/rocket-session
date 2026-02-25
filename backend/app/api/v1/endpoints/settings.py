@@ -2,9 +2,8 @@
 
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies import get_git_service, get_settings_service
+from app.api.dependencies import get_settings_service
 from app.schemas.settings import GlobalSettingsResponse, UpdateGlobalSettingsRequest
-from app.services.git_service import GitService
 from app.services.settings_service import SettingsService
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -13,12 +12,9 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 @router.get("/", response_model=GlobalSettingsResponse)
 async def get_global_settings(
     service: SettingsService = Depends(get_settings_service),
-    git: GitService = Depends(get_git_service),
 ):
     """글로벌 기본 설정 조회."""
-    result = await service.get()
-    result["root_dir"] = git.root_dir
-    return result
+    return await service.get()
 
 
 @router.patch("/", response_model=GlobalSettingsResponse)
@@ -28,7 +24,7 @@ async def update_global_settings(
 ):
     """글로벌 기본 설정 업데이트."""
     return await service.update(
-        work_dir=req.work_dir,
+        default_workspace_id=req.default_workspace_id,
         allowed_tools=req.allowed_tools,
         system_prompt=req.system_prompt,
         timeout_seconds=req.timeout_seconds,
@@ -42,6 +38,6 @@ async def update_global_settings(
         disallowed_tools=req.disallowed_tools,
         mcp_server_ids=req.mcp_server_ids,
         globally_trusted_tools=req.globally_trusted_tools,
-        additional_dirs=req.additional_dirs,
+        default_additional_workspace_ids=req.default_additional_workspace_ids,
         fallback_model=req.fallback_model,
     )
