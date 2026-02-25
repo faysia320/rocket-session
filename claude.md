@@ -663,7 +663,7 @@ get_jsonl_watcher()      # JsonlWatcher (SessionManager + WsManager 의존)
 
 ```env
 DATABASE_URL=postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session  # PostgreSQL 연결 URL
-CLAUDE_WORK_DIR=/path/to/your/project    # Claude 작업 디렉토리
+WORKSPACES_ROOT=/workspaces               # 워크스페이스 루트 디렉토리
 CLAUDE_ALLOWED_TOOLS=Read,Write,Edit,MultiEdit,Bash,Glob,Grep,WebFetch,WebSearch,TodoRead,TodoWrite  # 허용 도구
 BACKEND_HOST=0.0.0.0                      # 서버 호스트
 BACKEND_PORT=8101                         # 서버 포트
