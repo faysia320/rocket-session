@@ -108,6 +108,7 @@ export type {
   DailyTokenUsage,
   SessionTokenRanking,
   ProjectTokenUsage,
+  PhaseTokenUsage,
   AnalyticsResponse,
 } from "./analytics";
 export type {

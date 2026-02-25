@@ -40,6 +40,15 @@ export interface ProjectTokenUsage {
   session_count: number;
 }
 
+export interface PhaseTokenUsage {
+  workflow_phase: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_creation_tokens: number;
+  turn_count: number;
+}
+
 export interface AnalyticsResponse {
   period: string;
   start_date: string;
@@ -48,4 +57,5 @@ export interface AnalyticsResponse {
   daily_usage: DailyTokenUsage[];
   session_ranking: SessionTokenRanking[];
   project_usage: ProjectTokenUsage[];
+  phase_usage: PhaseTokenUsage[];
 }
