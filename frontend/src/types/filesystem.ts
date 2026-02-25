@@ -185,3 +185,26 @@ export interface PRReviewSubmitResponse {
   success: boolean;
   error?: string | null;
 }
+
+// --- Git Branch / Stage / Commit ---
+
+export interface GitBranchListResponse {
+  branches: string[];
+  current_branch: string | null;
+}
+
+export interface GitCheckoutResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface GitStageResponse {
+  success: boolean;
+  error?: string | null;
+}
+
+export interface GitCommitResponse {
+  success: boolean;
+  commit_hash: string;
+  error?: string | null;
+}

@@ -56,6 +56,10 @@ export type {
   PRReviewSubmitResponse,
   GitRepoEntry,
   GitRepoScanResponse,
+  GitBranchListResponse,
+  GitCheckoutResponse,
+  GitStageResponse,
+  GitCommitResponse,
 } from "./filesystem";
 export type {
   WorkspaceMatch,

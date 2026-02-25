@@ -16,6 +16,10 @@ import type {
   WorktreeListResponse,
   SkillListResponse,
   GitRepoScanResponse,
+  GitBranchListResponse,
+  GitCheckoutResponse,
+  GitStageResponse,
+  GitCommitResponse,
 } from "@/types";
 
 export const filesystemApi = {
@@ -105,4 +109,23 @@ export const filesystemApi = {
       pr_number: prNumber,
       body,
     }),
+
+  // --- Git Branch / Stage / Commit ---
+
+  listGitBranches: (path: string) =>
+    api.get<GitBranchListResponse>(
+      `/api/fs/git-branches?path=${encodeURIComponent(path)}`,
+    ),
+
+  checkoutGitBranch: (path: string, branch: string) =>
+    api.post<GitCheckoutResponse>("/api/fs/git-checkout", { path, branch }),
+
+  stageGitFiles: (path: string, files?: string[]) =>
+    api.post<GitStageResponse>("/api/fs/git-stage", {
+      path,
+      files: files ?? null,
+    }),
+
+  commitGit: (path: string, message: string) =>
+    api.post<GitCommitResponse>("/api/fs/git-commit", { path, message }),
 };
