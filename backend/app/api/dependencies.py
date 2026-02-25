@@ -118,7 +118,9 @@ class ServiceRegistry:
         self.search_service = SearchService(self.database)
         self.analytics_service = AnalyticsService(self.database)
         self.workflow_service = WorkflowService(self.database)
-        self.workspace_service = WorkspaceService(self.database, self.git_service)
+        self.workspace_service = WorkspaceService(
+            self.database, self.git_service, workspaces_root=settings.workspaces_root
+        )
         self.jsonl_watcher = JsonlWatcher(self.session_manager, self.ws_manager)
 
         # 서버 재시작 시 stale running 세션 → idle 복구

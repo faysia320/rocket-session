@@ -17,9 +17,6 @@ from app.services.git_service import GitService
 
 logger = logging.getLogger(__name__)
 
-WORKSPACES_ROOT = os.environ.get("WORKSPACES_ROOT", "/workspaces")
-
-
 def _workspace_to_dict(ws: Workspace) -> dict:
     """Workspace ORM 엔티티를 dict로 변환."""
     return {
@@ -41,9 +38,12 @@ def _workspace_to_dict(ws: Workspace) -> dict:
 class WorkspaceService:
     """워크스페이스 CRUD + clone/sync 생명주기 관리."""
 
-    def __init__(self, db: Database, git_service: GitService) -> None:
+    def __init__(
+        self, db: Database, git_service: GitService, workspaces_root: str = "/workspaces"
+    ) -> None:
         self._db = db
         self._git = git_service
+        self._workspaces_root = workspaces_root
         # 진행 중인 clone 태스크 추적
         self._clone_tasks: dict[str, asyncio.Task] = {}
 
@@ -56,7 +56,7 @@ class WorkspaceService:
     ) -> dict:
         """워크스페이스 생성 + 비동기 clone 시작."""
         wid = str(uuid.uuid4())[:16]
-        local_path = os.path.join(WORKSPACES_ROOT, wid)
+        local_path = os.path.join(self._workspaces_root, wid)
 
         # repo URL에서 이름 추출 (미지정 시)
         if not name:
@@ -326,6 +326,21 @@ class WorkspaceService:
             if not entity:
                 return False
             local_path = entity.local_path
+
+            # 영향 받는 세션 수 경고 로그
+            from sqlalchemy import select, func
+            from app.models.session import Session
+
+            count_result = await db_session.execute(
+                select(func.count()).where(Session.workspace_id == workspace_id)
+            )
+            affected = count_result.scalar() or 0
+            if affected > 0:
+                logger.warning(
+                    "워크스페이스 삭제: %s — 연결된 세션 %d개의 workspace_id가 NULL로 설정됩니다",
+                    workspace_id,
+                    affected,
+                )
 
             # 진행 중인 clone 취소
             task = self._clone_tasks.pop(workspace_id, None)

@@ -124,9 +124,8 @@ class FilesystemService:
             expanded = os.path.expanduser(path)
             base = Path(expanded).resolve()
         elif self._root_dir:
-            # root_dir의 부모 디렉토리에서 스캔 (형제 저장소도 발견하기 위해)
-            parent = self._root_dir.parent
-            base = parent if parent != self._root_dir else self._root_dir
+            # root_dir 직접 스캔 (워크스페이스 기반 — 각 저장소가 root_dir 하위에 위치)
+            base = self._root_dir
         else:
             base = Path.home()
 
