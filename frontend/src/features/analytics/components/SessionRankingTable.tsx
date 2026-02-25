@@ -1,6 +1,6 @@
 import { memo, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { formatTokens, truncatePath } from "@/lib/utils";
+import { formatTokens, formatWorkDir } from "@/lib/utils";
 import type { SessionTokenRanking } from "@/types";
 
 interface SessionRankingTableProps {
@@ -63,7 +63,7 @@ export const SessionRankingTable = memo(function SessionRankingTable({
                 <td className="py-1.5 pr-2 font-mono text-2xs text-muted-foreground">{i + 1}</td>
                 <td className="py-1.5 pr-2">
                   <div className="font-mono text-xs text-foreground truncate max-w-[180px]">
-                    {row.session_name ?? truncatePath(row.work_dir, 30)}
+                    {row.session_name ?? formatWorkDir(row.work_dir, 30)}
                   </div>
                 </td>
                 <td className="py-1.5 pr-2 text-right font-mono text-xs text-foreground">

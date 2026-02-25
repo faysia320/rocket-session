@@ -15,7 +15,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, formatWorkDir } from "@/lib/utils";
 import type { FileChange, GitInfo, ToolUseMsg } from "@/types";
 import type { ReconnectState } from "../hooks/useClaudeSocket";
 interface ChatHeaderProps {
@@ -144,8 +144,8 @@ export const ChatHeader = memo(function ChatHeader({
                 <FolderOpen className="h-3 w-3 text-muted-foreground/60 shrink-0" />
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="font-mono text-2xs text-muted-foreground/60 truncate max-w-[300px] direction-rtl text-left">
-                      {workDir}
+                    <span className="font-mono text-2xs text-muted-foreground/60 truncate max-w-[300px]">
+                      {formatWorkDir(workDir)}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="font-mono text-xs">

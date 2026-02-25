@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn, truncatePath } from "@/lib/utils";
+import { cn, formatWorkDir } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { ImportLocalDialog } from "./ImportLocalDialog";
 import { TemplateListDialog } from "@/features/template/components/TemplateListDialog";
@@ -536,7 +536,7 @@ const SessionItem = memo(function SessionItem({
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="font-mono text-2xs text-muted-foreground/70 truncate">
-            {truncatePath(s.work_dir)}
+            {formatWorkDir(s.work_dir)}
           </div>
         </TooltipTrigger>
         <TooltipContent className="font-mono text-xs">{s.work_dir}</TooltipContent>

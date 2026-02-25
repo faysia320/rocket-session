@@ -2,7 +2,7 @@ import { memo, useMemo } from "react";
 import { MessageSquare, FileText, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { cn, truncatePath } from "@/lib/utils";
+import { cn, formatWorkDir } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { getActivityLabel } from "@/features/chat/utils/activityLabel";
 
@@ -140,7 +140,7 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="font-mono text-2xs text-muted-foreground/60 truncate mb-2">
-            {truncatePath(s.work_dir)}
+            {formatWorkDir(s.work_dir)}
           </div>
         </TooltipTrigger>
         <TooltipContent className="font-mono text-xs">{s.work_dir}</TooltipContent>

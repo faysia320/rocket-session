@@ -59,6 +59,25 @@ export function truncatePath(path: string, maxLen = 40): string {
 }
 
 /**
+ * work_dir 경로에서 표시용 이름을 추출합니다.
+ * /workspaces/ 접두사가 있으면 레포 이름만 반환하고,
+ * 그 외 경로는 truncatePath로 폴백합니다.
+ */
+export function formatWorkDir(path: string, maxLen = 40): string {
+  const prefix = "/workspaces/";
+  if (path.startsWith(prefix)) {
+    const rest = path.slice(prefix.length);
+    const segments = rest.split("/");
+    const repoName = segments[0];
+    if (segments.length >= 4 && segments[1] === ".claude" && segments[2] === "worktrees") {
+      return `${repoName} (worktree: ${segments[3]})`;
+    }
+    return repoName;
+  }
+  return truncatePath(path, maxLen);
+}
+
+/**
  * 토큰 수를 1K/1M 단위로 포맷합니다.
  */
 export function formatTokens(n: number): string {

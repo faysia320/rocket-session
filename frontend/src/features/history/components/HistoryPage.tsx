@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { cn, truncatePath } from "@/lib/utils";
+import { cn, formatWorkDir } from "@/lib/utils";
 import { useSessionSearch } from "../hooks/useSessionSearch";
 import { useTags } from "@/features/tags/hooks/useTags";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
@@ -599,7 +599,7 @@ const HistorySessionRow = memo(function HistorySessionRow({
             <span>·</span>
             <span>{session.file_changes_count} changes</span>
             <span>·</span>
-            <span className="truncate">{truncatePath(session.work_dir)}</span>
+            <span className="truncate">{formatWorkDir(session.work_dir)}</span>
           </div>
           {session.tags && session.tags.length > 0 ? (
             <div className="mt-1">
