@@ -89,7 +89,7 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
       />
       {branch}
       {branch === defaultBranch ? (
-        <Badge variant="outline" className="ml-auto text-2xs px-1 py-0">
+        <Badge variant="secondary" className="ml-auto text-2xs px-1 py-0">
           default
         </Badge>
       ) : null}
