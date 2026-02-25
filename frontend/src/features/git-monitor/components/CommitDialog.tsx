@@ -18,11 +18,12 @@ interface CommitDialogProps {
   onOpenChange: (open: boolean) => void;
   repoPath: string;
   workspacePath: string;
+  workspaceId: string;
 }
 
 type CommitMode = "manual" | "ai";
 
-export function CommitDialog({ open, onOpenChange, repoPath, workspacePath }: CommitDialogProps) {
+export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, workspaceId }: CommitDialogProps) {
   const [mode, setMode] = useState<CommitMode>("ai");
   const [message, setMessage] = useState("");
   const commitMutation = useStageAndCommit(repoPath);
@@ -44,13 +45,13 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath }: Co
     if (isCreatingSession) return;
     setIsCreatingSession(true);
     try {
-      const session = await createSession(workspacePath);
+      const session = await createSession(workspacePath, { workspace_id: workspaceId });
       setPendingPrompt("/git-commit", session.id);
       onOpenChange(false);
     } catch {
       setIsCreatingSession(false);
     }
-  }, [createSession, workspacePath, setPendingPrompt, onOpenChange, isCreatingSession]);
+  }, [createSession, workspacePath, workspaceId, setPendingPrompt, onOpenChange, isCreatingSession]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

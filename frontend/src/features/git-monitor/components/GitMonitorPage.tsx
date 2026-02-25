@@ -527,6 +527,7 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
         onOpenChange={setCommitDialogOpen}
         repoPath={workspace.local_path}
         workspacePath={workspace.local_path}
+        workspaceId={workspace.id}
       />
     </div>
   );
