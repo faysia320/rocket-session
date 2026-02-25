@@ -55,7 +55,7 @@ async def test_client():
 
     # Create test services
     test_settings = Settings(
-        claude_work_dir=tempfile.gettempdir(),
+        workspaces_root=tempfile.gettempdir(),
     )
     sm = SessionManager(db)
     wm = WebSocketManager()

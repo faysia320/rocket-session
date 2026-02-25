@@ -83,8 +83,8 @@ class ServiceRegistry:
     async def initialize(self) -> None:
         """앱 시작 시 모든 서비스 초기화."""
         settings = get_settings()
-        self.filesystem_service = FilesystemService(root_dir=settings.claude_work_dir)
-        self.git_service = GitService(root_dir=settings.claude_work_dir)
+        self.filesystem_service = FilesystemService(root_dir=settings.workspaces_root)
+        self.git_service = GitService(root_dir=settings.workspaces_root)
         self.github_service = GitHubService(git_service=self.git_service)
         self.skills_service = SkillsService()
 
