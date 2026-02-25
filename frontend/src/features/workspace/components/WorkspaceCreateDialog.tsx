@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useCreateWorkspace } from "../hooks/useWorkspaces";
 import { toast } from "sonner";
 
@@ -27,7 +26,6 @@ export function WorkspaceCreateDialog({
   const [repoUrl, setRepoUrl] = useState("");
   const [branch, setBranch] = useState("");
   const [name, setName] = useState("");
-  const [autoPush, setAutoPush] = useState(false);
 
   const createMutation = useCreateWorkspace();
 
@@ -38,14 +36,12 @@ export function WorkspaceCreateDialog({
         repo_url: repoUrl.trim(),
         branch: branch.trim() || null,
         name: name.trim() || null,
-        auto_push: autoPush,
       });
       toast.success("워크스페이스 생성이 시작되었습니다");
       onOpenChange(false);
       setRepoUrl("");
       setBranch("");
       setName("");
-      setAutoPush(false);
     } catch {
       toast.error("워크스페이스 생성에 실패했습니다");
     }
@@ -105,19 +101,6 @@ export function WorkspaceCreateDialog({
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <Label
-              htmlFor="auto-push-toggle"
-              className="font-mono text-xs font-semibold text-muted-foreground tracking-wider cursor-pointer"
-            >
-              AUTO PUSH
-            </Label>
-            <Switch
-              id="auto-push-toggle"
-              checked={autoPush}
-              onCheckedChange={setAutoPush}
-            />
-          </div>
         </div>
 
         <DialogFooter>

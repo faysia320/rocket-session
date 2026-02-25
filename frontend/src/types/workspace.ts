@@ -10,7 +10,6 @@ export interface WorkspaceInfo {
   error_message?: string | null;
   disk_usage_mb?: number | null;
   last_synced_at?: string | null;
-  auto_push: boolean;
   created_at: string;
   updated_at?: string | null;
   current_branch?: string | null;
@@ -23,12 +22,10 @@ export interface CreateWorkspaceRequest {
   repo_url: string;
   branch?: string | null;
   name?: string | null;
-  auto_push?: boolean;
 }
 
 export interface UpdateWorkspaceRequest {
   name?: string | null;
-  auto_push?: boolean | null;
 }
 
 export interface WorkspaceSyncRequest {

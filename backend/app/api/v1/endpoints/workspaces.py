@@ -33,7 +33,6 @@ async def create_workspace(
         repo_url=req.repo_url,
         branch=req.branch,
         name=req.name,
-        auto_push=req.auto_push,
     )
 
 

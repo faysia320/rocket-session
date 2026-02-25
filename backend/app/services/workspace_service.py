@@ -29,7 +29,6 @@ def _workspace_to_dict(ws: Workspace) -> dict:
         "error_message": ws.error_message,
         "disk_usage_mb": ws.disk_usage_mb,
         "last_synced_at": ws.last_synced_at,
-        "auto_push": ws.auto_push,
         "created_at": ws.created_at,
         "updated_at": ws.updated_at,
     }
@@ -52,7 +51,6 @@ class WorkspaceService:
         repo_url: str,
         branch: str | None = None,
         name: str | None = None,
-        auto_push: bool = False,
     ) -> dict:
         """워크스페이스 생성 + 비동기 clone 시작."""
         wid = str(uuid.uuid4())[:16]
@@ -80,7 +78,6 @@ class WorkspaceService:
                 branch=branch,
                 local_path=local_path,
                 status="cloning",
-                auto_push=auto_push,
                 created_at=now,
             )
             await repo.add(entity)

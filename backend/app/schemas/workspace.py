@@ -10,12 +10,10 @@ class CreateWorkspaceRequest(BaseModel):
     repo_url: str = Field(..., min_length=1, description="Git 저장소 URL")
     branch: Optional[str] = Field(None, description="클론할 브랜치 (기본: 기본 브랜치)")
     name: Optional[str] = Field(None, max_length=100, description="워크스페이스 표시 이름")
-    auto_push: bool = Field(False, description="커밋 후 자동 push 여부")
 
 
 class UpdateWorkspaceRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
-    auto_push: Optional[bool] = None
 
 
 class WorkspaceInfo(BaseModel):
@@ -28,7 +26,6 @@ class WorkspaceInfo(BaseModel):
     error_message: Optional[str] = None
     disk_usage_mb: Optional[int] = None
     last_synced_at: Optional[datetime] = None
-    auto_push: bool = False
     created_at: datetime
     updated_at: Optional[datetime] = None
     # Git 실시간 정보 (ready 상태일 때만)
