@@ -639,6 +639,66 @@ class GitService:
             raise ValueError(f"커밋 diff 조회 실패: {err}")
         return out
 
+    # ─── 브랜치 관련 ───
+
+    async def list_branches(
+        self, repo_path: str
+    ) -> tuple[list[str], str | None]:
+        """로컬 브랜치 목록과 현재 브랜치 반환.
+
+        Returns:
+            (branches, current_branch)
+        """
+        validated = self._validate_path(repo_path)
+        if not self._is_within_root(validated):
+            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+        cwd = str(validated)
+
+        rc_list, list_out, _ = await self._run_git_command(
+            "branch", "--list", "--format=%(refname:short)", cwd=cwd
+        )
+        rc_cur, cur_out, _ = await self._run_git_command(
+            "branch", "--show-current", cwd=cwd
+        )
+
+        branches: list[str] = []
+        if rc_list == 0 and list_out:
+            branches = [b.strip() for b in list_out.split("\n") if b.strip()]
+
+        current = cur_out.strip() if rc_cur == 0 and cur_out else None
+        return branches, current
+
+    async def checkout_branch(
+        self, repo_path: str, branch: str
+    ) -> tuple[bool, str]:
+        """브랜치 체크아웃.
+
+        Returns:
+            (success, message)
+        """
+        validated = self._validate_path(repo_path)
+        if not self._is_within_root(validated):
+            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+        cwd = str(validated)
+
+        async with self._get_git_lock(cwd):
+            rc, stdout, stderr = await self._run_git_command(
+                *self._GIT_CROSS_PLATFORM_OPTS,
+                "checkout",
+                branch,
+                cwd=cwd,
+                timeout=30.0,
+            )
+
+        if rc != 0:
+            return False, f"git checkout 실패: {stderr}"
+
+        # 캐시 무효화
+        if repo_path in self._git_cache:
+            del self._git_cache[repo_path]
+
+        return True, stdout or f"Switched to branch '{branch}'"
+
     # ─── 커밋 관련 ───
 
     async def stage_files(

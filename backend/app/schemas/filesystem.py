@@ -228,3 +228,44 @@ class PRReviewSubmitResponse(BaseModel):
 
     success: bool = False
     error: Optional[str] = None
+
+
+# --- Git Branch / Stage / Commit 스키마 ---
+
+
+class GitBranchListResponse(BaseModel):
+    """로컬 브랜치 목록."""
+
+    branches: list[str] = []
+    current_branch: Optional[str] = None
+
+
+class GitCheckoutRequest(BaseModel):
+    path: str
+    branch: str
+
+
+class GitCheckoutResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class GitStageRequest(BaseModel):
+    path: str
+    files: Optional[list[str]] = None  # None = git add -A
+
+
+class GitStageResponse(BaseModel):
+    success: bool
+    error: Optional[str] = None
+
+
+class GitCommitRequest(BaseModel):
+    path: str
+    message: str
+
+
+class GitCommitResponse(BaseModel):
+    success: bool
+    commit_hash: str = ""
+    error: Optional[str] = None

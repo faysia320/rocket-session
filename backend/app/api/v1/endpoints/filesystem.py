@@ -11,12 +11,19 @@ from app.api.dependencies import (
 )
 from app.schemas.filesystem import (
     DirectoryListResponse,
+    GitBranchListResponse,
+    GitCheckoutRequest,
+    GitCheckoutResponse,
+    GitCommitRequest,
+    GitCommitResponse,
     GitHubCLIStatus,
     GitHubPRDetail,
     GitHubPRListResponse,
     GitInfo,
     GitLogResponse,
     GitRepoScanResponse,
+    GitStageRequest,
+    GitStageResponse,
     GitStatusResponse,
     PRReviewJobResponse,
     PRReviewRequest,
@@ -257,3 +264,60 @@ async def list_skills(
     skills: SkillsService = Depends(get_skills_service),
 ):
     return await skills.list_skills(path)
+
+
+# --- Git Branch / Stage / Commit ---
+
+
+@router.get("/git-branches", response_model=GitBranchListResponse)
+async def list_git_branches(
+    path: str = Query(..., description="Git 저장소 경로"),
+    git: GitService = Depends(get_git_service),
+):
+    try:
+        branches, current = await git.list_branches(path)
+        return GitBranchListResponse(branches=branches, current_branch=current)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/git-checkout", response_model=GitCheckoutResponse)
+async def checkout_git_branch(
+    req: GitCheckoutRequest,
+    git: GitService = Depends(get_git_service),
+):
+    try:
+        success, message = await git.checkout_branch(req.path, req.branch)
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
+        return GitCheckoutResponse(success=True, message=message)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/git-stage", response_model=GitStageResponse)
+async def stage_git_files(
+    req: GitStageRequest,
+    git: GitService = Depends(get_git_service),
+):
+    try:
+        success, error = await git.stage_files(req.path, req.files)
+        if not success:
+            raise HTTPException(status_code=400, detail=error)
+        return GitStageResponse(success=True)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/git-commit", response_model=GitCommitResponse)
+async def commit_git(
+    req: GitCommitRequest,
+    git: GitService = Depends(get_git_service),
+):
+    try:
+        success, commit_hash, error = await git.commit(req.path, req.message)
+        if not success:
+            raise HTTPException(status_code=400, detail=error)
+        return GitCommitResponse(success=True, commit_hash=commit_hash)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
