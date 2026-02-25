@@ -1,26 +1,13 @@
 """애플리케이션 환경 설정."""
 
-import os
-
-from pydantic import model_validator
 from pydantic_settings import BaseSettings
+
+WORKSPACES_ROOT = "/workspaces"
 
 
 class Settings(BaseSettings):
     """환경 변수 기반 설정."""
 
-    workspaces_root: str = "/workspaces"
-
-    @model_validator(mode="before")
-    @classmethod
-    def _migrate_legacy_claude_work_dir(cls, values: dict) -> dict:
-        """레거시 CLAUDE_WORK_DIR → workspaces_root 하위 호환."""
-        legacy = values.pop("claude_work_dir", None) or os.environ.get(
-            "CLAUDE_WORK_DIR"
-        )
-        if legacy and "workspaces_root" not in values:
-            values["workspaces_root"] = legacy
-        return values
     claude_allowed_tools: str = (
         "Read,Write,Edit,MultiEdit,Bash,Glob,Grep,WebFetch,WebSearch,TodoRead,TodoWrite"
     )

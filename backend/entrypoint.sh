@@ -39,6 +39,6 @@ if [ ! -f "/root/.claude.json" ]; then
 fi
 
 # 워크스페이스 루트 디렉토리 생성
-mkdir -p "${WORKSPACES_ROOT:-/workspaces}"
+mkdir -p /workspaces
 
 exec "$@"

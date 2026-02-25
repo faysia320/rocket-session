@@ -315,7 +315,7 @@ MessageBubble 컴포넌트가 `message.type`에 따라 다른 UI를 렌더링합
 ```bash
 # Backend
 cd backend
-cp .env.example .env   # DATABASE_URL, WORKSPACES_ROOT 수정
+cp .env.example .env   # DATABASE_URL 수정
 uv sync
 
 # PostgreSQL 시작 (Docker 사용 시)
@@ -353,7 +353,6 @@ http://localhost:8100 에서 접속
 
 ```env
 DATABASE_URL=postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session  # PostgreSQL 연결 URL
-WORKSPACES_ROOT=/workspaces               # 워크스페이스 루트 디렉토리
 CLAUDE_ALLOWED_TOOLS=Read,Write,Edit,MultiEdit,Bash,Glob,Grep,WebFetch,WebSearch,TodoRead,TodoWrite  # 허용 도구
 BACKEND_HOST=0.0.0.0                      # 서버 호스트
 BACKEND_PORT=8101                         # 서버 포트

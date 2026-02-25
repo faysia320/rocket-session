@@ -20,7 +20,6 @@ _TEST_DB_URL = (
     f"postgresql+asyncpg://rocket:rocket_secret@{_DB_HOST}:5432/rocket_session_test"
 )
 os.environ["DATABASE_URL"] = _TEST_DB_URL
-os.environ["WORKSPACES_ROOT"] = tempfile.gettempdir()
 
 from app.core.config import Settings  # noqa: E402
 from app.core.database import Database  # noqa: E402
@@ -126,7 +125,6 @@ async def db():
 def settings():
     """Test Settings instance."""
     return Settings(
-        workspaces_root=tempfile.gettempdir(),
         claude_allowed_tools="Read,Write",
     )
 

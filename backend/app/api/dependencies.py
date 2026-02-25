@@ -9,7 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from app.core.config import Settings
+from app.core.config import WORKSPACES_ROOT, Settings
 from app.core.database import Database
 from app.services.claude_runner import ClaudeRunner
 from app.services.filesystem_service import FilesystemService
@@ -83,8 +83,8 @@ class ServiceRegistry:
     async def initialize(self) -> None:
         """앱 시작 시 모든 서비스 초기화."""
         settings = get_settings()
-        self.filesystem_service = FilesystemService(root_dir=settings.workspaces_root)
-        self.git_service = GitService(root_dir=settings.workspaces_root)
+        self.filesystem_service = FilesystemService(root_dir=WORKSPACES_ROOT)
+        self.git_service = GitService(root_dir=WORKSPACES_ROOT)
         self.github_service = GitHubService(git_service=self.git_service)
         self.skills_service = SkillsService()
 
@@ -119,7 +119,7 @@ class ServiceRegistry:
         self.analytics_service = AnalyticsService(self.database)
         self.workflow_service = WorkflowService(self.database)
         self.workspace_service = WorkspaceService(
-            self.database, self.git_service, workspaces_root=settings.workspaces_root
+            self.database, self.git_service, workspaces_root=WORKSPACES_ROOT
         )
         self.jsonl_watcher = JsonlWatcher(self.session_manager, self.ws_manager)
 

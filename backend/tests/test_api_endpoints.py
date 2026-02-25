@@ -54,9 +54,7 @@ async def test_client():
         await session.commit()
 
     # Create test services
-    test_settings = Settings(
-        workspaces_root=tempfile.gettempdir(),
-    )
+    test_settings = Settings()
     sm = SessionManager(db)
     wm = WebSocketManager()
     wm.set_database(db)
