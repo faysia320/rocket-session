@@ -693,17 +693,24 @@ class GitService:
             local_branches = [b.strip() for b in local_out.split("\n") if b.strip()]
 
         # 원격 전용 브랜치 (로컬에 없는 것만, 순서 유지)
+        local_set = set(local_branches)
         remote_only: list[str] = []
         if rc_remote == 0 and remote_out:
             for raw in remote_out.split("\n"):
                 name = raw.strip()
                 if not name or "/HEAD" in name:
                     continue
+                # origin/feature-x → feature-x (리모트 접두사 제거)
                 short = name.split("/", 1)[1] if "/" in name else name
-                if short not in local_branches:
+                if short and short not in local_set:
                     remote_only.append(short)
+                    local_set.add(short)  # 중복 방지
 
-        branches = local_branches + remote_only
+        # 최종 목록 (origin/ 접두사 방어적 필터)
+        branches = [
+            b for b in (local_branches + remote_only)
+            if not b.startswith("origin/") and b not in ("origin", "HEAD")
+        ]
         current = cur_out.strip() if rc_cur == 0 and cur_out else None
 
         # 기본 브랜치: origin/main → main
