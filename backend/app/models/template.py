@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,5 +32,10 @@ class SessionTemplate(Base):
     system_prompt_mode: Mapped[str] = mapped_column(String, default="replace")
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
     fallback_model: Mapped[str | None] = mapped_column(String, default=None)
+    workflow_definition_id: Mapped[str | None] = mapped_column(
+        String,
+        ForeignKey("workflow_definitions.id", ondelete="SET NULL"),
+        default=None,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
