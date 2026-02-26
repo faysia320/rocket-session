@@ -1,15 +1,16 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { isMobileDevice } from "@/lib/platform";
-import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClaudeSocket } from "../hooks/useClaudeSocket";
 import { useChatNotifications } from "../hooks/useChatNotifications";
 import { useChatSearch } from "../hooks/useChatSearch";
+import { useChatArtifact } from "../hooks/useChatArtifact";
+import { useChatSessionActions } from "../hooks/useChatSessionActions";
 import { useWorkflowActions } from "@/features/workflow/hooks/useWorkflowActions";
 import { WorkflowProgressBar } from "@/features/workflow/components/WorkflowProgressBar";
 import { ArtifactViewer } from "@/features/workflow/components/ArtifactViewer";
-import { useWorkflowArtifact, useWorkflowStatus } from "@/features/workflow/hooks/useWorkflow";
+import { useWorkflowStatus } from "@/features/workflow/hooks/useWorkflow";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatDialogs } from "./ChatDialogs";
 import { ChatSearchBar } from "./ChatSearchBar";
@@ -19,23 +20,14 @@ import { PinnedTodoBar } from "./PinnedTodoBar";
 import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { FileChange, UserMsg } from "@/types";
-import type { AnnotationType } from "@/types/workflow";
 import { useSessionStore } from "@/store";
-import { sessionsApi } from "@/lib/api/sessions.api";
 import { useSlashCommands } from "../hooks/useSlashCommands";
 import type { SlashCommand } from "../constants/slashCommands";
 import type { TrustLevel } from "./PermissionDialog";
-import { toast } from "sonner";
-import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
-import { useSessionMutations } from "@/features/session/hooks/useSessions";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
-import {
-  useAddAnnotation,
-  useUpdateAnnotation,
-  useUpdateArtifact,
-} from "@/features/workflow/hooks/useWorkflow";
+import { filesystemApi } from "@/lib/api/filesystem.api";
 
 const noop = () => {};
 
@@ -87,14 +79,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const pendingPromptSessionId = useSessionStore((s) => s.pendingPromptSessionId);
   const clearPendingPrompt = useSessionStore((s) => s.clearPendingPrompt);
   const queryClient = useQueryClient();
-  const { deleteSession, archiveSession, unarchiveSession } = useSessionMutations();
-
-  const handleDelete = useCallback(() => deleteSession(sessionId), [deleteSession, sessionId]);
-  const handleArchive = useCallback(() => archiveSession(sessionId), [archiveSession, sessionId]);
-  const handleUnarchive = useCallback(
-    () => unarchiveSession(sessionId),
-    [unarchiveSession, sessionId],
-  );
 
   // P0: PermissionDialog 콜백 안정화 (타이머 리셋 방지)
   const handlePermissionAllow = useCallback(
@@ -117,6 +101,15 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const effectiveWorkDir =
     workDir && worktreeName ? `${workDir}/.claude/worktrees/${worktreeName}` : workDir;
   const { gitInfo } = useGitInfo(effectiveWorkDir ?? "");
+
+  const {
+    handleDelete,
+    handleArchive,
+    handleUnarchive,
+    handleRemoveWorktree,
+    handleConvertToWorktree,
+    handleFork,
+  } = useChatSessionActions({ sessionId, workDir, worktreeName, reconnect });
 
   useChatNotifications({ sessionId, status, messages, pendingPermission, workDir });
 
@@ -267,56 +260,20 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     workflowSteps,
   });
 
-  // 아티팩트 뷰어 데이터
-  const { data: viewingArtifact } = useWorkflowArtifact(
+  // 아티팩트 뷰어 데이터 + 콜백
+  const {
+    viewingArtifact,
+    handleArtifactOpenChange,
+    handleAddAnnotation,
+    handleResolveAnnotation,
+    handleDismissAnnotation,
+    handleUpdateArtifactContent,
+  } = useChatArtifact({
     sessionId,
-    viewingArtifactId ?? 0,
-    artifactViewerOpen && viewingArtifactId !== null,
-  );
-  const addAnnotationMut = useAddAnnotation(sessionId, viewingArtifactId ?? 0);
-  const updateAnnotationMut = useUpdateAnnotation(sessionId, viewingArtifactId ?? 0);
-  const updateArtifactMut = useUpdateArtifact(sessionId, viewingArtifactId ?? 0);
-
-  // P0: ArtifactViewer 인라인 콜백 안정화
-  const handleArtifactOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) handleCloseArtifact();
-    },
-    [handleCloseArtifact],
-  );
-
-  const handleAddAnnotation = useCallback(
-    (lineStart: number, lineEnd: number | null, content: string, type: AnnotationType) => {
-      addAnnotationMut.mutate({
-        line_start: lineStart,
-        line_end: lineEnd,
-        content,
-        annotation_type: type,
-      });
-    },
-    [addAnnotationMut],
-  );
-
-  const handleResolveAnnotation = useCallback(
-    (annId: number) => {
-      updateAnnotationMut.mutate({ annotationId: annId, status: "resolved" });
-    },
-    [updateAnnotationMut],
-  );
-
-  const handleDismissAnnotation = useCallback(
-    (annId: number) => {
-      updateAnnotationMut.mutate({ annotationId: annId, status: "dismissed" });
-    },
-    [updateAnnotationMut],
-  );
-
-  const handleUpdateArtifactContent = useCallback(
-    (content: string) => {
-      updateArtifactMut.mutate({ content });
-    },
-    [updateArtifactMut],
-  );
+    artifactViewerOpen,
+    viewingArtifactId,
+    handleCloseArtifact,
+  });
 
   const {
     searchOpen,
@@ -472,50 +429,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     [sendPrompt],
   );
 
-  const navigate = useNavigate();
-  const handleRemoveWorktree = useCallback(async () => {
-    if (!workDir || !worktreeName) return;
-    try {
-      // 세션 삭제 먼저 (Claude 프로세스 종료) → 워크트리 삭제
-      await sessionsApi.delete(sessionId);
-      await filesystemApi.removeWorktree(workDir, worktreeName, true);
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      toast.success("워크트리가 삭제되었습니다.");
-      useSessionStore.getState().setViewMode("dashboard");
-      navigate({ to: "/" });
-    } catch (err) {
-      toast.error(`워크트리 삭제 실패: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }, [workDir, worktreeName, sessionId, queryClient, navigate]);
-
-  const handleConvertToWorktree = useCallback(
-    async (name: string) => {
-      try {
-        await sessionsApi.convertToWorktree(sessionId, { worktree_name: name });
-        queryClient.invalidateQueries({ queryKey: ["sessions"] });
-        queryClient.invalidateQueries({ queryKey: ["git-info"] });
-        toast.success(`워크트리로 전환되었습니다. (worktree-${name})`);
-        reconnect();
-      } catch (err) {
-        toast.error(`워크트리 전환 실패: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    },
-    [sessionId, queryClient, reconnect],
-  );
-
-  const handleFork = useCallback(async () => {
-    try {
-      const forked = await sessionsApi.fork(sessionId);
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      toast.success(
-        "세션이 포크되었습니다. 이전 대화 기록은 참조용입니다. Claude는 새 대화로 시작합니다.",
-      );
-      navigate({ to: "/session/$sessionId", params: { sessionId: forked.id } });
-    } catch {
-      toast.error("세션 포크에 실패했습니다");
-    }
-  }, [sessionId, queryClient, navigate]);
-
   return (
     <div ref={panelRef} className="relative flex-1 flex flex-col overflow-hidden">
       <ChatHeader
@@ -643,7 +556,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         <ArtifactViewer
           open={artifactViewerOpen}
           onOpenChange={handleArtifactOpenChange}
-          artifact={viewingArtifact ?? null}
+          artifact={viewingArtifact}
           onApprove={handleAdvancePhase}
           onRequestRevision={handleRequestRevision}
           onAddAnnotation={handleAddAnnotation}
