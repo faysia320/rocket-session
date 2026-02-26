@@ -19,7 +19,7 @@ export const PinnedTodoBar = memo(function PinnedTodoBar({ todos }: PinnedTodoBa
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="border-b border-border bg-card/50">
+      <div className="border-b border-border/80 border-l-[3px] border-l-primary/40 bg-primary/5">
         <CollapsibleTrigger asChild>
           <button
             type="button"
