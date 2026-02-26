@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 import { TemplateSelector } from "@/features/template/components/TemplateSelector";
 import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
+import { WorkflowDefinitionSelector } from "@/features/workflow/components/WorkflowDefinitionSelector";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import { useGitBranches } from "@/features/git-monitor/hooks/useGitActions";
 import {
@@ -32,6 +33,7 @@ interface SessionSetupPanelProps {
       fallback_model?: string;
       worktree_name?: string;
       workflow_enabled?: boolean;
+      workflow_definition_id?: string;
       workspace_id?: string;
       branch?: string;
     },
@@ -49,6 +51,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [additionalWorkspaceIds, setAdditionalWorkspaceIds] = useState<string[]>([]);
   const [fallbackModel, setFallbackModel] = useState("");
   const [workflowEnabled, setWorkflowEnabled] = useState(true);
+  const [workflowDefinitionId, setWorkflowDefinitionId] = useState<string | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const { data: globalSettings } = useGlobalSettings();
   const { data: workspaces } = useWorkspaces();
@@ -109,6 +112,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         fallback_model?: string;
         worktree_name?: string;
         workflow_enabled?: boolean;
+        workflow_definition_id?: string;
         workspace_id?: string;
         branch?: string;
       } = {};
@@ -135,6 +139,9 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         options.worktree_name = worktreeName.trim();
       }
       options.workflow_enabled = workflowEnabled;
+      if (workflowEnabled && workflowDefinitionId) {
+        options.workflow_definition_id = workflowDefinitionId;
+      }
       if (selectedWorkspaceId) {
         options.workspace_id = selectedWorkspaceId;
       }
@@ -340,8 +347,14 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             <Switch id="workflow-toggle" checked={workflowEnabled} onCheckedChange={setWorkflowEnabled} />
           </div>
           <p className="font-mono text-2xs text-muted-foreground/70">
-            활성화하면 Research → Plan → Implement 단계를 순차 진행합니다.
+            활성화하면 정의된 워크플로우 단계를 순차 진행합니다.
           </p>
+          {workflowEnabled ? (
+            <WorkflowDefinitionSelector
+              value={workflowDefinitionId}
+              onSelect={setWorkflowDefinitionId}
+            />
+          ) : null}
         </div>
 
         {/* System Prompt */}
