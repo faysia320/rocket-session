@@ -23,14 +23,18 @@ export const ChartCard = memo(function ChartCard({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-card p-4",
-        "shadow-sm hover:shadow-md transition-shadow",
+        "rounded-xl border border-[hsl(var(--border-bright)/0.4)] p-4",
+        "bg-gradient-to-br from-card to-card/80",
+        "shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]",
+        "ring-1 ring-white/5 dark:ring-white/[0.03]",
+        "backdrop-blur-sm",
+        "transition-all duration-200",
         className,
       )}
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="font-mono text-sm font-semibold text-foreground">
+          <h3 className="font-mono text-sm font-semibold text-foreground/90">
             {title}
           </h3>
           {subtitle && (
