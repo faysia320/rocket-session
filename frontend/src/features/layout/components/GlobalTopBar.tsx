@@ -2,7 +2,6 @@ import { memo, useState, useCallback, lazy, Suspense } from "react";
 import { useTheme } from "next-themes";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import {
-  Clock,
   BarChart3,
   GitBranch,
   MessageSquare,
@@ -43,7 +42,6 @@ const NAV_ITEMS = [
   { to: "/workflows" as const, label: "Workflows", icon: Workflow },
   { to: "/git-monitor" as const, label: "Git", icon: GitBranch },
   { to: "/team" as const, label: "Team", icon: Users },
-  { to: "/history" as const, label: "History", icon: Clock },
   { to: "/analytics" as const, label: "Analytics", icon: BarChart3 },
 ] as const;
 

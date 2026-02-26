@@ -13,9 +13,21 @@ const DashboardGrid = lazy(() =>
   })),
 );
 
+const HistoryPage = lazy(() =>
+  import("@/features/history/components/HistoryPage").then((m) => ({
+    default: m.HistoryPage,
+  })),
+);
+
 export const Route = createFileRoute("/")({
   component: IndexPage,
 });
+
+const LoadingFallback = () => (
+  <div className="flex-1 flex items-center justify-center">
+    <span className="font-mono text-sm text-muted-foreground animate-pulse">로딩 중…</span>
+  </div>
+);
 
 /**
  * IndexPage: SessionLayout(부모)에서 이미 useSessions()로 세션 목록을
@@ -36,29 +48,35 @@ function IndexPage() {
 
   if (activeSessions.length === 0) {
     return (
-      <div className="relative flex-1 flex flex-col">
-        <EmptyState onNew={() => navigate({ to: "/session/new" })} />
+      <div className="relative flex-1 flex flex-col overflow-hidden">
+        <div className="shrink-0">
+          <EmptyState onNew={() => navigate({ to: "/session/new" })} />
+        </div>
+        <div className="shrink-0 border-t border-border" />
+        <Suspense fallback={<LoadingFallback />}>
+          <HistoryPage className="flex-1 min-h-0" />
+        </Suspense>
       </div>
     );
   }
 
   return (
     <div className="relative flex-1 flex flex-col overflow-hidden">
-      <Suspense
-        fallback={
-          <div className="flex-1 flex items-center justify-center">
-            <span className="font-mono text-sm text-muted-foreground animate-pulse">로딩 중…</span>
-          </div>
-        }
-      >
-        <DashboardGrid
-          sessions={activeSessions}
-          activeSessionId={activeSessionId}
-          onSelect={(id) => {
-            navigate({ to: "/session/$sessionId", params: { sessionId: id } });
-          }}
-          onNew={() => navigate({ to: "/session/new" })}
-        />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <Suspense fallback={<LoadingFallback />}>
+          <DashboardGrid
+            sessions={activeSessions}
+            activeSessionId={activeSessionId}
+            onSelect={(id) => {
+              navigate({ to: "/session/$sessionId", params: { sessionId: id } });
+            }}
+            onNew={() => navigate({ to: "/session/new" })}
+          />
+        </Suspense>
+      </div>
+      <div className="shrink-0 border-t border-border" />
+      <Suspense fallback={<LoadingFallback />}>
+        <HistoryPage className="flex-1 min-h-0" />
       </Suspense>
     </div>
   );

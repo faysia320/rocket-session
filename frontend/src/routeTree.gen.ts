@@ -10,8 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkflowsRouteImport } from './routes/workflows'
-import { Route as NodesRouteImport } from './routes/nodes'
-import { Route as HistoryRouteImport } from './routes/history'
 import { Route as GitMonitorRouteImport } from './routes/git-monitor'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,16 +21,6 @@ import { Route as SessionSessionIdRouteImport } from './routes/session/$sessionI
 const WorkflowsRoute = WorkflowsRouteImport.update({
   id: '/workflows',
   path: '/workflows',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NodesRoute = NodesRouteImport.update({
-  id: '/nodes',
-  path: '/nodes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GitMonitorRoute = GitMonitorRouteImport.update({
@@ -75,8 +63,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/git-monitor': typeof GitMonitorRoute
-  '/history': typeof HistoryRoute
-  '/nodes': typeof NodesRoute
   '/workflows': typeof WorkflowsRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
@@ -87,8 +73,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/git-monitor': typeof GitMonitorRoute
-  '/history': typeof HistoryRoute
-  '/nodes': typeof NodesRoute
   '/workflows': typeof WorkflowsRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
@@ -100,8 +84,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/git-monitor': typeof GitMonitorRoute
-  '/history': typeof HistoryRoute
-  '/nodes': typeof NodesRoute
   '/workflows': typeof WorkflowsRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
@@ -114,8 +96,6 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/git-monitor'
-    | '/history'
-    | '/nodes'
     | '/workflows'
     | '/session/$sessionId'
     | '/session/new'
@@ -126,8 +106,6 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/git-monitor'
-    | '/history'
-    | '/nodes'
     | '/workflows'
     | '/session/$sessionId'
     | '/session/new'
@@ -138,8 +116,6 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/git-monitor'
-    | '/history'
-    | '/nodes'
     | '/workflows'
     | '/session/$sessionId'
     | '/session/new'
@@ -151,8 +127,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
   GitMonitorRoute: typeof GitMonitorRoute
-  HistoryRoute: typeof HistoryRoute
-  NodesRoute: typeof NodesRoute
   WorkflowsRoute: typeof WorkflowsRoute
   SessionSessionIdRoute: typeof SessionSessionIdRoute
   SessionNewRoute: typeof SessionNewRoute
@@ -167,20 +141,6 @@ declare module '@tanstack/react-router' {
       path: '/workflows'
       fullPath: '/workflows'
       preLoaderRoute: typeof WorkflowsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/nodes': {
-      id: '/nodes'
-      path: '/nodes'
-      fullPath: '/nodes'
-      preLoaderRoute: typeof NodesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/git-monitor': {
@@ -239,8 +199,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
   GitMonitorRoute: GitMonitorRoute,
-  HistoryRoute: HistoryRoute,
-  NodesRoute: NodesRoute,
   WorkflowsRoute: WorkflowsRoute,
   SessionSessionIdRoute: SessionSessionIdRoute,
   SessionNewRoute: SessionNewRoute,

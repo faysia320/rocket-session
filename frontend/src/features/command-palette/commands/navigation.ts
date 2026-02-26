@@ -1,4 +1,4 @@
-import { LayoutGrid, Plus, Monitor, BarChart3, Clock, GitBranch, Workflow } from "lucide-react";
+import { LayoutGrid, Plus, Monitor, BarChart3, GitBranch, Workflow } from "lucide-react";
 import type { PaletteCommand } from "../types";
 import type { SessionInfo } from "@/types";
 
@@ -29,15 +29,6 @@ export function createNavigationCommands(deps: {
       keywords: ["token", "analytics", "cost", "토큰", "분석", "비용"],
     },
     {
-      id: "nav:history",
-      label: "세션 히스토리",
-      description: "세션 검색 및 필터",
-      category: "navigation",
-      icon: Clock,
-      action: () => navigate({ to: "/history" }),
-      keywords: ["history", "히스토리", "검색", "기록"],
-    },
-    {
       id: "nav:git-monitor",
       label: "Git Monitor",
       description: "Git 저장소 모니터링 및 PR 리뷰",
@@ -63,7 +54,7 @@ export function createNavigationCommands(deps: {
       icon: Plus,
       action: () => navigate({ to: "/session/new" }),
       context: {
-        allowedZones: ["home", "session-workspace", "history", "analytics"],
+        allowedZones: ["home", "session-workspace", "analytics"],
       },
       keywords: ["new", "create", "session", "생성"],
     },

@@ -47,7 +47,7 @@ const SORT_OPTIONS = [
   { value: "status", label: "상태" },
 ] as const;
 
-export function HistoryPage() {
+export function HistoryPage({ className }: { className?: string }) {
   const navigate = useNavigate();
 
   // 필터 상태 (URL search params 대신 로컬 상태 → 추후 확장 가능)
@@ -179,12 +179,12 @@ export function HistoryPage() {
   );
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className={cn("flex flex-col overflow-hidden", className)}>
       {/* Header */}
-      <div className="shrink-0 border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="shrink-0 border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between mb-3">
           <div>
-            <h1 className="font-mono text-lg font-semibold text-foreground">Session History</h1>
+            <h1 className="font-mono text-sm font-semibold text-foreground">Session History</h1>
             <p className="font-mono text-xs text-muted-foreground">
               {data ? `${data.total}개 세션` : "로딩 중…"}
             </p>
