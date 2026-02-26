@@ -16,6 +16,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { WorkflowStepEditor } from "./WorkflowStepEditor";
 import { useWorkflowNodes } from "../hooks/useWorkflowNodes";
 import { WORKFLOW_ICON_MAP } from "../utils/workflowIcons";
+import { cn } from "@/lib/utils";
 import type { WorkflowDefinitionInfo, WorkflowStepConfig } from "@/types/workflow";
 
 const CONSTRAINT_LABELS: Record<string, string> = {
@@ -51,6 +52,7 @@ export function WorkflowDefinitionDetail({
   onCancelCreate,
 }: WorkflowDefinitionDetailProps) {
   const [isEditing, setIsEditing] = useState(isCreating);
+  const [expandedPrompts, setExpandedPrompts] = useState<Set<number>>(new Set());
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -76,6 +78,7 @@ export function WorkflowDefinitionDetail({
         })),
       });
       setIsEditing(false);
+      setExpandedPrompts(new Set());
     }
   }, [definition, isCreating]);
 
@@ -292,13 +295,39 @@ export function WorkflowDefinitionDetail({
                           ) : null}
                         </div>
 
-                        {step.prompt_template ? (
-                          <div className="pl-7">
-                            <p className="font-mono text-2xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">
-                              {step.prompt_template}
-                            </p>
-                          </div>
-                        ) : null}
+                        {step.prompt_template ? (() => {
+                          const lineCount = step.prompt_template.split("\n").length;
+                          const isLong = lineCount > 30;
+                          const isExpanded = expandedPrompts.has(index);
+                          return (
+                            <div className="pl-7">
+                              <p
+                                className={cn(
+                                  "font-mono text-2xs text-muted-foreground whitespace-pre-wrap",
+                                  isLong && !isExpanded ? "line-clamp-[30]" : "",
+                                )}
+                              >
+                                {step.prompt_template}
+                              </p>
+                              {isLong ? (
+                                <button
+                                  type="button"
+                                  className="font-mono text-2xs text-primary hover:underline mt-1"
+                                  onClick={() =>
+                                    setExpandedPrompts((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(index)) next.delete(index);
+                                      else next.add(index);
+                                      return next;
+                                    })
+                                  }
+                                >
+                                  {isExpanded ? "접기" : `펼치기 (${lineCount}줄)`}
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })() : null}
                       </div>
                     );
                   })}

@@ -1,6 +1,8 @@
-import { Workflow } from "lucide-react";
+import { Workflow, Plus, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { WorkflowDefinitionInfo } from "@/types/workflow";
 
@@ -45,17 +47,51 @@ interface WorkflowDefinitionListProps {
   definitions: WorkflowDefinitionInfo[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onAdd: () => void;
+  onImport: () => void;
 }
 
 export function WorkflowDefinitionList({
   definitions,
   selectedId,
   onSelect,
+  onAdd,
+  onImport,
 }: WorkflowDefinitionListProps) {
   return (
     <div className="flex flex-col h-full border-r border-border w-72 shrink-0">
-      <div className="flex items-center px-3 py-2 border-b border-border shrink-0">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
         <span className="font-mono text-xs font-semibold text-muted-foreground">정의 목록</span>
+        <div className="flex items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={onImport}
+                aria-label="가져오기"
+              >
+                <Upload className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">가져오기</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={onAdd}
+                aria-label="새 정의 만들기"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="font-mono text-xs">새 정의 만들기</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
       <ScrollArea className="flex-1">
         {definitions.length === 0 ? (

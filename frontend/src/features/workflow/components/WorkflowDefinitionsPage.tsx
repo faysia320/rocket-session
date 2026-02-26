@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from "react";
-import { Workflow, Plus, Upload, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -37,7 +36,10 @@ export function WorkflowDefinitionsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const readyDefinitions = useMemo(() => definitions ?? [], [definitions]);
+  const readyDefinitions = useMemo(() => {
+    if (!definitions) return [];
+    return [...definitions].sort((a, b) => Number(b.is_builtin) - Number(a.is_builtin));
+  }, [definitions]);
 
   const selectedDefinition = useMemo(
     () => (isCreating ? null : (readyDefinitions.find((d) => d.id === selectedId) ?? readyDefinitions[0] ?? null)),
@@ -133,51 +135,10 @@ export function WorkflowDefinitionsPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* 헤더 */}
-      <div className="shrink-0 border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-mono text-lg font-semibold text-foreground flex items-center gap-2">
-              <Workflow className="h-5 w-5 text-primary" />
-              Workflow Definitions
-            </h1>
-            <p className="font-mono text-xs text-muted-foreground">
-              {isLoading
-                ? "로딩 중…"
-                : readyDefinitions.length > 0
-                  ? `${readyDefinitions.length}개 정의`
-                  : "워크플로우 정의를 추가하세요"}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="font-mono text-xs gap-1.5"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-3.5 w-3.5" />
-              가져오기
-            </Button>
-            <Button
-              size="sm"
-              className="font-mono text-xs gap-1.5"
-              onClick={handleAdd}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              새 정의 만들기
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* 메인 콘텐츠 */}
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : readyDefinitions.length === 0 && !isCreating ? (
-        <EmptyState onAdd={handleAdd} />
       ) : (
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* 데스크톱: 좌측 사이드바 */}
@@ -186,6 +147,8 @@ export function WorkflowDefinitionsPage() {
               definitions={readyDefinitions}
               selectedId={effectiveId}
               onSelect={handleSelect}
+              onAdd={handleAdd}
+              onImport={() => fileInputRef.current?.click()}
             />
           ) : null}
 
@@ -228,28 +191,6 @@ export function WorkflowDefinitionsPage() {
         className="hidden"
         onChange={handleImport}
       />
-    </div>
-  );
-}
-
-function EmptyState({ onAdd }: { onAdd: () => void }) {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-4">
-      <Workflow className="h-16 w-16 text-muted-foreground/20" />
-      <p className="font-mono text-sm text-muted-foreground">
-        저장된 워크플로우 정의가 없습니다
-      </p>
-      <p className="font-mono text-xs text-muted-foreground/60">
-        워크플로우 정의를 생성하여 세션에서 사용하세요
-      </p>
-      <Button
-        variant="outline"
-        onClick={onAdd}
-        className="font-mono text-xs"
-      >
-        <Plus className="h-3 w-3 mr-1" />
-        새 정의 만들기
-      </Button>
     </div>
   );
 }

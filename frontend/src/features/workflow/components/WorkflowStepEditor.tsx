@@ -58,14 +58,11 @@ interface SortableStepCardProps {
   id: string;
   step: WorkflowStepConfig;
   index: number;
-  totalSteps: number;
   nodes: WorkflowNodeInfo[];
   nodeMap: Map<string, WorkflowNodeInfo>;
   isOpen: boolean;
   onToggleOpen: () => void;
   onUpdate: (patch: Partial<WorkflowStepConfig>) => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
   onDelete: () => void;
 }
 
@@ -73,14 +70,11 @@ function SortableStepCard({
   id,
   step,
   index,
-  totalSteps,
   nodes,
   nodeMap,
   isOpen,
   onToggleOpen,
   onUpdate,
-  onMoveUp,
-  onMoveDown,
   onDelete,
 }: SortableStepCardProps) {
   const {
@@ -160,32 +154,6 @@ function SortableStepCard({
             ) : null}
 
             <div className="flex items-center gap-0.5 shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                disabled={index === 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveUp();
-                }}
-                aria-label="위로 이동"
-              >
-                <ChevronUp className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                disabled={index === totalSteps - 1}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveDown();
-                }}
-                aria-label="아래로 이동"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -357,40 +325,6 @@ export function WorkflowStepEditor({ steps, nodes, onChange }: WorkflowStepEdito
     [steps, onChange],
   );
 
-  const moveStep = useCallback(
-    (index: number, direction: -1 | 1) => {
-      const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= steps.length) return;
-
-      const updated = [...steps];
-      const temp = updated[index];
-      updated[index] = updated[targetIndex];
-      updated[targetIndex] = temp;
-
-      const reindexed = updated.map((step, i) => ({
-        ...step,
-        order_index: i,
-      }));
-
-      setOpenIndices((prev) => {
-        const next = new Set<number>();
-        for (const idx of prev) {
-          if (idx === index) {
-            next.add(targetIndex);
-          } else if (idx === targetIndex) {
-            next.add(index);
-          } else {
-            next.add(idx);
-          }
-        }
-        return next;
-      });
-
-      onChange(reindexed);
-    },
-    [steps, onChange],
-  );
-
   const deleteStep = useCallback(
     (index: number) => {
       const updated = steps
@@ -473,14 +407,11 @@ export function WorkflowStepEditor({ steps, nodes, onChange }: WorkflowStepEdito
               id={sortableIds[index]}
               step={step}
               index={index}
-              totalSteps={steps.length}
               nodes={nodes}
               nodeMap={nodeMap}
               isOpen={openIndices.has(index)}
               onToggleOpen={() => toggleOpen(index)}
               onUpdate={(patch) => updateStep(index, patch)}
-              onMoveUp={() => moveStep(index, -1)}
-              onMoveDown={() => moveStep(index, 1)}
               onDelete={() => deleteStep(index)}
             />
           ))}

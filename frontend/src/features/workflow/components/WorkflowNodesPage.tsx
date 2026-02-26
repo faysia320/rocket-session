@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { Blocks, Plus, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -78,40 +77,10 @@ export function WorkflowNodesPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* 헤더 */}
-      <div className="shrink-0 border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-mono text-lg font-semibold text-foreground flex items-center gap-2">
-              <Blocks className="h-5 w-5 text-primary" />
-              Workflow Nodes
-            </h1>
-            <p className="font-mono text-xs text-muted-foreground">
-              {isLoading
-                ? "로딩 중…"
-                : readyNodes.length > 0
-                  ? `${readyNodes.length}개 노드`
-                  : "워크플로우 노드를 추가하세요"}
-            </p>
-          </div>
-          <Button
-            size="sm"
-            className="font-mono text-xs gap-1.5"
-            onClick={handleAdd}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            새 노드 만들기
-          </Button>
-        </div>
-      </div>
-
-      {/* 메인 콘텐츠 */}
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : readyNodes.length === 0 && !isCreating ? (
-        <EmptyState onAdd={handleAdd} />
       ) : (
         <div className="flex-1 flex overflow-hidden min-h-0">
           {!isMobile ? (
@@ -119,6 +88,7 @@ export function WorkflowNodesPage() {
               nodes={readyNodes}
               selectedId={selectedId}
               onSelect={handleSelect}
+              onAdd={handleAdd}
             />
           ) : null}
 
@@ -150,28 +120,6 @@ export function WorkflowNodesPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function EmptyState({ onAdd }: { onAdd: () => void }) {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-4">
-      <Blocks className="h-16 w-16 text-muted-foreground/20" />
-      <p className="font-mono text-sm text-muted-foreground">
-        저장된 워크플로우 노드가 없습니다
-      </p>
-      <p className="font-mono text-xs text-muted-foreground/60">
-        워크플로우 노드를 생성하여 워크플로우 정의에서 사용하세요
-      </p>
-      <Button
-        variant="outline"
-        onClick={onAdd}
-        className="font-mono text-xs"
-      >
-        <Plus className="h-3 w-3 mr-1" />
-        새 노드 만들기
-      </Button>
     </div>
   );
 }
