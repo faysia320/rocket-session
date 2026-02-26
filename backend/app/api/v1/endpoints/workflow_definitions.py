@@ -40,7 +40,7 @@ async def import_definition(
 ):
     if data.version != 1:
         raise HTTPException(status_code=400, detail="지원하지 않는 버전입니다")
-    return await service.import_definition(data.definition)
+    return await service.import_definition(data.definition, nodes_data=data.nodes)
 
 
 @router.get("/{def_id}", response_model=WorkflowDefinitionInfo)

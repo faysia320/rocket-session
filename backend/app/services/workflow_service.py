@@ -10,7 +10,7 @@ from app.repositories.artifact_repo import (
     SessionArtifactRepository,
 )
 from app.schemas.workflow import ArtifactAnnotationInfo, SessionArtifactInfo
-from app.schemas.workflow_definition import WorkflowStepConfig
+from app.schemas.workflow_definition import ResolvedWorkflowStep
 from app.services.workflow_definition_service import WorkflowDefinitionService
 
 logger = logging.getLogger(__name__)
@@ -70,14 +70,14 @@ class WorkflowService:
 
     async def _get_steps(
         self, session_id: str, session_manager
-    ) -> list[WorkflowStepConfig]:
+    ) -> list[ResolvedWorkflowStep]:
         """세션의 workflow_definition_id로 steps 로드. null이면 기본 프리셋."""
         session_data = await session_manager.get(session_id)
         def_id = session_data.get("workflow_definition_id") if session_data else None
         definition = await self._def_service.get_or_default(def_id)
         return sorted(definition.steps, key=lambda s: s.order_index)
 
-    async def _get_steps_from_db(self, session_id: str) -> list[WorkflowStepConfig]:
+    async def _get_steps_from_db(self, session_id: str) -> list[ResolvedWorkflowStep]:
         """session_manager 없이 DB에서 직접 steps 로드."""
         from app.repositories.session_repo import SessionRepository
 
@@ -92,15 +92,15 @@ class WorkflowService:
 
     @staticmethod
     def _get_step(
-        steps: list[WorkflowStepConfig], phase_name: str
-    ) -> WorkflowStepConfig | None:
+        steps: list[ResolvedWorkflowStep], phase_name: str
+    ) -> ResolvedWorkflowStep | None:
         """steps에서 이름으로 단계 찾기."""
         return next((s for s in steps if s.name == phase_name), None)
 
     @staticmethod
     def _get_next_step(
-        steps: list[WorkflowStepConfig], current_name: str
-    ) -> WorkflowStepConfig | None:
+        steps: list[ResolvedWorkflowStep], current_name: str
+    ) -> ResolvedWorkflowStep | None:
         """steps에서 현재 단계 다음 단계 반환."""
         names = [s.name for s in steps]
         try:
@@ -544,7 +544,8 @@ class WorkflowService:
                             f"## 이전 {label} (수정 필요)\n{current_artifact.content}"
                         )
 
-        parts.append(f"## 수정 요청 피드백\n{feedback}")
+        if feedback and feedback.strip():
+            parts.append(f"## 수정 요청 피드백\n{feedback}")
         parts.append(
             "## 지시사항\n"
             "위 피드백과 주석을 반영하여 결과물을 **수정**하세요.\n"

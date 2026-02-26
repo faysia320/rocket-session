@@ -10,6 +10,7 @@ from app.repositories.search_repo import SearchRepository
 from app.repositories.session_repo import SessionRepository
 from app.repositories.settings_repo import SettingsRepository
 from app.repositories.tag_repo import TagRepository
+from app.repositories.workflow_node_repo import WorkflowNodeRepository
 
 __all__ = [
     "AnalyticsRepository",
@@ -22,4 +23,5 @@ __all__ = [
     "SessionRepository",
     "SettingsRepository",
     "TagRepository",
+    "WorkflowNodeRepository",
 ]

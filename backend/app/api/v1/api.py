@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     usage,
     workflow,
     workflow_definitions,
+    workflow_nodes,
     workspaces,
 )
 
@@ -34,5 +35,6 @@ api_router.include_router(tags.router)
 api_router.include_router(teams.router)
 api_router.include_router(analytics.router)
 api_router.include_router(workflow.router)
+api_router.include_router(workflow_nodes.router)
 api_router.include_router(workflow_definitions.router)
 api_router.include_router(workspaces.router)

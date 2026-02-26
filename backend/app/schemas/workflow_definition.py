@@ -5,18 +5,30 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.schemas.workflow_node import WorkflowNodeInfo
+
 
 class WorkflowStepConfig(BaseModel):
-    """워크플로우 단계 설정."""
+    """Definition의 steps JSONB 저장 형식 (node_id 참조)."""
 
-    name: str = Field(..., min_length=1, pattern=r"^[a-z][a-z0-9_]*$")
-    label: str = Field(..., min_length=1)
-    icon: str = "FileText"
-    prompt_template: str = ""
-    constraints: str = "readonly"
+    node_id: str
+    order_index: int = 0
     auto_advance: bool = False
     review_required: bool = False
-    order_index: int = 0
+
+
+class ResolvedWorkflowStep(BaseModel):
+    """Node 정보가 결합된 API 응답용 스키마."""
+
+    node_id: str
+    name: str
+    label: str
+    icon: str
+    prompt_template: str
+    constraints: str
+    order_index: int
+    auto_advance: bool
+    review_required: bool
 
 
 class CreateWorkflowDefinitionRequest(BaseModel):
@@ -42,7 +54,7 @@ class WorkflowDefinitionInfo(BaseModel):
     name: str
     description: Optional[str] = None
     is_builtin: bool = False
-    steps: list[WorkflowStepConfig]
+    steps: list[ResolvedWorkflowStep]
     created_at: datetime
     updated_at: datetime
 
@@ -52,3 +64,4 @@ class WorkflowDefinitionExport(BaseModel):
 
     version: int = 1
     definition: WorkflowDefinitionInfo
+    nodes: list[WorkflowNodeInfo] = []
