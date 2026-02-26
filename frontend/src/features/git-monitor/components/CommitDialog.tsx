@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { GitCommitHorizontal, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,9 +7,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useStageAndCommit } from "../hooks/useGitActions";
 import { useCreateSession } from "@/features/session/hooks/useSessions";
+import { useWorkflowDefinitions } from "@/features/workflow/hooks/useWorkflowDefinitions";
 import { useSessionStore } from "@/store";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +39,15 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, work
   const { createSession } = useCreateSession();
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [commitMethod, setCommitMethod] = useState<string>("__skill__");
+  const { data: workflowDefinitions } = useWorkflowDefinitions();
+
+  useEffect(() => {
+    if (workflowDefinitions) {
+      const wf3 = workflowDefinitions.find((d) => d.name === "Workflow 3");
+      if (wf3) setCommitMethod(wf3.id);
+    }
+  }, [workflowDefinitions]);
 
   const handleManualCommit = useCallback(() => {
     if (!message.trim()) return;
@@ -45,13 +63,20 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, work
     if (isCreatingSession) return;
     setIsCreatingSession(true);
     try {
-      const session = await createSession(workspacePath, { workspace_id: workspaceId });
-      setPendingPrompt("/git-commit", session.id);
+      if (commitMethod === "__skill__") {
+        const session = await createSession(workspacePath, { workspace_id: workspaceId });
+        setPendingPrompt("/git-commit", session.id);
+      } else {
+        await createSession(workspacePath, {
+          workspace_id: workspaceId,
+          workflow_definition_id: commitMethod,
+        });
+      }
       onOpenChange(false);
     } catch {
       setIsCreatingSession(false);
     }
-  }, [createSession, workspacePath, workspaceId, setPendingPrompt, onOpenChange, isCreatingSession]);
+  }, [createSession, workspacePath, workspaceId, setPendingPrompt, onOpenChange, isCreatingSession, commitMethod]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -104,9 +129,35 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, work
         {mode === "ai" ? (
           <div className="space-y-3">
             <p className="font-mono text-xs text-muted-foreground">
-              새 세션을 열고 <code className="bg-muted px-1 py-0.5 rounded">/git-commit</code> 스킬을 실행합니다.
-              변경사항을 분석하여 커밋 메시지를 자동 생성합니다.
+              {commitMethod === "__skill__" ? (
+                <>새 세션을 열고 <code className="bg-muted px-1 py-0.5 rounded">/git-commit</code> 스킬을 실행합니다.</>
+              ) : (
+                <>새 세션을 열고 선택한 워크플로우로 커밋을 수행합니다.</>
+              )}
             </p>
+            <Select value={commitMethod} onValueChange={setCommitMethod}>
+              <SelectTrigger className="font-mono text-xs h-8 bg-input border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__skill__" className="font-mono text-xs">
+                  Skill: /git-commit
+                </SelectItem>
+                {workflowDefinitions && workflowDefinitions.length > 0 && (
+                  <>
+                    <SelectSeparator />
+                    {workflowDefinitions.map((def) => (
+                      <SelectItem key={def.id} value={def.id} className="font-mono text-xs">
+                        {def.name}
+                        {def.description && (
+                          <span className="ml-2 text-muted-foreground">— {def.description}</span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -120,7 +171,7 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, work
                 size="sm"
                 className="font-mono text-xs"
                 onClick={handleAiCommit}
-                disabled={isCreatingSession}
+                disabled={isCreatingSession || !workflowDefinitions}
               >
                 {isCreatingSession ? (
                   <Loader2 className="h-3 w-3 animate-spin mr-1" />
