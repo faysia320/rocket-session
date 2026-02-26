@@ -1,25 +1,23 @@
 """팀 태스크 관리 서비스."""
 
 import logging
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from app.core.database import Database
+from app.core.exceptions import NotFoundError
+from app.core.utils import utc_now
 from app.models.team_task import TeamTask
 from app.models.workspace import Workspace
 from app.repositories.team_repo import TeamMemberRepository
 from app.repositories.team_task_repo import TeamTaskRepository
 from app.schemas.team import TaskSummary, TeamTaskInfo
+from app.services.base import DBService
 
 logger = logging.getLogger(__name__)
 
 
-class TeamTaskService:
+class TeamTaskService(DBService):
     """팀 태스크 CRUD + 할당 + 의존성 관리."""
-
-    def __init__(self, db: Database) -> None:
-        self._db = db
 
     @staticmethod
     def _task_to_info(
@@ -91,9 +89,8 @@ class TeamTaskService:
         depends_on_task_id: int | None = None,
         created_by_member_id: int | None = None,
     ) -> TeamTaskInfo:
-        now = datetime.now(timezone.utc)
-        async with self._db.session() as session:
-            repo = TeamTaskRepository(session)
+        now = utc_now()
+        async with self._session_scope(TeamTaskRepository) as (session, repo):
             tasks = await repo.list_by_team(team_id)
             order_index = len(tasks)
 
@@ -119,12 +116,11 @@ class TeamTaskService:
                 task, assigned_nickname=nickname, workspace_name=ws_name
             )
 
-    async def get_task(self, task_id: int) -> TeamTaskInfo | None:
-        async with self._db.session() as session:
-            repo = TeamTaskRepository(session)
+    async def get_task(self, task_id: int) -> TeamTaskInfo:
+        async with self._session_scope(TeamTaskRepository) as (session, repo):
             task = await repo.get_by_id(task_id)
             if not task:
-                return None
+                raise NotFoundError(f"태스크를 찾을 수 없습니다: {task_id}")
             nickname = await self._resolve_nickname(session, task.assigned_member_id)
             ws_name = await self._resolve_workspace_name(session, task.workspace_id)
             return self._task_to_info(
@@ -134,10 +130,10 @@ class TeamTaskService:
     async def list_tasks(
         self, team_id: str, status: str | None = None
     ) -> list[TeamTaskInfo]:
-        async with self._db.session() as session:
-            repo = TeamTaskRepository(session)
+        async with self._session_scope(TeamTaskRepository, TeamMemberRepository) as (
+            session, repo, member_repo
+        ):
             tasks = await repo.list_by_team(team_id, status=status)
-            member_repo = TeamMemberRepository(session)
             members = await member_repo.get_members(team_id)
             nick_map = {m.id: m.nickname for m in members}
             ws_name_map = await self._resolve_workspace_names(
@@ -153,8 +149,7 @@ class TeamTaskService:
             ]
 
     async def update_task(self, task_id: int, **kwargs) -> TeamTaskInfo | None:
-        async with self._db.session() as session:
-            repo = TeamTaskRepository(session)
+        async with self._session_scope(TeamTaskRepository) as (session, repo):
             task = await repo.update_task(task_id, **kwargs)
             if not task:
                 return None
@@ -166,8 +161,7 @@ class TeamTaskService:
             )
 
     async def delete_task(self, task_id: int) -> bool:
-        async with self._db.session() as session:
-            repo = TeamTaskRepository(session)
+        async with self._session_scope(TeamTaskRepository) as (session, repo):
             deleted = await repo.delete_by_id(task_id)
             await session.commit()
             return deleted
@@ -175,8 +169,7 @@ class TeamTaskService:
     # ── 할당 ──
 
     async def claim_task(self, task_id: int, member_id: int) -> TeamTaskInfo | None:
-        async with self._db.session() as session:
-            repo = TeamTaskRepository(session)
+        async with self._session_scope(TeamTaskRepository) as (session, repo):
             task = await repo.claim_task(task_id, member_id)
             if not task:
                 return None
@@ -190,8 +183,7 @@ class TeamTaskService:
     async def complete_task(
         self, task_id: int, result_summary: str | None = None
     ) -> TeamTaskInfo | None:
-        async with self._db.session() as session:
-            repo = TeamTaskRepository(session)
+        async with self._session_scope(TeamTaskRepository) as (session, repo):
             task = await repo.complete_task(task_id, result_summary)
             if not task:
                 return None
@@ -205,15 +197,13 @@ class TeamTaskService:
     # ── 순서 ──
 
     async def reorder_tasks(self, team_id: str, task_ids: list[int]) -> None:
-        async with self._db.session() as session:
-            repo = TeamTaskRepository(session)
+        async with self._session_scope(TeamTaskRepository) as (session, repo):
             await repo.reorder_tasks(team_id, task_ids)
             await session.commit()
 
     # ── 집계 ──
 
     async def get_task_summary(self, team_id: str) -> TaskSummary:
-        async with self._db.session() as session:
-            repo = TeamTaskRepository(session)
+        async with self._session_scope(TeamTaskRepository) as (session, repo):
             summary = await repo.get_task_summary(team_id)
             return TaskSummary(**summary)

@@ -10,6 +10,7 @@ import time
 from collections import OrderedDict
 from pathlib import Path
 
+from app.core.exceptions import ValidationError
 from app.schemas.filesystem import (
     GitCommitEntry,
     GitInfo,
@@ -88,7 +89,7 @@ class GitService:
         expanded = os.path.expanduser(path)
         resolved = Path(expanded).resolve()
         if not resolved.exists():
-            raise ValueError(f"경로가 존재하지 않습니다: {path}")
+            raise ValidationError(f"경로가 존재하지 않습니다: {path}")
         return resolved
 
     def _is_within_root(self, path: Path) -> bool:
@@ -148,7 +149,7 @@ class GitService:
         """Git 저장소 정보 실제 조회."""
         validated_path = self._validate_path(path)
         if not self._is_within_root(validated_path):
-            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {path}")
         cwd = str(validated_path)
 
         # Git 저장소 여부 확인
@@ -237,14 +238,14 @@ class GitService:
         """Git 워크트리 목록 조회."""
         validated_path = self._validate_path(path)
         if not self._is_within_root(validated_path):
-            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {path}")
         cwd = str(validated_path)
 
         returncode, stdout, stderr = await self._run_git_command(
             "worktree", "list", "--porcelain", cwd=cwd
         )
         if returncode != 0:
-            raise ValueError(f"Git 워크트리를 조회할 수 없습니다: {stderr}")
+            raise ValidationError(f"Git 워크트리를 조회할 수 없습니다: {stderr}")
 
         worktrees = []
         lines = stdout.split("\n")
@@ -300,7 +301,7 @@ class GitService:
         """
         validated_repo = self._validate_path(repo_path)
         if not self._is_within_root(validated_repo):
-            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated_repo)
 
         worktree_path = os.path.join(cwd, ".claude", "worktrees", worktree_name)
@@ -343,7 +344,7 @@ class GitService:
         """
         validated_repo = self._validate_path(repo_path)
         if not self._is_within_root(validated_repo):
-            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated_repo)
 
         worktree_path = os.path.join(cwd, ".claude", "worktrees", worktree_name)
@@ -538,7 +539,7 @@ class GitService:
         """커밋 히스토리 조회."""
         validated_path = self._validate_path(path)
         if not self._is_within_root(validated_path):
-            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {path}")
         cwd = str(validated_path)
 
         # 전체 커밋 수 + 로그를 병렬 실행
@@ -627,14 +628,14 @@ class GitService:
         """특정 커밋의 diff 반환."""
         validated_path = self._validate_path(path)
         if not self._is_within_root(validated_path):
-            raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {path}")
         cwd = str(validated_path)
 
         rc, out, err = await self._run_git_command(
             "show", "--format=", "--patch", commit_hash, cwd=cwd, timeout=30.0
         )
         if rc != 0:
-            raise ValueError(f"커밋 diff 조회 실패: {err}")
+            raise ValidationError(f"커밋 diff 조회 실패: {err}")
         return out
 
     # ─── 브랜치 관련 ───
@@ -655,7 +656,7 @@ class GitService:
         """
         validated = self._validate_path(repo_path)
         if not self._is_within_root(validated):
-            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated)
 
         # 원격 ref 갱신 (새 브랜치 감지)
@@ -736,7 +737,7 @@ class GitService:
         """
         validated = self._validate_path(repo_path)
         if not self._is_within_root(validated):
-            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated)
 
         async with self._get_git_lock(cwd):
@@ -769,7 +770,7 @@ class GitService:
         """
         validated = self._validate_path(repo_path)
         if not self._is_within_root(validated):
-            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated)
 
         async with self._get_git_lock(cwd):
@@ -793,7 +794,7 @@ class GitService:
         """
         validated = self._validate_path(repo_path)
         if not self._is_within_root(validated):
-            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated)
 
         async with self._get_git_lock(cwd):
@@ -820,7 +821,7 @@ class GitService:
         """
         validated = self._validate_path(repo_path)
         if not self._is_within_root(validated):
-            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated)
 
         async with self._get_git_lock(cwd):
@@ -1023,7 +1024,7 @@ class GitService:
         """
         validated = self._validate_path(repo_path)
         if not self._is_within_root(validated):
-            raise ValueError(f"접근할 수 없는 경로입니다: {repo_path}")
+            raise ValidationError(f"접근할 수 없는 경로입니다: {repo_path}")
         cwd = str(validated)
 
         args = ["fetch"]

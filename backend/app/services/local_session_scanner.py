@@ -3,16 +3,17 @@
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
-from app.core.database import Database
+from app.core.utils import utc_now
 from app.repositories.message_repo import MessageRepository
 from app.repositories.session_repo import SessionRepository
 from app.schemas.local_session import (
     ImportLocalSessionResponse,
     LocalSessionMeta,
 )
+from app.services.base import DBService
 from app.services.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
@@ -31,9 +32,7 @@ def _validate_safe_path(base: Path, *parts: str) -> Path:
     return resolved
 
 
-class LocalSessionScanner:
-    def __init__(self, db: Database):
-        self._db = db
+class LocalSessionScanner(DBService):
 
     async def scan(
         self, project_dir: str | None = None, since: str | None = None
@@ -178,8 +177,7 @@ class LocalSessionScanner:
 
     async def _get_imported_session_ids(self) -> set[str]:
         """DB에서 이미 import된 claude_session_id 목록 조회."""
-        async with self._db.session() as session:
-            repo = SessionRepository(session)
+        async with self._session_scope(SessionRepository) as (session, repo):
             return await repo.get_all_claude_session_ids()
 
     def _extract_metadata(
@@ -329,8 +327,7 @@ class LocalSessionScanner:
         await session_manager.update_claude_session_id(dashboard_id, session_id)
 
         # JSONL 파일 경로 저장 (실시간 감시용)
-        async with self._db.session() as db_session:
-            repo = SessionRepository(db_session)
+        async with self._session_scope(SessionRepository) as (db_session, repo):
             await repo.update_jsonl_path(dashboard_id, str(jsonl_path))
             await db_session.commit()
 
@@ -364,8 +361,7 @@ class LocalSessionScanner:
                 }
                 for msg in all_messages
             ]
-            async with self._db.session() as db_session:
-                msg_repo = MessageRepository(db_session)
+            async with self._session_scope(MessageRepository) as (db_session, msg_repo):
                 await msg_repo.add_batch(batch)
                 await db_session.commit()
 
@@ -503,10 +499,10 @@ class LocalSessionScanner:
                         ts_dt = (
                             datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
                             if ts_str
-                            else datetime.now(timezone.utc)
+                            else utc_now()
                         )
                     except (ValueError, TypeError):
-                        ts_dt = datetime.now(timezone.utc)
+                        ts_dt = utc_now()
                     messages.append(
                         {
                             "role": message.get("role", msg_type),

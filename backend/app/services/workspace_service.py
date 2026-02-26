@@ -8,12 +8,12 @@ import logging
 import os
 import shutil
 import uuid
-from datetime import datetime, timezone
 
-from app.core.database import Database
-from app.core.exceptions import ConflictError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.utils import utc_now
 from app.models.workspace import Workspace
 from app.repositories.workspace_repo import WorkspaceRepository
+from app.services.base import DBService
 from app.services.git_service import GitService
 
 logger = logging.getLogger(__name__)
@@ -42,16 +42,16 @@ def _workspace_to_dict(ws: Workspace) -> dict:
     }
 
 
-class WorkspaceService:
+class WorkspaceService(DBService):
     """워크스페이스 CRUD + clone/sync 생명주기 관리."""
 
     def __init__(
         self,
-        db: Database,
+        db,
         git_service: GitService,
         workspaces_root: str = "/workspaces",
     ) -> None:
-        self._db = db
+        super().__init__(db)
         self._git = git_service
         self._workspaces_root = workspaces_root
         # 진행 중인 clone 태스크 추적
@@ -79,9 +79,8 @@ class WorkspaceService:
             local_path = os.path.join(self._workspaces_root, dir_name)
             counter += 1
 
-        now = datetime.now(timezone.utc)
-        async with self._db.session() as session:
-            repo = WorkspaceRepository(session)
+        now = utc_now()
+        async with self._session_scope(WorkspaceRepository) as (session, repo):
             entity = Workspace(
                 id=wid,
                 name=name,
@@ -136,7 +135,7 @@ class WorkspaceService:
 
             # 3단계: 디스크 사용량 계산 + status=ready
             disk_mb = await self._calc_disk_usage(local_path)
-            now = datetime.now(timezone.utc)
+            now = utc_now()
             await self._update_status(
                 workspace_id,
                 "ready",
@@ -256,9 +255,8 @@ class WorkspaceService:
         **kwargs,
     ) -> None:
         """DB 상태 업데이트."""
-        now = datetime.now(timezone.utc)
-        async with self._db.session() as session:
-            repo = WorkspaceRepository(session)
+        now = utc_now()
+        async with self._session_scope(WorkspaceRepository) as (session, repo):
             await repo.update_status(
                 workspace_id, status, error_message, updated_at=now, **kwargs
             )
@@ -266,9 +264,8 @@ class WorkspaceService:
 
     async def list_all(self) -> list[dict]:
         """전체 워크스페이스 목록 (ready 워크스페이스는 Git 실시간 정보 포함)."""
-        async with self._db.session() as db_session:
-            repo = WorkspaceRepository(db_session)
-            entities = await repo.list_all()
+        async with self._session_scope(WorkspaceRepository) as (db_session, repo):
+            entities = await repo.get_all_ordered(Workspace.created_at.desc())
             results = [_workspace_to_dict(e) for e in entities]
 
         # ready 워크스페이스에 Git 실시간 정보 병렬 조회
@@ -286,13 +283,12 @@ class WorkspaceService:
 
         return list(await asyncio.gather(*[_enrich(ws) for ws in results]))
 
-    async def get(self, workspace_id: str) -> dict | None:
+    async def get(self, workspace_id: str) -> dict:
         """워크스페이스 상세 조회 (ready 시 Git 정보 포함)."""
-        async with self._db.session() as db_session:
-            repo = WorkspaceRepository(db_session)
+        async with self._session_scope(WorkspaceRepository) as (db_session, repo):
             entity = await repo.get_by_id(workspace_id)
             if not entity:
-                return None
+                raise NotFoundError(f"워크스페이스를 찾을 수 없습니다: {workspace_id}")
             result = _workspace_to_dict(entity)
 
         # ready 상태이면 Git 실시간 정보 추가
@@ -308,14 +304,13 @@ class WorkspaceService:
 
         return result
 
-    async def update(self, workspace_id: str, **kwargs) -> dict | None:
+    async def update(self, workspace_id: str, **kwargs) -> dict:
         """워크스페이스 속성 업데이트."""
-        now = datetime.now(timezone.utc)
-        async with self._db.session() as db_session:
-            repo = WorkspaceRepository(db_session)
-            entity = await repo.update_workspace(workspace_id, updated_at=now, **kwargs)
+        now = utc_now()
+        async with self._session_scope(WorkspaceRepository) as (db_session, repo):
+            entity = await repo.update_by_id(workspace_id, updated_at=now, **kwargs)
             if not entity:
-                return None
+                raise NotFoundError(f"워크스페이스를 찾을 수 없습니다: {workspace_id}")
             await db_session.commit()
             return _workspace_to_dict(entity)
 
@@ -334,10 +329,8 @@ class WorkspaceService:
             RebaseConflictError: rebase 실패 + 로컬 커밋 존재 시 (사용자 확인 필요)
         """
         ws = await self.get(workspace_id)
-        if not ws:
-            return False, "워크스페이스를 찾을 수 없습니다", None
         if ws["status"] != "ready":
-            return False, "워크스페이스가 준비되지 않았습니다", None
+            raise ValidationError("워크스페이스가 준비되지 않았습니다")
 
         local_path = ws["local_path"]
 
@@ -355,14 +348,14 @@ class WorkspaceService:
                         raise RebaseConflictError(msg)
 
             if success:
-                now = datetime.now(timezone.utc)
+                now = utc_now()
                 await self._update_status(workspace_id, "ready", last_synced_at=now)
             return success, msg, None
 
         elif action == "push":
             success, msg, commit_hash = await self._git.push(local_path)
             if success:
-                now = datetime.now(timezone.utc)
+                now = utc_now()
                 await self._update_status(workspace_id, "ready", last_synced_at=now)
             return success, msg, commit_hash
 
@@ -370,11 +363,10 @@ class WorkspaceService:
 
     async def delete_workspace(self, workspace_id: str) -> bool:
         """워크스페이스 삭제 (파일 + DB)."""
-        async with self._db.session() as db_session:
-            repo = WorkspaceRepository(db_session)
+        async with self._session_scope(WorkspaceRepository) as (db_session, repo):
             entity = await repo.get_by_id(workspace_id)
             if not entity:
-                return False
+                raise NotFoundError(f"워크스페이스를 찾을 수 없습니다: {workspace_id}")
             local_path = entity.local_path
 
             # 영향 받는 세션 수 경고 로그
@@ -406,8 +398,7 @@ class WorkspaceService:
             await asyncio.to_thread(shutil.rmtree, local_path, True)
 
         # DB 삭제
-        async with self._db.session() as db_session:
-            repo = WorkspaceRepository(db_session)
+        async with self._session_scope(WorkspaceRepository) as (db_session, repo):
             await repo.delete_by_id(workspace_id)
             await db_session.commit()
 
@@ -416,9 +407,8 @@ class WorkspaceService:
 
     async def cleanup_stale(self) -> None:
         """서버 재시작 시 stale cloning 상태 복구."""
-        async with self._db.session() as db_session:
-            repo = WorkspaceRepository(db_session)
-            entities = await repo.list_all()
+        async with self._session_scope(WorkspaceRepository) as (db_session, repo):
+            entities = await repo.get_all_ordered(Workspace.created_at.desc())
             for entity in entities:
                 if entity.status == "cloning":
                     # clone 중이던 워크스페이스 → error 처리

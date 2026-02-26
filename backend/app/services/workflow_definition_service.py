@@ -2,62 +2,35 @@
 
 import logging
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from app.core.database import Database
+from app.core.exceptions import NotFoundError, ValidationError
+from app.core.utils import utc_now
 from app.models.workflow_definition import WorkflowDefinition
 from app.repositories.workflow_definition_repo import WorkflowDefinitionRepository
-from app.schemas.workflow_definition import (
-    WorkflowDefinitionInfo,
-    WorkflowStepConfig,
-)
+from app.schemas.workflow_definition import WorkflowDefinitionInfo, WorkflowStepConfig
+from app.services.base import DBService
 
 logger = logging.getLogger(__name__)
 
 
-class WorkflowDefinitionService:
+class WorkflowDefinitionService(DBService):
     """워크플로우 정의 CRUD 및 export/import."""
-
-    def __init__(self, db: Database) -> None:
-        self._db = db
-
-    @staticmethod
-    def _entity_to_info(entity: WorkflowDefinition) -> WorkflowDefinitionInfo:
-        """ORM → Pydantic 변환. steps JSONB를 직접 반환."""
-        steps_raw = [
-            WorkflowStepConfig(**s) if isinstance(s, dict) else s
-            for s in (entity.steps or [])
-        ]
-        resolved = sorted(steps_raw, key=lambda x: x.order_index)
-        return WorkflowDefinitionInfo(
-            id=entity.id,
-            name=entity.name,
-            description=entity.description,
-            is_builtin=bool(entity.is_builtin),
-            is_default=bool(entity.is_default),
-            sort_order=entity.sort_order,
-            steps=resolved,
-            created_at=entity.created_at,
-            updated_at=entity.updated_at,
-        )
 
     # ── CRUD ─────────────────────────────────────────────────
 
     async def list_definitions(self) -> list[WorkflowDefinitionInfo]:
-        async with self._db.session() as session:
-            repo = WorkflowDefinitionRepository(session)
+        async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
             entities = await repo.list_all()
-            return [self._entity_to_info(e) for e in entities]
+            return [WorkflowDefinitionInfo.model_validate(e) for e in entities]
 
-    async def get_definition(self, def_id: str) -> WorkflowDefinitionInfo | None:
-        async with self._db.session() as session:
-            repo = WorkflowDefinitionRepository(session)
+    async def get_definition(self, def_id: str) -> WorkflowDefinitionInfo:
+        async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
             entity = await repo.get_by_id(def_id)
             if not entity:
-                return None
-            return self._entity_to_info(entity)
+                raise NotFoundError(f"워크플로우 정의를 찾을 수 없습니다: {def_id}")
+            return WorkflowDefinitionInfo.model_validate(entity)
 
     async def create_definition(
         self,
@@ -66,9 +39,8 @@ class WorkflowDefinitionService:
         description: str | None = None,
     ) -> WorkflowDefinitionInfo:
         def_id = str(uuid.uuid4())[:16]
-        now = datetime.now(timezone.utc)
-        async with self._db.session() as session:
-            repo = WorkflowDefinitionRepository(session)
+        now = utc_now()
+        async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
             entity = WorkflowDefinition(
                 id=def_id,
                 name=name,
@@ -81,7 +53,7 @@ class WorkflowDefinitionService:
             )
             await repo.add(entity)
             await session.commit()
-            return self._entity_to_info(entity)
+            return WorkflowDefinitionInfo.model_validate(entity)
 
     async def update_definition(
         self,
@@ -89,8 +61,8 @@ class WorkflowDefinitionService:
         name: str | None = None,
         description: str | None = None,
         steps: list[WorkflowStepConfig] | None = None,
-    ) -> WorkflowDefinitionInfo | None:
-        now = datetime.now(timezone.utc)
+    ) -> WorkflowDefinitionInfo:
+        now = utc_now()
         kwargs: dict = {"updated_at": now}
         if name is not None:
             kwargs["name"] = name
@@ -98,27 +70,25 @@ class WorkflowDefinitionService:
             kwargs["description"] = description
         if steps is not None:
             kwargs["steps"] = [s.model_dump() for s in steps]
-        async with self._db.session() as session:
-            repo = WorkflowDefinitionRepository(session)
+        async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
             existing = await repo.get_by_id(def_id)
             if not existing:
-                return None
+                raise NotFoundError(f"워크플로우 정의를 찾을 수 없습니다: {def_id}")
             if existing.is_builtin and name is not None and name != existing.name:
-                raise ValueError("시스템 워크플로우의 이름은 변경할 수 없습니다")
+                raise ValidationError("시스템 워크플로우의 이름은 변경할 수 없습니다")
             entity = await repo.update_definition(def_id, **kwargs)
             if not entity:
-                return None
+                raise NotFoundError(f"워크플로우 정의를 찾을 수 없습니다: {def_id}")
             await session.commit()
-            return self._entity_to_info(entity)
+            return WorkflowDefinitionInfo.model_validate(entity)
 
     async def delete_definition(self, def_id: str) -> bool:
-        async with self._db.session() as session:
-            repo = WorkflowDefinitionRepository(session)
+        async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
             entity = await repo.get_by_id(def_id)
             if not entity:
-                return False
+                raise NotFoundError(f"워크플로우 정의를 찾을 수 없습니다: {def_id}")
             if entity.is_builtin:
-                raise ValueError("시스템 워크플로우는 삭제할 수 없습니다")
+                raise ValidationError("시스템 워크플로우는 삭제할 수 없습니다")
             was_default = entity.is_default
             deleted = await repo.delete_by_id(def_id)
             if was_default:
@@ -129,31 +99,30 @@ class WorkflowDefinitionService:
             await session.commit()
             return deleted
 
-    async def set_default(self, def_id: str) -> WorkflowDefinitionInfo | None:
+    async def set_default(self, def_id: str) -> WorkflowDefinitionInfo:
         """지정된 워크플로우를 기본(default)으로 설정. 기존 default는 해제."""
-        async with self._db.session() as session:
-            repo = WorkflowDefinitionRepository(session)
+        async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
             entity = await repo.get_by_id(def_id)
             if not entity:
-                return None
+                raise NotFoundError(f"워크플로우 정의를 찾을 수 없습니다: {def_id}")
             await repo.clear_all_defaults()
             entity.is_default = True
             await session.flush()
             await session.commit()
-            return self._entity_to_info(entity)
+            return WorkflowDefinitionInfo.model_validate(entity)
 
     async def get_or_default(self, def_id: str | None) -> WorkflowDefinitionInfo:
         """def_id로 조회하되, None이거나 못 찾으면 default 반환."""
         if def_id:
-            info = await self.get_definition(def_id)
-            if info:
-                return info
+            try:
+                return await self.get_definition(def_id)
+            except NotFoundError:
+                pass
         # default 워크플로우 조회
-        async with self._db.session() as session:
-            repo = WorkflowDefinitionRepository(session)
+        async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
             entity = await repo.get_default()
             if entity:
-                return self._entity_to_info(entity)
+                return WorkflowDefinitionInfo.model_validate(entity)
         # default도 없으면 하드코딩 fallback
         return WorkflowDefinitionInfo(
             id="fallback",
@@ -188,16 +157,14 @@ class WorkflowDefinitionService:
                     order_index=2,
                 ),
             ],
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
     # ── Export / Import ──────────────────────────────────────
 
-    async def export_definition(self, def_id: str) -> dict | None:
+    async def export_definition(self, def_id: str) -> dict:
         info = await self.get_definition(def_id)
-        if not info:
-            return None
         return {
             "version": 1,
             "definition": info.model_dump(),

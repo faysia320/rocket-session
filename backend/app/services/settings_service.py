@@ -2,22 +2,18 @@
 
 import logging
 
-from app.core.database import Database
 from app.repositories.settings_repo import SettingsRepository
+from app.services.base import DBService
 
 logger = logging.getLogger(__name__)
 
 
-class SettingsService:
+class SettingsService(DBService):
     """글로벌 기본 설정 조회/수정 서비스."""
-
-    def __init__(self, db: Database) -> None:
-        self._db = db
 
     async def get(self) -> dict:
         """글로벌 설정을 딕셔너리로 반환. JSONB 필드는 이미 Python 객체."""
-        async with self._db.session() as session:
-            repo = SettingsRepository(session)
+        async with self._session_scope(SettingsRepository) as (session, repo):
             entity = await repo.get_default()
             if not entity:
                 return {}
@@ -92,8 +88,7 @@ class SettingsService:
             )
         if fallback_model is not None:
             kwargs["fallback_model"] = fallback_model
-        async with self._db.session() as session:
-            repo = SettingsRepository(session)
+        async with self._session_scope(SettingsRepository) as (session, repo):
             entity = await repo.update_settings(**kwargs)
             await session.commit()
             if not entity:

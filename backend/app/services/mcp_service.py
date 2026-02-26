@@ -5,13 +5,14 @@ import logging
 import os
 import re
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 
-from app.core.database import Database
+from app.core.exceptions import NotFoundError
+from app.core.utils import utc_now
 from app.models.mcp_server import McpServer
 from app.repositories.mcp_server_repo import McpServerRepository
 from app.schemas.mcp import McpServerInfo
+from app.services.base import DBService
 
 logger = logging.getLogger(__name__)
 
@@ -33,43 +34,20 @@ def _resolve_url_for_docker(url: str) -> str:
     )
 
 
-class McpService:
+class McpService(DBService):
     """글로벌 MCP 서버 풀 관리 및 MCP config 빌드."""
-
-    def __init__(self, db: Database) -> None:
-        self._db = db
-
-    @staticmethod
-    def _entity_to_info(server: McpServer) -> McpServerInfo:
-        """McpServer ORM 엔티티 → McpServerInfo 변환. JSONB는 이미 Python 객체."""
-        return McpServerInfo(
-            id=server.id,
-            name=server.name,
-            transport_type=server.transport_type,
-            command=server.command,
-            args=server.args,
-            url=server.url,
-            headers=server.headers,
-            env=server.env,
-            enabled=server.enabled,
-            source=server.source,
-            created_at=server.created_at,
-            updated_at=server.updated_at,
-        )
 
     # ── CRUD ─────────────────────────────────────────────────
 
     async def list_servers(self) -> list[McpServerInfo]:
-        async with self._db.session() as session:
-            repo = McpServerRepository(session)
-            servers = await repo.list_all()
-            return [self._entity_to_info(s) for s in servers]
+        async with self._session_scope(McpServerRepository) as (session, repo):
+            servers = await repo.get_all_ordered(McpServer.created_at.desc())
+            return [McpServerInfo.model_validate(s) for s in servers]
 
     async def get_server(self, server_id: str) -> McpServerInfo | None:
-        async with self._db.session() as session:
-            repo = McpServerRepository(session)
+        async with self._session_scope(McpServerRepository) as (session, repo):
             server = await repo.get_by_id(server_id)
-            return self._entity_to_info(server) if server else None
+            return McpServerInfo.model_validate(server) if server else None
 
     async def create_server(
         self,
@@ -84,9 +62,8 @@ class McpService:
         source: str = "manual",
     ) -> McpServerInfo:
         server_id = str(uuid.uuid4())[:16]
-        now = datetime.now(timezone.utc)
-        async with self._db.session() as session:
-            repo = McpServerRepository(session)
+        now = utc_now()
+        async with self._session_scope(McpServerRepository) as (session, repo):
             server = McpServer(
                 id=server_id,
                 name=name,
@@ -103,7 +80,7 @@ class McpService:
             )
             await repo.add(server)
             await session.commit()
-            return self._entity_to_info(server)
+            return McpServerInfo.model_validate(server)
 
     async def update_server(
         self,
@@ -116,8 +93,8 @@ class McpService:
         headers: dict[str, str] | None = None,
         env: dict[str, str] | None = None,
         enabled: bool | None = None,
-    ) -> McpServerInfo | None:
-        now = datetime.now(timezone.utc)
+    ) -> McpServerInfo:
+        now = utc_now()
         kwargs: dict = {"updated_at": now}
         if name is not None:
             kwargs["name"] = name
@@ -135,18 +112,20 @@ class McpService:
             kwargs["env"] = env
         if enabled is not None:
             kwargs["enabled"] = enabled
-        async with self._db.session() as session:
-            repo = McpServerRepository(session)
-            server = await repo.update_server(server_id, **kwargs)
+        async with self._session_scope(McpServerRepository) as (session, repo):
+            server = await repo.update_by_id(server_id, **kwargs)
+            if not server:
+                raise NotFoundError(f"MCP 서버를 찾을 수 없습니다: {server_id}")
             await session.commit()
-            return self._entity_to_info(server) if server else None
+            return McpServerInfo.model_validate(server)
 
     async def delete_server(self, server_id: str) -> bool:
-        async with self._db.session() as session:
-            repo = McpServerRepository(session)
+        async with self._session_scope(McpServerRepository) as (session, repo):
             deleted = await repo.delete_by_id(server_id)
+            if not deleted:
+                raise NotFoundError(f"MCP 서버를 찾을 수 없습니다: {server_id}")
             await session.commit()
-            return deleted
+            return True
 
     # ── 시스템 MCP 서버 (~/.claude/settings.json) ──────────
 
@@ -162,8 +141,7 @@ class McpService:
 
         mcp_servers = data.get("mcpServers", {})
         result = []
-        async with self._db.session() as session:
-            repo = McpServerRepository(session)
+        async with self._session_scope(McpServerRepository) as (session, repo):
             for name, config in mcp_servers.items():
                 # transport type 추론
                 if config.get("command"):
@@ -229,13 +207,12 @@ class McpService:
         mcp_servers: dict[str, dict] = {}
 
         if server_ids:
-            async with self._db.session() as session:
-                repo = McpServerRepository(session)
+            async with self._session_scope(McpServerRepository) as (session, repo):
                 entities = await repo.get_by_ids(server_ids)
                 for server in entities:
                     if not server.enabled:
                         continue
-                    info = self._entity_to_info(server)
+                    info = McpServerInfo.model_validate(server)
                     entry: dict = {}
                     if info.transport_type == "stdio":
                         if info.command:

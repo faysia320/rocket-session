@@ -10,6 +10,7 @@ import logging
 import os
 from pathlib import Path
 
+from app.core.exceptions import ValidationError
 from app.schemas.filesystem import (
     DirectoryEntry,
     DirectoryListResponse,
@@ -49,7 +50,7 @@ class FilesystemService:
         expanded = os.path.expanduser(path)
         resolved = Path(expanded).resolve()
         if not resolved.exists():
-            raise ValueError(f"경로가 존재하지 않습니다: {path}")
+            raise ValidationError(f"경로가 존재하지 않습니다: {path}")
         return resolved
 
     def _is_within_root(self, path: Path) -> bool:
@@ -67,14 +68,14 @@ class FilesystemService:
         validated_path = self._validate_path(path)
 
         if not validated_path.is_dir():
-            raise ValueError(f"디렉토리가 아닙니다: {path}")
+            raise ValidationError(f"디렉토리가 아닙니다: {path}")
 
         # root_dir 경계 밖이면 root_dir로 리다이렉트
         if not self._is_within_root(validated_path):
             if self._root_dir:
                 validated_path = self._root_dir
             else:
-                raise ValueError(f"접근할 수 없는 경로입니다: {path}")
+                raise ValidationError(f"접근할 수 없는 경로입니다: {path}")
 
         def _scan_directory(target: Path) -> list[DirectoryEntry]:
             """동기 파일시스템 탐색 (이벤트 루프 블로킹 방지용 헬퍼)."""
@@ -130,7 +131,7 @@ class FilesystemService:
             base = Path.home()
 
         if not base.exists() or not base.is_dir():
-            raise ValueError(f"경로가 존재하지 않습니다: {path or str(base)}")
+            raise ValidationError(f"경로가 존재하지 않습니다: {path or str(base)}")
 
         skip_names = frozenset(
             {

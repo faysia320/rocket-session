@@ -7,10 +7,13 @@ import json
 import logging
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from fastapi import WebSocket
+
+from app.core.utils import utc_now
+from app.services.base import DBService
 from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
@@ -29,14 +32,15 @@ class BufferedEvent:
     timestamp: datetime
 
 
-class WebSocketManager:
+class WebSocketManager(DBService):
     """세션별 WebSocket 연결 관리, 이벤트 버퍼링 및 메시지 브로드캐스트."""
 
     def __init__(self):
+        # DBService.__init__ 호출하지 않음: DB는 set_database()로 지연 주입
+        self._db: Database | None = None
         self._connections: dict[str, list[WebSocket]] = {}
         self._event_buffers: dict[str, deque[BufferedEvent]] = {}
         self._seq_counters: dict[str, int] = {}
-        self._db: Database | None = None
         self._event_queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=10000)
         self._flush_task: asyncio.Task | None = None
         self._heartbeat_task: asyncio.Task | None = None
@@ -89,8 +93,7 @@ class WebSocketManager:
             try:
                 from app.repositories.event_repo import EventRepository
 
-                async with self._db.session() as session:
-                    repo = EventRepository(session)
+                async with self._session_scope(EventRepository) as (session, repo):
                     await repo.add_batch(batch)
                     await session.commit()
             except Exception as e:
@@ -155,7 +158,7 @@ class WebSocketManager:
         """
         seq = self._next_seq(session_id)
         event_type = message.get("type", "unknown")
-        ts = datetime.now(timezone.utc)
+        ts = utc_now()
 
         message_with_seq = {**message, "seq": seq}
 
@@ -230,8 +233,7 @@ class WebSocketManager:
             try:
                 from app.repositories.event_repo import EventRepository
 
-                async with self._db.session() as session:
-                    repo = EventRepository(session)
+                async with self._session_scope(EventRepository) as (session, repo):
                     rows = await repo.get_after(session_id, after_seq)
                     # JSONB payload는 이미 dict
                     return [row["payload"] for row in rows]
@@ -255,8 +257,7 @@ class WebSocketManager:
             try:
                 from app.repositories.event_repo import EventRepository
 
-                async with self._db.session() as session:
-                    repo = EventRepository(session)
+                async with self._session_scope(EventRepository) as (session, repo):
                     rows = await repo.get_current_turn_events(session_id)
                     return [row["payload"] for row in rows]
             except Exception as e:

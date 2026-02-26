@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import PurePosixPath
 
-from app.core.database import Database
+from app.core.utils import utc_now
 from app.repositories.token_snapshot_repo import TokenSnapshotRepository
 from app.schemas.analytics import (
     AnalyticsPeriod,
@@ -15,21 +15,18 @@ from app.schemas.analytics import (
     SessionTokenRanking,
     TokenSummary,
 )
+from app.services.base import DBService
 
 
-class AnalyticsService:
+class AnalyticsService(DBService):
     """토큰 사용량 분석 서비스."""
-
-    def __init__(self, db: Database):
-        self._db = db
 
     async def get_analytics(
         self, period: AnalyticsPeriod = AnalyticsPeriod.WEEK
     ) -> AnalyticsResponse:
         start, end = self._resolve_period(period)
 
-        async with self._db.session() as session:
-            repo = TokenSnapshotRepository(session)
+        async with self._session_scope(TokenSnapshotRepository) as (session, repo):
             summary_raw = await repo.get_summary(start, end)
             daily_raw = await repo.get_daily_usage(start, end)
             sessions_raw = await repo.get_session_ranking(start, end, limit=20)
@@ -91,7 +88,7 @@ class AnalyticsService:
 
     @staticmethod
     def _resolve_period(period: AnalyticsPeriod) -> tuple[datetime, datetime]:
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         end_of_today = (now + timedelta(days=1)).replace(
             hour=0, minute=0, second=0, microsecond=0
         )

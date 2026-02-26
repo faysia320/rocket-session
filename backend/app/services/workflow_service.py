@@ -1,9 +1,10 @@
 """워크플로우 서비스 — 세션 레벨 동적 단계 관리."""
 
 import logging
-from datetime import datetime, timezone
 
 from app.core.database import Database
+from app.core.exceptions import NotFoundError, ValidationError
+from app.core.utils import utc_now
 from app.models.session_artifact import ArtifactAnnotation, SessionArtifact
 from app.repositories.artifact_repo import (
     ArtifactAnnotationRepository,
@@ -195,12 +196,10 @@ class WorkflowService:
     ) -> dict:
         """현재 phase 승인 → 아티팩트 approved → 다음 phase 전환."""
         session_data = await session_manager.get(session_id)
-        if not session_data:
-            raise ValueError(f"세션을 찾을 수 없습니다: {session_id}")
 
         current_phase = session_data.get("workflow_phase")
         if not current_phase:
-            raise ValueError("워크플로우가 활성 상태가 아닙니다")
+            raise ValidationError("워크플로우가 활성 상태가 아닙니다")
 
         # 아티팩트 approved 처리
         async with self._db.session() as db_sess:
@@ -208,7 +207,7 @@ class WorkflowService:
             artifact = await repo.get_latest_by_phase(session_id, current_phase)
             if artifact:
                 artifact.status = "approved"
-                artifact.updated_at = datetime.now(timezone.utc)
+                artifact.updated_at = utc_now()
                 await db_sess.commit()
 
         # 다음 phase로 전환
@@ -246,17 +245,15 @@ class WorkflowService:
     ) -> dict:
         """수정 요청 → 아티팩트 superseded + 새 버전 생성 → 재실행 대기."""
         session_data = await session_manager.get(session_id)
-        if not session_data:
-            raise ValueError(f"세션을 찾을 수 없습니다: {session_id}")
 
         current_phase = session_data.get("workflow_phase")
-        now = datetime.now(timezone.utc)
+        now = utc_now()
 
         async with self._db.session() as db_sess:
             repo = SessionArtifactRepository(db_sess)
             old_artifact = await repo.get_latest_by_phase(session_id, current_phase)
             if not old_artifact:
-                raise ValueError(f"{current_phase} 아티팩트를 찾을 수 없습니다")
+                raise NotFoundError(f"{current_phase} 아티팩트를 찾을 수 없습니다")
 
             # 기존 아티팩트 superseded 처리
             old_artifact.status = "superseded"
@@ -284,7 +281,7 @@ class WorkflowService:
         content: str,
     ) -> SessionArtifactInfo:
         """아티팩트 생성 (Claude 결과 자동 저장)."""
-        now = datetime.now(timezone.utc)
+        now = utc_now()
 
         async with self._db.session() as db_sess:
             repo = SessionArtifactRepository(db_sess)
@@ -336,12 +333,12 @@ class WorkflowService:
         self, artifact_id: int, content: str
     ) -> SessionArtifactInfo:
         """아티팩트 본문 직접 편집."""
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         async with self._db.session() as db_sess:
             repo = SessionArtifactRepository(db_sess)
             artifact = await repo.get_with_annotations(artifact_id)
             if not artifact:
-                raise ValueError(f"아티팩트를 찾을 수 없습니다: {artifact_id}")
+                raise NotFoundError(f"아티팩트를 찾을 수 없습니다: {artifact_id}")
             artifact.content = content
             artifact.updated_at = now
             await db_sess.commit()
@@ -359,7 +356,7 @@ class WorkflowService:
         line_end: int | None = None,
     ) -> ArtifactAnnotationInfo:
         """인라인 주석 추가."""
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         async with self._db.session() as db_sess:
             repo = ArtifactAnnotationRepository(db_sess)
             annotation = ArtifactAnnotation(
@@ -384,7 +381,7 @@ class WorkflowService:
             repo = ArtifactAnnotationRepository(db_sess)
             annotation = await repo.get_by_id(annotation_id)
             if not annotation:
-                raise ValueError(f"주석을 찾을 수 없습니다: {annotation_id}")
+                raise NotFoundError(f"주석을 찾을 수 없습니다: {annotation_id}")
             annotation.status = status
             await db_sess.commit()
             await db_sess.refresh(annotation)
