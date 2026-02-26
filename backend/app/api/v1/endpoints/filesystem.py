@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
+from app.schemas.common import StatusResponse
 from app.api.dependencies import (
     get_filesystem_service,
     get_git_service,
@@ -121,7 +122,7 @@ async def list_worktrees(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete("/worktrees")
+@router.delete("/worktrees", response_model=StatusResponse)
 async def remove_worktree(
     repo_path: str = Query(..., description="레포 루트 경로"),
     name: str = Query(..., description="워크트리 이름 (claude -w <name>)"),
@@ -132,7 +133,7 @@ async def remove_worktree(
 ):
     try:
         await git.remove_claude_worktree(repo_path, name, force=force)
-        return {"ok": True}
+        return StatusResponse(status="deleted")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (RuntimeError, OSError) as e:

@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import get_workspace_service
+from app.schemas.common import StatusResponse
 from app.schemas.workspace import (
     CreateWorkspaceRequest,
     UpdateWorkspaceRequest,
@@ -64,7 +65,7 @@ async def update_workspace(
     return ws
 
 
-@router.delete("/{workspace_id}")
+@router.delete("/{workspace_id}", response_model=StatusResponse)
 async def delete_workspace(
     workspace_id: str,
     service: WorkspaceService = Depends(get_workspace_service),
@@ -73,7 +74,7 @@ async def delete_workspace(
     deleted = await service.delete_workspace(workspace_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="워크스페이스를 찾을 수 없습니다")
-    return {"status": "deleted"}
+    return StatusResponse(status="deleted")
 
 
 @router.post("/{workspace_id}/sync", response_model=WorkspaceSyncResponse)

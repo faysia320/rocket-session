@@ -16,6 +16,7 @@ from app.api.dependencies import (
     get_workspace_service,
     get_ws_manager,
 )
+from app.schemas.common import StatusResponse
 from app.api.v1.endpoints.pending_questions import clear_pending_question
 from app.api.v1.endpoints.permissions import clear_session_trusted
 from app.models.session import SessionStatus
@@ -41,7 +42,7 @@ from app.services.workspace_service import WorkspaceService
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
-@router.post("/", response_model=SessionInfo)
+@router.post("/", response_model=SessionInfo, status_code=201)
 async def create_session(
     req: CreateSessionRequest,
     manager: SessionManager = Depends(get_session_manager),
@@ -118,7 +119,7 @@ async def create_session(
     return manager.to_info(session_with_counts)
 
 
-@router.get("/")
+@router.get("/", response_model=list[SessionInfo])
 async def list_sessions(
     manager: SessionManager = Depends(get_session_manager),
     ws_manager: WebSocketManager = Depends(get_ws_manager),
@@ -174,7 +175,7 @@ async def search_sessions(
     )
 
 
-@router.get("/{session_id}")
+@router.get("/{session_id}", response_model=SessionInfo)
 async def get_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
@@ -245,7 +246,7 @@ async def get_file_changes(
     return await manager.get_file_changes(session_id)
 
 
-@router.post("/{session_id}/stop")
+@router.post("/{session_id}/stop", response_model=StatusResponse)
 async def stop_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
@@ -254,7 +255,7 @@ async def stop_session(
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     await manager.kill_process(session_id)
-    return {"status": "stopped"}
+    return StatusResponse(status="stopped")
 
 
 @router.get("/{session_id}/stats")
@@ -312,7 +313,7 @@ async def export_session(
     )
 
 
-@router.post("/{session_id}/fork", response_model=SessionInfo)
+@router.post("/{session_id}/fork", response_model=SessionInfo, status_code=201)
 async def fork_session(
     session_id: str,
     req: ForkSessionRequest = ForkSessionRequest(),
@@ -378,7 +379,7 @@ async def convert_session_to_worktree(
     return manager.to_info(session_with_counts)
 
 
-@router.post("/{session_id}/archive")
+@router.post("/{session_id}/archive", response_model=StatusResponse)
 async def archive_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
@@ -390,10 +391,10 @@ async def archive_session(
     if session.get("status") == SessionStatus.RUNNING:
         await manager.kill_process(session_id)
     await manager.update_status(session_id, SessionStatus.ARCHIVED)
-    return {"status": "archived"}
+    return StatusResponse(status="archived")
 
 
-@router.post("/{session_id}/unarchive")
+@router.post("/{session_id}/unarchive", response_model=StatusResponse)
 async def unarchive_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
@@ -403,10 +404,10 @@ async def unarchive_session(
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     await manager.update_status(session_id, SessionStatus.IDLE)
-    return {"status": "idle"}
+    return StatusResponse(status="unarchived")
 
 
-@router.delete("/{session_id}")
+@router.delete("/{session_id}", response_model=StatusResponse)
 async def delete_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
@@ -419,7 +420,7 @@ async def delete_session(
     ws_manager.reset_session(session_id)
     clear_session_trusted(session_id)
     clear_pending_question(session_id)
-    return {"status": "deleted"}
+    return StatusResponse(status="deleted")
 
 
 # ── 세션-태그 ──────────────────────────────────────────────
@@ -439,7 +440,7 @@ async def add_session_tags(
     return await tag_service.add_tags_to_session(session_id, req.tag_ids)
 
 
-@router.delete("/{session_id}/tags/{tag_id}")
+@router.delete("/{session_id}/tags/{tag_id}", response_model=StatusResponse)
 async def remove_session_tag(
     session_id: str,
     tag_id: str,
@@ -453,4 +454,4 @@ async def remove_session_tag(
     removed = await tag_service.remove_tag_from_session(session_id, tag_id)
     if not removed:
         raise HTTPException(status_code=404, detail="세션에 해당 태그가 없습니다")
-    return {"status": "removed"}
+    return StatusResponse(status="removed")

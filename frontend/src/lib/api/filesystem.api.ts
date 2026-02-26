@@ -50,7 +50,7 @@ export const filesystemApi = {
     api.get<WorktreeListResponse>(`/api/fs/worktrees?path=${encodeURIComponent(path)}`),
 
   removeWorktree: (repoPath: string, worktreeName: string, force = false) =>
-    api.delete<{ ok: boolean }>(
+    api.delete<{ status: string }>(
       `/api/fs/worktrees?repo_path=${encodeURIComponent(repoPath)}&name=${encodeURIComponent(worktreeName)}&force=${force}`,
     ),
 

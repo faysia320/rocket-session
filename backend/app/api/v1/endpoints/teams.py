@@ -13,6 +13,7 @@ from app.api.dependencies import (
     get_team_service,
     get_team_task_service,
 )
+from app.schemas.common import MarkReadResponse, StatusResponse
 from app.schemas.team import (
     AddTeamMemberRequest,
     CompleteTaskRequest,
@@ -91,7 +92,7 @@ async def update_team(
     return team
 
 
-@router.delete("/{team_id}")
+@router.delete("/{team_id}", response_model=StatusResponse)
 async def delete_team(
     team_id: str,
     service: TeamService = Depends(get_team_service),
@@ -99,7 +100,7 @@ async def delete_team(
     deleted = await service.delete_team(team_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
-    return {"status": "deleted"}
+    return StatusResponse(status="deleted")
 
 
 # ── 멤버 관리 ──
@@ -155,7 +156,7 @@ async def update_member(
     return member
 
 
-@router.delete("/{team_id}/members/{member_id}")
+@router.delete("/{team_id}/members/{member_id}", response_model=StatusResponse)
 async def remove_member(
     team_id: str,
     member_id: int,
@@ -164,7 +165,7 @@ async def remove_member(
     removed = await service.remove_member(team_id, member_id)
     if not removed:
         raise HTTPException(status_code=404, detail="멤버를 찾을 수 없습니다")
-    return {"status": "removed"}
+    return StatusResponse(status="removed")
 
 
 @router.patch("/{team_id}/lead", response_model=TeamInfo)
@@ -258,7 +259,7 @@ async def update_task(
     return task
 
 
-@router.delete("/{team_id}/tasks/{task_id}")
+@router.delete("/{team_id}/tasks/{task_id}", response_model=StatusResponse)
 async def delete_task(
     team_id: str,
     task_id: int,
@@ -268,7 +269,7 @@ async def delete_task(
     if not task or task.team_id != team_id:
         raise HTTPException(status_code=404, detail="태스크를 찾을 수 없습니다")
     await service.delete_task(task_id)
-    return {"status": "deleted"}
+    return StatusResponse(status="deleted")
 
 
 @router.post("/{team_id}/tasks/{task_id}/claim", response_model=TeamTaskInfo)
@@ -299,14 +300,14 @@ async def complete_task(
     return task
 
 
-@router.post("/{team_id}/tasks/reorder")
+@router.post("/{team_id}/tasks/reorder", response_model=StatusResponse)
 async def reorder_tasks(
     team_id: str,
     req: ReorderTasksRequest,
     service: TeamTaskService = Depends(get_team_task_service),
 ):
     await service.reorder_tasks(team_id, req.task_ids)
-    return {"status": "reordered"}
+    return StatusResponse(status="reordered")
 
 
 # ── 태스크 위임 ──
@@ -377,7 +378,7 @@ async def list_messages(
     return await service.list_messages(team_id, after_id=after_id, limit=limit)
 
 
-@router.post("/{team_id}/messages/read")
+@router.post("/{team_id}/messages/read", response_model=MarkReadResponse)
 async def mark_messages_read(
     team_id: str,
     req: MarkReadRequest,
@@ -385,7 +386,7 @@ async def mark_messages_read(
 ):
     """메시지 읽음 처리."""
     count = await service.mark_as_read(req.message_ids)
-    return {"marked": count}
+    return MarkReadResponse(marked=count)
 
 
 # ── 팀 대시보드 WebSocket ──

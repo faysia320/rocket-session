@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import get_workflow_definition_service
+from app.schemas.common import StatusResponse
 from app.schemas.workflow_definition import (
     CreateWorkflowDefinitionRequest,
     UpdateWorkflowDefinitionRequest,
@@ -78,7 +79,7 @@ async def update_definition(
     return updated
 
 
-@router.delete("/{def_id}")
+@router.delete("/{def_id}", response_model=StatusResponse)
 async def delete_definition(
     def_id: str,
     service: WorkflowDefinitionService = Depends(get_workflow_definition_service),
@@ -91,7 +92,7 @@ async def delete_definition(
         raise HTTPException(
             status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
         )
-    return {"status": "deleted"}
+    return StatusResponse(status="deleted")
 
 
 @router.post("/{def_id}/set-default", response_model=WorkflowDefinitionInfo)

@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import get_mcp_service
+from app.schemas.common import StatusResponse
 from app.schemas.mcp import (
     CreateMcpServerRequest,
     ImportSystemRequest,
@@ -87,7 +88,7 @@ async def update_mcp_server(
     return updated
 
 
-@router.delete("/{server_id}")
+@router.delete("/{server_id}", response_model=StatusResponse)
 async def delete_mcp_server(
     server_id: str,
     service: McpService = Depends(get_mcp_service),
@@ -95,4 +96,4 @@ async def delete_mcp_server(
     deleted = await service.delete_server(server_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="MCP 서버를 찾을 수 없습니다")
-    return {"status": "deleted"}
+    return StatusResponse(status="deleted")
