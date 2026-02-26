@@ -5,17 +5,7 @@ import {
   Trash2,
   Save,
   X,
-  Search,
   FileText,
-  Code,
-  Wrench,
-  TestTube,
-  Eye,
-  Palette,
-  BookOpen,
-  Hammer,
-  CheckCircle,
-  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,20 +15,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { WorkflowStepEditor } from "./WorkflowStepEditor";
 import { useWorkflowNodes } from "../hooks/useWorkflowNodes";
+import { WORKFLOW_ICON_MAP } from "../utils/workflowIcons";
 import type { WorkflowDefinitionInfo, WorkflowStepConfig } from "@/types/workflow";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  Search,
-  FileText,
-  Code,
-  Wrench,
-  TestTube,
-  Eye,
-  Palette,
-  BookOpen,
-  Hammer,
-  CheckCircle,
-};
 
 const CONSTRAINT_LABELS: Record<string, string> = {
   readonly: "읽기 전용",
@@ -277,7 +255,7 @@ export function WorkflowDefinitionDetail({
                 </h3>
                 <div className="space-y-2">
                   {definition.steps.map((step, index) => {
-                    const StepIcon = ICON_MAP[step.icon] ?? FileText;
+                    const StepIcon = WORKFLOW_ICON_MAP[step.icon] ?? FileText;
                     return (
                       <div
                         key={index}

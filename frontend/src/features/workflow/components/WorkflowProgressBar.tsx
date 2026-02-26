@@ -1,37 +1,8 @@
 import { memo, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import {
-  Search,
-  FileText,
-  Code,
-  Check,
-  Wrench,
-  TestTube,
-  Eye,
-  Palette,
-  BookOpen,
-  Hammer,
-  CheckCircle,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Check } from "lucide-react";
+import { resolveWorkflowIcon } from "../utils/workflowIcons";
 import type { WorkflowPhaseStatus, ResolvedWorkflowStep } from "@/types/workflow";
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  Search,
-  FileText,
-  Code,
-  Wrench,
-  TestTube,
-  Eye,
-  Palette,
-  BookOpen,
-  Hammer,
-  CheckCircle,
-};
-
-function resolveIcon(name: string): LucideIcon {
-  return ICON_MAP[name] ?? FileText;
-}
 
 function getPhaseState(
   phaseKey: string,
@@ -83,7 +54,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
       {sortedSteps.map((step, idx) => {
         const state = getPhaseState(step.name, currentPhase, currentStatus, orderedNames);
         const isActive = step.name === currentPhase;
-        const StepIcon = state === "done" ? Check : resolveIcon(step.icon);
+        const StepIcon = state === "done" ? Check : resolveWorkflowIcon(step.icon);
 
         return (
           <div key={step.name} className="flex items-center">
