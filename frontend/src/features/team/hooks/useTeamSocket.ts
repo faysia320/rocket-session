@@ -76,7 +76,7 @@ export function useTeamSocket(teamId: string | undefined) {
           break;
       }
     },
-    [invalidateTeam],
+    [invalidateTeam, queryClient, teamId],
   );
 
   const connect = useCallback(() => {

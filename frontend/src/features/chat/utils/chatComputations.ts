@@ -37,7 +37,8 @@ export function computeMessageGaps(messages: Message[]): Array<"tight" | "normal
     // user_message 앞에 넉넉한 여백
     if (msg.type === "user_message" && prev.type !== "user_message") return "turn-start" as const;
     const tightTypes = ["tool_use", "tool_result", "stderr"];
-    if (tightTypes.includes(msg.type) && tightTypes.includes(prev.type)) return "tight" as const;
+    const tightPrevTypes = ["assistant_text", ...tightTypes];
+    if (tightTypes.includes(msg.type) && tightPrevTypes.includes(prev.type)) return "tight" as const;
     return "normal" as const;
   });
 }

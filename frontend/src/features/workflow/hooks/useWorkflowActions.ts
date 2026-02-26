@@ -17,7 +17,7 @@ interface UseWorkflowActionsParams {
 
 export function useWorkflowActions({
   sessionId,
-  sendPrompt,
+  sendPrompt: _sendPrompt,
   workflowPhase,
   workflowPhaseStatus,
   workflowSteps,
@@ -85,7 +85,7 @@ export function useWorkflowActions({
         // 에러 토스트는 mutation onError에서 처리
       }
     },
-    [approveMutation, sendPrompt, sessionId, queryClient],
+    [approveMutation, sessionId, queryClient, workflowSteps],
   );
 
   const handleRequestRevision = useCallback(

@@ -30,10 +30,10 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
   const checkoutMutation = useCheckoutBranch(repoPath);
 
   const defaultBranch = data?.default_branch ?? null;
-  const allBranches = data?.branches ?? [];
 
   // 브랜치를 3그룹으로 분류 (백엔드에서 committerdate 순 정렬 보장)
   const { defaultGroup, recentGroup, otherGroup } = useMemo(() => {
+    const allBranches = data?.branches ?? [];
     const skip = new Set<string>();
     const def: string[] = [];
     const recent: string[] = [];
@@ -62,7 +62,7 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
     }
 
     return { defaultGroup: def, recentGroup: recent, otherGroup: other };
-  }, [allBranches, defaultBranch]);
+  }, [data?.branches, defaultBranch]);
 
   const handleSelect = (branch: string) => {
     if (branch === currentBranch) {

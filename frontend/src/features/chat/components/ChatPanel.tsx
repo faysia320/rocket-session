@@ -19,7 +19,7 @@ import { PinnedTodoBar } from "./PinnedTodoBar";
 import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { FileChange, UserMsg } from "@/types";
-import type { WorkflowPhase, AnnotationType } from "@/types/workflow";
+import type { AnnotationType } from "@/types/workflow";
 import { useSessionStore } from "@/store";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { useSlashCommands } from "../hooks/useSlashCommands";

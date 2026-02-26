@@ -180,7 +180,7 @@ export const ChatInput = memo(function ChatInput({
         handleSubmit();
       }
     },
-    [slashCommands, status, onStop, resetTextarea, handleSubmit, executeSlashCommand],
+    [slashCommands, isEffectivelyRunning, onStop, resetTextarea, handleSubmit, executeSlashCommand],
   );
 
   const handleTextareaInput = useCallback(

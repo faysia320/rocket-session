@@ -296,7 +296,7 @@ function getToolSummary(toolName: string, input: Record<string, unknown>): strin
 function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; animate?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const toolName = message.tool || "Tool";
-  const input = (message.input || {}) as Record<string, unknown>;
+  const input = useMemo(() => (message.input || {}) as Record<string, unknown>, [message.input]);
   const toolStatus: "running" | "done" | "error" = message.status || "running";
   const mcpInfo = useMemo(() => parseMcpToolName(toolName), [toolName]);
 

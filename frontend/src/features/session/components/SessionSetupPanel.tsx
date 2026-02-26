@@ -68,7 +68,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       }
       globalAppliedRef.current = true;
     }
-  }, [globalSettings]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [globalSettings]);
 
   // 워크스페이스 변경 시 브랜치 선택 초기화
   useEffect(() => {

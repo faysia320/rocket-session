@@ -36,6 +36,13 @@ export default tseslint.config(
       "@typescript-eslint/no-empty-object-type": "off",
     },
   },
+  // 테스트 파일에서 as any 캐스팅 허용
+  {
+    files: ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
   // TanStack Router 파일 기반 라우트는 non-component export 필수
   {
     files: ["src/routes/**/*.{ts,tsx}"],

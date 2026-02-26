@@ -27,6 +27,7 @@ function extractText(node: ReactNode): string {
   return "";
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- react-markdown component overrides require generic any
 const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<any>>> = {
   pre({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
     // react-markdown wraps code blocks in <pre><code>...</code></pre>
