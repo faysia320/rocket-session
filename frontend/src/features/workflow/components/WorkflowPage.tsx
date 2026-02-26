@@ -52,7 +52,7 @@ export function WorkflowPage({ initialTab = "definitions" }: WorkflowPageProps) 
       {/* 탭 콘텐츠 */}
       <TabsContent
         value="definitions"
-        className="flex-1 overflow-hidden m-0 data-[state=inactive]:hidden"
+        className="flex-1 flex flex-col overflow-hidden m-0 data-[state=inactive]:hidden"
         forceMount
       >
         <WorkflowDefinitionsPage />
@@ -60,7 +60,7 @@ export function WorkflowPage({ initialTab = "definitions" }: WorkflowPageProps) 
 
       <TabsContent
         value="nodes"
-        className="flex-1 overflow-hidden m-0 data-[state=inactive]:hidden"
+        className="flex-1 flex flex-col overflow-hidden m-0 data-[state=inactive]:hidden"
         forceMount
       >
         <WorkflowNodesPage />
