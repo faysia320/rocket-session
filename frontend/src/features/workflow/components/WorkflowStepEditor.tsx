@@ -5,8 +5,8 @@ import {
   Trash2,
   Plus,
   GripVertical,
-  Search,
   FileText,
+  Search,
   Code,
   Wrench,
   TestTube,
@@ -17,11 +17,10 @@ import {
   CheckCircle,
   type LucideIcon,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -34,53 +33,40 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import type { WorkflowStepConfig } from "@/types/workflow";
+import type { WorkflowStepConfig, WorkflowNodeInfo } from "@/types/workflow";
 
-const ICON_OPTIONS: { value: string; label: string; Icon: LucideIcon }[] = [
-  { value: "Search", label: "Search", Icon: Search },
-  { value: "FileText", label: "FileText", Icon: FileText },
-  { value: "Code", label: "Code", Icon: Code },
-  { value: "Wrench", label: "Wrench", Icon: Wrench },
-  { value: "TestTube", label: "TestTube", Icon: TestTube },
-  { value: "Eye", label: "Eye", Icon: Eye },
-  { value: "Palette", label: "Palette", Icon: Palette },
-  { value: "BookOpen", label: "BookOpen", Icon: BookOpen },
-  { value: "Hammer", label: "Hammer", Icon: Hammer },
-  { value: "CheckCircle", label: "CheckCircle", Icon: CheckCircle },
-];
-
-const ICON_MAP: Record<string, LucideIcon> = Object.fromEntries(
-  ICON_OPTIONS.map(({ value, Icon }) => [value, Icon]),
-);
-
-const CONSTRAINT_PRESETS = [
-  { value: "readonly", label: "읽기 전용 (readonly)" },
-  { value: "full", label: "전체 (full)" },
-  { value: "__custom__", label: "직접 입력" },
-];
-
-const NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
+const ICON_MAP: Record<string, LucideIcon> = {
+  Search,
+  FileText,
+  Code,
+  Wrench,
+  TestTube,
+  Eye,
+  Palette,
+  BookOpen,
+  Hammer,
+  CheckCircle,
+};
 
 function createDefaultStep(orderIndex: number): WorkflowStepConfig {
   return {
-    name: "",
-    label: "",
-    icon: "FileText",
-    prompt_template: "",
-    constraints: "full",
+    node_id: "",
+    order_index: orderIndex,
     auto_advance: false,
     review_required: false,
-    order_index: orderIndex,
   };
 }
 
 interface WorkflowStepEditorProps {
   steps: WorkflowStepConfig[];
+  nodes: WorkflowNodeInfo[];
   onChange: (steps: WorkflowStepConfig[]) => void;
 }
 
-export function WorkflowStepEditor({ steps, onChange }: WorkflowStepEditorProps) {
+export function WorkflowStepEditor({ steps, nodes, onChange }: WorkflowStepEditorProps) {
   const [openIndices, setOpenIndices] = useState<Set<number>>(new Set());
+
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
   const toggleOpen = useCallback((index: number) => {
     setOpenIndices((prev) => {
@@ -114,13 +100,11 @@ export function WorkflowStepEditor({ steps, onChange }: WorkflowStepEditorProps)
       updated[index] = updated[targetIndex];
       updated[targetIndex] = temp;
 
-      // Recalculate order_index
       const reindexed = updated.map((step, i) => ({
         ...step,
         order_index: i,
       }));
 
-      // Update openIndices to follow the moved item
       setOpenIndices((prev) => {
         const next = new Set<number>();
         for (const idx of prev) {
@@ -174,11 +158,9 @@ export function WorkflowStepEditor({ steps, onChange }: WorkflowStepEditorProps)
     <div className="space-y-2">
       {steps.map((step, index) => {
         const isOpen = openIndices.has(index);
-        const StepIcon = ICON_MAP[step.icon] ?? FileText;
-        const nameValid = step.name === "" || NAME_PATTERN.test(step.name);
-
-        const isPresetConstraint =
-          step.constraints === "readonly" || step.constraints === "full";
+        const selectedNode = nodeMap.get(step.node_id);
+        const StepIcon = selectedNode ? (ICON_MAP[selectedNode.icon] ?? FileText) : FileText;
+        const stepLabel = selectedNode?.label ?? `단계 ${index + 1}`;
 
         return (
           <Collapsible
@@ -192,8 +174,13 @@ export function WorkflowStepEditor({ steps, onChange }: WorkflowStepEditorProps)
                 <GripVertical className="w-4 h-4 text-muted-foreground shrink-0 cursor-grab" />
                 <StepIcon className="w-4 h-4 text-primary shrink-0" />
                 <span className="text-sm font-medium truncate flex-1">
-                  {step.label || step.name || `단계 ${index + 1}`}
+                  {stepLabel}
                 </span>
+                {selectedNode ? (
+                  <Badge variant="secondary" className="font-mono text-2xs shrink-0">
+                    {selectedNode.constraints}
+                  </Badge>
+                ) : null}
 
                 <div className="flex items-center gap-0.5 shrink-0">
                   <Button
@@ -255,100 +242,53 @@ export function WorkflowStepEditor({ steps, onChange }: WorkflowStepEditorProps)
               {/* Card Content */}
               <CollapsibleContent>
                 <div className="px-4 py-3 border-t border-border space-y-4">
-                  {/* name */}
+                  {/* Node 선택 */}
                   <div className="space-y-1.5">
-                    <Label htmlFor={`step-name-${index}`} className="text-xs">
-                      이름 (영문)
-                    </Label>
-                    <Input
-                      id={`step-name-${index}`}
-                      value={step.name}
-                      onChange={(e) => updateStep(index, { name: e.target.value })}
-                      placeholder="research"
-                      className={
-                        !nameValid
-                          ? "border-destructive focus-visible:ring-destructive"
-                          : ""
-                      }
-                    />
-                    {!nameValid ? (
-                      <p className="text-xs text-destructive">
-                        영문 소문자로 시작, 소문자/숫자/밑줄만 허용됩니다.
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {/* label */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`step-label-${index}`} className="text-xs">
-                      표시명
-                    </Label>
-                    <Input
-                      id={`step-label-${index}`}
-                      value={step.label}
-                      onChange={(e) => updateStep(index, { label: e.target.value })}
-                      placeholder="리서치"
-                    />
-                  </div>
-
-                  {/* icon */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">아이콘</Label>
+                    <Label className="text-xs">노드 선택</Label>
                     <Select
-                      value={step.icon}
-                      onValueChange={(val) => updateStep(index, { icon: val })}
+                      value={step.node_id}
+                      onValueChange={(val) => updateStep(index, { node_id: val })}
                     >
                       <SelectTrigger className="text-sm">
-                        <SelectValue placeholder="아이콘 선택" />
+                        <SelectValue placeholder="노드를 선택하세요" />
                       </SelectTrigger>
                       <SelectContent>
-                        {ICON_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} className="text-sm">
-                            <div className="flex items-center gap-2">
-                              <opt.Icon className="w-4 h-4" />
-                              <span>{opt.label}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {nodes.map((node) => {
+                          const NodeIcon = ICON_MAP[node.icon] ?? FileText;
+                          return (
+                            <SelectItem key={node.id} value={node.id} className="text-sm">
+                              <div className="flex items-center gap-2">
+                                <NodeIcon className="w-4 h-4" />
+                                <span>{node.label}</span>
+                                <span className="text-muted-foreground text-xs">({node.name})</span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* constraints */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">제약 조건</Label>
-                    <Select
-                      value={isPresetConstraint ? step.constraints : "__custom__"}
-                      onValueChange={(val) => {
-                        if (val === "__custom__") {
-                          updateStep(index, { constraints: "" });
-                        } else {
-                          updateStep(index, { constraints: val });
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="text-sm">
-                        <SelectValue placeholder="제약 조건 선택" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CONSTRAINT_PRESETS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} className="text-sm">
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!isPresetConstraint ? (
-                      <Input
-                        value={step.constraints}
-                        onChange={(e) =>
-                          updateStep(index, { constraints: e.target.value })
-                        }
-                        placeholder="커스텀 제약 조건 입력"
-                        className="mt-1.5"
-                      />
-                    ) : null}
-                  </div>
+                  {/* 선택된 노드 정보 표시 */}
+                  {selectedNode ? (
+                    <div className="rounded-md bg-muted/50 p-3 space-y-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>제약조건:</span>
+                        <Badge variant="outline" className="font-mono text-2xs">
+                          {selectedNode.constraints}
+                        </Badge>
+                      </div>
+                      {selectedNode.prompt_template ? (
+                        <div className="text-xs text-muted-foreground">
+                          <span>프롬프트: </span>
+                          <span className="text-foreground/70 line-clamp-2">
+                            {selectedNode.prompt_template.slice(0, 100)}
+                            {selectedNode.prompt_template.length > 100 ? "…" : ""}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {/* auto_advance & review_required */}
                   <div className="flex flex-col gap-3">
@@ -382,22 +322,6 @@ export function WorkflowStepEditor({ steps, onChange }: WorkflowStepEditorProps)
                         승인 필요
                       </Label>
                     </div>
-                  </div>
-
-                  {/* prompt_template */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`step-prompt-${index}`} className="text-xs">
-                      프롬프트 템플릿
-                    </Label>
-                    <Textarea
-                      id={`step-prompt-${index}`}
-                      value={step.prompt_template}
-                      onChange={(e) =>
-                        updateStep(index, { prompt_template: e.target.value })
-                      }
-                      placeholder={"템플릿 변수: {user_prompt}, {previous_artifact}\n예: {user_prompt}를 기반으로 리서치를 수행하세요. 이전 결과: {previous_artifact}"}
-                      className="min-h-[100px] text-sm font-mono"
-                    />
                   </div>
                 </div>
               </CollapsibleContent>

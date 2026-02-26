@@ -5,14 +5,14 @@ import { useApprovePhase, useRequestRevision, workflowKeys } from "./useWorkflow
 import { workflowApi } from "@/lib/api/workflow.api";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 
-import type { WorkflowStepConfig } from "@/types/workflow";
+import type { ResolvedWorkflowStep } from "@/types/workflow";
 
 interface UseWorkflowActionsParams {
   sessionId: string;
   sendPrompt?: (prompt: string) => void;
   workflowPhase?: string | null;
   workflowPhaseStatus?: string | null;
-  workflowSteps?: WorkflowStepConfig[];
+  workflowSteps?: ResolvedWorkflowStep[];
 }
 
 export function useWorkflowActions({
@@ -89,9 +89,9 @@ export function useWorkflowActions({
   );
 
   const handleRequestRevision = useCallback(
-    async (feedback: string) => {
+    async (feedback?: string) => {
       try {
-        await revisionMutation.mutateAsync({ feedback });
+        await revisionMutation.mutateAsync({ feedback: feedback || undefined });
         toast.success("수정 요청이 전송되었습니다. 계획을 다시 작성합니다…");
 
         queryClient.invalidateQueries({

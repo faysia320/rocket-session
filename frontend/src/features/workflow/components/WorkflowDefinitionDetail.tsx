@@ -1,7 +1,10 @@
+import { useState, useCallback, useEffect } from "react";
 import {
   Pencil,
   Download,
   Trash2,
+  Save,
+  X,
   Search,
   FileText,
   Code,
@@ -16,9 +19,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import type { WorkflowDefinitionInfo } from "@/types/workflow";
+import { WorkflowStepEditor } from "./WorkflowStepEditor";
+import { useWorkflowNodes } from "../hooks/useWorkflowNodes";
+import type { WorkflowDefinitionInfo, WorkflowStepConfig } from "@/types/workflow";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Search,
@@ -49,26 +56,98 @@ function formatDate(iso: string): string {
 }
 
 interface WorkflowDefinitionDetailProps {
-  definition: WorkflowDefinitionInfo;
-  onEdit: () => void;
+  definition: WorkflowDefinitionInfo | null;
+  isCreating?: boolean;
+  onSave: (data: { name: string; description?: string; steps: WorkflowStepConfig[] }) => void;
   onExport: () => void;
   onDelete: () => void;
+  onCancelCreate?: () => void;
 }
 
 export function WorkflowDefinitionDetail({
   definition,
-  onEdit,
+  isCreating = false,
+  onSave,
   onExport,
   onDelete,
+  onCancelCreate,
 }: WorkflowDefinitionDetailProps) {
+  const [isEditing, setIsEditing] = useState(isCreating);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    steps: [] as WorkflowStepConfig[],
+  });
+
+  const { data: nodes } = useWorkflowNodes();
+  const readyNodes = nodes ?? [];
+
+  useEffect(() => {
+    if (isCreating) {
+      setFormData({ name: "", description: "", steps: [] });
+      setIsEditing(true);
+    } else if (definition) {
+      setFormData({
+        name: definition.name,
+        description: definition.description ?? "",
+        steps: definition.steps.map((s) => ({
+          node_id: s.node_id,
+          order_index: s.order_index,
+          auto_advance: s.auto_advance,
+          review_required: s.review_required,
+        })),
+      });
+      setIsEditing(false);
+    }
+  }, [definition, isCreating]);
+
+  const handleSave = useCallback(() => {
+    onSave({
+      name: formData.name,
+      description: formData.description || undefined,
+      steps: formData.steps,
+    });
+    setIsEditing(false);
+  }, [formData, onSave]);
+
+  const handleCancel = useCallback(() => {
+    if (isCreating) {
+      onCancelCreate?.();
+    } else if (definition) {
+      setFormData({
+        name: definition.name,
+        description: definition.description ?? "",
+        steps: definition.steps.map((s) => ({
+          node_id: s.node_id,
+          order_index: s.order_index,
+          auto_advance: s.auto_advance,
+          review_required: s.review_required,
+        })),
+      });
+      setIsEditing(false);
+    }
+  }, [isCreating, definition, onCancelCreate]);
+
+  if (!definition && !isCreating) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <span className="font-mono text-sm text-muted-foreground">
+          좌측에서 워크플로우 정의를 선택하세요
+        </span>
+      </div>
+    );
+  }
+
+  const isBuiltin = definition?.is_builtin ?? false;
+
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* 액션 바 */}
       <div className="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-border">
         <span className="font-mono text-sm font-semibold text-foreground truncate">
-          {definition.name}
+          {isCreating ? "새 정의" : definition?.name}
         </span>
-        {definition.is_builtin ? (
+        {isBuiltin ? (
           <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 shrink-0">
             기본 제공
           </Badge>
@@ -76,130 +155,189 @@ export function WorkflowDefinitionDetail({
 
         <div className="flex-1" />
 
-        <Tooltip>
-          <TooltipTrigger asChild>
+        {isEditing ? (
+          <>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={onEdit}
-              aria-label="수정"
+              size="sm"
+              className="h-7 font-mono text-xs gap-1"
+              onClick={handleCancel}
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
+              취소
             </Button>
-          </TooltipTrigger>
-          <TooltipContent className="font-mono text-xs">수정</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={onExport}
-              aria-label="내보내기"
+              size="sm"
+              className="h-7 font-mono text-xs gap-1"
+              onClick={handleSave}
+              disabled={!formData.name || formData.steps.length === 0}
             >
-              <Download className="h-3.5 w-3.5" />
+              <Save className="h-3 w-3" />
+              저장
             </Button>
-          </TooltipTrigger>
-          <TooltipContent className="font-mono text-xs">내보내기</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-destructive/60 hover:text-destructive"
-              onClick={onDelete}
-              disabled={definition.is_builtin}
-              aria-label="삭제"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="font-mono text-xs">
-            {definition.is_builtin ? "기본 제공 정의는 삭제할 수 없습니다" : "삭제"}
-          </TooltipContent>
-        </Tooltip>
+          </>
+        ) : (
+          <>
+            {!isBuiltin ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setIsEditing(true)}
+                    aria-label="수정"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="font-mono text-xs">수정</TooltipContent>
+              </Tooltip>
+            ) : null}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={onExport}
+                  aria-label="내보내기"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">내보내기</TooltipContent>
+            </Tooltip>
+            {!isBuiltin ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive/60 hover:text-destructive"
+                    onClick={onDelete}
+                    aria-label="삭제"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="font-mono text-xs">삭제</TooltipContent>
+              </Tooltip>
+            ) : null}
+          </>
+        )}
       </div>
 
-      {/* 상세 콘텐츠 */}
+      {/* 콘텐츠 */}
       <ScrollArea className="flex-1">
         <div className="px-6 py-4 space-y-6">
-          {/* 설명 */}
-          <div>
-            <h3 className="font-mono text-xs font-semibold text-muted-foreground mb-1">설명</h3>
-            <p className="font-mono text-xs text-foreground">
-              {definition.description || "설명 없음"}
-            </p>
-          </div>
+          {isEditing ? (
+            <>
+              <div className="space-y-1.5">
+                <Label className="font-mono text-xs">이름</Label>
+                <Input
+                  className="font-mono text-xs h-8"
+                  value={formData.name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="워크플로우 정의 이름"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="font-mono text-xs">설명</Label>
+                <Input
+                  className="font-mono text-xs h-8"
+                  value={formData.description}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                  placeholder="설명 (선택)"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="font-mono text-xs">단계 구성</Label>
+                <WorkflowStepEditor
+                  steps={formData.steps}
+                  nodes={readyNodes}
+                  onChange={(steps) => setFormData((prev) => ({ ...prev, steps }))}
+                />
+              </div>
+            </>
+          ) : definition ? (
+            <>
+              {/* 설명 */}
+              <div>
+                <h3 className="font-mono text-xs font-semibold text-muted-foreground mb-1">설명</h3>
+                <p className="font-mono text-xs text-foreground">
+                  {definition.description || "설명 없음"}
+                </p>
+              </div>
 
-          {/* 단계 목록 */}
-          <div>
-            <h3 className="font-mono text-xs font-semibold text-muted-foreground mb-2">
-              단계 구성 ({definition.steps.length}단계)
-            </h3>
-            <div className="space-y-2">
-              {definition.steps.map((step, index) => {
-                const StepIcon = ICON_MAP[step.icon] ?? FileText;
-                return (
-                  <div
-                    key={index}
-                    className="rounded-lg border border-border bg-card p-3 space-y-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-2xs text-muted-foreground w-5 text-right shrink-0">
-                        {index + 1}.
-                      </span>
-                      <StepIcon className="h-3.5 w-3.5 text-primary shrink-0" />
-                      <span className="font-mono text-xs font-medium text-foreground">
-                        {step.label || step.name}
-                      </span>
-                      {step.label && step.name ? (
-                        <span className="font-mono text-2xs text-muted-foreground">
-                          ({step.name})
-                        </span>
-                      ) : null}
-                    </div>
+              {/* 단계 목록 */}
+              <div>
+                <h3 className="font-mono text-xs font-semibold text-muted-foreground mb-2">
+                  단계 구성 ({definition.steps.length}단계)
+                </h3>
+                <div className="space-y-2">
+                  {definition.steps.map((step, index) => {
+                    const StepIcon = ICON_MAP[step.icon] ?? FileText;
+                    return (
+                      <div
+                        key={index}
+                        className="rounded-lg border border-border bg-card p-3 space-y-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-2xs text-muted-foreground w-5 text-right shrink-0">
+                            {index + 1}.
+                          </span>
+                          <StepIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span className="font-mono text-xs font-medium text-foreground">
+                            {step.label || step.name}
+                          </span>
+                          {step.label && step.name ? (
+                            <span className="font-mono text-2xs text-muted-foreground">
+                              ({step.name})
+                            </span>
+                          ) : null}
+                        </div>
 
-                    <div className="flex items-center gap-1.5 pl-7">
-                      <Badge variant="secondary" className="font-mono text-2xs px-1.5 py-0">
-                        {CONSTRAINT_LABELS[step.constraints] ?? step.constraints}
-                      </Badge>
-                      {step.auto_advance ? (
-                        <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0">
-                          자동 진행
-                        </Badge>
-                      ) : null}
-                      {step.review_required ? (
-                        <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 text-warning border-warning/30">
-                          승인 필요
-                        </Badge>
-                      ) : null}
-                    </div>
+                        <div className="flex items-center gap-1.5 pl-7">
+                          <Badge variant="secondary" className="font-mono text-2xs px-1.5 py-0">
+                            {CONSTRAINT_LABELS[step.constraints] ?? step.constraints}
+                          </Badge>
+                          {step.auto_advance ? (
+                            <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0">
+                              자동 진행
+                            </Badge>
+                          ) : null}
+                          {step.review_required ? (
+                            <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 text-warning border-warning/30">
+                              승인 필요
+                            </Badge>
+                          ) : null}
+                        </div>
 
-                    {step.prompt_template ? (
-                      <div className="pl-7">
-                        <p className="font-mono text-2xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">
-                          {step.prompt_template}
-                        </p>
+                        {step.prompt_template ? (
+                          <div className="pl-7">
+                            <p className="font-mono text-2xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">
+                              {step.prompt_template}
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-          {/* 메타 정보 */}
-          <div className="flex items-center gap-4 pt-2 border-t border-border">
-            <span className="font-mono text-2xs text-muted-foreground">
-              생성: {formatDate(definition.created_at)}
-            </span>
-            <span className="font-mono text-2xs text-muted-foreground">
-              수정: {formatDate(definition.updated_at)}
-            </span>
-          </div>
+              {/* 메타 정보 */}
+              <div className="flex items-center gap-4 pt-2 border-t border-border">
+                <span className="font-mono text-2xs text-muted-foreground">
+                  생성: {formatDate(definition.created_at)}
+                </span>
+                <span className="font-mono text-2xs text-muted-foreground">
+                  수정: {formatDate(definition.updated_at)}
+                </span>
+              </div>
+            </>
+          ) : null}
         </div>
       </ScrollArea>
     </div>

@@ -13,13 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import type { ResultMsg } from "@/types/message";
-import type { WorkflowStepConfig } from "@/types/workflow";
+import type { ResolvedWorkflowStep } from "@/types/workflow";
 
 interface WorkflowPhaseCardProps {
   message: ResultMsg;
-  stepConfig?: WorkflowStepConfig;
+  stepConfig?: ResolvedWorkflowStep;
   onApprove?: (feedback?: string) => void;
-  onRequestRevision?: (feedback: string) => void;
+  onRequestRevision?: (feedback?: string) => void;
   onOpenArtifact?: () => void;
   isApproving?: boolean;
   isRequestingRevision?: boolean;

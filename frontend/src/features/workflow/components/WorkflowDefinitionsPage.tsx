@@ -20,9 +20,7 @@ import {
 import { workflowDefinitionApi } from "@/lib/api/workflowDefinition.api";
 import { WorkflowDefinitionList } from "./WorkflowDefinitionList";
 import { WorkflowDefinitionDetail } from "./WorkflowDefinitionDetail";
-import { WorkflowDefinitionFormDialog } from "./WorkflowDefinitionFormDialog";
 import type {
-  WorkflowDefinitionInfo,
   WorkflowDefinitionExport,
   WorkflowStepConfig,
 } from "@/types/workflow";
@@ -36,41 +34,41 @@ export function WorkflowDefinitionsPage() {
   const isMobile = useIsMobile();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [formDialogOpen, setFormDialogOpen] = useState(false);
-  const [editingDefinition, setEditingDefinition] = useState<WorkflowDefinitionInfo | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const readyDefinitions = useMemo(() => definitions ?? [], [definitions]);
 
   const selectedDefinition = useMemo(
-    () => readyDefinitions.find((d) => d.id === selectedId) ?? readyDefinitions[0] ?? null,
-    [readyDefinitions, selectedId],
+    () => (isCreating ? null : (readyDefinitions.find((d) => d.id === selectedId) ?? readyDefinitions[0] ?? null)),
+    [readyDefinitions, selectedId, isCreating],
   );
   const effectiveId = selectedDefinition?.id ?? null;
 
-  const handleSelect = useCallback((id: string) => setSelectedId(id), []);
-
-  const handleAdd = useCallback(() => {
-    setEditingDefinition(null);
-    setFormDialogOpen(true);
+  const handleSelect = useCallback((id: string) => {
+    setSelectedId(id);
+    setIsCreating(false);
   }, []);
 
-  const handleEdit = useCallback(() => {
-    if (selectedDefinition) {
-      setEditingDefinition(selectedDefinition);
-      setFormDialogOpen(true);
-    }
-  }, [selectedDefinition]);
+  const handleAdd = useCallback(() => {
+    setSelectedId(null);
+    setIsCreating(true);
+  }, []);
 
   const handleSave = useCallback(
     (data: { name: string; description?: string; steps: WorkflowStepConfig[] }) => {
-      if (editingDefinition) {
-        updateMutation.mutate({ id: editingDefinition.id, ...data });
-      } else {
-        createMutation.mutate(data);
+      if (isCreating) {
+        createMutation.mutate(data, {
+          onSuccess: (newDef) => {
+            setIsCreating(false);
+            setSelectedId(newDef.id);
+          },
+        });
+      } else if (selectedDefinition) {
+        updateMutation.mutate({ id: selectedDefinition.id, ...data });
       }
     },
-    [editingDefinition, createMutation, updateMutation],
+    [isCreating, selectedDefinition, createMutation, updateMutation],
   );
 
   const handleExport = useCallback(async () => {
@@ -129,6 +127,10 @@ export function WorkflowDefinitionsPage() {
     [importMutation],
   );
 
+  const handleCancelCreate = useCallback(() => {
+    setIsCreating(false);
+  }, []);
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* 헤더 */}
@@ -174,7 +176,7 @@ export function WorkflowDefinitionsPage() {
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : readyDefinitions.length === 0 ? (
+      ) : readyDefinitions.length === 0 && !isCreating ? (
         <EmptyState onAdd={handleAdd} />
       ) : (
         <div className="flex-1 flex overflow-hidden min-h-0">
@@ -207,20 +209,14 @@ export function WorkflowDefinitionsPage() {
               </div>
             ) : null}
 
-            {selectedDefinition ? (
-              <WorkflowDefinitionDetail
-                definition={selectedDefinition}
-                onEdit={handleEdit}
-                onExport={handleExport}
-                onDelete={handleDelete}
-              />
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <span className="font-mono text-sm text-muted-foreground">
-                  좌측에서 워크플로우 정의를 선택하세요
-                </span>
-              </div>
-            )}
+            <WorkflowDefinitionDetail
+              definition={isCreating ? null : selectedDefinition}
+              isCreating={isCreating}
+              onSave={handleSave}
+              onExport={handleExport}
+              onDelete={handleDelete}
+              onCancelCreate={handleCancelCreate}
+            />
           </div>
         </div>
       )}
@@ -231,13 +227,6 @@ export function WorkflowDefinitionsPage() {
         accept=".json"
         className="hidden"
         onChange={handleImport}
-      />
-
-      <WorkflowDefinitionFormDialog
-        open={formDialogOpen}
-        onOpenChange={setFormDialogOpen}
-        editingDefinition={editingDefinition}
-        onSave={handleSave}
       />
     </div>
   );

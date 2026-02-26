@@ -9,23 +9,65 @@ export type ArtifactStatus = "draft" | "review" | "approved" | "superseded";
 export type AnnotationType = "comment" | "suggestion" | "rejection";
 export type AnnotationStatus = "pending" | "resolved" | "dismissed";
 
-export interface WorkflowStepConfig {
+// ── Workflow Node (독립 엔티티) ──────────────────────────
+
+export interface WorkflowNodeInfo {
+  id: string;
   name: string;
   label: string;
   icon: string;
   prompt_template: string;
   constraints: string;
+  is_builtin: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateWorkflowNodeRequest {
+  name: string;
+  label: string;
+  icon?: string;
+  prompt_template?: string;
+  constraints?: string;
+}
+
+export interface UpdateWorkflowNodeRequest {
+  name?: string;
+  label?: string;
+  icon?: string;
+  prompt_template?: string;
+  constraints?: string;
+}
+
+// ── Workflow Step (Definition 내 node_id 참조) ──────────
+
+export interface WorkflowStepConfig {
+  node_id: string;
+  order_index: number;
   auto_advance: boolean;
   review_required: boolean;
-  order_index: number;
 }
+
+export interface ResolvedWorkflowStep {
+  node_id: string;
+  name: string;
+  label: string;
+  icon: string;
+  prompt_template: string;
+  constraints: string;
+  order_index: number;
+  auto_advance: boolean;
+  review_required: boolean;
+}
+
+// ── Workflow Definition ─────────────────────────────────
 
 export interface WorkflowDefinitionInfo {
   id: string;
   name: string;
   description: string | null;
   is_builtin: boolean;
-  steps: WorkflowStepConfig[];
+  steps: ResolvedWorkflowStep[];
   created_at: string;
   updated_at: string;
 }
@@ -67,7 +109,7 @@ export interface WorkflowStatusResponse {
   workflow_phase: string | null;
   workflow_phase_status: WorkflowPhaseStatus | null;
   workflow_definition_id: string | null;
-  steps: WorkflowStepConfig[];
+  steps: ResolvedWorkflowStep[];
   artifacts: SessionArtifactInfo[];
 }
 
@@ -109,4 +151,5 @@ export interface UpdateWorkflowDefinitionRequest {
 export interface WorkflowDefinitionExport {
   version: number;
   definition: WorkflowDefinitionInfo;
+  nodes: WorkflowNodeInfo[];
 }

@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { MessageBubble } from "./MessageBubble";
 import type { Message, ToolUseMsg } from "@/types";
-import type { WorkflowStepConfig } from "@/types/workflow";
+import type { ResolvedWorkflowStep } from "@/types/workflow";
 
 interface ChatMessageListProps {
   messages: Message[];
@@ -22,13 +22,13 @@ interface ChatMessageListProps {
   onResend: (content: string) => void;
   onRetryError: (errorMsgId: string) => void;
   onApprovePhase: () => void;
-  onRequestRevision: (feedback: string) => void;
+  onRequestRevision: (feedback?: string) => void;
   onOpenArtifact: (phase: string) => void;
   isApprovingPhase: boolean;
   isRequestingRevision: boolean;
   onAnswerQuestion: (toolUseId: string, questionIndex: number, selectedLabels: string[]) => void;
   onConfirmAnswers: (toolUseId: string) => void;
-  workflowSteps?: WorkflowStepConfig[];
+  workflowSteps?: ResolvedWorkflowStep[];
 }
 
 export const ChatMessageList = memo(function ChatMessageList({

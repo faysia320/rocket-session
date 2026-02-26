@@ -26,7 +26,7 @@ import type {
   AskUserQuestionMsg,
 } from "@/types";
 import { WorkflowPhaseCard } from "@/features/workflow/components/WorkflowPhaseCard";
-import type { WorkflowStepConfig } from "@/types/workflow";
+import type { ResolvedWorkflowStep } from "@/types/workflow";
 import { AskUserQuestionCard } from "./AskUserQuestionCard";
 import { EditToolMessage } from "./EditToolMessage";
 import { BashToolMessage } from "./BashToolMessage";
@@ -44,13 +44,13 @@ interface MessageBubbleProps {
   onResend?: (content: string) => void;
   onRetryError?: (messageId: string) => void;
   onApprovePhase?: (feedback?: string) => void;
-  onRequestRevision?: (feedback: string) => void;
+  onRequestRevision?: (feedback?: string) => void;
   onOpenArtifact?: (phase: string) => void;
   isApprovingPhase?: boolean;
   isRequestingRevision?: boolean;
   onAnswerQuestion?: (messageId: string, questionIndex: number, labels: string[]) => void;
   onConfirmAnswers?: (messageId: string) => void;
-  workflowSteps?: WorkflowStepConfig[];
+  workflowSteps?: ResolvedWorkflowStep[];
 }
 
 export const MessageBubble = memo(function MessageBubble({

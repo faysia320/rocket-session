@@ -14,7 +14,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { WorkflowPhaseStatus, WorkflowStepConfig } from "@/types/workflow";
+import type { WorkflowPhaseStatus, ResolvedWorkflowStep } from "@/types/workflow";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Search,
@@ -52,7 +52,7 @@ function getPhaseState(
 }
 
 interface WorkflowProgressBarProps {
-  steps: WorkflowStepConfig[];
+  steps: ResolvedWorkflowStep[];
   currentPhase: string | null;
   currentStatus: WorkflowPhaseStatus | null;
   onPhaseClick?: (phase: string) => void;
