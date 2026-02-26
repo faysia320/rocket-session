@@ -17,7 +17,7 @@ from app.api.dependencies import (
     get_workflow_service,
     get_ws_manager,
 )
-from app.api.v1.endpoints.pending_questions import (
+from app.services.pending_questions import (
     clear_pending_question,
     get_pending_question,
 )

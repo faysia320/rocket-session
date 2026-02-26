@@ -448,7 +448,7 @@ class ClaudeRunner:
                         },
                     )
                     # 세션 전환/새로고침 시 복원을 위해 인메모리 저장
-                    from app.api.v1.endpoints.pending_questions import (
+                    from app.services.pending_questions import (
                         set_pending_question,
                     )
 

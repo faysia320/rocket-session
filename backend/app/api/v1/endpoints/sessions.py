@@ -17,7 +17,7 @@ from app.api.dependencies import (
     get_ws_manager,
 )
 from app.schemas.common import StatusResponse
-from app.api.v1.endpoints.pending_questions import clear_pending_question
+from app.services.pending_questions import clear_pending_question
 from app.api.v1.endpoints.permissions import clear_session_trusted
 from app.models.session import SessionStatus
 from app.schemas.search import PaginatedSessionsResponse

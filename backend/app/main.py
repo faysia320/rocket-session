@@ -30,7 +30,7 @@ from app.api.dependencies import (  # noqa: E402
 )
 from app.api.v1.api import api_router  # noqa: E402
 from app.api.v1.endpoints import ws  # noqa: E402
-from app.api.v1.endpoints.pending_questions import clear_all_pending_questions  # noqa: E402
+from app.services.pending_questions import clear_all_pending_questions  # noqa: E402
 from app.api.v1.endpoints.permissions import clear_pending  # noqa: E402
 
 
