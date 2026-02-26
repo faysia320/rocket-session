@@ -10,12 +10,10 @@ import {
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { cn, highlightText, formatTokens } from "@/lib/utils";
+import { cn, highlightText } from "@/lib/utils";
 import type {
   Message,
   UserMsg,
-  AssistantTextMsg,
-  ResultMsg,
   ToolUseMsg,
   ThinkingMsg,
   FileChangeMsg,
@@ -33,8 +31,10 @@ import { BashToolMessage } from "./BashToolMessage";
 import { ReadToolMessage } from "./ReadToolMessage";
 import { SearchToolMessage } from "./SearchToolMessage";
 import { WebToolMessage } from "./WebToolMessage";
-import { ToolStatusIcon } from "./ToolStatusIcon";
-import { getToolIcon, getToolColor, useElapsed, parseMcpToolName } from "./toolMessageUtils";
+import { ToolMessageShell } from "./ToolMessageShell";
+import { getToolIcon, getToolColor, parseMcpToolName, getToolSummary } from "./toolMessageUtils";
+import { ResultMessage } from "./ResultMessage";
+import { AssistantText } from "./AssistantText";
 
 interface MessageBubbleProps {
   message: Message;
@@ -115,7 +115,7 @@ export const MessageBubble = memo(function MessageBubble({
         return <SearchToolMessage message={message} />;
       if (message.tool === "WebFetch" || message.tool === "WebSearch")
         return <WebToolMessage message={message} />;
-      return <ToolUseMessage message={message} animate={animate} />;
+      return <ToolUseMessage message={message} />;
     case "thinking":
       return <ThinkingMessage message={message} animate={animate} />;
     case "file_change":
@@ -156,7 +156,7 @@ export const MessageBubble = memo(function MessageBubble({
 
 /** fadeIn 애니메이션을 animate prop에 따라 조건부 적용하는 헬퍼 */
 const fadeIn = (animate: boolean) => (animate ? "animate-[fadeIn_0.2s_ease]" : "");
-const slideIn = (animate: boolean) => (animate ? "animate-[slideInLeft_0.2s_ease]" : "");
+
 
 // ─── Phase 1: Primary Messages ────────────────────────────────────────────────
 
@@ -202,195 +202,76 @@ function UserMessage({
   );
 }
 
-/** 모델명을 짧은 표시명으로 변환 */
-function formatModelName(model: string): string {
-  if (model.includes("opus")) return "Opus";
-  if (model.includes("sonnet")) return "Sonnet";
-  if (model.includes("haiku")) return "Haiku";
-  return model.split("-").slice(0, 2).join(" ");
-}
-
-function ResultMessage({ message, animate = false }: { message: ResultMsg; animate?: boolean }) {
-  const hasMetadata = message.duration_ms || message.model || message.input_tokens;
-
-  return (
-    <div className={fadeIn(animate)}>
-      <div
-        className={cn(
-          "px-3.5 py-3 bg-card/50 rounded-md border-l-[3px] border-l-info/60",
-          message.is_error && "border-l-destructive bg-destructive/5",
-        )}
-      >
-        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-2">
-          <span className="text-info text-xs">{"◆"}</span> Claude
-          {message.is_error ? (
-            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-destructive/15 text-destructive border border-destructive/30">
-              Error
-            </span>
-          ) : null}
-        </div>
-        <div className="text-foreground select-text">
-          <MarkdownRenderer content={message.text || ""} />
-        </div>
-        {hasMetadata ? (
-          <div className="flex flex-wrap gap-2 mt-2.5 pt-2 border-t border-border/30">
-            {message.model ? (
-              <span className="font-mono text-2xs px-2 py-0.5 rounded-md bg-info/10 text-info border border-info/20">
-                {formatModelName(message.model)}
-              </span>
-            ) : null}
-            {message.duration_ms ? (
-              <span className="font-mono text-2xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-md">
-                {(message.duration_ms / 1000).toFixed(1)}s
-              </span>
-            ) : null}
-            {message.input_tokens ? (
-              <span className="font-mono text-2xs px-2 py-0.5 rounded-md bg-success/10 text-success border border-success/20">
-                in:{formatTokens(message.input_tokens)}
-                {message.cache_read_tokens
-                  ? ` (cache:${formatTokens(message.cache_read_tokens)})`
-                  : ""}
-              </span>
-            ) : null}
-            {message.output_tokens ? (
-              <span className="font-mono text-2xs px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
-                out:{formatTokens(message.output_tokens)}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
 
 // ─── Phase 2: Secondary Messages ──────────────────────────────────────────────
 
-/** 도구 헤더 요약 텍스트 생성 (Read/Grep/Glob 등) */
-function getToolSummary(toolName: string, input: Record<string, unknown>): string | null {
-  if (toolName === "Grep") {
-    const pattern = input.pattern ? `"${String(input.pattern)}"` : null;
-    const glob = input.glob ? String(input.glob) : null;
-    const path = input.path ? String(input.path) : null;
-    const parts = [pattern, glob ? `in ${glob}` : null, !glob && path ? `in ${path}` : null].filter(
-      Boolean,
-    );
-    return parts.length > 0 ? parts.join(" ") : null;
-  }
-  if (toolName === "Glob") {
-    return input.pattern ? String(input.pattern) : null;
-  }
-  // MCP 도구: 주요 파라미터 자동 추출
-  if (toolName.startsWith("mcp__")) {
-    const query = input.query ?? input.q ?? input.pattern ?? input.search ?? input.text;
-    const path = input.path ?? input.file_path ?? input.repo ?? input.owner;
-    const parts = [query ? `"${String(query)}"` : null, path ? `in ${String(path)}` : null].filter(
-      Boolean,
-    );
-    return parts.length > 0 ? parts.join(" ") : null;
-  }
-  // Read 및 기타: file_path 또는 path
-  return String(input.file_path ?? input.path ?? "") || null;
-}
 
-function ToolUseMessage({ message, animate = false }: { message: ToolUseMsg; animate?: boolean }) {
-  const [expanded, setExpanded] = useState(false);
+function ToolUseMessage({ message }: { message: ToolUseMsg }) {
   const toolName = message.tool || "Tool";
   const input = useMemo(() => (message.input || {}) as Record<string, unknown>, [message.input]);
-  const toolStatus: "running" | "done" | "error" = message.status || "running";
   const mcpInfo = useMemo(() => parseMcpToolName(toolName), [toolName]);
-
-  const borderColor =
-    toolStatus === "error"
-      ? "border-l-destructive"
-      : toolStatus === "done"
-        ? "border-l-success"
-        : "border-l-info";
 
   const ToolIcon = getToolIcon(toolName);
   const toolColor = getToolColor(toolName);
-  const elapsed = useElapsed(toolStatus, message.timestamp, message.completed_at);
   const summary = useMemo(() => getToolSummary(toolName, input), [toolName, input]);
 
   return (
-    <Collapsible
-      open={expanded}
-      onOpenChange={setExpanded}
-      className={cn("cursor-pointer", slideIn(animate))}
+    <ToolMessageShell
+      message={message}
+      headerContent={
+        <>
+          {ToolIcon ? <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} /> : null}
+          {mcpInfo.isMcp ? (
+            <>
+              <span className="font-mono text-2xs px-1 py-0.5 rounded bg-violet-500/20 text-violet-400 shrink-0">
+                {mcpInfo.provider}
+              </span>
+              <span className="font-mono text-xs font-semibold text-foreground">
+                {mcpInfo.toolName}
+              </span>
+            </>
+          ) : (
+            <span className="font-mono text-xs font-semibold text-foreground">{toolName}</span>
+          )}
+          {summary ? (
+            <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
+              {summary}
+            </span>
+          ) : null}
+        </>
+      }
     >
-      <div
-        className={cn(
-          "px-3 py-2 bg-card border border-border rounded-md border-l-[3px]",
-          borderColor,
-        )}
-      >
-        <CollapsibleTrigger asChild>
-          <div className="flex items-center gap-2">
-            <ToolStatusIcon status={toolStatus} />
-            {ToolIcon ? <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} /> : null}
-            {mcpInfo.isMcp ? (
-              <>
-                <span className="font-mono text-2xs px-1 py-0.5 rounded bg-violet-500/20 text-violet-400 shrink-0">
-                  {mcpInfo.provider}
+      <div className="mt-1.5 space-y-1.5 min-w-0 overflow-hidden">
+        {/* Input JSON */}
+        <div>
+          <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">Input</div>
+          <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
+            {JSON.stringify(input, null, 2)}
+          </pre>
+        </div>
+        {message.output ? (
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-mono text-2xs text-muted-foreground/70">Output</span>
+              {message.is_truncated && message.full_length ? (
+                <span className="font-mono text-2xs text-warning">
+                  ({message.output.length.toLocaleString()}/
+                  {message.full_length.toLocaleString()}자 표시)
                 </span>
-                <span className="font-mono text-xs font-semibold text-foreground">
-                  {mcpInfo.toolName}
-                </span>
-              </>
-            ) : (
-              <span className="font-mono text-xs font-semibold text-foreground">{toolName}</span>
-            )}
-            {summary ? (
-              <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
-                {summary}
-              </span>
-            ) : null}
-            {elapsed ? (
-              <span className="font-mono text-2xs text-muted-foreground/70 shrink-0">
-                {elapsed}
-              </span>
-            ) : null}
-            {expanded ? (
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
-            )}
-          </div>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-1.5 space-y-1.5 min-w-0 overflow-hidden">
-            {/* Input JSON */}
-            <div>
-              <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">Input</div>
-              <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
-                {JSON.stringify(input, null, 2)}
-              </pre>
+              ) : null}
             </div>
-            {message.output ? (
-              <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-mono text-2xs text-muted-foreground/70">Output</span>
-                  {message.is_truncated && message.full_length ? (
-                    <span className="font-mono text-2xs text-warning">
-                      ({message.output.length.toLocaleString()}/
-                      {message.full_length.toLocaleString()}자 표시)
-                    </span>
-                  ) : null}
-                </div>
-                <pre
-                  className={cn(
-                    "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
-                    message.is_error ? "text-destructive" : "text-muted-foreground",
-                  )}
-                >
-                  {message.output}
-                </pre>
-              </div>
-            ) : null}
+            <pre
+              className={cn(
+                "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
+                message.is_error ? "text-destructive" : "text-muted-foreground",
+              )}
+            >
+              {message.output}
+            </pre>
           </div>
-        </CollapsibleContent>
+        ) : null}
       </div>
-    </Collapsible>
+    </ToolMessageShell>
   );
 }
 
@@ -432,43 +313,6 @@ function ThinkingMessage({
 
 // ─── Phase 3: Alert Messages ──────────────────────────────────────────────────
 
-function AssistantText({
-  message,
-  isStreaming,
-  animate = false,
-}: {
-  message: AssistantTextMsg;
-  isStreaming?: boolean;
-  animate?: boolean;
-}) {
-  return (
-    <div className={fadeIn(animate)}>
-      <div
-        className={cn(
-          "px-3.5 py-3 bg-card/50 rounded-md border-l-[3px]",
-          isStreaming ? "border-l-info/40" : "border-l-info/60",
-        )}
-      >
-        <div className="flex items-center gap-1.5 font-mono text-2xs font-semibold text-muted-foreground mb-2">
-          {isStreaming ? (
-            <span className="inline-block w-2 h-2 rounded-full bg-info animate-pulse" />
-          ) : (
-            <span className="text-info text-xs">{"◆"}</span>
-          )}
-          <span>Claude</span>
-          {isStreaming ? (
-            <span className="text-info/80 animate-[pulse_1.5s_ease-in-out_infinite] ml-1">
-              streaming{"…"}
-            </span>
-          ) : null}
-        </div>
-        <div className="text-foreground select-text">
-          <MarkdownRenderer content={message.text || ""} />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ErrorMessage({
   message,

@@ -103,6 +103,41 @@ export function useElapsed(
   }, [status, timestamp, completedAt]);
 }
 
+/** 도구 헤더 요약 텍스트 생성 (Read/Grep/Glob 등) */
+export function getToolSummary(toolName: string, input: Record<string, unknown>): string | null {
+  if (toolName === "Grep") {
+    const pattern = input.pattern ? `"${String(input.pattern)}"` : null;
+    const glob = input.glob ? String(input.glob) : null;
+    const path = input.path ? String(input.path) : null;
+    const parts = [pattern, glob ? `in ${glob}` : null, !glob && path ? `in ${path}` : null].filter(
+      Boolean,
+    );
+    return parts.length > 0 ? parts.join(" ") : null;
+  }
+  if (toolName === "Glob") {
+    return input.pattern ? String(input.pattern) : null;
+  }
+  // MCP 도구: 주요 파라미터 자동 추출
+  if (toolName.startsWith("mcp__")) {
+    const query = input.query ?? input.q ?? input.pattern ?? input.search ?? input.text;
+    const path = input.path ?? input.file_path ?? input.repo ?? input.owner;
+    const parts = [query ? `"${String(query)}"` : null, path ? `in ${String(path)}` : null].filter(
+      Boolean,
+    );
+    return parts.length > 0 ? parts.join(" ") : null;
+  }
+  // Read 및 기타: file_path 또는 path
+  return String(input.file_path ?? input.path ?? "") || null;
+}
+
+/** 모델명을 짧은 표시명으로 변환 */
+export function formatModelName(model: string): string {
+  if (model.includes("opus")) return "Opus";
+  if (model.includes("sonnet")) return "Sonnet";
+  if (model.includes("haiku")) return "Haiku";
+  return model.split("-").slice(0, 2).join(" ");
+}
+
 /** 파일 확장자에서 언어명 추출 */
 export function getLanguageFromPath(filePath: string): string {
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
