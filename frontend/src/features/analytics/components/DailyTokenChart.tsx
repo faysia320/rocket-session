@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useId, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -11,6 +11,17 @@ import {
 } from "recharts";
 import { formatTokens } from "@/lib/utils";
 import type { DailyTokenUsage } from "@/types";
+import {
+  useChartColors,
+  getXAxisProps,
+  getYAxisProps,
+  getGridProps,
+  CHART_DIMENSIONS,
+  CHART_ANIMATION,
+} from "../lib/chartConfig";
+import { ChartTooltip } from "./ChartTooltip";
+import { ChartLegend } from "./ChartLegend";
+import { ChartCard } from "./ChartCard";
 
 interface DailyTokenChartProps {
   data: DailyTokenUsage[];
@@ -21,14 +32,10 @@ function formatDate(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-const COLORS = {
-  input: "hsl(217, 91%, 60%)",
-  output: "hsl(38, 92%, 50%)",
-  cacheRead: "hsl(142, 71%, 45%)",
-  cacheCreation: "hsl(217, 33%, 50%)",
-};
-
 export const DailyTokenChart = memo(function DailyTokenChart({ data }: DailyTokenChartProps) {
+  const colors = useChartColors();
+  const id = useId();
+
   const chartData = useMemo(
     () =>
       data.map((d) => ({
@@ -41,96 +48,89 @@ export const DailyTokenChart = memo(function DailyTokenChart({ data }: DailyToke
     [data],
   );
 
-  if (chartData.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h3 className="font-mono text-xs font-medium text-foreground mb-3">일별 토큰 사용량</h3>
-        <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs font-mono">
-          데이터가 없습니다
-        </div>
-      </div>
-    );
-  }
+  const colorMap = useMemo(
+    () => ({
+      Input: colors.input,
+      Output: colors.output,
+      "Cache Read": colors.cacheRead,
+      "Cache Write": colors.cacheWrite,
+    }),
+    [colors],
+  );
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="font-mono text-xs font-medium text-foreground mb-3">일별 토큰 사용량</h3>
-      <ResponsiveContainer width="100%" height={240}>
+    <ChartCard title="일별 토큰 사용량" isEmpty={chartData.length === 0}>
+      <ResponsiveContainer width="100%" height={CHART_DIMENSIONS.areaChartHeight}>
         <AreaChart data={chartData}>
           <defs>
-            <linearGradient id="colorInput" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={COLORS.input} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={COLORS.input} stopOpacity={0} />
+            <linearGradient id={`${id}-input`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.input} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={colors.input} stopOpacity={0} />
             </linearGradient>
-            <linearGradient id="colorOutput" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={COLORS.output} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={COLORS.output} stopOpacity={0} />
+            <linearGradient id={`${id}-output`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.output} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={colors.output} stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id={`${id}-cacheRead`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.cacheRead} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={colors.cacheRead} stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id={`${id}-cacheWrite`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.cacheWrite} stopOpacity={0.2} />
+              <stop offset="95%" stopColor={colors.cacheWrite} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" vertical={false} />
-          <XAxis
-            dataKey="date"
-            tick={{ fontSize: 10, fill: "hsl(215, 25%, 50%)" }}
-            tickLine={false}
-            axisLine={false}
-          />
+          <CartesianGrid {...getGridProps(colors, { vertical: false })} />
+          <XAxis dataKey="date" {...getXAxisProps(colors)} />
           <YAxis
-            tick={{ fontSize: 10, fill: "hsl(215, 25%, 50%)" }}
-            tickLine={false}
-            axisLine={false}
+            {...getYAxisProps(colors, { width: CHART_DIMENSIONS.yAxisWidth.short })}
             tickFormatter={(v: number) => formatTokens(v)}
-            width={50}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "hsl(220, 37%, 7%)",
-              border: "1px solid hsl(217, 33%, 17%)",
-              borderRadius: "6px",
-              fontSize: "11px",
-              fontFamily: "monospace",
-            }}
-            labelStyle={{ color: "hsl(215, 25%, 90%)" }}
-            formatter={(value) =>
-              typeof value === "number" ? [formatTokens(value)] : [String(value ?? 0)]
-            }
+            content={<ChartTooltip colors={colors} colorMap={colorMap} />}
           />
-          <Legend wrapperStyle={{ fontSize: "10px", fontFamily: "monospace" }} />
+          <Legend content={<ChartLegend colors={colors} />} />
           <Area
             type="monotone"
             dataKey="Input"
             stackId="1"
-            stroke={COLORS.input}
-            fill="url(#colorInput)"
-            strokeWidth={1.5}
+            stroke={colors.input}
+            fill={`url(#${id}-input)`}
+            strokeWidth={2}
+            animationDuration={CHART_ANIMATION.duration}
           />
           <Area
             type="monotone"
             dataKey="Output"
             stackId="1"
-            stroke={COLORS.output}
-            fill="url(#colorOutput)"
-            strokeWidth={1.5}
+            stroke={colors.output}
+            fill={`url(#${id}-output)`}
+            strokeWidth={2}
+            animationDuration={CHART_ANIMATION.duration}
+            animationBegin={CHART_ANIMATION.delayPerSeries}
           />
           <Area
             type="monotone"
             dataKey="Cache Read"
             stackId="1"
-            stroke={COLORS.cacheRead}
-            fill={COLORS.cacheRead}
-            fillOpacity={0.15}
-            strokeWidth={1}
+            stroke={colors.cacheRead}
+            fill={`url(#${id}-cacheRead)`}
+            strokeWidth={2}
+            animationDuration={CHART_ANIMATION.duration}
+            animationBegin={CHART_ANIMATION.delayPerSeries * 2}
           />
           <Area
             type="monotone"
             dataKey="Cache Write"
             stackId="1"
-            stroke={COLORS.cacheCreation}
-            fill={COLORS.cacheCreation}
-            fillOpacity={0.1}
-            strokeWidth={1}
+            stroke={colors.cacheWrite}
+            fill={`url(#${id}-cacheWrite)`}
+            strokeWidth={2}
+            animationDuration={CHART_ANIMATION.duration}
+            animationBegin={CHART_ANIMATION.delayPerSeries * 3}
           />
         </AreaChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   );
 });

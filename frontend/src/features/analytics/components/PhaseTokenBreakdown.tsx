@@ -8,9 +8,21 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  LabelList,
 } from "recharts";
 import { formatTokens } from "@/lib/utils";
 import type { PhaseTokenUsage } from "@/types";
+import {
+  useChartColors,
+  getXAxisProps,
+  getYAxisProps,
+  getGridProps,
+  CHART_DIMENSIONS,
+  CHART_ANIMATION,
+} from "../lib/chartConfig";
+import { ChartTooltip } from "./ChartTooltip";
+import { ChartLegend } from "./ChartLegend";
+import { ChartCard } from "./ChartCard";
 
 interface PhaseTokenBreakdownProps {
   data: PhaseTokenUsage[];
@@ -22,14 +34,11 @@ const PHASE_LABELS: Record<string, string> = {
   implement: "Implement",
 };
 
-const COLORS = {
-  input: "hsl(217, 91%, 60%)",
-  output: "hsl(38, 92%, 50%)",
-};
-
 export const PhaseTokenBreakdown = memo(function PhaseTokenBreakdown({
   data,
 }: PhaseTokenBreakdownProps) {
+  const colors = useChartColors();
+
   const chartData = useMemo(
     () =>
       data.map((d) => ({
@@ -41,51 +50,74 @@ export const PhaseTokenBreakdown = memo(function PhaseTokenBreakdown({
     [data],
   );
 
+  const colorMap = useMemo(
+    () => ({ Input: colors.input, Output: colors.output }),
+    [colors],
+  );
+
   if (chartData.length === 0) {
     return null;
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="font-mono text-xs font-medium text-foreground mb-3">
-        Phase별 토큰 사용량
-      </h3>
-      <ResponsiveContainer width="100%" height={Math.max(chartData.length * 48, 120)}>
-        <BarChart data={chartData} layout="vertical" barGap={2}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" horizontal={false} />
+    <ChartCard title="Phase별 토큰 사용량">
+      <ResponsiveContainer
+        width="100%"
+        height={Math.max(chartData.length * 48, CHART_DIMENSIONS.minChartHeight)}
+      >
+        <BarChart data={chartData} layout="vertical" barGap={CHART_DIMENSIONS.barGap}>
+          <CartesianGrid {...getGridProps(colors, { horizontal: false })} />
           <XAxis
             type="number"
-            tick={{ fontSize: 10, fill: "hsl(215, 25%, 50%)" }}
-            tickLine={false}
-            axisLine={false}
+            {...getXAxisProps(colors)}
             tickFormatter={(v: number) => formatTokens(v)}
           />
           <YAxis
             type="category"
             dataKey="name"
-            tick={{ fontSize: 11, fill: "hsl(215, 25%, 70%)" }}
-            tickLine={false}
-            axisLine={false}
-            width={80}
+            {...getYAxisProps(colors, { width: CHART_DIMENSIONS.yAxisWidth.medium })}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "hsl(220, 37%, 7%)",
-              border: "1px solid hsl(217, 33%, 17%)",
-              borderRadius: "6px",
-              fontSize: "11px",
-              fontFamily: "monospace",
-            }}
-            labelStyle={{ color: "hsl(215, 25%, 90%)" }}
-            formatter={(value) =>
-              typeof value === "number" ? [formatTokens(value)] : [String(value ?? 0)]
-            }
+            content={<ChartTooltip colors={colors} colorMap={colorMap} />}
           />
-          <Legend wrapperStyle={{ fontSize: "10px", fontFamily: "monospace" }} />
-          <Bar dataKey="Input" fill={COLORS.input} radius={[0, 3, 3, 0]} />
-          <Bar dataKey="Output" fill={COLORS.output} radius={[0, 3, 3, 0]} />
+          <Legend content={<ChartLegend colors={colors} />} />
+          <Bar
+            dataKey="Input"
+            fill={colors.input}
+            radius={[0, 3, 3, 0]}
+            animationDuration={CHART_ANIMATION.duration}
+          >
+            <LabelList
+              dataKey="Input"
+              position="right"
+              formatter={formatTokens}
+              style={{
+                fontSize: 10,
+                fill: colors.axisText,
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            />
+          </Bar>
+          <Bar
+            dataKey="Output"
+            fill={colors.output}
+            radius={[0, 3, 3, 0]}
+            animationDuration={CHART_ANIMATION.duration}
+            animationBegin={CHART_ANIMATION.delayPerSeries}
+          >
+            <LabelList
+              dataKey="Output"
+              position="right"
+              formatter={formatTokens}
+              style={{
+                fontSize: 10,
+                fill: colors.axisText,
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            />
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   );
 });

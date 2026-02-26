@@ -11,6 +11,17 @@ import {
 } from "recharts";
 import { formatTokens, formatWorkDir } from "@/lib/utils";
 import type { SessionPhaseTokenUsage } from "@/types";
+import {
+  useChartColors,
+  getXAxisProps,
+  getYAxisProps,
+  getGridProps,
+  CHART_DIMENSIONS,
+  CHART_ANIMATION,
+} from "../lib/chartConfig";
+import { ChartTooltip } from "./ChartTooltip";
+import { ChartLegend } from "./ChartLegend";
+import { ChartCard } from "./ChartCard";
 
 interface SessionPhaseChartProps {
   data: SessionPhaseTokenUsage[];
@@ -24,18 +35,19 @@ const PHASE_LABELS: Record<string, string> = {
   test: "Test",
 };
 
-const PHASE_COLORS: Record<string, string> = {
-  research: "hsl(217, 91%, 60%)",
-  plan: "hsl(38, 92%, 50%)",
-  implement: "hsl(142, 71%, 45%)",
-  review: "hsl(280, 70%, 60%)",
-  test: "hsl(340, 75%, 55%)",
+const PHASE_COLOR_KEYS: Record<string, string> = {
+  research: "research",
+  plan: "plan",
+  implement: "implement",
+  review: "review",
+  test: "test",
 };
-const DEFAULT_PHASE_COLOR = "hsl(217, 33%, 50%)";
 
 export const SessionPhaseChart = memo(function SessionPhaseChart({
   data,
 }: SessionPhaseChartProps) {
+  const colors = useChartColors();
+
   const { chartData, phases } = useMemo(() => {
     const phaseSet = new Set<string>();
     for (const row of data) {
@@ -48,7 +60,7 @@ export const SessionPhaseChart = memo(function SessionPhaseChart({
       const phase = row.workflow_phase ?? "unknown";
       const phaseLabel = PHASE_LABELS[phase] ?? phase;
       if (!sessionMap.has(row.session_id)) {
-        const label = row.session_name ?? formatWorkDir(row.session_id, 20);
+        const label = row.session_name ?? formatWorkDir(row.session_id, 28);
         sessionMap.set(row.session_id, { name: label });
       }
       const entry = sessionMap.get(row.session_id)!;
@@ -61,63 +73,60 @@ export const SessionPhaseChart = memo(function SessionPhaseChart({
     };
   }, [data]);
 
+  const phaseColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const [key, label] of Object.entries(PHASE_LABELS)) {
+      const colorKey = PHASE_COLOR_KEYS[key] as keyof typeof colors | undefined;
+      map[label] = colorKey ? colors[colorKey] : colors.cacheWrite;
+    }
+    return map;
+  }, [colors]);
+
   if (chartData.length === 0) {
     return null;
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="font-mono text-xs font-medium text-foreground mb-3">
-        세션별 Phase 토큰 분포
-      </h3>
-      <ResponsiveContainer width="100%" height={Math.max(chartData.length * 40, 120)}>
-        <BarChart data={chartData} layout="vertical" barGap={2}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" horizontal={false} />
+    <ChartCard title="세션별 Phase 토큰 분포">
+      <ResponsiveContainer
+        width="100%"
+        height={Math.max(chartData.length * CHART_DIMENSIONS.barRowHeight, CHART_DIMENSIONS.minChartHeight)}
+      >
+        <BarChart data={chartData} layout="vertical" barGap={CHART_DIMENSIONS.barGap}>
+          <CartesianGrid {...getGridProps(colors, { horizontal: false })} />
           <XAxis
             type="number"
-            tick={{ fontSize: 10, fill: "hsl(215, 25%, 50%)" }}
-            tickLine={false}
-            axisLine={false}
+            {...getXAxisProps(colors)}
             tickFormatter={(v: number) => formatTokens(v)}
           />
           <YAxis
             type="category"
             dataKey="name"
-            tick={{ fontSize: 10, fill: "hsl(215, 25%, 70%)" }}
-            tickLine={false}
-            axisLine={false}
-            width={120}
+            {...getYAxisProps(colors, { width: CHART_DIMENSIONS.yAxisWidth.long })}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "hsl(220, 37%, 7%)",
-              border: "1px solid hsl(217, 33%, 17%)",
-              borderRadius: "6px",
-              fontSize: "11px",
-              fontFamily: "monospace",
-            }}
-            labelStyle={{ color: "hsl(215, 25%, 90%)" }}
-            formatter={(value) =>
-              typeof value === "number" ? [formatTokens(value)] : [String(value ?? 0)]
-            }
+            content={<ChartTooltip colors={colors} colorMap={phaseColorMap} />}
           />
-          <Legend wrapperStyle={{ fontSize: "10px", fontFamily: "monospace" }} />
-          {phases.map((phase) => {
+          <Legend content={<ChartLegend colors={colors} />} />
+          {phases.map((phase, i) => {
             const originalKey =
               Object.entries(PHASE_LABELS).find(([, v]) => v === phase)?.[0] ??
               phase.toLowerCase();
+            const colorKey = PHASE_COLOR_KEYS[originalKey] as keyof typeof colors | undefined;
             return (
               <Bar
                 key={phase}
                 dataKey={phase}
                 stackId="session"
-                fill={PHASE_COLORS[originalKey] ?? DEFAULT_PHASE_COLOR}
+                fill={colorKey ? colors[colorKey] : colors.cacheWrite}
                 radius={[0, 3, 3, 0]}
+                animationDuration={CHART_ANIMATION.duration}
+                animationBegin={i * CHART_ANIMATION.delayPerSeries}
               />
             );
           })}
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   );
 });
