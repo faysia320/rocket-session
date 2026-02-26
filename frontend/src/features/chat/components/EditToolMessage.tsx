@@ -1,10 +1,8 @@
-import { useState, memo } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
-import { ToolStatusIcon } from "./ToolStatusIcon";
-import { getToolIcon, getToolColor, useElapsed } from "./toolMessageUtils";
+import { getToolIcon, getToolColor } from "./toolMessageUtils";
+import { ToolMessageShell } from "./ToolMessageShell";
 
 interface EditToolMessageProps {
   message: ToolUseMsg;
@@ -75,111 +73,79 @@ function InlineDiff({ oldString, newString }: EditPair) {
 }
 
 export const EditToolMessage = memo(function EditToolMessage({ message }: EditToolMessageProps) {
-  const [expanded, setExpanded] = useState(false);
   const toolName = message.tool || "Edit";
   const input = (message.input || {}) as Record<string, unknown>;
-  const toolStatus = message.status || "running";
   const filePath = String(input.file_path ?? input.path ?? "");
   const isWrite = toolName === "Write";
 
-  const borderColor =
-    toolStatus === "error"
-      ? "border-l-destructive"
-      : toolStatus === "done"
-        ? "border-l-success"
-        : "border-l-info";
-
   const ToolIcon = getToolIcon(toolName);
   const toolColor = getToolColor(toolName);
-  const elapsed = useElapsed(toolStatus, message.timestamp, message.completed_at);
 
   const edits = isWrite ? [] : extractEdits(message);
 
   return (
-    <Collapsible
-      open={expanded}
-      onOpenChange={setExpanded}
-      className="animate-[slideInLeft_0.2s_ease] cursor-pointer"
+    <ToolMessageShell
+      message={message}
+      headerContent={
+        <>
+          {ToolIcon ? <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} /> : null}
+          <span className="font-mono text-xs font-semibold text-foreground">{toolName}</span>
+          {filePath ? (
+            <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
+              {filePath}
+            </span>
+          ) : null}
+        </>
+      }
     >
-      <div
-        className={cn(
-          "px-3 py-2 bg-card border border-border rounded-md border-l-[3px]",
-          borderColor,
-        )}
-      >
-        <CollapsibleTrigger asChild>
-          <div className="flex items-center gap-2">
-            <ToolStatusIcon status={toolStatus} />
-            {ToolIcon ? <ToolIcon className={cn("h-3.5 w-3.5 shrink-0", toolColor)} /> : null}
-            <span className="font-mono text-xs font-semibold text-foreground">{toolName}</span>
-            {filePath ? (
-              <span className="font-mono text-xs text-muted-foreground flex-1 truncate">
-                {filePath}
-              </span>
-            ) : null}
-            {elapsed ? (
-              <span className="font-mono text-2xs text-muted-foreground/70 shrink-0">
-                {elapsed}
-              </span>
-            ) : null}
-            {expanded ? (
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
-            )}
+      <div className="mt-1.5 space-y-1.5">
+        {/* Edit/MultiEdit: 인라인 diff */}
+        {edits.length > 0 ? (
+          <div className="rounded-md overflow-hidden border border-border/50 bg-input/40">
+            {edits.map((edit, i) => (
+              <div key={i}>
+                {i > 0 ? <div className="border-t border-border/30 my-0" /> : null}
+                <InlineDiff oldString={edit.oldString} newString={edit.newString} />
+              </div>
+            ))}
           </div>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-1.5 space-y-1.5">
-            {/* Edit/MultiEdit: 인라인 diff */}
-            {edits.length > 0 ? (
-              <div className="rounded-md overflow-hidden border border-border/50 bg-input/40">
-                {edits.map((edit, i) => (
-                  <div key={i}>
-                    {i > 0 ? <div className="border-t border-border/30 my-0" /> : null}
-                    <InlineDiff oldString={edit.oldString} newString={edit.newString} />
-                  </div>
-                ))}
-              </div>
-            ) : null}
+        ) : null}
 
-            {/* Write: content 미리보기 (너무 길면 truncate) */}
-            {isWrite && input.content ? (
-              <div>
-                <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">Content</div>
-                <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
-                  {String(input.content).length > 2000
-                    ? `${String(input.content).slice(0, 2000)}\u2026`
-                    : String(input.content)}
-                </pre>
-              </div>
-            ) : null}
-
-            {/* Output */}
-            {message.output ? (
-              <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-mono text-2xs text-muted-foreground/70">Output</span>
-                  {message.is_truncated && message.full_length ? (
-                    <span className="font-mono text-2xs text-warning">
-                      ({message.output.length.toLocaleString()}/
-                      {message.full_length.toLocaleString()}자 표시)
-                    </span>
-                  ) : null}
-                </div>
-                <pre
-                  className={cn(
-                    "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text",
-                    message.is_error ? "text-destructive" : "text-muted-foreground",
-                  )}
-                >
-                  {message.output}
-                </pre>
-              </div>
-            ) : null}
+        {/* Write: content 미리보기 (너무 길면 truncate) */}
+        {isWrite && input.content ? (
+          <div>
+            <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">Content</div>
+            <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
+              {String(input.content).length > 2000
+                ? `${String(input.content).slice(0, 2000)}\u2026`
+                : String(input.content)}
+            </pre>
           </div>
-        </CollapsibleContent>
+        ) : null}
+
+        {/* Output */}
+        {message.output ? (
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-mono text-2xs text-muted-foreground/70">Output</span>
+              {message.is_truncated && message.full_length ? (
+                <span className="font-mono text-2xs text-warning">
+                  ({message.output.length.toLocaleString()}/
+                  {message.full_length.toLocaleString()}자 표시)
+                </span>
+              ) : null}
+            </div>
+            <pre
+              className={cn(
+                "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text",
+                message.is_error ? "text-destructive" : "text-muted-foreground",
+              )}
+            >
+              {message.output}
+            </pre>
+          </div>
+        ) : null}
       </div>
-    </Collapsible>
+    </ToolMessageShell>
   );
 });
