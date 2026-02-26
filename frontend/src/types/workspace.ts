@@ -30,6 +30,7 @@ export interface UpdateWorkspaceRequest {
 
 export interface WorkspaceSyncRequest {
   action: "pull" | "push";
+  force?: boolean;
 }
 
 export interface WorkspaceSyncResponse {

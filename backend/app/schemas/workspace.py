@@ -9,7 +9,9 @@ from pydantic import BaseModel, Field
 class CreateWorkspaceRequest(BaseModel):
     repo_url: str = Field(..., min_length=1, description="Git 저장소 URL")
     branch: Optional[str] = Field(None, description="클론할 브랜치 (기본: 기본 브랜치)")
-    name: Optional[str] = Field(None, max_length=100, description="워크스페이스 표시 이름")
+    name: Optional[str] = Field(
+        None, max_length=100, description="워크스페이스 표시 이름"
+    )
 
 
 class UpdateWorkspaceRequest(BaseModel):
@@ -37,6 +39,7 @@ class WorkspaceInfo(BaseModel):
 
 class WorkspaceSyncRequest(BaseModel):
     action: Literal["pull", "push"] = Field(..., description="동기화 방향")
+    force: bool = Field(False, description="강제 pull (원격으로 리셋)")
 
 
 class WorkspaceSyncResponse(BaseModel):

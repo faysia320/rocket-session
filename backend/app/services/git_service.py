@@ -361,9 +361,7 @@ class GitService:
             )
             if returncode != 0:
                 # 폴백: 디렉토리 수동 삭제 + git worktree prune
-                logger.warning(
-                    "git worktree remove 실패, 수동 정리 시도: %s", stderr
-                )
+                logger.warning("git worktree remove 실패, 수동 정리 시도: %s", stderr)
                 import shutil
 
                 shutil.rmtree(worktree_path, ignore_errors=True)
@@ -674,17 +672,25 @@ class GitService:
             (rc_default, default_out, _),
         ) = await asyncio.gather(
             self._run_git_command(
-                "branch", "--list", "--sort=-committerdate",
-                "--format=%(refname:short)", cwd=cwd,
+                "branch",
+                "--list",
+                "--sort=-committerdate",
+                "--format=%(refname:short)",
+                cwd=cwd,
             ),
             self._run_git_command(
-                "branch", "-r", "--sort=-committerdate",
-                "--format=%(refname:short)", cwd=cwd,
+                "branch",
+                "-r",
+                "--sort=-committerdate",
+                "--format=%(refname:short)",
+                cwd=cwd,
             ),
             self._run_git_command("branch", "--show-current", cwd=cwd),
             self._run_git_command(
-                "symbolic-ref", "refs/remotes/origin/HEAD",
-                "--short", cwd=cwd,
+                "symbolic-ref",
+                "refs/remotes/origin/HEAD",
+                "--short",
+                cwd=cwd,
             ),
         )
 
@@ -708,7 +714,8 @@ class GitService:
 
         # 최종 목록 (origin/ 접두사 방어적 필터)
         branches = [
-            b for b in (local_branches + remote_only)
+            b
+            for b in (local_branches + remote_only)
             if not b.startswith("origin/") and b not in ("origin", "HEAD")
         ]
         current = cur_out.strip() if rc_cur == 0 and cur_out else None
@@ -721,9 +728,7 @@ class GitService:
 
         return branches, current, default_branch
 
-    async def checkout_branch(
-        self, repo_path: str, branch: str
-    ) -> tuple[bool, str]:
+    async def checkout_branch(self, repo_path: str, branch: str) -> tuple[bool, str]:
         """브랜치 체크아웃.
 
         Returns:
@@ -793,7 +798,12 @@ class GitService:
 
         async with self._get_git_lock(cwd):
             if files:
-                args = [*self._GIT_CROSS_PLATFORM_OPTS, "restore", "--staged", "--"] + files
+                args = [
+                    *self._GIT_CROSS_PLATFORM_OPTS,
+                    "restore",
+                    "--staged",
+                    "--",
+                ] + files
             else:
                 args = [*self._GIT_CROSS_PLATFORM_OPTS, "reset", "HEAD"]
 
@@ -802,9 +812,7 @@ class GitService:
                 return False, f"git unstage 실패: {stderr}"
             return True, ""
 
-    async def commit(
-        self, repo_path: str, message: str
-    ) -> tuple[bool, str, str]:
+    async def commit(self, repo_path: str, message: str) -> tuple[bool, str, str]:
         """커밋 실행.
 
         Returns:
@@ -841,9 +849,7 @@ class GitService:
 
     # ─── Pull / Push ───
 
-    async def pull(
-        self, repo_path: str, rebase: bool = True
-    ) -> tuple[bool, str]:
+    async def pull(self, repo_path: str, rebase: bool = True) -> tuple[bool, str]:
         """git pull 실행.
 
         Returns:
@@ -870,6 +876,103 @@ class GitService:
             del self._git_cache[repo_path]
 
         return True, stdout or "Already up to date."
+
+    async def smart_pull(self, repo_path: str) -> tuple[bool, str, str]:
+        """Smart pull: rebase 시도 → 실패 시 abort → 결과 분류.
+
+        Returns:
+            (success, message, result_code)
+            result_code: "ok" | "auto_reset" | "needs_force_pull"
+        """
+        validated = self._validate_path(repo_path)
+        cwd = str(validated)
+
+        async with self._get_git_lock(cwd):
+            # Phase 1: git pull --rebase 시도
+            rc, stdout, stderr = await self._run_git_command(
+                *self._GIT_CROSS_PLATFORM_OPTS,
+                "pull",
+                "--rebase",
+                cwd=cwd,
+                timeout=120.0,
+            )
+
+            if rc == 0:
+                if repo_path in self._git_cache:
+                    del self._git_cache[repo_path]
+                return True, stdout or "Already up to date.", "ok"
+
+            # Phase 2: rebase 실패 → abort
+            await self._run_git_command("rebase", "--abort", cwd=cwd, timeout=10.0)
+
+            # Phase 3: ahead 확인으로 분류
+            rc_ahead, ahead_out, _ = await self._run_git_command(
+                "rev-list",
+                "--left-right",
+                "--count",
+                "HEAD...@{upstream}",
+                cwd=cwd,
+            )
+            ahead = 0
+            if rc_ahead == 0 and ahead_out:
+                parts = ahead_out.split()
+                if len(parts) == 2:
+                    try:
+                        ahead = int(parts[0])
+                    except ValueError:
+                        pass
+
+            error_msg = stderr if stderr != "timeout" else "pull --rebase 타임아웃"
+
+            if ahead == 0:
+                return False, error_msg, "auto_reset"
+            return False, error_msg, "needs_force_pull"
+
+    async def reset_to_remote(self, repo_path: str) -> tuple[bool, str]:
+        """원격 브랜치로 강제 리셋 (git fetch + git reset --hard origin/<branch>).
+
+        Returns:
+            (success, message)
+        """
+        validated = self._validate_path(repo_path)
+        cwd = str(validated)
+
+        async with self._get_git_lock(cwd):
+            # 현재 브랜치명 확인
+            rc_branch, branch, _ = await self._run_git_command(
+                "branch",
+                "--show-current",
+                cwd=cwd,
+            )
+            if rc_branch != 0 or not branch:
+                return False, "현재 브랜치를 확인할 수 없습니다"
+
+            # fetch → reset
+            rc_fetch, _, stderr_fetch = await self._run_git_command(
+                "fetch",
+                "origin",
+                cwd=cwd,
+                timeout=60.0,
+            )
+            if rc_fetch != 0:
+                error = stderr_fetch if stderr_fetch != "timeout" else "fetch 타임아웃"
+                return False, f"git fetch 실패: {error}"
+
+            rc_reset, _, stderr_reset = await self._run_git_command(
+                "reset",
+                "--hard",
+                f"origin/{branch}",
+                cwd=cwd,
+                timeout=30.0,
+            )
+            if rc_reset != 0:
+                return False, f"git reset 실패: {stderr_reset}"
+
+        # 캐시 무효화 (lock 해제 후)
+        if repo_path in self._git_cache:
+            del self._git_cache[repo_path]
+
+        return True, f"origin/{branch} 으로 리셋 완료"
 
     async def push(
         self,
@@ -927,9 +1030,7 @@ class GitService:
         if prune:
             args.append("--prune")
 
-        rc, stdout, stderr = await self._run_git_command(
-            *args, cwd=cwd, timeout=60.0
-        )
+        rc, stdout, stderr = await self._run_git_command(*args, cwd=cwd, timeout=60.0)
 
         if rc != 0:
             error = stderr if stderr != "timeout" else "fetch 타임아웃"

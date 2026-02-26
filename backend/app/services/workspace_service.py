@@ -17,6 +17,13 @@ from app.services.git_service import GitService
 
 logger = logging.getLogger(__name__)
 
+
+class RebaseConflictError(Exception):
+    """Rebase 충돌 시 발생 — 로컬 커밋이 존재하여 사용자 확인이 필요한 경우."""
+
+    pass
+
+
 def _workspace_to_dict(ws: Workspace) -> dict:
     """Workspace ORM 엔티티를 dict로 변환."""
     return {
@@ -38,7 +45,10 @@ class WorkspaceService:
     """워크스페이스 CRUD + clone/sync 생명주기 관리."""
 
     def __init__(
-        self, db: Database, git_service: GitService, workspaces_root: str = "/workspaces"
+        self,
+        db: Database,
+        git_service: GitService,
+        workspaces_root: str = "/workspaces",
     ) -> None:
         self._db = db
         self._git = git_service
@@ -114,7 +124,9 @@ class WorkspaceService:
 
             if proc.returncode != 0:
                 error_msg = stderr.decode(errors="replace")[:1000]
-                logger.error("git clone 실패: workspace=%s, err=%s", workspace_id, error_msg)
+                logger.error(
+                    "git clone 실패: workspace=%s, err=%s", workspace_id, error_msg
+                )
                 await self._update_status(workspace_id, "error", error_msg)
                 return
 
@@ -130,7 +142,9 @@ class WorkspaceService:
                 disk_usage_mb=disk_mb,
                 last_synced_at=now,
             )
-            logger.info("워크스페이스 준비 완료: id=%s, disk=%dMB", workspace_id, disk_mb)
+            logger.info(
+                "워크스페이스 준비 완료: id=%s, disk=%dMB", workspace_id, disk_mb
+            )
 
         except asyncio.CancelledError:
             logger.info("워크스페이스 clone 취소됨: %s", workspace_id)
@@ -139,7 +153,9 @@ class WorkspaceService:
         except asyncio.TimeoutError:
             logger.error("워크스페이스 clone 타임아웃: %s", workspace_id)
             shutil.rmtree(local_path, ignore_errors=True)
-            await self._update_status(workspace_id, "error", "clone 타임아웃 (10분 초과)")
+            await self._update_status(
+                workspace_id, "error", "clone 타임아웃 (10분 초과)"
+            )
         except Exception as e:
             logger.exception("워크스페이스 clone 예외: %s", workspace_id)
             await self._update_status(workspace_id, "error", str(e)[:1000])
@@ -204,7 +220,9 @@ class WorkspaceService:
             _, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
             if proc.returncode != 0:
                 logger.warning(
-                    "의존성 설치 실패 (%s): %s", label, stderr.decode(errors="replace")[:500]
+                    "의존성 설치 실패 (%s): %s",
+                    label,
+                    stderr.decode(errors="replace")[:500],
                 )
             else:
                 logger.info("의존성 설치 완료: %s", label)
@@ -294,21 +312,25 @@ class WorkspaceService:
         now = datetime.now(timezone.utc)
         async with self._db.session() as db_session:
             repo = WorkspaceRepository(db_session)
-            entity = await repo.update_workspace(
-                workspace_id, updated_at=now, **kwargs
-            )
+            entity = await repo.update_workspace(workspace_id, updated_at=now, **kwargs)
             if not entity:
                 return None
             await db_session.commit()
             return _workspace_to_dict(entity)
 
     async def sync_workspace(
-        self, workspace_id: str, action: str
+        self, workspace_id: str, action: str, force: bool = False
     ) -> tuple[bool, str, str | None]:
         """워크스페이스 pull 또는 push.
 
+        Args:
+            force: True이면 pull 시 원격으로 강제 리셋 (git reset --hard origin/<branch>)
+
         Returns:
             (success, message, commit_hash)
+
+        Raises:
+            RebaseConflictError: rebase 실패 + 로컬 커밋 존재 시 (사용자 확인 필요)
         """
         ws = await self.get(workspace_id)
         if not ws:
@@ -319,21 +341,28 @@ class WorkspaceService:
         local_path = ws["local_path"]
 
         if action == "pull":
-            success, msg = await self._git.pull(local_path)
+            if force:
+                success, msg = await self._git.reset_to_remote(local_path)
+            else:
+                success, msg, result_code = await self._git.smart_pull(local_path)
+                if not success:
+                    if result_code == "auto_reset":
+                        # 로컬 전용 커밋 없음 → 자동 리셋
+                        success, msg = await self._git.reset_to_remote(local_path)
+                    else:
+                        # needs_force_pull → 사용자 확인 필요
+                        raise RebaseConflictError(msg)
+
             if success:
                 now = datetime.now(timezone.utc)
-                await self._update_status(
-                    workspace_id, "ready", last_synced_at=now
-                )
+                await self._update_status(workspace_id, "ready", last_synced_at=now)
             return success, msg, None
 
         elif action == "push":
             success, msg, commit_hash = await self._git.push(local_path)
             if success:
                 now = datetime.now(timezone.utc)
-                await self._update_status(
-                    workspace_id, "ready", last_synced_at=now
-                )
+                await self._update_status(workspace_id, "ready", last_synced_at=now)
             return success, msg, commit_hash
 
         return False, f"알 수 없는 동기화 액션: {action}", None
@@ -398,8 +427,6 @@ class WorkspaceService:
                 elif entity.status == "deleting":
                     # 삭제 중이던 워크스페이스 → 파일 정리 + DB 삭제
                     if os.path.isdir(entity.local_path):
-                        await asyncio.to_thread(
-                            shutil.rmtree, entity.local_path, True
-                        )
+                        await asyncio.to_thread(shutil.rmtree, entity.local_path, True)
                     await repo.delete_by_id(entity.id)
             await db_session.commit()

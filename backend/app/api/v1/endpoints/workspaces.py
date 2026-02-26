@@ -10,7 +10,7 @@ from app.schemas.workspace import (
     WorkspaceSyncRequest,
     WorkspaceSyncResponse,
 )
-from app.services.workspace_service import WorkspaceService
+from app.services.workspace_service import RebaseConflictError, WorkspaceService
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -83,11 +83,12 @@ async def sync_workspace(
     service: WorkspaceService = Depends(get_workspace_service),
 ):
     """워크스페이스 동기화 (pull 또는 push)."""
-    success, message, commit_hash = await service.sync_workspace(
-        workspace_id, req.action
-    )
+    try:
+        success, message, commit_hash = await service.sync_workspace(
+            workspace_id, req.action, force=req.force
+        )
+    except RebaseConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not success:
         raise HTTPException(status_code=400, detail=message)
-    return WorkspaceSyncResponse(
-        success=True, message=message, commit_hash=commit_hash
-    )
+    return WorkspaceSyncResponse(success=True, message=message, commit_hash=commit_hash)

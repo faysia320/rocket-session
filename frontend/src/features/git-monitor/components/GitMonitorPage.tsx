@@ -57,6 +57,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { BranchSelect } from "./BranchSelect";
 import { CommitDialog } from "./CommitDialog";
 import type { WorkspaceInfo } from "@/types/workspace";
+import { ApiError } from "@/lib/api/client";
 import { toast } from "sonner";
 
 export function GitMonitorPage() {
@@ -245,6 +246,7 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
   const openPrCount = openPrData?.prs?.length ?? 0;
   const [prDialogOpen, setPrDialogOpen] = useState(false);
   const [commitDialogOpen, setCommitDialogOpen] = useState(false);
+  const [forcePullOpen, setForcePullOpen] = useState(false);
 
   // Fetch 관련
   const fetchMutation = useFetchRemote(isReady ? workspace.local_path : "");
@@ -281,6 +283,13 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
         onSuccess: () => toast.success("Pull 완료"),
         onError: (error: unknown) => {
           const message = error instanceof Error ? error.message : "";
+
+          // rebase 충돌 → Force Pull 다이얼로그
+          if (error instanceof ApiError && error.status === 409) {
+            setForcePullOpen(true);
+            return;
+          }
+
           const hasUncommitted =
             message.includes("unstaged changes") ||
             message.includes("uncommitted changes") ||
@@ -298,6 +307,20 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
               description: message || undefined,
             });
           }
+        },
+      },
+    );
+  }, [syncMutation, workspace.id]);
+
+  const handleForcePull = useCallback(() => {
+    setForcePullOpen(false);
+    syncMutation.mutate(
+      { id: workspace.id, data: { action: "pull", force: true } },
+      {
+        onSuccess: () => toast.success("Force Pull 완료 — 원격 브랜치로 리셋되었습니다"),
+        onError: (error: unknown) => {
+          const message = error instanceof Error ? error.message : "";
+          toast.error("Force Pull 실패", { description: message || undefined });
         },
       },
     );
@@ -529,6 +552,31 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
         workspacePath={workspace.local_path}
         workspaceId={workspace.id}
       />
+
+      {/* Force Pull 확인 Dialog */}
+      <AlertDialog open={forcePullOpen} onOpenChange={setForcePullOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Force Pull</AlertDialogTitle>
+            <AlertDialogDescription>
+              Rebase에 실패했습니다. 로컬 커밋({workspace.ahead ?? 0}개)이
+              원격과 충돌합니다.
+              <br /><br />
+              <strong>Force Pull</strong>을 실행하면 로컬 커밋을 버리고
+              원격 브랜치 상태로 리셋합니다. 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleForcePull}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Force Pull
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
