@@ -6,6 +6,7 @@ import { DailyTokenChart } from "./DailyTokenChart";
 import { SessionRankingTable } from "./SessionRankingTable";
 import { ProjectBreakdown } from "./ProjectBreakdown";
 import { PhaseTokenBreakdown } from "./PhaseTokenBreakdown";
+import { SessionPhaseChart } from "./SessionPhaseChart";
 import { cn } from "@/lib/utils";
 import type { AnalyticsPeriod } from "@/types";
 
@@ -65,6 +66,9 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard() {
 
             {/* Phase별 토큰 사용량 */}
             <PhaseTokenBreakdown data={data.phase_usage} />
+
+            {/* 세션별 Phase 토큰 분포 */}
+            <SessionPhaseChart data={data.session_phase_usage} />
 
             {/* 일별 추이 차트 */}
             <DailyTokenChart data={data.daily_usage} />

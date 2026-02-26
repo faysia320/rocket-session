@@ -49,6 +49,15 @@ export interface PhaseTokenUsage {
   turn_count: number;
 }
 
+export interface SessionPhaseTokenUsage {
+  session_id: string;
+  session_name: string | null;
+  workflow_phase: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+}
+
 export interface AnalyticsResponse {
   period: string;
   start_date: string;
@@ -58,4 +67,5 @@ export interface AnalyticsResponse {
   session_ranking: SessionTokenRanking[];
   project_usage: ProjectTokenUsage[];
   phase_usage: PhaseTokenUsage[];
+  session_phase_usage: SessionPhaseTokenUsage[];
 }

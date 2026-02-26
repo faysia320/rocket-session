@@ -91,4 +91,4 @@ class ApprovePhaseRequest(BaseModel):
 class RequestRevisionRequest(BaseModel):
     """수정 요청."""
 
-    feedback: str = Field(..., min_length=1)
+    feedback: Optional[str] = None

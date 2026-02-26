@@ -74,6 +74,17 @@ class PhaseTokenUsage(BaseModel):
     turn_count: int = 0
 
 
+class SessionPhaseTokenUsage(BaseModel):
+    """세션 x Phase 교차 토큰 사용량."""
+
+    session_id: str
+    session_name: str | None = None
+    workflow_phase: str | None = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+
+
 class AnalyticsResponse(BaseModel):
     """전체 분석 응답."""
 
@@ -85,3 +96,4 @@ class AnalyticsResponse(BaseModel):
     session_ranking: list[SessionTokenRanking]
     project_usage: list[ProjectTokenUsage]
     phase_usage: list[PhaseTokenUsage] = []
+    session_phase_usage: list[SessionPhaseTokenUsage] = []

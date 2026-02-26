@@ -46,7 +46,7 @@ interface ArtifactViewerProps {
   onOpenChange: (open: boolean) => void;
   artifact: SessionArtifactInfo | null;
   onApprove?: (feedback?: string) => void;
-  onRequestRevision?: (feedback: string) => void;
+  onRequestRevision?: (feedback?: string) => void;
   onAddAnnotation?: (lineStart: number, lineEnd: number | null, content: string, type: AnnotationType) => void;
   onResolveAnnotation?: (annotationId: number) => void;
   onDismissAnnotation?: (annotationId: number) => void;
@@ -334,6 +334,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
             isRequestingRevision={isRequestingRevision}
             isEditing={isEditing}
             disabled={disabled}
+            pendingAnnotationCount={pendingAnnotations.length}
           />
         ) : null}
       </SheetContent>

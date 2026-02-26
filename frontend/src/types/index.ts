@@ -102,6 +102,7 @@ export type {
   SessionTokenRanking,
   ProjectTokenUsage,
   PhaseTokenUsage,
+  SessionPhaseTokenUsage,
   AnalyticsResponse,
 } from "./analytics";
 export type {

@@ -232,3 +232,60 @@ class TokenSnapshotRepository:
         )
         result = await self._session.execute(stmt)
         return [dict(row._mapping) for row in result.all()]
+
+    async def get_session_phase_usage(
+        self, start: datetime, end: datetime, limit: int = 10
+    ) -> list[dict]:
+        """세션별 Phase 교차 토큰 사용량 (상위 N세션)."""
+        # 서브쿼리: 기간 내 총 토큰 기준 상위 N 세션
+        top_sessions = (
+            select(
+                TokenSnapshot.session_id,
+                (
+                    func.coalesce(func.sum(TokenSnapshot.input_tokens), 0)
+                    + func.coalesce(func.sum(TokenSnapshot.output_tokens), 0)
+                ).label("total"),
+            )
+            .where(
+                TokenSnapshot.timestamp >= start,
+                TokenSnapshot.timestamp < end,
+            )
+            .group_by(TokenSnapshot.session_id)
+            .order_by(text("total DESC"))
+            .limit(limit)
+            .subquery()
+        )
+
+        # 메인 쿼리: top 세션들의 (session_id, workflow_phase) 그룹별 집계
+        stmt = (
+            select(
+                TokenSnapshot.session_id,
+                Session.name.label("session_name"),
+                TokenSnapshot.workflow_phase,
+                func.coalesce(func.sum(TokenSnapshot.input_tokens), 0).label(
+                    "input_tokens"
+                ),
+                func.coalesce(func.sum(TokenSnapshot.output_tokens), 0).label(
+                    "output_tokens"
+                ),
+                (
+                    func.coalesce(func.sum(TokenSnapshot.input_tokens), 0)
+                    + func.coalesce(func.sum(TokenSnapshot.output_tokens), 0)
+                ).label("total_tokens"),
+            )
+            .join(top_sessions, TokenSnapshot.session_id == top_sessions.c.session_id)
+            .outerjoin(Session, TokenSnapshot.session_id == Session.id)
+            .where(
+                TokenSnapshot.timestamp >= start,
+                TokenSnapshot.timestamp < end,
+                TokenSnapshot.workflow_phase.isnot(None),
+            )
+            .group_by(
+                TokenSnapshot.session_id,
+                Session.name,
+                TokenSnapshot.workflow_phase,
+            )
+            .order_by(top_sessions.c.total.desc(), TokenSnapshot.workflow_phase)
+        )
+        result = await self._session.execute(stmt)
+        return [dict(row._mapping) for row in result.all()]

@@ -6,12 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 interface PhaseApprovalBarProps {
   phase?: string;
   onApprove?: (feedback?: string) => void;
-  onRequestRevision?: (feedback: string) => void;
+  onRequestRevision?: (feedback?: string) => void;
   onToggleEdit?: () => void;
   isApproving?: boolean;
   isRequestingRevision?: boolean;
   isEditing?: boolean;
   disabled?: boolean;
+  pendingAnnotationCount?: number;
 }
 
 export const PhaseApprovalBar = memo(function PhaseApprovalBar({
@@ -23,27 +24,38 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
   isRequestingRevision = false,
   isEditing = false,
   disabled = false,
+  pendingAnnotationCount = 0,
 }: PhaseApprovalBarProps) {
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [feedback, setFeedback] = useState("");
+
+  const hasPendingAnnotations = pendingAnnotationCount > 0;
 
   const handleApprove = useCallback(() => {
     onApprove?.();
   }, [onApprove]);
 
   const handleRevisionSubmit = useCallback(() => {
-    if (feedback.trim()) {
-      onRequestRevision?.(feedback.trim());
+    if (feedback.trim() || hasPendingAnnotations) {
+      onRequestRevision?.(feedback.trim() || undefined);
       setFeedback("");
       setShowRevisionInput(false);
     }
-  }, [feedback, onRequestRevision]);
+  }, [feedback, onRequestRevision, hasPendingAnnotations]);
 
   if (showRevisionInput) {
     return (
       <div className="border-t border-border px-4 py-3 space-y-2 bg-card">
+        {hasPendingAnnotations && (
+          <p className="text-xs text-muted-foreground">
+            인라인 주석 {pendingAnnotationCount}건이 자동으로 포함됩니다.
+          </p>
+        )}
         <Textarea
-          placeholder="수정이 필요한 내용을 설명해주세요…"
+          placeholder={hasPendingAnnotations
+            ? "추가 피드백이 있으면 입력하세요… (선택사항)"
+            : "수정이 필요한 내용을 설명해주세요…"
+          }
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
           className="min-h-[60px] text-sm"
@@ -61,7 +73,7 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
             variant="default"
             size="sm"
             onClick={handleRevisionSubmit}
-            disabled={!feedback.trim() || isRequestingRevision}
+            disabled={(!feedback.trim() && !hasPendingAnnotations) || isRequestingRevision}
           >
             {isRequestingRevision ? "요청 중…" : "수정 요청"}
           </Button>

@@ -333,7 +333,7 @@ async def request_revision(
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
-    result = await workflow.request_revision(session_id, session_manager=manager, feedback=req.feedback)
+    result = await workflow.request_revision(session_id, session_manager=manager, feedback=req.feedback or "")
     current_phase = result.get("phase")
 
     await ws_manager.broadcast_event(
@@ -360,7 +360,7 @@ async def request_revision(
             if current_step and current_step.review_required:
                 original_prompt = session.get("workflow_original_prompt", "")
                 revision_context = await workflow.build_revision_context(
-                    session_id, original_prompt, req.feedback,
+                    session_id, original_prompt, req.feedback or "",
                     session_manager=manager,
                 )
 

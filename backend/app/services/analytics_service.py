@@ -11,6 +11,7 @@ from app.schemas.analytics import (
     DailyTokenUsage,
     PhaseTokenUsage,
     ProjectTokenUsage,
+    SessionPhaseTokenUsage,
     SessionTokenRanking,
     TokenSummary,
 )
@@ -34,6 +35,7 @@ class AnalyticsService:
             sessions_raw = await repo.get_session_ranking(start, end, limit=20)
             projects_raw = await repo.get_project_usage(start, end)
             phases_raw = await repo.get_phase_usage(start, end)
+            session_phases_raw = await repo.get_session_phase_usage(start, end, limit=10)
 
         total_tokens = summary_raw.get("total_input_tokens", 0) + summary_raw.get(
             "total_output_tokens", 0
@@ -69,6 +71,7 @@ class AnalyticsService:
             for row in projects_raw
         ]
         phase_usage = [PhaseTokenUsage(**row) for row in phases_raw]
+        session_phase_usage = [SessionPhaseTokenUsage(**row) for row in session_phases_raw]
 
         return AnalyticsResponse(
             period=period.value,
@@ -79,6 +82,7 @@ class AnalyticsService:
             session_ranking=session_ranking,
             project_usage=project_usage,
             phase_usage=phase_usage,
+            session_phase_usage=session_phase_usage,
         )
 
     @staticmethod
