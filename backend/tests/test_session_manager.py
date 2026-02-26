@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.exceptions import NotFoundError
 from app.models.session import SessionStatus
 from app.schemas.session import SessionInfo
 
@@ -65,9 +66,9 @@ class TestSessionManager:
         assert session["work_dir"] == work_dir
 
     async def test_get_nonexistent_session(self, session_manager):
-        """Test retrieval of nonexistent session returns None."""
-        session = await session_manager.get("nonexistent")
-        assert session is None
+        """Test retrieval of nonexistent session raises NotFoundError."""
+        with pytest.raises(NotFoundError, match="세션을 찾을 수 없습니다"):
+            await session_manager.get("nonexistent")
 
     async def test_get_with_counts(self, session_manager):
         """Test get_with_counts includes message_count and file_changes_count."""
@@ -111,13 +112,13 @@ class TestSessionManager:
         deleted = await session_manager.delete(session_id)
 
         assert deleted is True
-        session = await session_manager.get(session_id)
-        assert session is None
+        with pytest.raises(NotFoundError):
+            await session_manager.get(session_id)
 
     async def test_delete_session_failure(self, session_manager):
-        """Test deletion of nonexistent session returns False."""
-        deleted = await session_manager.delete("nonexistent")
-        assert deleted is False
+        """Test deletion of nonexistent session raises NotFoundError."""
+        with pytest.raises(NotFoundError, match="세션을 찾을 수 없습니다"):
+            await session_manager.delete("nonexistent")
 
     async def test_kill_process_cancels_runner_task(self, session_manager):
         """Test kill_process cancels runner task."""
@@ -392,7 +393,7 @@ class TestSessionManager:
         assert info.name == "Test Session"
 
     async def test_to_info_permission_tools_json_parse_failure(self, session_manager):
-        """Test to_info handles JSON parse failure for permission_required_tools."""
+        """Test to_info rejects invalid permission_required_tools (Pydantic validation)."""
         work_dir = tempfile.gettempdir()
         created = await session_manager.create(work_dir=work_dir)
         session_id = created["id"]
@@ -401,9 +402,8 @@ class TestSessionManager:
         # Manually corrupt JSON
         session_dict["permission_required_tools"] = "invalid-json"
 
-        info = session_manager.to_info(session_dict)
-
-        assert info.permission_required_tools is None
+        with pytest.raises(Exception):
+            session_manager.to_info(session_dict)
 
     async def test_to_info_permission_mode_bool(self, session_manager):
         """Test to_info preserves permission_mode as bool."""

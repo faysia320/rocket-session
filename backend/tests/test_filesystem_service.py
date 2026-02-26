@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.core.exceptions import ValidationError
 from app.schemas.filesystem import (
     DirectoryListResponse,
     GitInfo,
@@ -27,8 +28,8 @@ class TestValidatePath:
 
     @pytest.mark.asyncio
     async def test_validate_path_nonexistent(self, filesystem_service):
-        """Nonexistent path should raise ValueError."""
-        with pytest.raises(ValueError, match="경로가 존재하지 않습니다"):
+        """Nonexistent path should raise ValidationError."""
+        with pytest.raises(ValidationError, match="경로가 존재하지 않습니다"):
             filesystem_service._validate_path("/nonexistent/path/12345")
 
     @pytest.mark.asyncio
@@ -115,7 +116,7 @@ class TestListDirectory:
             file_path = Path(tmpdir) / "file.txt"
             file_path.touch()
 
-            with pytest.raises(ValueError, match="디렉토리가 아닙니다"):
+            with pytest.raises(ValidationError, match="디렉토리가 아닙니다"):
                 await filesystem_service.list_directory(str(file_path))
 
 

@@ -7,6 +7,7 @@ McpService의 주요 public 메서드를 PostgreSQL DB를 사용하여 검증합
 
 import pytest
 
+from app.core.exceptions import NotFoundError
 from app.schemas.mcp import McpServerInfo
 
 
@@ -207,10 +208,10 @@ class TestUpdateServer:
         assert updated is not None
         assert updated.env == {"NEW_VAR": "new_value"}
 
-    async def test_update_nonexistent_server_returns_none(self, mcp_service):
-        """존재하지 않는 서버 수정 시 None을 반환한다."""
-        result = await mcp_service.update_server("nonexistent-id", name="x")
-        assert result is None
+    async def test_update_nonexistent_server_raises(self, mcp_service):
+        """존재하지 않는 서버 수정 시 NotFoundError가 발생한다."""
+        with pytest.raises(NotFoundError, match="MCP 서버를 찾을 수 없습니다"):
+            await mcp_service.update_server("nonexistent-id", name="x")
 
 
 @pytest.mark.asyncio
@@ -230,10 +231,10 @@ class TestDeleteServer:
         server = await mcp_service.get_server(created.id)
         assert server is None
 
-    async def test_delete_nonexistent_server_returns_false(self, mcp_service):
-        """존재하지 않는 서버 삭제 시 False를 반환한다."""
-        deleted = await mcp_service.delete_server("nonexistent-id")
-        assert deleted is False
+    async def test_delete_nonexistent_server_raises(self, mcp_service):
+        """존재하지 않는 서버 삭제 시 NotFoundError가 발생한다."""
+        with pytest.raises(NotFoundError, match="MCP 서버를 찾을 수 없습니다"):
+            await mcp_service.delete_server("nonexistent-id")
 
 
 # ---------------------------------------------------------------------------

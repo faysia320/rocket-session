@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.core.exceptions import NotFoundError
 from app.models.workspace import Workspace
 from app.repositories.workspace_repo import WorkspaceRepository
 
@@ -119,10 +120,10 @@ class TestGet:
         assert result["name"] == "get-repo"
         assert result["status"] == "ready"
 
-    async def test_get_nonexistent_returns_none(self, workspace_service):
-        """존재하지 않는 워크스페이스 조회 시 None을 반환한다."""
-        result = await workspace_service.get("nonexistent-id")
-        assert result is None
+    async def test_get_nonexistent_raises(self, workspace_service):
+        """존재하지 않는 워크스페이스 조회 시 NotFoundError가 발생한다."""
+        with pytest.raises(NotFoundError, match="워크스페이스를 찾을 수 없습니다"):
+            await workspace_service.get("nonexistent-id")
 
 
 # ---------------------------------------------------------------------------
@@ -153,10 +154,10 @@ class TestUpdate:
         assert result is not None
         assert result["branch"] == "develop"
 
-    async def test_update_nonexistent_returns_none(self, workspace_service):
-        """존재하지 않는 워크스페이스 수정 시 None을 반환한다."""
-        result = await workspace_service.update("nonexistent-id", name="x")
-        assert result is None
+    async def test_update_nonexistent_raises(self, workspace_service):
+        """존재하지 않는 워크스페이스 수정 시 NotFoundError가 발생한다."""
+        with pytest.raises(NotFoundError, match="워크스페이스를 찾을 수 없습니다"):
+            await workspace_service.update("nonexistent-id", name="x")
 
 
 # ---------------------------------------------------------------------------
@@ -175,14 +176,14 @@ class TestDeleteWorkspace:
         deleted = await workspace_service.delete_workspace("ws-del-001")
         assert deleted is True
 
-        # 삭제 후 조회 시 None
-        result = await workspace_service.get("ws-del-001")
-        assert result is None
+        # 삭제 후 조회 시 NotFoundError
+        with pytest.raises(NotFoundError):
+            await workspace_service.get("ws-del-001")
 
-    async def test_delete_nonexistent_returns_false(self, workspace_service):
-        """존재하지 않는 워크스페이스 삭제 시 False를 반환한다."""
-        deleted = await workspace_service.delete_workspace("nonexistent-id")
-        assert deleted is False
+    async def test_delete_nonexistent_raises(self, workspace_service):
+        """존재하지 않는 워크스페이스 삭제 시 NotFoundError가 발생한다."""
+        with pytest.raises(NotFoundError, match="워크스페이스를 찾을 수 없습니다"):
+            await workspace_service.delete_workspace("nonexistent-id")
 
     async def test_delete_removes_local_directory(self, workspace_service, db):
         """워크스페이스 삭제 시 로컬 디렉토리도 삭제된다."""
@@ -231,8 +232,8 @@ class TestCleanupStale:
 
         await workspace_service.cleanup_stale()
 
-        result = await workspace_service.get("ws-stale-002")
-        assert result is None
+        with pytest.raises(NotFoundError):
+            await workspace_service.get("ws-stale-002")
 
     async def test_cleanup_ready_workspaces_unaffected(self, workspace_service, db):
         """ready 상태의 워크스페이스는 cleanup에 영향받지 않는다."""
@@ -275,5 +276,5 @@ class TestCleanupStale:
         assert cloning["status"] == "error"
 
         # deleting → 삭제됨
-        deleting = await workspace_service.get("ws-mix-003")
-        assert deleting is None
+        with pytest.raises(NotFoundError):
+            await workspace_service.get("ws-mix-003")

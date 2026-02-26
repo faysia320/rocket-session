@@ -10,7 +10,7 @@ import tempfile
 
 import pytest
 
-from app.core.exceptions import ConflictError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.schemas.tag import TagInfo
 
 
@@ -126,10 +126,10 @@ class TestUpdateTag:
         assert updated.name == "both-updated"
         assert updated.color == "#abcdef"
 
-    async def test_update_nonexistent_tag_returns_none(self, tag_service):
-        """존재하지 않는 태그 수정 시 None을 반환한다."""
-        result = await tag_service.update_tag("nonexistent-id", name="x")
-        assert result is None
+    async def test_update_nonexistent_tag_raises(self, tag_service):
+        """존재하지 않는 태그 수정 시 NotFoundError가 발생한다."""
+        with pytest.raises(NotFoundError, match="태그를 찾을 수 없습니다"):
+            await tag_service.update_tag("nonexistent-id", name="x")
 
 
 @pytest.mark.asyncio
@@ -147,10 +147,10 @@ class TestDeleteTag:
         tag = await tag_service.get_tag(created.id)
         assert tag is None
 
-    async def test_delete_nonexistent_tag_returns_false(self, tag_service):
-        """존재하지 않는 태그 삭제 시 False를 반환한다."""
-        deleted = await tag_service.delete_tag("nonexistent-id")
-        assert deleted is False
+    async def test_delete_nonexistent_tag_raises(self, tag_service):
+        """존재하지 않는 태그 삭제 시 NotFoundError가 발생한다."""
+        with pytest.raises(NotFoundError, match="태그를 찾을 수 없습니다"):
+            await tag_service.delete_tag("nonexistent-id")
 
 
 # ---------------------------------------------------------------------------
