@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Workflow } from "lucide-react";
 import {
   Select,
@@ -27,6 +27,11 @@ export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefiniti
     }
   }, [value, definitions, onSelect]);
 
+  const sortedDefinitions = useMemo(() => {
+    if (!definitions) return [];
+    return [...definitions].sort((a, b) => Number(b.is_builtin) - Number(a.is_builtin));
+  }, [definitions]);
+
   const handleChange = (val: string) => {
     onSelect(val);
   };
@@ -45,7 +50,7 @@ export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefiniti
             불러오는 중...
           </SelectItem>
         ) : null}
-        {definitions?.map((def) => (
+        {sortedDefinitions.map((def) => (
           <SelectItem key={def.id} value={def.id} className="font-mono text-xs">
             <span>{def.name}</span>
             {def.description ? (
