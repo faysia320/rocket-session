@@ -6,6 +6,7 @@
 import { config } from "@/config/env";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const LONG_TIMEOUT_MS = 60_000;
 
 /** HTTP 상태 코드를 포함하는 API 에러. */
 export class ApiError extends Error {
@@ -31,6 +32,7 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {},
     timeoutMs: number = DEFAULT_TIMEOUT_MS,
+    parseResponse: (res: Response) => Promise<T> = (res) => res.json() as Promise<T>,
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
@@ -58,7 +60,7 @@ class ApiClient {
         );
       }
 
-      return response.json();
+      return parseResponse(response);
     } finally {
       clearTimeout(timer);
     }
@@ -69,70 +71,15 @@ class ApiClient {
   }
 
   async getText(endpoint: string): Promise<string> {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-        throw new ApiError(
-          error.detail || `HTTP ${response.status}`,
-          response.status,
-          error.detail,
-        );
-      }
-      return response.text();
-    } finally {
-      clearTimeout(timer);
-    }
+    return this.request<string>(endpoint, {}, DEFAULT_TIMEOUT_MS, (res) => res.text());
   }
 
   async getBlob(endpoint: string): Promise<Blob> {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60_000);
-
-    try {
-      const response = await fetch(url, { signal: controller.signal });
-      if (!response.ok) {
-        throw new ApiError(`HTTP ${response.status}`, response.status);
-      }
-      return response.blob();
-    } finally {
-      clearTimeout(timer);
-    }
+    return this.request<Blob>(endpoint, {}, LONG_TIMEOUT_MS, (res) => res.blob());
   }
 
   async postFormData<T>(endpoint: string, formData: FormData): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60_000);
-
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        body: formData,
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Upload failed" }));
-        throw new ApiError(
-          error.detail || `HTTP ${response.status}`,
-          response.status,
-          error.detail,
-        );
-      }
-
-      return response.json();
-    } finally {
-      clearTimeout(timer);
-    }
+    return this.request<T>(endpoint, { method: "POST", body: formData }, LONG_TIMEOUT_MS);
   }
 
   async post<T>(endpoint: string, data?: unknown, timeoutMs?: number): Promise<T> {

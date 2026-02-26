@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { sessionsApi } from "@/lib/api/sessions.api";
+import { useOptimisticMutation } from "@/lib/hooks/useOptimisticMutation";
 import { sessionKeys } from "./sessionKeys";
 import type { SessionInfo, SessionStatus } from "@/types";
 import { useSessionStore } from "@/store/useSessionStore";
-import type { QueryClient } from "@tanstack/react-query";
 
 /** Split Mode에서 삭제/아카이브 후 이동할 경로를 결정한다. */
 function getPostDeleteTarget(
@@ -106,26 +107,11 @@ export function useSessions() {
     return () => clearInterval(interval);
   }, [hasRunning, queryClient]);
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => sessionsApi.delete(id),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
-      queryClient.setQueryData<SessionInfo[]>(
-        sessionKeys.list(),
-        (old) => old?.filter((s) => s.id !== id) ?? [],
-      );
-      return { previous };
-    },
-    onError: (_err, _id, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(sessionKeys.list(), context.previous);
-      }
-      toast.error("세션 삭제에 실패했습니다");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
-    },
+  const deleteMutation = useOptimisticMutation<SessionInfo[], string>({
+    mutationFn: (id) => sessionsApi.delete(id),
+    queryKey: sessionKeys.list(),
+    updater: (old, id) => old?.filter((s) => s.id !== id) ?? [],
+    errorMessage: "세션 삭제에 실패했습니다",
   });
 
   const deleteSession = useCallback(
@@ -144,26 +130,12 @@ export function useSessions() {
     [navigate],
   );
 
-  const renameMutation = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => sessionsApi.update(id, { name }),
-    onMutate: async ({ id, name }) => {
-      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
-      queryClient.setQueryData<SessionInfo[]>(
-        sessionKeys.list(),
-        (old) => old?.map((s) => (s.id === id ? { ...s, name } : s)) ?? [],
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(sessionKeys.list(), context.previous);
-      }
-      toast.error("세션 이름 변경에 실패했습니다");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
-    },
+  const renameMutation = useOptimisticMutation<SessionInfo[], { id: string; name: string }>({
+    mutationFn: ({ id, name }) => sessionsApi.update(id, { name }),
+    queryKey: sessionKeys.list(),
+    updater: (old, { id, name }) => old?.map((s) => (s.id === id ? { ...s, name } : s)) ?? [],
+    errorMessage: "세션 이름 변경에 실패했습니다",
+    invalidateKey: sessionKeys.all,
   });
 
   const renameSession = useCallback(
@@ -173,27 +145,12 @@ export function useSessions() {
     [renameMutation],
   );
 
-  const archiveMutation = useMutation({
-    mutationFn: (id: string) => sessionsApi.archive(id),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
-      queryClient.setQueryData<SessionInfo[]>(
-        sessionKeys.list(),
-        (old) =>
-          old?.map((s) => (s.id === id ? { ...s, status: "archived" as SessionStatus } : s)) ?? [],
-      );
-      return { previous };
-    },
-    onError: (_err, _id, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(sessionKeys.list(), context.previous);
-      }
-      toast.error("세션 보관에 실패했습니다");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
-    },
+  const archiveMutation = useOptimisticMutation<SessionInfo[], string>({
+    mutationFn: (id) => sessionsApi.archive(id),
+    queryKey: sessionKeys.list(),
+    updater: (old, id) =>
+      old?.map((s) => (s.id === id ? { ...s, status: "archived" as SessionStatus } : s)) ?? [],
+    errorMessage: "세션 보관에 실패했습니다",
   });
 
   const archiveSession = useCallback(
@@ -205,27 +162,12 @@ export function useSessions() {
     [archiveMutation, navigate, location.pathname, queryClient],
   );
 
-  const unarchiveMutation = useMutation({
-    mutationFn: (id: string) => sessionsApi.unarchive(id),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previous = queryClient.getQueryData<SessionInfo[]>(sessionKeys.list());
-      queryClient.setQueryData<SessionInfo[]>(
-        sessionKeys.list(),
-        (old) =>
-          old?.map((s) => (s.id === id ? { ...s, status: "idle" as SessionStatus } : s)) ?? [],
-      );
-      return { previous };
-    },
-    onError: (_err, _id, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(sessionKeys.list(), context.previous);
-      }
-      toast.error("세션 보관 해제에 실패했습니다");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
-    },
+  const unarchiveMutation = useOptimisticMutation<SessionInfo[], string>({
+    mutationFn: (id) => sessionsApi.unarchive(id),
+    queryKey: sessionKeys.list(),
+    updater: (old, id) =>
+      old?.map((s) => (s.id === id ? { ...s, status: "idle" as SessionStatus } : s)) ?? [],
+    errorMessage: "세션 보관 해제에 실패했습니다",
   });
 
   const unarchiveSession = useCallback(

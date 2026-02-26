@@ -4,6 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { tagsApi } from "@/lib/api/tags.api";
+import { useOptimisticMutation } from "@/lib/hooks/useOptimisticMutation";
 import { tagKeys } from "./tagKeys";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 import type { TagInfo, CreateTagRequest, UpdateTagRequest } from "@/types";
@@ -34,28 +35,12 @@ export function useCreateTag() {
 
 /** 태그 수정 */
 export function useUpdateTag() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateTagRequest }) => tagsApi.update(id, data),
-    onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: tagKeys.list() });
-      const previous = queryClient.getQueryData<TagInfo[]>(tagKeys.list());
-      queryClient.setQueryData<TagInfo[]>(
-        tagKeys.list(),
-        (old) => old?.map((t) => (t.id === id ? { ...t, ...data } : t)) ?? [],
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(tagKeys.list(), context.previous);
-      }
-      toast.error("태그 수정에 실패했습니다");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: tagKeys.all });
-    },
+  return useOptimisticMutation<TagInfo[], { id: string; data: UpdateTagRequest }>({
+    mutationFn: ({ id, data }) => tagsApi.update(id, data),
+    queryKey: tagKeys.list(),
+    updater: (old, { id, data }) => old?.map((t) => (t.id === id ? { ...t, ...data } : t)) ?? [],
+    errorMessage: "태그 수정에 실패했습니다",
+    invalidateKey: tagKeys.all,
   });
 }
 
@@ -63,26 +48,14 @@ export function useUpdateTag() {
 export function useDeleteTag() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (id: string) => tagsApi.delete(id),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: tagKeys.list() });
-      const previous = queryClient.getQueryData<TagInfo[]>(tagKeys.list());
-      queryClient.setQueryData<TagInfo[]>(
-        tagKeys.list(),
-        (old) => old?.filter((t) => t.id !== id) ?? [],
-      );
-      return { previous };
-    },
-    onError: (_err, _id, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(tagKeys.list(), context.previous);
-      }
-      toast.error("태그 삭제에 실패했습니다");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: tagKeys.all });
-      // 세션 목록도 갱신 (세션에 표시되는 태그가 변경될 수 있음)
+  return useOptimisticMutation<TagInfo[], string>({
+    mutationFn: (id) => tagsApi.delete(id),
+    queryKey: tagKeys.list(),
+    updater: (old, id) => old?.filter((t) => t.id !== id) ?? [],
+    errorMessage: "태그 삭제에 실패했습니다",
+    invalidateKey: tagKeys.all,
+    // 세션 목록도 갱신 (세션에 표시되는 태그가 변경될 수 있음)
+    onSettledExtra: () => {
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
     },
   });
