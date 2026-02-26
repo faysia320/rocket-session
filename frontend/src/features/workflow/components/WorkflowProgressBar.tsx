@@ -1,22 +1,46 @@
 import { memo, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Search, FileText, Code, Check } from "lucide-react";
-import type { WorkflowPhase, WorkflowPhaseStatus } from "@/types/workflow";
+import {
+  Search,
+  FileText,
+  Code,
+  Check,
+  Wrench,
+  TestTube,
+  Eye,
+  Palette,
+  BookOpen,
+  Hammer,
+  CheckCircle,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { WorkflowPhaseStatus, WorkflowStepConfig } from "@/types/workflow";
 
-const PHASES: { key: WorkflowPhase; label: string; icon: typeof Search }[] = [
-  { key: "research", label: "Research", icon: Search },
-  { key: "plan", label: "Plan", icon: FileText },
-  { key: "implement", label: "Implement", icon: Code },
-];
+const ICON_MAP: Record<string, LucideIcon> = {
+  Search,
+  FileText,
+  Code,
+  Wrench,
+  TestTube,
+  Eye,
+  Palette,
+  BookOpen,
+  Hammer,
+  CheckCircle,
+};
+
+function resolveIcon(name: string): LucideIcon {
+  return ICON_MAP[name] ?? FileText;
+}
 
 function getPhaseState(
-  phaseKey: WorkflowPhase,
-  currentPhase: WorkflowPhase | null,
+  phaseKey: string,
+  currentPhase: string | null,
   currentStatus: WorkflowPhaseStatus | null,
+  orderedNames: string[],
 ): "done" | "active" | "waiting" {
-  const order = ["research", "plan", "implement"];
-  const currentIdx = currentPhase ? order.indexOf(currentPhase) : -1;
-  const phaseIdx = order.indexOf(phaseKey);
+  const currentIdx = currentPhase ? orderedNames.indexOf(currentPhase) : -1;
+  const phaseIdx = orderedNames.indexOf(phaseKey);
 
   if (currentStatus === "completed") return "done";
   if (phaseIdx < currentIdx) return "done";
@@ -27,24 +51,28 @@ function getPhaseState(
   return "waiting";
 }
 
-
 interface WorkflowProgressBarProps {
-  currentPhase: WorkflowPhase | null;
+  steps: WorkflowStepConfig[];
+  currentPhase: string | null;
   currentStatus: WorkflowPhaseStatus | null;
-  onPhaseClick?: (phase: WorkflowPhase) => void;
+  onPhaseClick?: (phase: string) => void;
 }
 
 export const WorkflowProgressBar = memo(function WorkflowProgressBar({
+  steps,
   currentPhase,
   currentStatus,
   onPhaseClick,
 }: WorkflowProgressBarProps) {
   const handleClick = useCallback(
-    (phase: WorkflowPhase) => {
+    (phase: string) => {
       onPhaseClick?.(phase);
     },
     [onPhaseClick],
   );
+
+  const sortedSteps = [...steps].sort((a, b) => a.order_index - b.order_index);
+  const orderedNames = sortedSteps.map((s) => s.name);
 
   return (
     <div
@@ -52,13 +80,13 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
       aria-label="워크플로우 진행 상태"
       className="flex items-center justify-center gap-1 px-4 py-2 border-b border-border bg-card/50"
     >
-      {PHASES.map((phase, idx) => {
-        const state = getPhaseState(phase.key, currentPhase, currentStatus);
-        const isActive = phase.key === currentPhase;
-        const Icon = state === "done" ? Check : phase.icon;
+      {sortedSteps.map((step, idx) => {
+        const state = getPhaseState(step.name, currentPhase, currentStatus, orderedNames);
+        const isActive = step.name === currentPhase;
+        const StepIcon = state === "done" ? Check : resolveIcon(step.icon);
 
         return (
-          <div key={phase.key} className="flex items-center">
+          <div key={step.name} className="flex items-center">
             {idx > 0 ? (
               <div
                 className={cn(
@@ -69,7 +97,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
             ) : null}
             <button
               type="button"
-              onClick={() => handleClick(phase.key)}
+              onClick={() => handleClick(step.name)}
               disabled={state === "waiting"}
               aria-current={isActive ? "step" : undefined}
               className={cn(
@@ -86,7 +114,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
                   "bg-muted/30 text-muted-foreground cursor-not-allowed",
               )}
             >
-              <Icon
+              <StepIcon
                 className={cn(
                   "w-3.5 h-3.5 shrink-0",
                   state === "active" &&
@@ -94,7 +122,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
                     "animate-pulse",
                 )}
               />
-              <span>{phase.label}</span>
+              <span>{step.label}</span>
             </button>
           </div>
         );

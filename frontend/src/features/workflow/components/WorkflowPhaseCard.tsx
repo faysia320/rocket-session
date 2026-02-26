@@ -1,7 +1,6 @@
 import { memo, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import {
-  Search,
   FileText,
   Check,
   RotateCcw,
@@ -14,20 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import type { ResultMsg } from "@/types/message";
-
-const PHASE_CONFIG: Record<
-  string,
-  { icon: typeof Search; label: string; color: string }
-> = {
-  plan: {
-    icon: FileText,
-    label: "Plan",
-    color: "text-primary",
-  },
-};
+import type { WorkflowStepConfig } from "@/types/workflow";
 
 interface WorkflowPhaseCardProps {
   message: ResultMsg;
+  stepConfig?: WorkflowStepConfig;
   onApprove?: (feedback?: string) => void;
   onRequestRevision?: (feedback: string) => void;
   onOpenArtifact?: () => void;
@@ -38,6 +28,7 @@ interface WorkflowPhaseCardProps {
 
 export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
   message,
+  stepConfig,
   onApprove,
   onRequestRevision,
   onOpenArtifact,
@@ -49,10 +40,10 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [revisionFeedback, setRevisionFeedback] = useState("");
 
-  const phase = message.workflow_phase ?? "research";
-  const config = PHASE_CONFIG[phase] ?? PHASE_CONFIG.research;
-  const Icon = config.icon;
+  const label = stepConfig?.label ?? message.workflow_phase ?? "Phase";
+  const Icon = FileText;
   const isApproved = message.workflowApproved === true;
+  const showActions = stepConfig?.review_required ?? message.workflow_phase === "plan";
 
   const handleApprove = useCallback(() => {
     onApprove?.();
@@ -82,8 +73,8 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card/80">
         <div className="flex items-center gap-2">
-          <Icon className={cn("w-4 h-4", config.color)} />
-          <span className="font-medium text-sm">{config.label} 완료</span>
+          <Icon className="w-4 h-4 text-primary" />
+          <span className="font-medium text-sm">{label} 완료</span>
           {isApproved ? (
             <Badge variant="outline" className="text-success border-success/30">
               <Check className="w-3 h-3 mr-1" />
@@ -133,8 +124,8 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
         ) : null}
       </div>
 
-      {/* Actions: Research는 자동 체이닝이므로 버튼 없음, Plan만 승인/수정 표시 */}
-      {!isApproved && phase === "plan" ? (
+      {/* Actions: review_required인 step만 승인/수정 버튼 표시 */}
+      {!isApproved && showActions ? (
         <div className="px-4 py-2.5 border-t border-border bg-muted/20">
           {showRevisionInput ? (
             <div className="space-y-2">
@@ -184,7 +175,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                 className="h-7 text-xs"
               >
                 <Check className="w-3.5 h-3.5 mr-1" />
-                {isApproving ? "승인 중…" : "승인 → 구현 시작"}
+                {isApproving ? "승인 중…" : "승인 → 다음 단계"}
               </Button>
             </div>
           )}

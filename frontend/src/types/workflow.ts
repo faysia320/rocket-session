@@ -1,4 +1,4 @@
-export type WorkflowPhase = "research" | "plan" | "implement";
+export type WorkflowPhase = string;
 export type WorkflowPhaseStatus =
   | "in_progress"
   | "awaiting_approval"
@@ -8,6 +8,27 @@ export type WorkflowPhaseStatus =
 export type ArtifactStatus = "draft" | "review" | "approved" | "superseded";
 export type AnnotationType = "comment" | "suggestion" | "rejection";
 export type AnnotationStatus = "pending" | "resolved" | "dismissed";
+
+export interface WorkflowStepConfig {
+  name: string;
+  label: string;
+  icon: string;
+  prompt_template: string;
+  constraints: string;
+  auto_advance: boolean;
+  review_required: boolean;
+  order_index: number;
+}
+
+export interface WorkflowDefinitionInfo {
+  id: string;
+  name: string;
+  description: string | null;
+  is_builtin: boolean;
+  steps: WorkflowStepConfig[];
+  created_at: string;
+  updated_at: string;
+}
 
 export interface ArtifactAnnotationInfo {
   id: number;
@@ -23,7 +44,7 @@ export interface ArtifactAnnotationInfo {
 export interface SessionArtifactInfo {
   id: number;
   session_id: string;
-  phase: WorkflowPhase;
+  phase: string;
   title: string;
   content: string;
   status: ArtifactStatus;
@@ -35,14 +56,18 @@ export interface SessionArtifactInfo {
 }
 
 export interface StartWorkflowRequest {
+  workflow_definition_id?: string;
+  start_from_step?: string;
   skip_research?: boolean;
   skip_plan?: boolean;
 }
 
 export interface WorkflowStatusResponse {
   workflow_enabled: boolean;
-  workflow_phase: WorkflowPhase | null;
+  workflow_phase: string | null;
   workflow_phase_status: WorkflowPhaseStatus | null;
+  workflow_definition_id: string | null;
+  steps: WorkflowStepConfig[];
   artifacts: SessionArtifactInfo[];
 }
 
@@ -69,3 +94,19 @@ export interface RequestRevisionRequest {
   feedback: string;
 }
 
+export interface CreateWorkflowDefinitionRequest {
+  name: string;
+  description?: string;
+  steps: WorkflowStepConfig[];
+}
+
+export interface UpdateWorkflowDefinitionRequest {
+  name?: string;
+  description?: string;
+  steps?: WorkflowStepConfig[];
+}
+
+export interface WorkflowDefinitionExport {
+  version: number;
+  definition: WorkflowDefinitionInfo;
+}

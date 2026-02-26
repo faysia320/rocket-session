@@ -8,7 +8,7 @@ import { useChatSearch } from "../hooks/useChatSearch";
 import { useWorkflowActions } from "@/features/workflow/hooks/useWorkflowActions";
 import { WorkflowProgressBar } from "@/features/workflow/components/WorkflowProgressBar";
 import { ArtifactViewer } from "@/features/workflow/components/ArtifactViewer";
-import { useWorkflowArtifact } from "@/features/workflow/hooks/useWorkflow";
+import { useWorkflowArtifact, useWorkflowStatus } from "@/features/workflow/hooks/useWorkflow";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatDialogs } from "./ChatDialogs";
 import { ChatSearchBar } from "./ChatSearchBar";
@@ -256,6 +256,13 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [virtualizer, queryClient, isSplitView, focusedSessionId, sessionId]);
 
+  // 워크플로우 정의 steps 로드
+  const { data: workflowStatusData } = useWorkflowStatus(
+    sessionId,
+    !!sessionInfo?.workflow_enabled,
+  );
+  const workflowSteps = workflowStatusData?.steps ?? [];
+
   // 워크플로우 액션
   const {
     handleAdvancePhase,
@@ -271,6 +278,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     sendPrompt,
     workflowPhase: sessionInfo?.workflow_phase,
     workflowPhaseStatus: sessionInfo?.workflow_phase_status,
+    workflowSteps,
   });
 
   // 아티팩트 뷰어 데이터
@@ -556,7 +564,8 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       />
       {sessionInfo?.workflow_enabled ? (
         <WorkflowProgressBar
-          currentPhase={(sessionInfo.workflow_phase as WorkflowPhase) ?? null}
+          steps={workflowSteps}
+          currentPhase={sessionInfo.workflow_phase ?? null}
           currentStatus={
             (sessionInfo.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus) ??
             null
@@ -612,6 +621,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         isRequestingRevision={isRequestingRevision}
         onAnswerQuestion={answerQuestion}
         onConfirmAnswers={confirmAndSendAnswers}
+        workflowSteps={workflowSteps}
       />
 
       <ActivityStatusBar

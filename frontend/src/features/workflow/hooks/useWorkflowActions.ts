@@ -5,17 +5,14 @@ import { useApprovePhase, useRequestRevision, workflowKeys } from "./useWorkflow
 import { workflowApi } from "@/lib/api/workflow.api";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 
-const PHASE_NAMES: Record<string, string> = {
-  research: "연구",
-  plan: "계획",
-  implement: "구현",
-};
+import type { WorkflowStepConfig } from "@/types/workflow";
 
 interface UseWorkflowActionsParams {
   sessionId: string;
   sendPrompt?: (prompt: string) => void;
   workflowPhase?: string | null;
   workflowPhaseStatus?: string | null;
+  workflowSteps?: WorkflowStepConfig[];
 }
 
 export function useWorkflowActions({
@@ -23,6 +20,7 @@ export function useWorkflowActions({
   sendPrompt,
   workflowPhase,
   workflowPhaseStatus,
+  workflowSteps,
 }: UseWorkflowActionsParams) {
   const queryClient = useQueryClient();
   const approveMutation = useApprovePhase(sessionId);
@@ -36,7 +34,6 @@ export function useWorkflowActions({
     if (
       workflowPhaseStatus === "awaiting_approval" &&
       workflowPhase &&
-      workflowPhase !== "implement" &&
       !artifactViewerOpen
     ) {
       const key = `${sessionId}-${workflowPhase}-${workflowPhaseStatus}`;
@@ -66,12 +63,10 @@ export function useWorkflowActions({
         const result = await approveMutation.mutateAsync({ feedback });
         const nextPhase = (result as Record<string, unknown>).next_phase as string | null;
 
-        if (nextPhase === "implement") {
-          toast.success("구현을 시작합니다");
-        } else if (nextPhase) {
-          toast.success(
-            `${PHASE_NAMES[nextPhase] ?? nextPhase} 단계로 전환되었습니다`,
-          );
+        if (nextPhase) {
+          const nextStep = workflowSteps?.find((s) => s.name === nextPhase);
+          const nextLabel = nextStep?.label ?? nextPhase;
+          toast.success(`${nextLabel} 단계로 전환되었습니다`);
         } else {
           toast.success("워크플로우가 완료되었습니다");
         }

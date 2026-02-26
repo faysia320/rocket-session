@@ -832,7 +832,7 @@ export function claudeSocketReducer(
         sessionInfo: state.sessionInfo
           ? {
               ...state.sessionInfo,
-              workflow_phase: "implement",
+              workflow_phase: state.sessionInfo.workflow_phase ?? null,
               workflow_phase_status: "completed",
             }
           : state.sessionInfo,
@@ -910,11 +910,11 @@ export function claudeSocketReducer(
         tokenUsage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 },
         pendingAnswerCount: 0,
         pinnedTodos: [],
-        // 워크플로우 활성 시 Research 초기 상태로 리셋
+        // 워크플로우 활성 시 첫 번째 단계로 리셋
         sessionInfo: state.sessionInfo?.workflow_enabled
           ? {
               ...state.sessionInfo,
-              workflow_phase: "research",
+              workflow_phase: null,
               workflow_phase_status: "in_progress",
             }
           : state.sessionInfo,

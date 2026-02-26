@@ -26,6 +26,7 @@ import type {
   AskUserQuestionMsg,
 } from "@/types";
 import { WorkflowPhaseCard } from "@/features/workflow/components/WorkflowPhaseCard";
+import type { WorkflowStepConfig } from "@/types/workflow";
 import { AskUserQuestionCard } from "./AskUserQuestionCard";
 import { EditToolMessage } from "./EditToolMessage";
 import { BashToolMessage } from "./BashToolMessage";
@@ -49,6 +50,7 @@ interface MessageBubbleProps {
   isRequestingRevision?: boolean;
   onAnswerQuestion?: (messageId: string, questionIndex: number, labels: string[]) => void;
   onConfirmAnswers?: (messageId: string) => void;
+  workflowSteps?: WorkflowStepConfig[];
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -65,6 +67,7 @@ export const MessageBubble = memo(function MessageBubble({
   isRequestingRevision,
   onAnswerQuestion,
   onConfirmAnswers,
+  workflowSteps,
 }: MessageBubbleProps) {
   const { type } = message;
 
@@ -81,11 +84,15 @@ export const MessageBubble = memo(function MessageBubble({
       );
     case "assistant_text":
       return <AssistantText message={message} isStreaming={isRunning} animate={animate} />;
-    case "result":
-      if (message.workflow_phase === "plan") {
+    case "result": {
+      const currentStep = workflowSteps?.find(
+        (s) => s.name === message.workflow_phase,
+      );
+      if (currentStep?.review_required || (!workflowSteps && message.workflow_phase === "plan")) {
         return (
           <WorkflowPhaseCard
             message={message}
+            stepConfig={currentStep}
             onApprove={onApprovePhase}
             onRequestRevision={onRequestRevision}
             onOpenArtifact={onOpenArtifact ? () => onOpenArtifact(message.workflow_phase ?? "plan") : undefined}
@@ -96,6 +103,7 @@ export const MessageBubble = memo(function MessageBubble({
         );
       }
       return <ResultMessage message={message} animate={animate} />;
+    }
     case "tool_use":
       if (message.tool === "TodoWrite") return null; // PinnedTodoBar에서 처리
       if (message.tool === "ExitPlanMode") return null; // WorkflowPhaseCard에서 처리

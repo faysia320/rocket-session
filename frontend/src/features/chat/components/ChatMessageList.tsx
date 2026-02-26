@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { MessageBubble } from "./MessageBubble";
 import type { Message, ToolUseMsg } from "@/types";
+import type { WorkflowStepConfig } from "@/types/workflow";
 
 interface ChatMessageListProps {
   messages: Message[];
@@ -27,6 +28,7 @@ interface ChatMessageListProps {
   isRequestingRevision: boolean;
   onAnswerQuestion: (toolUseId: string, questionIndex: number, selectedLabels: string[]) => void;
   onConfirmAnswers: (toolUseId: string) => void;
+  workflowSteps?: WorkflowStepConfig[];
 }
 
 export const ChatMessageList = memo(function ChatMessageList({
@@ -50,6 +52,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   isRequestingRevision,
   onAnswerQuestion,
   onConfirmAnswers,
+  workflowSteps,
 }: ChatMessageListProps) {
   return (
     <ScrollArea
@@ -132,6 +135,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                     isRequestingRevision={isRequestingRevision}
                     onAnswerQuestion={onAnswerQuestion}
                     onConfirmAnswers={onConfirmAnswers}
+                    workflowSteps={workflowSteps}
                   />
                 </ErrorBoundary>
               </div>
