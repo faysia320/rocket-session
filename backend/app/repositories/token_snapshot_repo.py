@@ -274,6 +274,7 @@ class TokenSnapshotRepository:
                 TokenSnapshot.session_id,
                 Session.name,
                 TokenSnapshot.workflow_phase,
+                top_sessions.c.total,
             )
             .order_by(top_sessions.c.total.desc(), TokenSnapshot.workflow_phase)
         )
