@@ -62,12 +62,15 @@ async def update_definition(
     req: UpdateWorkflowDefinitionRequest,
     service: WorkflowDefinitionService = Depends(get_workflow_definition_service),
 ):
-    updated = await service.update_definition(
-        def_id=def_id,
-        name=req.name,
-        description=req.description,
-        steps=req.steps,
-    )
+    try:
+        updated = await service.update_definition(
+            def_id=def_id,
+            name=req.name,
+            description=req.description,
+            steps=req.steps,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if not updated:
         raise HTTPException(
             status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
@@ -80,7 +83,10 @@ async def delete_definition(
     def_id: str,
     service: WorkflowDefinitionService = Depends(get_workflow_definition_service),
 ):
-    deleted = await service.delete_definition(def_id)
+    try:
+        deleted = await service.delete_definition(def_id)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if not deleted:
         raise HTTPException(
             status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"

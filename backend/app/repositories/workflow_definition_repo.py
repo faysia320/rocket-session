@@ -19,9 +19,11 @@ class WorkflowDefinitionRepository(BaseRepository[WorkflowDefinition]):
         return result.scalar_one_or_none()
 
     async def list_all(self) -> list[WorkflowDefinition]:
-        """전체 목록 (기본 우선, 최근 수정순)."""
+        """전체 목록 (시스템 워크플로우 상단 고정, 이후 기본 우선·최근 수정순)."""
         result = await self._session.execute(
             select(WorkflowDefinition).order_by(
+                WorkflowDefinition.is_builtin.desc(),
+                WorkflowDefinition.sort_order.asc(),
                 WorkflowDefinition.is_default.desc(),
                 WorkflowDefinition.updated_at.desc(),
             )

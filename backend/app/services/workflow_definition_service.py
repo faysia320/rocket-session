@@ -35,7 +35,9 @@ class WorkflowDefinitionService:
             id=entity.id,
             name=entity.name,
             description=entity.description,
+            is_builtin=bool(entity.is_builtin),
             is_default=bool(entity.is_default),
+            sort_order=entity.sort_order,
             steps=resolved,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
@@ -98,6 +100,11 @@ class WorkflowDefinitionService:
             kwargs["steps"] = [s.model_dump() for s in steps]
         async with self._db.session() as session:
             repo = WorkflowDefinitionRepository(session)
+            existing = await repo.get_by_id(def_id)
+            if not existing:
+                return None
+            if existing.is_builtin and name is not None and name != existing.name:
+                raise ValueError("시스템 워크플로우의 이름은 변경할 수 없습니다")
             entity = await repo.update_definition(def_id, **kwargs)
             if not entity:
                 return None
@@ -110,6 +117,8 @@ class WorkflowDefinitionService:
             entity = await repo.get_by_id(def_id)
             if not entity:
                 return False
+            if entity.is_builtin:
+                raise ValueError("시스템 워크플로우는 삭제할 수 없습니다")
             was_default = entity.is_default
             deleted = await repo.delete_by_id(def_id)
             if was_default:
