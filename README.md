@@ -15,8 +15,8 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                  API Layer (FastAPI)                         │
 │  Sessions · Files · Filesystem · Usage · Permissions · WS   │
-│  Settings · MCP · Templates · Tags · Analytics · Workspaces │
-│  Teams · Workflow                                            │
+│  Settings · MCP · Tags · Analytics · Workspaces             │
+│  Teams · Workflow · Workflow Definitions                     │
 └─────────────────────────────────────────────────────────────┘
                     │ subprocess (asyncio)
 ┌─────────────────────────────────────────────────────────────┐
@@ -28,8 +28,8 @@
 ┌─────────────────────────────────────────────────────────────┐
 │              PostgreSQL (asyncpg + SQLAlchemy ORM)            │
 │  sessions · messages · file_changes · events · workspaces    │
-│  global_settings · mcp_servers · tags · session_templates     │
-│  teams · team_messages · team_tasks                           │
+│  global_settings · mcp_servers · tags · workflow_definitions  │
+│  token_snapshots · teams · team_messages · team_tasks         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -48,7 +48,7 @@
 - **WebSocket 재연결** — 네트워크 끊김 후 놓친 이벤트 자동 복구
 - **활동 상태바** — 실행 중인 도구, 비용, 시간 실시간 표시
 - **MCP 서버 관리** — MCP 서버 설정, 활성화/비활성화, 세션별 연결
-- **세션 템플릿** — 자주 사용하는 설정을 템플릿으로 저장/재사용
+- **워크플로우 정의** — 워크플로우 정의 관리 (생성/수정/삭제/내보내기/가져오기)
 - **세션 태그** — 태그로 세션 분류 및 필터링
 - **분석 대시보드** — 토큰 사용량, 비용, 모델별 통계
 - **명령 팔레트** — Ctrl+K로 빠른 명령 실행 (세션/Git/채팅)
@@ -389,10 +389,10 @@ rocket-session/
 │   │   │           ├── ws.py          # WebSocket 엔드포인트
 │   │   │           ├── settings.py    # 글로벌 설정
 │   │   │           ├── mcp.py         # MCP 서버 관리
-│   │   │           ├── templates.py   # 세션 템플릿
 │   │   │           ├── tags.py        # 세션 태그
 │   │   │           ├── analytics.py   # 분석 데이터
 │   │   │           ├── workflow.py    # 워크플로우 관리
+│   │   │           ├── workflow_definitions.py  # 워크플로우 정의
 │   │   │           ├── workspaces.py  # 워크스페이스 CRUD + 동기화
 │   │   │           └── teams.py       # 팀 채팅
 │   │   ├── models/
@@ -406,7 +406,8 @@ rocket-session/
 │   │   │   ├── global_settings.py   # GlobalSettings ORM 모델
 │   │   │   ├── mcp_server.py        # McpServer ORM 모델
 │   │   │   ├── tag.py               # Tag + SessionTag ORM 모델
-│   │   │   ├── template.py          # SessionTemplate ORM 모델
+│   │   │   ├── token_snapshot.py    # TokenSnapshot ORM 모델
+│   │   │   ├── workflow_definition.py # WorkflowDefinition ORM 모델
 │   │   │   ├── workspace.py         # Workspace ORM 모델
 │   │   │   ├── team.py              # Team ORM 모델
 │   │   │   ├── team_message.py      # TeamMessage ORM 모델
@@ -420,10 +421,11 @@ rocket-session/
 │   │   │   ├── settings_repo.py     # SettingsRepository
 │   │   │   ├── mcp_server_repo.py   # McpServerRepository
 │   │   │   ├── tag_repo.py          # TagRepository
-│   │   │   ├── template_repo.py     # TemplateRepository
 │   │   │   ├── search_repo.py       # SearchRepository
 │   │   │   ├── analytics_repo.py    # AnalyticsRepository
 │   │   │   ├── artifact_repo.py     # ArtifactRepository
+│   │   │   ├── token_snapshot_repo.py # TokenSnapshotRepository
+│   │   │   ├── workflow_definition_repo.py # WorkflowDefinitionRepository
 │   │   │   ├── workspace_repo.py    # WorkspaceRepository
 │   │   │   ├── team_repo.py         # TeamRepository
 │   │   │   ├── team_task_repo.py    # TeamTaskRepository
@@ -436,11 +438,12 @@ rocket-session/
 │   │   │   ├── local_session.py     # 로컬 세션 스키마
 │   │   │   ├── settings.py          # 글로벌 설정 스키마
 │   │   │   ├── mcp.py              # MCP 서버 스키마
-│   │   │   ├── template.py          # 템플릿 스키마
 │   │   │   ├── tag.py               # 태그 스키마
 │   │   │   ├── analytics.py         # 분석 스키마
 │   │   │   ├── search.py            # 검색 스키마
 │   │   │   ├── workspace.py         # 워크스페이스 스키마
+│   │   │   ├── workflow_definition.py # 워크플로우 정의 스키마
+│   │   │   ├── common.py            # 공통 응답 스키마
 │   │   │   └── team.py              # 팀 스키마
 │   │   └── services/
 │   │       ├── session_manager.py     # 세션 생명주기 관리
@@ -455,13 +458,14 @@ rocket-session/
 │   │       ├── local_session_scanner.py # 로컬 세션 스캐너
 │   │       ├── settings_service.py    # 글로벌 설정 관리
 │   │       ├── mcp_service.py         # MCP 서버 관리
-│   │       ├── template_service.py    # 세션 템플릿 관리
 │   │       ├── tag_service.py         # 태그 관리
 │   │       ├── search_service.py      # 전문 검색 (TSVECTOR)
 │   │       ├── analytics_service.py   # 분석 데이터 집계
 │   │       ├── jsonl_watcher.py       # JSONL 세션 실시간 감시
 │   │       ├── event_handler.py       # 이벤트 처리
 │   │       ├── workflow_service.py    # 워크플로우 3단계 관리
+│   │       ├── workflow_definition_service.py # 워크플로우 정의 관리
+│   │       ├── pending_questions.py   # AskUserQuestion 대기 상태 관리
 │   │       ├── workspace_service.py   # Git clone 기반 워크스페이스 관리
 │   │       ├── permission_mcp_server.py # Permission MCP 서버
 │   │       ├── team_service.py        # 팀 관리
@@ -494,7 +498,6 @@ rocket-session/
 │   │   │   ├── settings.ts            # 설정 타입
 │   │   │   ├── notification.ts        # 알림 타입
 │   │   │   ├── analytics.ts           # 분석 타입
-│   │   │   ├── template.ts            # 템플릿 타입
 │   │   │   ├── workspace.ts           # 워크스페이스 타입
 │   │   │   ├── team.ts                # 팀 타입
 │   │   │   ├── ws-events.ts           # WebSocket 이벤트 타입
@@ -525,8 +528,7 @@ rocket-session/
 │   │   │   ├── layout/                # 레이아웃 (Split View 등)
 │   │   │   ├── workspace/             # 워크스페이스 관리
 │   │   │   ├── team/                  # 팀 채팅
-│   │   │   ├── tags/                  # 태그 관리
-│   │   │   └── template/              # 세션 템플릿
+│   │   │   └── tags/                  # 태그 관리
 │   │   └── lib/api/                   # API 클라이언트
 │   ├── design-system/                 # 디자인 토큰 + ESLint + Tailwind 플러그인
 │   ├── Dockerfile
@@ -598,20 +600,27 @@ rocket-session/
 | `POST` | `/api/v1/mcp/servers` | MCP 서버 추가 |
 | `PATCH` | `/api/v1/mcp/servers/{id}` | MCP 서버 수정 |
 | `DELETE` | `/api/v1/mcp/servers/{id}` | MCP 서버 삭제 |
+| `GET` | `/api/v1/mcp/system-servers` | 시스템 MCP 서버 조회 |
+| `POST` | `/api/v1/mcp/import-system` | 시스템 MCP 서버 가져오기 |
 
-### Templates
+### Workflow Definitions
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| `GET` | `/api/v1/templates/` | 템플릿 목록 |
-| `POST` | `/api/v1/templates/` | 템플릿 생성 |
-| `PATCH` | `/api/v1/templates/{id}` | 템플릿 수정 |
-| `DELETE` | `/api/v1/templates/{id}` | 템플릿 삭제 |
+| `GET` | `/api/v1/workflow-definitions/` | 워크플로우 정의 목록 |
+| `POST` | `/api/v1/workflow-definitions/` | 워크플로우 정의 생성 |
+| `POST` | `/api/v1/workflow-definitions/import` | 워크플로우 정의 가져오기 |
+| `GET` | `/api/v1/workflow-definitions/{id}` | 워크플로우 정의 상세 |
+| `PATCH` | `/api/v1/workflow-definitions/{id}` | 워크플로우 정의 수정 |
+| `DELETE` | `/api/v1/workflow-definitions/{id}` | 워크플로우 정의 삭제 |
+| `POST` | `/api/v1/workflow-definitions/{id}/set-default` | 기본 정의 설정 |
+| `GET` | `/api/v1/workflow-definitions/{id}/export` | 워크플로우 정의 내보내기 |
 
 ### Tags
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
 | `GET` | `/api/v1/tags/` | 태그 목록 |
 | `POST` | `/api/v1/tags/` | 태그 생성 |
+| `PATCH` | `/api/v1/tags/{id}` | 태그 수정 |
 | `DELETE` | `/api/v1/tags/{id}` | 태그 삭제 |
 
 ### Analytics
@@ -668,7 +677,8 @@ PostgreSQL + SQLAlchemy ORM, 마이그레이션: Alembic:
 | `mcp_servers` | MCP 서버 설정 (name, transport_type, command, url, env) |
 | `tags` | 태그 정의 (name, color) |
 | `session_tags` | 세션-태그 다대다 연결 |
-| `session_templates` | 세션 템플릿 (name, description, 모든 세션 옵션) |
+| `workflow_definitions` | 워크플로우 정의 (name, description, steps, is_default, is_builtin, sort_order) |
+| `token_snapshots` | 토큰 사용량 스냅샷 (session_id, input_tokens, output_tokens, model, timestamp) |
 | `session_artifacts` | 워크플로우 아티팩트 (phase, title, content, status) |
 | `artifact_annotations` | 아티팩트 인라인 주석 (line_start/end, content, type, status) |
 | `teams` | 팀 (name, workspace_id, goal, status) |

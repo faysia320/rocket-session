@@ -1,6 +1,6 @@
 # rocket-session
 
-> **최종 수정일**: 2026-02-22
+> **최종 수정일**: 2026-02-26
 
 ## 실행 환경 (필수 참조)
 
@@ -167,6 +167,7 @@ rocket-session/
 │   │   │           ├── tags.py       # 세션 태그
 │   │   │           ├── analytics.py  # 분석 데이터
 │   │   │           ├── workflow.py   # 워크플로우 관리
+│   │   │           ├── workflow_definitions.py  # 워크플로우 정의
 │   │   │           ├── workspaces.py  # 워크스페이스 CRUD + 동기화
 │   │   │           └── teams.py       # 팀 채팅
 │   │   ├── models/
@@ -180,7 +181,8 @@ rocket-session/
 │   │   │   ├── global_settings.py    # GlobalSettings ORM 모델
 │   │   │   ├── mcp_server.py         # McpServer ORM 모델
 │   │   │   ├── tag.py                # Tag + SessionTag ORM 모델
-
+│   │   │   ├── token_snapshot.py    # TokenSnapshot ORM 모델
+│   │   │   ├── workflow_definition.py # WorkflowDefinition ORM 모델
 │   │   │   ├── workspace.py         # Workspace ORM 모델
 │   │   │   ├── team.py              # Team ORM 모델
 │   │   │   ├── team_message.py      # TeamMessage ORM 모델
@@ -194,10 +196,11 @@ rocket-session/
 │   │   │   ├── settings_repo.py      # SettingsRepository
 │   │   │   ├── mcp_server_repo.py    # McpServerRepository
 │   │   │   ├── tag_repo.py           # TagRepository
-
+│   │   │   ├── token_snapshot_repo.py # TokenSnapshotRepository
 │   │   │   ├── search_repo.py        # SearchRepository
 │   │   │   ├── analytics_repo.py     # AnalyticsRepository
 │   │   │   ├── artifact_repo.py      # ArtifactRepository
+│   │   │   ├── workflow_definition_repo.py # WorkflowDefinitionRepository
 │   │   │   ├── workspace_repo.py    # WorkspaceRepository
 │   │   │   ├── team_repo.py         # TeamRepository
 │   │   │   ├── team_task_repo.py    # TeamTaskRepository
@@ -214,6 +217,8 @@ rocket-session/
 │   │   │   ├── tag.py                # 태그 스키마
 │   │   │   ├── analytics.py          # 분석 스키마
 │   │   │   ├── search.py             # 검색 스키마
+│   │   │   ├── workflow_definition.py # 워크플로우 정의 스키마
+│   │   │   ├── common.py            # 공통 응답 스키마
 │   │   │   ├── workspace.py         # 워크스페이스 스키마
 │   │   │   └── team.py              # 팀 스키마
 │   │   └── services/
@@ -228,6 +233,8 @@ rocket-session/
 
 │   │       ├── tag_service.py        # 태그 관리
 │   │       ├── search_service.py     # 전문 검색 (TSVECTOR)
+│   │       ├── workflow_definition_service.py # 워크플로우 정의 관리
+│   │       ├── pending_questions.py  # AskUserQuestion 대기 상태 관리
 │   │       ├── analytics_service.py  # 분석 데이터 집계
 │   │       ├── jsonl_watcher.py      # JSONL 세션 실시간 감시
 │   │       ├── event_handler.py      # 이벤트 처리
@@ -393,8 +400,8 @@ rocket-session/
 │              PostgreSQL (asyncpg + SQLAlchemy ORM)            │
 │  sessions · messages · file_changes · events · workspaces    │
 │  session_artifacts · artifact_annotations                    │
-│  global_settings · mcp_servers · tags                         │
-│  teams · team_messages · team_tasks                           │
+│  global_settings · mcp_servers · tags · workflow_definitions  │
+│  token_snapshots · teams · team_messages · team_tasks         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -431,6 +438,7 @@ rocket-session/
 | `SearchService` | 전문 검색 (TSVECTOR) | PostgreSQL |
 | `AnalyticsService` | 세션 분석 데이터 집계 | PostgreSQL |
 | `WorkflowService` | 3단계 워크플로우 관리 (Research → Plan → Implement) | PostgreSQL |
+| `WorkflowDefinitionService` | 워크플로우 정의 CRUD + 기본값/내보내기/가져오기 | PostgreSQL |
 | `JsonlWatcher` | JSONL 세션 파일 실시간 감시 | 인메모리 |
 | `EventHandler` | WebSocket 이벤트 처리/라우팅 | 없음 (stateless) |
 | `WorkspaceService` | Git clone 기반 워크스페이스 관리 | PostgreSQL + 비동기 clone task |
@@ -979,6 +987,35 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | status | String | pending / in_progress / completed / error |
 | result | Text | 작업 결과 |
 | created_at | DateTime(tz) | 생성 시각 |
+
+### workflow_definitions (워크플로우 정의)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | String (PK) | 정의 ID |
+| name | String (unique) | 정의 이름 |
+| description | Text (nullable) | 설명 |
+| is_builtin | Boolean | 내장 정의 여부 (삭제 불가) |
+| is_default | Boolean | 기본 정의 여부 |
+| sort_order | Integer | 정렬 순서 |
+| steps | JSONB | 워크플로우 단계 배열 (WorkflowStepConfig[]) |
+| created_at | DateTime(tz) | 생성 시각 |
+| updated_at | DateTime(tz) | 수정 시각 |
+
+### token_snapshots (토큰 사용량 스냅샷)
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| id | Integer (PK, auto) | 스냅샷 ID |
+| session_id | String | 세션 ID (FK 없음, 독립 보존) |
+| work_dir | Text | 작업 디렉토리 |
+| workflow_phase | String (nullable) | 워크플로우 단계 |
+| model | String (nullable) | 모델명 |
+| input_tokens | Integer | 입력 토큰 수 |
+| output_tokens | Integer | 출력 토큰 수 |
+| cache_creation_tokens | Integer | 캐시 생성 토큰 |
+| cache_read_tokens | Integer | 캐시 읽기 토큰 |
+| timestamp | DateTime(tz) | 생성 시각 |
 
 > **마이그레이션**: Alembic으로 관리됩니다. `database.py`의 `initialize()` 메서드가 서버 시작 시 `alembic upgrade head`를 프로그래매틱으로 실행합니다. 새 마이그레이션 생성: `cd backend && uv run alembic revision --autogenerate -m "설명"`
 
