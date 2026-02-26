@@ -29,13 +29,13 @@ interface ChatInputProps {
   disabled?: boolean;
 }
 
-const ACCEPTED_IMAGE_TYPES = [
+const ACCEPTED_IMAGE_TYPES = new Set([
   "image/png",
   "image/jpeg",
   "image/gif",
   "image/webp",
   "image/svg+xml",
-];
+]);
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export const ChatInput = memo(function ChatInput({
@@ -80,7 +80,7 @@ export const ChatInput = memo(function ChatInput({
   }, []);
 
   const addImages = useCallback((files: File[]) => {
-    const validFiles = files.filter((f) => ACCEPTED_IMAGE_TYPES.includes(f.type));
+    const validFiles = files.filter((f) => ACCEPTED_IMAGE_TYPES.has(f.type));
     if (validFiles.length === 0) return;
 
     const oversized = validFiles.filter((f) => f.size > MAX_IMAGE_SIZE);
@@ -202,7 +202,7 @@ export const ChatInput = memo(function ChatInput({
       const imageFiles: File[] = [];
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        if (item.kind === "file" && ACCEPTED_IMAGE_TYPES.includes(item.type)) {
+        if (item.kind === "file" && ACCEPTED_IMAGE_TYPES.has(item.type)) {
           const file = item.getAsFile();
           if (file) imageFiles.push(file);
         }

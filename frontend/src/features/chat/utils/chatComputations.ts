@@ -1,6 +1,9 @@
 import type { Message, ResultMsg } from "@/types";
 import { getMessageText } from "@/types";
 
+const TIGHT_TYPES = new Set(["tool_use", "tool_result", "stderr"]);
+const TIGHT_PREV_TYPES = new Set(["assistant_text", "tool_use", "tool_result", "stderr"]);
+
 /**
  * virtualizer의 estimateSize 콜백에 사용되는 메시지 높이 추정.
  */
@@ -36,9 +39,7 @@ export function computeMessageGaps(messages: Message[]): Array<"tight" | "normal
     const prev = messages[i - 1];
     // user_message 앞에 넉넉한 여백
     if (msg.type === "user_message" && prev.type !== "user_message") return "turn-start" as const;
-    const tightTypes = ["tool_use", "tool_result", "stderr"];
-    const tightPrevTypes = ["assistant_text", ...tightTypes];
-    if (tightTypes.includes(msg.type) && tightPrevTypes.includes(prev.type)) return "tight" as const;
+    if (TIGHT_TYPES.has(msg.type) && TIGHT_PREV_TYPES.has(prev.type)) return "tight" as const;
     return "normal" as const;
   });
 }

@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { RefObject } from "react";
 import type { Virtualizer } from "@tanstack/react-virtual";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -54,6 +54,8 @@ export const ChatMessageList = memo(function ChatMessageList({
   onConfirmAnswers,
   workflowSteps,
 }: ChatMessageListProps) {
+  const searchMatchSet = useMemo(() => new Set(searchMatches), [searchMatches]);
+
   return (
     <ScrollArea
       className="flex-1"
@@ -113,7 +115,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                     : messageGaps[virtualItem.index] === "turn-start"
                       ? "pb-4"
                       : "pb-2",
-                  searchQuery && searchMatches.includes(virtualItem.index)
+                  searchQuery && searchMatchSet.has(virtualItem.index)
                     ? "ring-1 ring-primary/40 rounded-sm bg-primary/5"
                     : "",
                 ]

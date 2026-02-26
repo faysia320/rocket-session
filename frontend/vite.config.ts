@@ -54,6 +54,12 @@ export default defineConfig({
             if (id.includes('/react-markdown/') || id.includes('/remark-gfm/') || id.includes('/rehype-highlight/') || id.includes('/highlight.js/')) {
               return 'vendor-markdown';
             }
+            if (id.includes('/recharts/') || id.includes('/d3-')) {
+              return 'vendor-recharts';
+            }
+            if (id.includes('/@dnd-kit/')) {
+              return 'vendor-dnd';
+            }
           }
         },
       },

@@ -36,6 +36,8 @@ import { getToolIcon, getToolColor, parseMcpToolName, getToolSummary } from "./t
 import { ResultMessage } from "./ResultMessage";
 import { AssistantText } from "./AssistantText";
 
+const EDIT_TOOLS = new Set(["Edit", "MultiEdit", "Write"]);
+
 interface MessageBubbleProps {
   message: Message;
   isRunning?: boolean;
@@ -107,7 +109,7 @@ export const MessageBubble = memo(function MessageBubble({
     case "tool_use":
       if (message.tool === "TodoWrite") return null; // PinnedTodoBar에서 처리
       if (message.tool === "ExitPlanMode") return null; // WorkflowPhaseCard에서 처리
-      if (["Edit", "MultiEdit", "Write"].includes(message.tool))
+      if (EDIT_TOOLS.has(message.tool))
         return <EditToolMessage message={message} />;
       if (message.tool === "Bash") return <BashToolMessage message={message} />;
       if (message.tool === "Read") return <ReadToolMessage message={message} />;

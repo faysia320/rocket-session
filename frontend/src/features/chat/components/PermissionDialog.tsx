@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { PermissionRequestData } from "@/types";
 
-const DANGEROUS_TOOLS = ["Bash", "Write", "Edit", "MultiEdit"];
+const DANGEROUS_TOOLS = new Set(["Bash", "Write", "Edit", "MultiEdit"]);
 const TIMEOUT_SECONDS = 120;
 
 export type TrustLevel = "once" | "session" | "always";
@@ -49,7 +49,7 @@ export function PermissionDialog({ request, onAllow, onDeny }: PermissionDialogP
 
   if (!request) return null;
 
-  const isDangerous = DANGEROUS_TOOLS.includes(request.tool_name);
+  const isDangerous = DANGEROUS_TOOLS.has(request.tool_name);
   const inputJson = JSON.stringify(request.tool_input, null, 2);
 
   return (
