@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import { formatTokens, formatWorkDir } from "@/lib/utils";
 import type { SessionPhaseTokenUsage } from "@/types";
 import { useECharts } from "../lib/useECharts";
@@ -90,6 +90,14 @@ export const SessionPhaseChart = memo(function SessionPhaseChart({
         type: "category",
         data: sessionNames,
         ...getBaseAxis(),
+        axisLabel: {
+          fontSize: CHART_FONT.axisTick,
+          fontFamily: CHART_FONT.family,
+          width: CHART_DIMENSIONS.yAxisWidth.long - 16,
+          overflow: "truncate",
+          ellipsis: "…",
+        },
+        triggerEvent: true,
       },
       animationDuration: CHART_ANIMATION.duration,
       animationEasing: CHART_ANIMATION.easing,
@@ -107,7 +115,38 @@ export const SessionPhaseChart = memo(function SessionPhaseChart({
     };
   }, [chartData, phases, sessionNames]);
 
-  const containerRef = useECharts(option);
+  const { containerRef, chartRef } = useECharts(option);
+
+  // y축 라벨 호버 시 전체 세션명을 native tooltip으로 표시
+  const showLabelTooltip = useCallback(
+    (params: { componentType: string; targetType?: string; value?: string }) => {
+      if (
+        params.componentType === "yAxis" &&
+        params.targetType === "axisLabel" &&
+        params.value
+      ) {
+        const el = containerRef.current;
+        if (el) el.title = params.value;
+      }
+    },
+    [containerRef],
+  );
+
+  const clearLabelTooltip = useCallback(() => {
+    const el = containerRef.current;
+    if (el) el.title = "";
+  }, [containerRef]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.on("mouseover", showLabelTooltip);
+    chart.on("mouseout", clearLabelTooltip);
+    return () => {
+      chart.off("mouseover", showLabelTooltip);
+      chart.off("mouseout", clearLabelTooltip);
+    };
+  }, [chartRef, showLabelTooltip, clearLabelTooltip]);
 
   if (chartData.length === 0) {
     return null;

@@ -6,6 +6,7 @@ import {
   CHART_DIMENSIONS,
   CHART_ANIMATION,
   CHART_FONT,
+  CHART_LABEL,
   getBaseAxis,
   getBaseGrid,
   getBaseTooltip,
@@ -80,8 +81,9 @@ export const ProjectBreakdown = memo(function ProjectBreakdown({
             show: true,
             position: "right" as const,
             formatter: (p: { value: number }) => formatTokens(p.value),
-            fontSize: 10,
-            fontFamily: CHART_FONT.family,
+            fontSize: CHART_LABEL.fontSize,
+            fontFamily: CHART_LABEL.fontFamily,
+            fontWeight: CHART_LABEL.fontWeight,
           },
         },
         {
@@ -93,8 +95,9 @@ export const ProjectBreakdown = memo(function ProjectBreakdown({
             show: true,
             position: "right" as const,
             formatter: (p: { value: number }) => formatTokens(p.value),
-            fontSize: 10,
-            fontFamily: CHART_FONT.family,
+            fontSize: CHART_LABEL.fontSize,
+            fontFamily: CHART_LABEL.fontFamily,
+            fontWeight: CHART_LABEL.fontWeight,
           },
           animationDelay: CHART_ANIMATION.delayPerSeries,
         },
@@ -102,7 +105,7 @@ export const ProjectBreakdown = memo(function ProjectBreakdown({
     };
   }, [chartData]);
 
-  const containerRef = useECharts(option);
+  const { containerRef } = useECharts(option);
 
   return (
     <ChartCard title="프로젝트별 토큰" isEmpty={chartData.length === 0}>

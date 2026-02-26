@@ -47,5 +47,5 @@ export function useECharts(option: Record<string, unknown> | null) {
     }
   }, [option]);
 
-  return containerRef;
+  return { containerRef, chartRef };
 }

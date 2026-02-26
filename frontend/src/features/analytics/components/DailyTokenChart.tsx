@@ -119,7 +119,7 @@ export const DailyTokenChart = memo(function DailyTokenChart({
     };
   }, [data]);
 
-  const containerRef = useECharts(option);
+  const { containerRef } = useECharts(option);
 
   return (
     <ChartCard title="일별 토큰 사용량" isEmpty={data.length === 0}>

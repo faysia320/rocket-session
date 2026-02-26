@@ -45,7 +45,7 @@ export function getBaseGrid(overrides?: Record<string, unknown>) {
   return {
     left: 56,
     right: 16,
-    top: 40,
+    top: 52,
     bottom: 40,
     containLabel: false,
     ...overrides,
@@ -68,6 +68,8 @@ export function getBaseTooltip(overrides?: Record<string, unknown>) {
 
 export function getBaseLegend(overrides?: Record<string, unknown>) {
   return {
+    top: 4,
+    left: "center",
     textStyle: {
       fontFamily: CHART_FONT.family,
       fontSize: CHART_FONT.legend,
@@ -78,6 +80,13 @@ export function getBaseLegend(overrides?: Record<string, unknown>) {
     ...overrides,
   };
 }
+
+export const CHART_LABEL = {
+  fontSize: 11,
+  fontFamily:
+    "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  fontWeight: 500 as const,
+} as const;
 
 export function getSplitLineStyle() {
   return {
