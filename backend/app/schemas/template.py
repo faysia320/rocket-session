@@ -22,6 +22,7 @@ class CreateTemplateRequest(BaseModel):
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     mcp_server_ids: Optional[list[str]] = None
     fallback_model: Optional[str] = None
+    workflow_definition_id: Optional[str] = None
 
 
 class UpdateTemplateRequest(BaseModel):
@@ -40,6 +41,7 @@ class UpdateTemplateRequest(BaseModel):
     system_prompt_mode: Optional[Literal["replace", "append"]] = None
     mcp_server_ids: Optional[list[str]] = None
     fallback_model: Optional[str] = None
+    workflow_definition_id: Optional[str] = None
 
 
 class TemplateInfo(BaseModel):
@@ -59,6 +61,7 @@ class TemplateInfo(BaseModel):
     system_prompt_mode: str = "replace"
     mcp_server_ids: Optional[list[str]] = None
     fallback_model: Optional[str] = None
+    workflow_definition_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

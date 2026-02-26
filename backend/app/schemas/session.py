@@ -28,6 +28,7 @@ class CreateSessionRequest(BaseModel):
     template_id: Optional[str] = None
     workspace_id: Optional[str] = None
     branch: Optional[str] = None
+    workflow_definition_id: Optional[str] = None
 
 
 class UpdateSessionRequest(BaseModel):
@@ -86,6 +87,7 @@ class SessionInfo(BaseModel):
     worktree_name: Optional[str] = None
     parent_session_id: Optional[str] = None
     forked_at_message_id: Optional[int] = None
+    workflow_definition_id: Optional[str] = None
     tags: list[TagInfo] = []
     current_activity: Optional[CurrentActivity] = None
 
