@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useMemo } from "react";
+import { memo, useState, useCallback, useMemo, useRef } from "react";
 import { ChevronRight, Maximize2, Loader2, List, FolderTree, FolderOpen, Folder, FileCode } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -161,7 +161,8 @@ export const FilePanel = memo(function FilePanel({
   fileChanges = [],
   onFileClick,
 }: FilePanelProps) {
-  const [viewMode, setViewMode] = useState<FileViewMode>("list");
+  const [viewMode, setViewMode] = useState<FileViewMode>("tree");
+  const [openHoverFile, setOpenHoverFile] = useState<string | null>(null);
   const merged = useMemo(() => mergeFileChanges(fileChanges), [fileChanges]);
   const tree = useMemo(() => buildFileTree(merged), [merged]);
   const uniqueCount = merged.length;
@@ -176,23 +177,23 @@ export const FilePanel = memo(function FilePanel({
             type="button"
             className={cn(
               "p-1 rounded transition-colors",
-              viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50",
-            )}
-            onClick={() => setViewMode("list")}
-            aria-label="목록 보기"
-          >
-            <List className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "p-1 rounded transition-colors",
               viewMode === "tree" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50",
             )}
             onClick={() => setViewMode("tree")}
             aria-label="트리 보기"
           >
             <FolderTree className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "p-1 rounded transition-colors",
+              viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50",
+            )}
+            onClick={() => setViewMode("list")}
+            aria-label="목록 보기"
+          >
+            <List className="h-3.5 w-3.5" />
           </button>
         </div>
         <Badge variant="secondary" className="font-mono text-2xs">
@@ -222,10 +223,12 @@ export const FilePanel = memo(function FilePanel({
                   sessionId={sessionId}
                   item={item}
                   onFullView={onFileClick}
+                  isHoverOpen={openHoverFile === item.file}
+                  onHoverOpenChange={(isOpen) => setOpenHoverFile(isOpen ? item.file : null)}
                 />
               ))
             ) : (
-              <FileTreeView tree={tree} sessionId={sessionId} onFullView={onFileClick} />
+              <FileTreeView tree={tree} sessionId={sessionId} onFullView={onFileClick} openHoverFile={openHoverFile} onHoverOpenChange={setOpenHoverFile} />
             )}
           </div>
         </ScrollArea>
@@ -236,30 +239,59 @@ export const FilePanel = memo(function FilePanel({
 
 // ─── HoverCard Diff 콘텐츠 ──────────────────────────────────────────────────
 
-function DiffHoverContent({ diff, loading }: { diff: string | null; loading: boolean }) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-  if (diff === null) return null;
-  if (!diff.trim()) {
-    return (
-      <div className="flex items-center justify-center py-6">
-        <span className="font-mono text-xs text-muted-foreground">변경사항 없음</span>
-      </div>
-    );
-  }
+interface DiffHoverContentProps {
+  diff: string | null;
+  loading: boolean;
+  fileName?: string;
+  onFullView?: () => void;
+}
+
+function DiffHoverContent({ diff, loading, fileName, onFullView }: DiffHoverContentProps) {
   return (
-    <div className="max-h-[400px] overflow-auto">
-      <ErrorBoundary
-        fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}
-      >
-        <DiffViewer diff={diff} />
-      </ErrorBoundary>
-    </div>
+    <>
+      {/* 헤더바: 파일명 + 전체보기 버튼 */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-secondary/30 shrink-0">
+        <span className="font-mono text-2xs text-muted-foreground truncate">
+          {fileName || ""}
+        </span>
+        {onFullView ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFullView();
+                }}
+                className="p-1 rounded hover:bg-muted transition-colors shrink-0"
+                aria-label="전체 보기"
+              >
+                <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>전체 보기</TooltipContent>
+          </Tooltip>
+        ) : null}
+      </div>
+      {/* Diff 콘텐츠 */}
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : diff === null ? null : !diff.trim() ? (
+        <div className="flex items-center justify-center py-6">
+          <span className="font-mono text-xs text-muted-foreground">변경사항 없음</span>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-auto">
+          <ErrorBoundary
+            fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}
+          >
+            <DiffViewer diff={diff} hideHeaders />
+          </ErrorBoundary>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -277,24 +309,51 @@ interface MergedFileChangeItemProps {
   sessionId: string;
   item: MergedFileChange;
   onFullView?: (change: FileChange) => void;
+  isHoverOpen: boolean;
+  onHoverOpenChange: (isOpen: boolean) => void;
 }
 
-function MergedFileChangeItem({ sessionId, item, onFullView }: MergedFileChangeItemProps) {
+function MergedFileChangeItem({ sessionId, item, onFullView, isHoverOpen, onHoverOpenChange }: MergedFileChangeItemProps) {
   const { diff, loading, fetchIfNeeded } = useDiffFetch(sessionId, item.file);
+  const openSourceRef = useRef<"hover" | "click" | null>(null);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
-      if (isOpen) fetchIfNeeded();
+      if (!isOpen && openSourceRef.current === "click") {
+        // click으로 열린 경우 hover-leave로 닫히지 않도록 방지
+        return;
+      }
+      onHoverOpenChange(isOpen);
+      if (isOpen) {
+        openSourceRef.current = "hover";
+        fetchIfNeeded();
+      } else {
+        openSourceRef.current = null;
+      }
     },
-    [fetchIfNeeded],
+    [fetchIfNeeded, onHoverOpenChange],
   );
 
-  const handleClick = useCallback(() => {
+  const handleFullView = useCallback(() => {
+    onHoverOpenChange(false);
+    openSourceRef.current = null;
     onFullView?.(item.latest);
-  }, [onFullView, item.latest]);
+  }, [onFullView, item.latest, onHoverOpenChange]);
+
+  const handleClick = useCallback(() => {
+    if (isHoverOpen && openSourceRef.current === "click") {
+      // 클릭으로 열린 상태에서 다시 클릭하면 닫기
+      onHoverOpenChange(false);
+      openSourceRef.current = null;
+    } else {
+      onHoverOpenChange(true);
+      openSourceRef.current = "click";
+      fetchIfNeeded();
+    }
+  }, [isHoverOpen, fetchIfNeeded, onHoverOpenChange]);
 
   return (
-    <HoverCard openDelay={300} closeDelay={150} onOpenChange={handleOpenChange}>
+    <HoverCard open={isHoverOpen} onOpenChange={handleOpenChange} openDelay={300} closeDelay={150}>
       <HoverCardTrigger asChild>
         <button
           type="button"
@@ -321,17 +380,6 @@ function MergedFileChangeItem({ sessionId, item, onFullView }: MergedFileChangeI
             <span className="font-mono text-2xs text-muted-foreground/70 ml-auto shrink-0">
               {item.lastTimestamp ? formatTime(item.lastTimestamp) : null}
             </span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0 inline-flex"
-                  aria-label={`전체 보기: ${item.file}`}
-                >
-                  <Maximize2 className="h-3 w-3 text-muted-foreground" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>전체 보기</TooltipContent>
-            </Tooltip>
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -347,9 +395,14 @@ function MergedFileChangeItem({ sessionId, item, onFullView }: MergedFileChangeI
         side="left"
         align="start"
         sideOffset={8}
-        className="w-[480px] max-h-[400px] overflow-hidden p-0"
+        className="w-[720px] max-h-[450px] overflow-hidden p-0 flex flex-col"
       >
-        <DiffHoverContent diff={diff} loading={loading} />
+        <DiffHoverContent
+          diff={diff}
+          loading={loading}
+          fileName={item.file.split(/[/\\]/).pop()}
+          onFullView={onFullView ? handleFullView : undefined}
+        />
       </HoverCardContent>
     </HoverCard>
   );
@@ -361,13 +414,15 @@ interface FileTreeViewProps {
   tree: FileTreeNode[];
   sessionId: string;
   onFullView?: (change: FileChange) => void;
+  openHoverFile: string | null;
+  onHoverOpenChange: (file: string | null) => void;
 }
 
-function FileTreeView({ tree, sessionId, onFullView }: FileTreeViewProps) {
+function FileTreeView({ tree, sessionId, onFullView, openHoverFile, onHoverOpenChange }: FileTreeViewProps) {
   return (
     <div className="space-y-0.5">
       {tree.map((node) => (
-        <FileTreeNodeComponent key={node.path} node={node} depth={0} sessionId={sessionId} onFullView={onFullView} />
+        <FileTreeNodeComponent key={node.path} node={node} depth={0} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} />
       ))}
     </div>
   );
@@ -378,16 +433,18 @@ interface FileTreeNodeComponentProps {
   depth: number;
   sessionId: string;
   onFullView?: (change: FileChange) => void;
+  openHoverFile: string | null;
+  onHoverOpenChange: (file: string | null) => void;
 }
 
-function FileTreeNodeComponent({ node, depth, sessionId, onFullView }: FileTreeNodeComponentProps) {
+function FileTreeNodeComponent({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange }: FileTreeNodeComponentProps) {
   if (node.isDirectory) {
-    return <FileTreeFolderNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} />;
+    return <FileTreeFolderNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} />;
   }
-  return <FileTreeFileNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} />;
+  return <FileTreeFileNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} />;
 }
 
-function FileTreeFolderNode({ node, depth, sessionId, onFullView }: FileTreeNodeComponentProps) {
+function FileTreeFolderNode({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange }: FileTreeNodeComponentProps) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -422,6 +479,8 @@ function FileTreeFolderNode({ node, depth, sessionId, onFullView }: FileTreeNode
             depth={depth + 1}
             sessionId={sessionId}
             onFullView={onFullView}
+            openHoverFile={openHoverFile}
+            onHoverOpenChange={onHoverOpenChange}
           />
         ))}
       </CollapsibleContent>
@@ -429,23 +488,47 @@ function FileTreeFolderNode({ node, depth, sessionId, onFullView }: FileTreeNode
   );
 }
 
-function FileTreeFileNode({ node, depth, sessionId, onFullView }: FileTreeNodeComponentProps) {
+function FileTreeFileNode({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange }: FileTreeNodeComponentProps) {
   const item = node.fileChange!;
   const { diff, loading, fetchIfNeeded } = useDiffFetch(sessionId, item.file);
+  const isHoverOpen = openHoverFile === item.file;
+  const openSourceRef = useRef<"hover" | "click" | null>(null);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
-      if (isOpen) fetchIfNeeded();
+      if (!isOpen && openSourceRef.current === "click") {
+        return;
+      }
+      onHoverOpenChange(isOpen ? item.file : null);
+      if (isOpen) {
+        openSourceRef.current = "hover";
+        fetchIfNeeded();
+      } else {
+        openSourceRef.current = null;
+      }
     },
-    [fetchIfNeeded],
+    [fetchIfNeeded, onHoverOpenChange, item.file],
   );
 
-  const handleClick = useCallback(() => {
+  const handleFullView = useCallback(() => {
+    onHoverOpenChange(null);
+    openSourceRef.current = null;
     onFullView?.(item.latest);
-  }, [onFullView, item.latest]);
+  }, [onFullView, item.latest, onHoverOpenChange]);
+
+  const handleClick = useCallback(() => {
+    if (isHoverOpen && openSourceRef.current === "click") {
+      onHoverOpenChange(null);
+      openSourceRef.current = null;
+    } else {
+      onHoverOpenChange(item.file);
+      openSourceRef.current = "click";
+      fetchIfNeeded();
+    }
+  }, [isHoverOpen, fetchIfNeeded, onHoverOpenChange, item.file]);
 
   return (
-    <HoverCard openDelay={300} closeDelay={150} onOpenChange={handleOpenChange}>
+    <HoverCard open={isHoverOpen} onOpenChange={handleOpenChange} openDelay={300} closeDelay={150}>
       <HoverCardTrigger asChild>
         <button
           type="button"
@@ -467,26 +550,20 @@ function FileTreeFileNode({ node, depth, sessionId, onFullView }: FileTreeNodeCo
           <span className="font-mono text-2xs text-muted-foreground/70 ml-auto shrink-0">
             {item.lastTimestamp ? formatTime(item.lastTimestamp) : null}
           </span>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                className="ml-1 p-0.5 rounded hover:bg-muted transition-colors shrink-0 inline-flex"
-                aria-label={`전체 보기: ${item.file}`}
-              >
-                <Maximize2 className="h-3 w-3 text-muted-foreground" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>전체 보기</TooltipContent>
-          </Tooltip>
         </button>
       </HoverCardTrigger>
       <HoverCardContent
         side="left"
         align="start"
         sideOffset={8}
-        className="w-[480px] max-h-[400px] overflow-hidden p-0"
+        className="w-[720px] max-h-[450px] overflow-hidden p-0 flex flex-col"
       >
-        <DiffHoverContent diff={diff} loading={loading} />
+        <DiffHoverContent
+          diff={diff}
+          loading={loading}
+          fileName={node.name}
+          onFullView={onFullView ? handleFullView : undefined}
+        />
       </HoverCardContent>
     </HoverCard>
   );

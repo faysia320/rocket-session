@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 interface DiffViewerProps {
   diff: string;
+  hideHeaders?: boolean;
 }
 
 interface DiffLine {
@@ -122,8 +123,12 @@ function DiffLineRow({ line }: { line: DiffLine }) {
   );
 }
 
-export const DiffViewer = memo(function DiffViewer({ diff }: DiffViewerProps) {
-  const lines = useMemo(() => parseDiff(diff), [diff]);
+export const DiffViewer = memo(function DiffViewer({ diff, hideHeaders }: DiffViewerProps) {
+  const allLines = useMemo(() => parseDiff(diff), [diff]);
+  const lines = useMemo(
+    () => (hideHeaders ? allLines.filter((l) => l.type !== "info") : allLines),
+    [allLines, hideHeaders],
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const useVirtual = lines.length > VIRTUALIZE_THRESHOLD;
@@ -134,6 +139,7 @@ export const DiffViewer = memo(function DiffViewer({ diff }: DiffViewerProps) {
     estimateSize: () => LINE_HEIGHT,
     overscan: 20,
     enabled: useVirtual,
+    measureElement: (el) => el.getBoundingClientRect().height,
   });
 
   if (!diff.trim()) {
@@ -171,12 +177,13 @@ export const DiffViewer = memo(function DiffViewer({ diff }: DiffViewerProps) {
         {virtualizer.getVirtualItems().map((virtualItem) => (
           <div
             key={virtualItem.index}
+            ref={virtualizer.measureElement}
+            data-index={virtualItem.index}
             style={{
               position: "absolute",
               top: 0,
               left: 0,
               width: "100%",
-              height: virtualItem.size,
               transform: `translateY(${virtualItem.start}px)`,
             }}
           >
