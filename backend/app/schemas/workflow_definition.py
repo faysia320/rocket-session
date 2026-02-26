@@ -44,7 +44,7 @@ class WorkflowDefinitionInfo(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    is_builtin: bool = False
+    is_default: bool = False
     steps: list[WorkflowStepConfig]
     created_at: datetime
     updated_at: datetime

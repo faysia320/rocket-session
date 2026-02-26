@@ -35,7 +35,7 @@ class WorkflowDefinitionService:
             id=entity.id,
             name=entity.name,
             description=entity.description,
-            is_builtin=bool(entity.is_builtin),
+            is_default=bool(entity.is_default),
             steps=resolved,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
@@ -72,6 +72,7 @@ class WorkflowDefinitionService:
                 name=name,
                 description=description,
                 is_builtin=False,
+                is_default=False,
                 steps=[s.model_dump() for s in steps],
                 created_at=now,
                 updated_at=now,
@@ -109,33 +110,46 @@ class WorkflowDefinitionService:
             entity = await repo.get_by_id(def_id)
             if not entity:
                 return False
-            if entity.is_builtin:
-                from fastapi import HTTPException
-
-                raise HTTPException(
-                    status_code=400,
-                    detail="기본 내장 워크플로우는 삭제할 수 없습니다",
-                )
+            was_default = entity.is_default
             deleted = await repo.delete_by_id(def_id)
+            if was_default:
+                remaining = await repo.list_all()
+                if remaining:
+                    remaining[0].is_default = True
+                    await session.flush()
             await session.commit()
             return deleted
 
+    async def set_default(self, def_id: str) -> WorkflowDefinitionInfo | None:
+        """지정된 워크플로우를 기본(default)으로 설정. 기존 default는 해제."""
+        async with self._db.session() as session:
+            repo = WorkflowDefinitionRepository(session)
+            entity = await repo.get_by_id(def_id)
+            if not entity:
+                return None
+            await repo.clear_all_defaults()
+            entity.is_default = True
+            await session.flush()
+            await session.commit()
+            return self._entity_to_info(entity)
+
     async def get_or_default(self, def_id: str | None) -> WorkflowDefinitionInfo:
-        """def_id로 조회하되, None이거나 못 찾으면 builtin default 반환."""
+        """def_id로 조회하되, None이거나 못 찾으면 default 반환."""
         if def_id:
             info = await self.get_definition(def_id)
             if info:
                 return info
-        # builtin default 조회
+        # default 워크플로우 조회
         async with self._db.session() as session:
             repo = WorkflowDefinitionRepository(session)
-            entity = await repo.get_builtin_default()
+            entity = await repo.get_default()
             if entity:
                 return self._entity_to_info(entity)
-        # builtin도 없으면 하드코딩 fallback
+        # default도 없으면 하드코딩 fallback
         return WorkflowDefinitionInfo(
             id="fallback",
             name="Default",
+            is_default=True,
             steps=[
                 WorkflowStepConfig(
                     name="research",

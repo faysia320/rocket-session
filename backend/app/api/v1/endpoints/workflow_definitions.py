@@ -88,6 +88,19 @@ async def delete_definition(
     return {"status": "deleted"}
 
 
+@router.post("/{def_id}/set-default", response_model=WorkflowDefinitionInfo)
+async def set_default_definition(
+    def_id: str,
+    service: WorkflowDefinitionService = Depends(get_workflow_definition_service),
+):
+    result = await service.set_default(def_id)
+    if not result:
+        raise HTTPException(
+            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
+        )
+    return result
+
+
 @router.get("/{def_id}/export", response_model=WorkflowDefinitionExport)
 async def export_definition(
     def_id: str,
