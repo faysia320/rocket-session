@@ -60,7 +60,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard() {
             데이터를 불러올 수 없습니다
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {/* 요약 카드 */}
             <TokenSummaryCards summary={data.summary} />
 
@@ -74,7 +74,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard() {
             <DailyTokenChart data={data.daily_usage} />
 
             {/* 하단 2열: 세션 랭킹 + 프로젝트별 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <SessionRankingTable data={data.session_ranking} />
               <ProjectBreakdown data={data.project_usage} />
             </div>

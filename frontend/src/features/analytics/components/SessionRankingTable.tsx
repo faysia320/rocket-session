@@ -2,6 +2,7 @@ import { memo, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { formatTokens, formatWorkDir } from "@/lib/utils";
 import type { SessionTokenRanking } from "@/types";
+import { ChartCard } from "./ChartCard";
 
 interface SessionRankingTableProps {
   data: SessionTokenRanking[];
@@ -28,21 +29,9 @@ export const SessionRankingTable = memo(function SessionRankingTable({
     [navigate],
   );
 
-  if (data.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h3 className="font-mono text-xs font-medium text-foreground mb-3">세션별 토큰 랭킹</h3>
-        <div className="flex items-center justify-center h-[120px] text-muted-foreground text-xs font-mono">
-          데이터가 없습니다
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-lg border border-border bg-card p-4 overflow-hidden">
-      <h3 className="font-mono text-xs font-medium text-foreground mb-3">세션별 토큰 랭킹</h3>
-      <div className="overflow-auto max-h-[280px]">
+    <ChartCard title="세션별 토큰 랭킹" isEmpty={data.length === 0}>
+      <div className="overflow-auto max-h-[320px]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-border text-2xs text-muted-foreground font-mono">
@@ -62,7 +51,7 @@ export const SessionRankingTable = memo(function SessionRankingTable({
               >
                 <td className="py-1.5 pr-2 font-mono text-2xs text-muted-foreground">{i + 1}</td>
                 <td className="py-1.5 pr-2">
-                  <div className="font-mono text-xs text-foreground truncate max-w-[180px]">
+                  <div className="font-mono text-xs text-foreground truncate max-w-[220px]">
                     {row.session_name ?? formatWorkDir(row.work_dir, 30)}
                   </div>
                 </td>
@@ -84,6 +73,6 @@ export const SessionRankingTable = memo(function SessionRankingTable({
           </tbody>
         </table>
       </div>
-    </div>
+    </ChartCard>
   );
 });
