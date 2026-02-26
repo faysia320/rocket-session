@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 
-const WorkflowDefinitionsPage = lazy(() =>
-  import("@/features/workflow/components/WorkflowDefinitionsPage").then((m) => ({
-    default: m.WorkflowDefinitionsPage,
+const WorkflowPage = lazy(() =>
+  import("@/features/workflow/components/WorkflowPage").then((m) => ({
+    default: m.WorkflowPage,
   })),
 );
 
@@ -21,7 +21,7 @@ function WorkflowsPageWrapper() {
           </div>
         }
       >
-        <WorkflowDefinitionsPage />
+        <WorkflowPage />
       </Suspense>
     </div>
   );

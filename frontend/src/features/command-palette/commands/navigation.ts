@@ -48,12 +48,12 @@ export function createNavigationCommands(deps: {
     },
     {
       id: "nav:workflows",
-      label: "워크플로우 정의 관리",
-      description: "워크플로우 정의 생성, 수정, 삭제",
+      label: "워크플로우 관리",
+      description: "워크플로우 정의 및 노드 관리",
       category: "navigation",
       icon: Workflow,
       action: () => navigate({ to: "/workflows" }),
-      keywords: ["workflow", "워크플로우", "정의", "definition"],
+      keywords: ["workflow", "워크플로우", "정의", "definition", "node", "노드"],
     },
     {
       id: "nav:new-session",
