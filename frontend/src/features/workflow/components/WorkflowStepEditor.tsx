@@ -39,18 +39,7 @@ const CONSTRAINT_OPTIONS = [
   { value: "full", label: "Full" },
 ];
 
-const ICON_OPTIONS = [
-  "Search",
-  "FileText",
-  "Code",
-  "CheckCircle",
-  "Settings",
-  "Database",
-  "Globe",
-  "Zap",
-  "Shield",
-  "Layers",
-];
+const ICON_OPTIONS = Object.keys(WORKFLOW_ICON_MAP);
 
 function createDefaultStep(orderIndex: number): WorkflowStepConfig {
   return {
@@ -196,14 +185,30 @@ function SortableStepCard({
                   <Label className="text-xs">아이콘</Label>
                   <Select value={step.icon} onValueChange={(val) => onUpdate({ icon: val })}>
                     <SelectTrigger className="h-8 font-mono text-xs">
-                      <SelectValue />
+                      <SelectValue>
+                        {(() => {
+                          const Icon = WORKFLOW_ICON_MAP[step.icon] ?? FileText;
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <Icon className="h-3.5 w-3.5" />
+                              {step.icon}
+                            </span>
+                          );
+                        })()}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {ICON_OPTIONS.map((icon) => (
-                        <SelectItem key={icon} value={icon} className="font-mono text-xs">
-                          {icon}
-                        </SelectItem>
-                      ))}
+                      {ICON_OPTIONS.map((iconName) => {
+                        const Icon = WORKFLOW_ICON_MAP[iconName] ?? FileText;
+                        return (
+                          <SelectItem key={iconName} value={iconName} className="font-mono text-xs">
+                            <span className="flex items-center gap-1.5">
+                              <Icon className="h-3.5 w-3.5" />
+                              {iconName}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -231,7 +236,7 @@ function SortableStepCard({
               <div className="space-y-1.5">
                 <Label className="text-xs">프롬프트 템플릿</Label>
                 <Textarea
-                  className="font-mono text-xs min-h-[120px] resize-y"
+                  className="font-mono text-xs min-h-[240px] resize-y"
                   value={step.prompt_template}
                   onChange={(e) => onUpdate({ prompt_template: e.target.value })}
                   placeholder="프롬프트 템플릿을 입력하세요. {user_prompt}, {previous_artifact} 변수를 사용할 수 있습니다."

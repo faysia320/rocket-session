@@ -128,6 +128,16 @@ export function WorkflowDefinitionDetail({
             Default
           </Badge>
         ) : null}
+        {definition && !isCreating ? (
+          <>
+            <span className="font-mono text-2xs text-muted-foreground shrink-0">
+              생성: {formatDate(definition.created_at)}
+            </span>
+            <span className="font-mono text-2xs text-muted-foreground shrink-0">
+              수정: {formatDate(definition.updated_at)}
+            </span>
+          </>
+        ) : null}
 
         <div className="flex-1" />
 
@@ -343,15 +353,6 @@ export function WorkflowDefinitionDetail({
                 </div>
               </div>
 
-              {/* 메타 정보 */}
-              <div className="flex items-center gap-4 pt-2 border-t border-border">
-                <span className="font-mono text-2xs text-muted-foreground">
-                  생성: {formatDate(definition.created_at)}
-                </span>
-                <span className="font-mono text-2xs text-muted-foreground">
-                  수정: {formatDate(definition.updated_at)}
-                </span>
-              </div>
             </>
           ) : null}
         </div>
