@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import get_tag_service
+from app.schemas.common import StatusResponse
 from app.schemas.tag import CreateTagRequest, TagInfo, UpdateTagRequest
 from app.services.tag_service import TagService
 
@@ -21,12 +22,7 @@ async def create_tag(
     req: CreateTagRequest,
     service: TagService = Depends(get_tag_service),
 ):
-    try:
-        return await service.create_tag(name=req.name, color=req.color)
-    except Exception as e:
-        if "UNIQUE constraint" in str(e):
-            raise HTTPException(status_code=409, detail="이미 존재하는 태그 이름입니다")
-        raise
+    return await service.create_tag(name=req.name, color=req.color)
 
 
 @router.patch("/{tag_id}", response_model=TagInfo)
@@ -41,7 +37,7 @@ async def update_tag(
     return tag
 
 
-@router.delete("/{tag_id}")
+@router.delete("/{tag_id}", response_model=StatusResponse)
 async def delete_tag(
     tag_id: str,
     service: TagService = Depends(get_tag_service),
@@ -49,4 +45,4 @@ async def delete_tag(
     deleted = await service.delete_tag(tag_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="태그를 찾을 수 없습니다")
-    return {"status": "deleted"}
+    return StatusResponse(status="deleted")

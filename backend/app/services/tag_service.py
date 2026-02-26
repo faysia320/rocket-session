@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.core.database import Database
+from app.core.exceptions import ConflictError
 from app.models.tag import Tag
 from app.repositories.tag_repo import TagRepository
 from app.schemas.tag import TagInfo
@@ -43,6 +44,9 @@ class TagService:
         now = datetime.now(timezone.utc)
         async with self._db.session() as session:
             repo = TagRepository(session)
+            existing = await repo.get_by_name(name)
+            if existing:
+                raise ConflictError("이미 존재하는 태그 이름입니다")
             tag = Tag(id=tag_id, name=name, color=color, created_at=now)
             await repo.add(tag)
             await session.commit()

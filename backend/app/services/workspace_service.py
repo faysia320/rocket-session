@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.core.database import Database
+from app.core.exceptions import ConflictError
 from app.models.workspace import Workspace
 from app.repositories.workspace_repo import WorkspaceRepository
 from app.services.git_service import GitService
@@ -18,7 +19,7 @@ from app.services.git_service import GitService
 logger = logging.getLogger(__name__)
 
 
-class RebaseConflictError(Exception):
+class RebaseConflictError(ConflictError):
     """Rebase 충돌 시 발생 — 로컬 커밋이 존재하여 사용자 확인이 필요한 경우."""
 
     pass
