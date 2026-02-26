@@ -24,6 +24,7 @@ function getPostDeleteTarget(
     }
   }
 
+  useSessionStore.getState().setViewMode("dashboard");
   return "/";
 }
 
@@ -300,8 +301,10 @@ export function useSessionMutations() {
   const archiveSession = useCallback(
     async (id: string) => {
       await archiveMutation.mutateAsync(id);
+      const target = getPostDeleteTarget(id, location.pathname, queryClient);
+      if (target) navigate({ to: target });
     },
-    [archiveMutation],
+    [archiveMutation, navigate, location.pathname, queryClient],
   );
 
   const unarchiveSession = useCallback(

@@ -481,6 +481,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       await filesystemApi.removeWorktree(workDir, worktreeName, true);
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       toast.success("워크트리가 삭제되었습니다.");
+      useSessionStore.getState().setViewMode("dashboard");
       navigate({ to: "/" });
     } catch (err) {
       toast.error(`워크트리 삭제 실패: ${err instanceof Error ? err.message : String(err)}`);
