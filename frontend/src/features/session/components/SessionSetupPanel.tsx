@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Rocket, GitBranch, Globe, Plus, X, Workflow, ExternalLink } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
 import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
 import { WorkflowDefinitionSelector } from "@/features/workflow/components/WorkflowDefinitionSelector";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
@@ -26,7 +25,6 @@ interface SessionSetupPanelProps {
       system_prompt?: string;
       additional_dirs?: string[];
       worktree_name?: string;
-      workflow_enabled?: boolean;
       workflow_definition_id?: string;
       workspace_id?: string;
       branch?: string;
@@ -41,10 +39,8 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [useWorktree, setUseWorktree] = useState(false);
   const [worktreeName, setWorktreeName] = useState("");
   const [additionalWorkspaceIds, setAdditionalWorkspaceIds] = useState<string[]>([]);
-  const [workflowEnabled, setWorkflowEnabled] = useState(true);
   const [workflowDefinitionId, setWorkflowDefinitionId] = useState<string | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
-  const { data: globalSettings } = useGlobalSettings();
   const { data: workspaces } = useWorkspaces();
 
   const readyWorkspaces = workspaces?.filter((ws) => ws.status === "ready") ?? [];
@@ -56,19 +52,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
     (ws) => ws.id === selectedWorkspaceId,
   )?.local_path ?? "";
   const { data: branchData } = useGitBranches(selectedWorkspaceLocalPath);
-
-  // 글로벌 설정의 기본값이 이미 적용되었는지 추적
-  const globalAppliedRef = useRef(false);
-
-  // 글로벌 기본값 적용
-  useEffect(() => {
-    if (!globalAppliedRef.current && globalSettings) {
-      if (globalSettings.workflow_enabled) {
-        setWorkflowEnabled(true);
-      }
-      globalAppliedRef.current = true;
-    }
-  }, [globalSettings]);
 
   // 워크스페이스 변경 시 브랜치 선택 초기화
   useEffect(() => {
@@ -82,7 +65,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         system_prompt?: string;
         additional_dirs?: string[];
         worktree_name?: string;
-        workflow_enabled?: boolean;
         workflow_definition_id?: string;
         workspace_id?: string;
         branch?: string;
@@ -100,8 +82,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       if (useWorktree && worktreeName.trim()) {
         options.worktree_name = worktreeName.trim();
       }
-      options.workflow_enabled = workflowEnabled;
-      if (workflowEnabled && workflowDefinitionId) {
+      if (workflowDefinitionId) {
         options.workflow_definition_id = workflowDefinitionId;
       }
       if (selectedWorkspaceId) {
@@ -269,27 +250,19 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           </Button>
         </div>
 
-        {/* Workflow Mode */}
+        {/* Workflow Definition */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label
-              htmlFor="workflow-toggle"
-              className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-2 cursor-pointer"
-            >
-              <Workflow className="h-3.5 w-3.5" />
-              WORKFLOW MODE
-            </Label>
-            <Switch id="workflow-toggle" checked={workflowEnabled} onCheckedChange={setWorkflowEnabled} />
-          </div>
+          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-2">
+            <Workflow className="h-3.5 w-3.5" />
+            WORKFLOW DEFINITION
+          </Label>
           <p className="font-mono text-2xs text-muted-foreground/70">
-            활성화하면 정의된 워크플로우 단계를 순차 진행합니다.
+            워크플로우 정의를 선택합니다. 미선택 시 기본 정의를 사용합니다.
           </p>
-          {workflowEnabled ? (
-            <WorkflowDefinitionSelector
-              value={workflowDefinitionId}
-              onSelect={setWorkflowDefinitionId}
-            />
-          ) : null}
+          <WorkflowDefinitionSelector
+            value={workflowDefinitionId}
+            onSelect={setWorkflowDefinitionId}
+          />
         </div>
 
         {/* System Prompt */}

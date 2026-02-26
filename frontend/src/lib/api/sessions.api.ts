@@ -42,7 +42,6 @@ export const sessionsApi = {
       additional_dirs?: string[];
       worktree_name?: string;
       workspace_id?: string;
-      workflow_enabled?: boolean;
       branch?: string;
     },
   ) =>

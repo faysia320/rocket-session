@@ -44,7 +44,6 @@ export function useCreateSession() {
         additional_dirs?: string[];
         worktree_name?: string;
         workspace_id?: string;
-        workflow_enabled?: boolean;
       };
     }) => sessionsApi.create(params.workDir, params.options),
     onSuccess: (session) => {
@@ -65,7 +64,6 @@ export function useCreateSession() {
         additional_dirs?: string[];
         worktree_name?: string;
         workspace_id?: string;
-        workflow_enabled?: boolean;
       },
     ) => {
       return mutation.mutateAsync({ workDir, options });

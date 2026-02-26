@@ -7,7 +7,6 @@ import {
   ArchiveRestore,
   Trash2,
   GitFork,
-  GitPullRequestArrow,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,14 +45,12 @@ interface SessionDropdownMenuProps {
   isArchived?: boolean;
   gitInfo?: GitInfo | null;
   worktreeName?: string | null;
-  workflowEnabled?: boolean;
   onOpenSettings: () => void;
   onArchive?: () => void;
   onUnarchive?: () => void;
   onDelete?: () => void;
   onFork?: () => void;
   onConvertToWorktree?: (name: string) => void;
-  onEnableWorkflow?: () => void;
 }
 
 export const SessionDropdownMenu = memo(function SessionDropdownMenu({
@@ -67,8 +64,6 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
   onDelete,
   onFork,
   onConvertToWorktree,
-  workflowEnabled,
-  onEnableWorkflow,
 }: SessionDropdownMenuProps) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -132,12 +127,6 @@ export const SessionDropdownMenu = memo(function SessionDropdownMenu({
             >
               <GitFork className="h-3.5 w-3.5 text-info" />
               워크트리로 전환
-            </DropdownMenuItem>
-          ) : null}
-          {!workflowEnabled ? (
-            <DropdownMenuItem onClick={onEnableWorkflow} className="font-mono text-xs gap-2 text-primary focus:text-primary">
-              <GitPullRequestArrow className="h-3.5 w-3.5" />
-              워크플로우 전환
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuSeparator />

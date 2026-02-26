@@ -35,7 +35,6 @@ import {
   useAddAnnotation,
   useUpdateAnnotation,
   useUpdateArtifact,
-  useStartWorkflow,
 } from "@/features/workflow/hooks/useWorkflow";
 
 const noop = () => {};
@@ -118,22 +117,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const effectiveWorkDir =
     workDir && worktreeName ? `${workDir}/.claude/worktrees/${worktreeName}` : workDir;
   const { gitInfo } = useGitInfo(effectiveWorkDir ?? "");
-
-  const startWorkflow = useStartWorkflow(sessionId);
-  const handleEnableWorkflow = useCallback(() => {
-    startWorkflow.mutate(
-      {},
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["sessions"] });
-          toast.success("워크플로우 모드로 전환되었습니다");
-        },
-        onError: () => {
-          toast.error("워크플로우 전환에 실패했습니다");
-        },
-      },
-    );
-  }, [startWorkflow, queryClient]);
 
   useChatNotifications({ sessionId, status, messages, pendingPermission, workDir });
 
@@ -262,7 +245,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   // 워크플로우 정의 steps 로드
   const { data: workflowStatusData } = useWorkflowStatus(
     sessionId,
-    !!sessionInfo?.workflow_enabled,
+    true,
   );
   const workflowSteps = workflowStatusData?.steps ?? [];
 
@@ -346,12 +329,10 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   } = useChatSearch({ messages, virtualizer, isSplitView, focusedSessionId, sessionId });
 
   // P2: 워크플로우 승인 대기 상태 감지 — 원시값 의존성으로 최적화
-  const workflowEnabled = sessionInfo?.workflow_enabled;
   const workflowPhaseStatus = sessionInfo?.workflow_phase_status;
   const waitingForWorkflowApproval = useMemo(() => {
-    if (!workflowEnabled) return false;
     return workflowPhaseStatus === "awaiting_approval";
-  }, [workflowEnabled, workflowPhaseStatus]);
+  }, [workflowPhaseStatus]);
 
   // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
   const prevGapsRef = useRef<Record<number, "tight" | "normal" | "turn-start">>({});
@@ -562,31 +543,16 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         onArchive={handleArchive}
         onUnarchive={handleUnarchive}
         onFork={handleFork}
-        workflowEnabled={sessionInfo?.workflow_enabled}
-        onEnableWorkflow={handleEnableWorkflow}
       />
-      {sessionInfo?.workflow_enabled ? (
-        <WorkflowProgressBar
-          steps={workflowSteps}
-          currentPhase={sessionInfo.workflow_phase ?? null}
-          currentStatus={
-            (sessionInfo.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus) ??
-            null
-          }
-          onPhaseClick={noop}
-        />
-      ) : (
-        <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-muted/50 border-b border-border text-xs text-muted-foreground">
-          <span>읽기전용 모드 — 분석/검색만 가능합니다</span>
-          <button
-            type="button"
-            onClick={handleEnableWorkflow}
-            className="px-2 py-0.5 text-2xs font-medium text-primary bg-primary/10 border border-primary/30 rounded hover:bg-primary/20 transition-colors"
-          >
-            워크플로우 전환
-          </button>
-        </div>
-      )}
+      <WorkflowProgressBar
+        steps={workflowSteps}
+        currentPhase={sessionInfo?.workflow_phase ?? null}
+        currentStatus={
+          (sessionInfo?.workflow_phase_status as import("@/types/workflow").WorkflowPhaseStatus) ??
+          null
+        }
+        onPhaseClick={noop}
+      />
 
       <PinnedTodoBar todos={pinnedTodos} />
 

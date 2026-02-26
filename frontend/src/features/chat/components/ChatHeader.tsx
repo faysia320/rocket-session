@@ -44,8 +44,6 @@ interface ChatHeaderProps {
   onUnarchive?: () => void;
   onDelete?: () => void;
   onFork?: () => void;
-  workflowEnabled?: boolean;
-  onEnableWorkflow?: () => void;
 }
 
 export const ChatHeader = memo(function ChatHeader({
@@ -73,8 +71,6 @@ export const ChatHeader = memo(function ChatHeader({
   onUnarchive,
   onDelete,
   onFork,
-  workflowEnabled,
-  onEnableWorkflow,
 }: ChatHeaderProps) {
   const isEffectivelyRunning = status === "running" || activeTools.length > 0;
 
@@ -191,14 +187,12 @@ export const ChatHeader = memo(function ChatHeader({
             isArchived={isArchived}
             gitInfo={gitInfo}
             worktreeName={worktreeName}
-            workflowEnabled={workflowEnabled}
             onOpenSettings={() => onSettingsOpenChange(true)}
             onArchive={onArchive}
             onUnarchive={onUnarchive}
             onDelete={onDelete}
             onFork={onFork}
             onConvertToWorktree={onConvertToWorktree}
-            onEnableWorkflow={onEnableWorkflow}
           />
           <Sheet open={filesOpen} onOpenChange={onFilesOpenChange} modal={!portalContainer}>
             <Tooltip>

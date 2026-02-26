@@ -46,7 +46,6 @@ export interface CreateSessionRequest {
   allowed_tools?: string | null;
   system_prompt?: string | null;
   timeout_seconds?: number | null;
-  workflow_enabled?: boolean | null;
   permission_mode?: boolean | null;
   permission_required_tools?: string[] | null;
   model?: string | null;
@@ -65,7 +64,6 @@ export interface UpdateSessionRequest {
   allowed_tools?: string | null;
   system_prompt?: string | null;
   timeout_seconds?: number | null;
-  workflow_enabled?: boolean | null;
   permission_mode?: boolean | null;
   permission_required_tools?: string[] | null;
   name?: string | null;

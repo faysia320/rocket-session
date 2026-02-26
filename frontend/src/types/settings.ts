@@ -4,7 +4,6 @@ export interface GlobalSettings {
   allowed_tools?: string | null;
   system_prompt?: string | null;
   timeout_seconds?: number | null;
-  workflow_enabled?: boolean;
   permission_mode?: boolean;
   permission_required_tools?: string[] | null;
   model?: string | null;

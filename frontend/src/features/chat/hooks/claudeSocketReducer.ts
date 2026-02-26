@@ -910,8 +910,8 @@ export function claudeSocketReducer(
         tokenUsage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 },
         pendingAnswerCount: 0,
         pinnedTodos: [],
-        // 워크플로우 활성 시 첫 번째 단계로 리셋
-        sessionInfo: state.sessionInfo?.workflow_enabled
+        // 워크플로우 첫 번째 단계로 리셋
+        sessionInfo: state.sessionInfo
           ? {
               ...state.sessionInfo,
               workflow_phase: null,
