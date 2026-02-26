@@ -33,6 +33,11 @@ function DefinitionItem({ definition, selected, onSelect }: DefinitionItemProps)
         <Badge variant="secondary" className="font-mono text-2xs px-1 py-0 shrink-0">
           {definition.steps.length}단계
         </Badge>
+        {definition.is_builtin ? (
+          <Badge variant="outline" className="font-mono text-2xs px-1 py-0 shrink-0 text-blue-500 border-blue-500/30">
+            System
+          </Badge>
+        ) : null}
         {definition.is_default ? (
           <Badge variant="outline" className="font-mono text-2xs px-1 py-0 shrink-0 text-primary border-primary/30">
             Default

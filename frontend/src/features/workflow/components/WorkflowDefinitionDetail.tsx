@@ -123,6 +123,11 @@ export function WorkflowDefinitionDetail({
         <span className="font-mono text-sm font-semibold text-foreground truncate">
           {isCreating ? "새 정의" : definition?.name}
         </span>
+        {definition?.is_builtin ? (
+          <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 shrink-0 text-blue-500 border-blue-500/30">
+            System
+          </Badge>
+        ) : null}
         {definition?.is_default ? (
           <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 shrink-0 text-primary border-primary/30">
             Default
@@ -208,20 +213,22 @@ export function WorkflowDefinitionDetail({
               </TooltipTrigger>
               <TooltipContent className="font-mono text-xs">내보내기</TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-destructive/60 hover:text-destructive"
-                  onClick={onDelete}
-                  aria-label="삭제"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="font-mono text-xs">삭제</TooltipContent>
-            </Tooltip>
+            {!definition?.is_builtin ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive/60 hover:text-destructive"
+                    onClick={onDelete}
+                    aria-label="삭제"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="font-mono text-xs">삭제</TooltipContent>
+              </Tooltip>
+            ) : null}
           </>
         )}
       </div>
@@ -238,6 +245,7 @@ export function WorkflowDefinitionDetail({
                   value={formData.name}
                   onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="워크플로우 정의 이름"
+                  disabled={!!definition?.is_builtin}
                 />
               </div>
               <div className="space-y-1.5">

@@ -29,7 +29,12 @@ export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefiniti
 
   const sortedDefinitions = useMemo(() => {
     if (!definitions) return [];
-    return [...definitions].sort((a, b) => Number(b.is_default) - Number(a.is_default));
+    return [...definitions].sort((a, b) => {
+      if (a.is_builtin !== b.is_builtin) return Number(b.is_builtin) - Number(a.is_builtin);
+      if (a.is_builtin && b.is_builtin) return a.sort_order - b.sort_order;
+      if (a.is_default !== b.is_default) return Number(b.is_default) - Number(a.is_default);
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    });
   }, [definitions]);
 
   const handleChange = (val: string) => {

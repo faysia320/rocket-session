@@ -30,7 +30,9 @@ export interface WorkflowDefinitionInfo {
   id: string;
   name: string;
   description: string | null;
+  is_builtin: boolean;
   is_default: boolean;
+  sort_order: number;
   steps: WorkflowStepConfig[];
   created_at: string;
   updated_at: string;
