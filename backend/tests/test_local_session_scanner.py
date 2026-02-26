@@ -4,14 +4,13 @@ import json
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from app.schemas.local_session import ImportLocalSessionResponse, LocalSessionMeta
+from app.schemas.local_session import ImportLocalSessionResponse
 from app.services.local_session_scanner import (
     LocalSessionScanner,
-    _get_claude_projects_dir,
     _validate_safe_path,
 )
 
@@ -201,7 +200,9 @@ class TestParseMessages:
         assert messages[0]["role"] == "user"
         assert messages[0]["content"] == "Hello"
         assert isinstance(messages[0]["timestamp"], datetime)
-        assert messages[0]["timestamp"] == datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        assert messages[0]["timestamp"] == datetime(
+            2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc
+        )
         assert messages[1]["role"] == "assistant"
         assert messages[1]["content"] == "Hi there!"
 

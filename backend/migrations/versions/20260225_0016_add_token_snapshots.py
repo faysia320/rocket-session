@@ -35,9 +35,7 @@ def upgrade() -> None:
         sa.Column("timestamp", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "idx_token_snapshots_session_id", "token_snapshots", ["session_id"]
-    )
+    op.create_index("idx_token_snapshots_session_id", "token_snapshots", ["session_id"])
     op.create_index("idx_token_snapshots_timestamp", "token_snapshots", ["timestamp"])
     op.create_index(
         "idx_token_snapshots_workflow_phase", "token_snapshots", ["workflow_phase"]

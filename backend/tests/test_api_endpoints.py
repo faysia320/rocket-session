@@ -109,7 +109,9 @@ async def test_client():
 
 
 # Helper function
-async def create_test_session(client: AsyncClient, workspace_id: str | None = None) -> dict:
+async def create_test_session(
+    client: AsyncClient, workspace_id: str | None = None
+) -> dict:
     """Helper function to create a test session."""
     payload = {"workspace_id": workspace_id or TEST_WORKSPACE_ID}
     response = await client.post("/api/sessions/", json=payload)
@@ -349,7 +351,9 @@ class TestSessionWorkflow:
 
     async def test_create_session_default_workflow(self, test_client: AsyncClient):
         """Should create session with workflow disabled by default."""
-        response = await test_client.post("/api/sessions/", json={"workspace_id": TEST_WORKSPACE_ID})
+        response = await test_client.post(
+            "/api/sessions/", json={"workspace_id": TEST_WORKSPACE_ID}
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -387,7 +391,9 @@ class TestSessionWorkflow:
         assert data["permission_mode"] is True
         assert data["permission_required_tools"] == ["Write", "Edit", "Bash"]
 
-    async def test_update_session_workflow_and_permission(self, test_client: AsyncClient):
+    async def test_update_session_workflow_and_permission(
+        self, test_client: AsyncClient
+    ):
         """Should update session workflow and permission settings."""
         created = await create_test_session(test_client)
         session_id = created["id"]

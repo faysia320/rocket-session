@@ -208,9 +208,7 @@ class TestApprovePhase:
     ):
         """존재하지 않는 세션 승인 시 ValueError가 발생한다."""
         with pytest.raises(ValueError, match="세션을 찾을 수 없습니다"):
-            await workflow_service.approve_phase(
-                "nonexistent-id", session_manager
-            )
+            await workflow_service.approve_phase("nonexistent-id", session_manager)
 
     async def test_approve_without_active_workflow_raises(
         self, workflow_service, session_manager, test_session
@@ -218,9 +216,7 @@ class TestApprovePhase:
         """워크플로우가 활성 상태가 아닌 세션 승인 시 ValueError가 발생한다."""
         # workflow_phase가 None인 세션
         with pytest.raises(ValueError, match="워크플로우가 활성 상태가 아닙니다"):
-            await workflow_service.approve_phase(
-                test_session["id"], session_manager
-            )
+            await workflow_service.approve_phase(test_session["id"], session_manager)
 
 
 @pytest.mark.asyncio
@@ -261,9 +257,7 @@ class TestRequestRevision:
             workflow_phase="research",
             workflow_phase_status="awaiting_approval",
         )
-        await workflow_service.create_artifact(
-            session_id, "research", "# 연구 결과"
-        )
+        await workflow_service.create_artifact(session_id, "research", "# 연구 결과")
 
         await workflow_service.request_revision(
             session_id, session_manager, feedback="수정 요청"
@@ -303,9 +297,7 @@ class TestRequestRevision:
 class TestCreateArtifact:
     """create_artifact: 아티팩트 생성."""
 
-    async def test_create_first_artifact(
-        self, workflow_service, test_session
-    ):
+    async def test_create_first_artifact(self, workflow_service, test_session):
         """첫 번째 아티팩트 생성 시 version=1, parent_artifact_id=None이다."""
         artifact = await workflow_service.create_artifact(
             test_session["id"], "research", "# 연구 결과\n코드 분석"
@@ -322,15 +314,11 @@ class TestCreateArtifact:
         assert artifact.created_at is not None
         assert artifact.updated_at is not None
 
-    async def test_create_second_version(
-        self, workflow_service, test_session
-    ):
+    async def test_create_second_version(self, workflow_service, test_session):
         """동일 phase에 아티팩트 생성 시 version이 증가하고 parent가 설정된다."""
         session_id = test_session["id"]
 
-        v1 = await workflow_service.create_artifact(
-            session_id, "research", "# v1 연구"
-        )
+        v1 = await workflow_service.create_artifact(session_id, "research", "# v1 연구")
         v2 = await workflow_service.create_artifact(
             session_id, "research", "# v2 연구 (수정)"
         )
@@ -348,9 +336,7 @@ class TestCreateArtifact:
         research = await workflow_service.create_artifact(
             session_id, "research", "# 연구"
         )
-        plan = await workflow_service.create_artifact(
-            session_id, "plan", "# 계획"
-        )
+        plan = await workflow_service.create_artifact(session_id, "plan", "# 계획")
 
         assert research.version == 1
         assert plan.version == 1
@@ -361,9 +347,7 @@ class TestCreateArtifact:
 class TestGetArtifact:
     """get_artifact: 아티팩트 상세 조회."""
 
-    async def test_get_existing_artifact(
-        self, workflow_service, test_session
-    ):
+    async def test_get_existing_artifact(self, workflow_service, test_session):
         """존재하는 아티팩트를 조회하면 주석 목록을 포함하여 반환한다."""
         created = await workflow_service.create_artifact(
             test_session["id"], "research", "# 내용"
@@ -407,9 +391,7 @@ class TestListArtifacts:
         artifacts = await workflow_service.list_artifacts(test_session["id"])
         assert artifacts == []
 
-    async def test_list_multiple_artifacts(
-        self, workflow_service, test_session
-    ):
+    async def test_list_multiple_artifacts(self, workflow_service, test_session):
         """여러 아티팩트가 있으면 모두 반환한다."""
         session_id = test_session["id"]
 
@@ -422,9 +404,7 @@ class TestListArtifacts:
         phases = {a.phase for a in artifacts}
         assert phases == {"research", "plan"}
 
-    async def test_list_only_session_artifacts(
-        self, workflow_service, session_manager
-    ):
+    async def test_list_only_session_artifacts(self, workflow_service, session_manager):
         """다른 세션의 아티팩트는 포함하지 않는다."""
         s1 = await session_manager.create(work_dir=tempfile.gettempdir())
         s2 = await session_manager.create(work_dir=tempfile.gettempdir())
@@ -470,9 +450,7 @@ class TestUpdateArtifact:
 class TestAddAnnotation:
     """add_annotation: 인라인 주석 추가."""
 
-    async def test_add_comment_annotation(
-        self, workflow_service, test_session
-    ):
+    async def test_add_comment_annotation(self, workflow_service, test_session):
         """기본 comment 타입 주석을 추가한다."""
         artifact = await workflow_service.create_artifact(
             test_session["id"], "research", "# 제목\n내용\n끝"
@@ -492,9 +470,7 @@ class TestAddAnnotation:
         assert annotation.annotation_type == "comment"
         assert annotation.status == "pending"
 
-    async def test_add_suggestion_with_line_range(
-        self, workflow_service, test_session
-    ):
+    async def test_add_suggestion_with_line_range(self, workflow_service, test_session):
         """suggestion 타입 + line_end 범위를 지정하여 주석을 추가한다."""
         artifact = await workflow_service.create_artifact(
             test_session["id"], "plan", "# 계획\n1단계\n2단계\n3단계"
@@ -512,9 +488,7 @@ class TestAddAnnotation:
         assert annotation.line_end == 4
         assert annotation.annotation_type == "suggestion"
 
-    async def test_add_multiple_annotations(
-        self, workflow_service, test_session
-    ):
+    async def test_add_multiple_annotations(self, workflow_service, test_session):
         """하나의 아티팩트에 여러 주석을 추가할 수 있다."""
         artifact = await workflow_service.create_artifact(
             test_session["id"], "research", "A\nB\nC\nD"
@@ -537,14 +511,10 @@ class TestUpdateAnnotationStatus:
         artifact = await workflow_service.create_artifact(
             test_session["id"], "research", "# 내용"
         )
-        ann = await workflow_service.add_annotation(
-            artifact.id, 1, "수정 필요"
-        )
+        ann = await workflow_service.add_annotation(artifact.id, 1, "수정 필요")
         assert ann.status == "pending"
 
-        updated = await workflow_service.update_annotation_status(
-            ann.id, "resolved"
-        )
+        updated = await workflow_service.update_annotation_status(ann.id, "resolved")
 
         assert updated.status == "resolved"
         assert updated.id == ann.id
@@ -554,18 +524,12 @@ class TestUpdateAnnotationStatus:
         artifact = await workflow_service.create_artifact(
             test_session["id"], "research", "# 내용"
         )
-        ann = await workflow_service.add_annotation(
-            artifact.id, 1, "이 부분 확인"
-        )
+        ann = await workflow_service.add_annotation(artifact.id, 1, "이 부분 확인")
 
-        updated = await workflow_service.update_annotation_status(
-            ann.id, "dismissed"
-        )
+        updated = await workflow_service.update_annotation_status(ann.id, "dismissed")
         assert updated.status == "dismissed"
 
-    async def test_update_nonexistent_annotation_raises(
-        self, workflow_service
-    ):
+    async def test_update_nonexistent_annotation_raises(self, workflow_service):
         """존재하지 않는 주석 상태 변경 시 ValueError가 발생한다."""
         with pytest.raises(ValueError, match="주석을 찾을 수 없습니다"):
             await workflow_service.update_annotation_status(999999, "resolved")
@@ -591,9 +555,7 @@ class TestRenderAnnotatedContent:
         rendered = await workflow_service.render_annotated_content(artifact.id)
         assert rendered == "# 제목\n내용"
 
-    async def test_pending_annotation_inserted(
-        self, workflow_service, test_session
-    ):
+    async def test_pending_annotation_inserted(self, workflow_service, test_session):
         """pending 주석이 올바른 위치에 HTML 코멘트로 삽입된다."""
         artifact = await workflow_service.create_artifact(
             test_session["id"], "research", "line0\nline1\nline2"
@@ -640,9 +602,7 @@ class TestRenderAnnotatedContent:
         assert "<!-- [COMMENT L1]: 주석A -->" in rendered
         assert "<!-- [COMMENT L3]: 주석C -->" in rendered
 
-    async def test_suggestion_type_label(
-        self, workflow_service, test_session
-    ):
+    async def test_suggestion_type_label(self, workflow_service, test_session):
         """suggestion 타입 주석은 [SUGGESTION] 라벨로 렌더링된다."""
         artifact = await workflow_service.create_artifact(
             test_session["id"], "research", "A\nB\nC"
@@ -654,9 +614,7 @@ class TestRenderAnnotatedContent:
         rendered = await workflow_service.render_annotated_content(artifact.id)
         assert "<!-- [SUGGESTION L2]: 대안 제시 -->" in rendered
 
-    async def test_line_range_annotation_label(
-        self, workflow_service, test_session
-    ):
+    async def test_line_range_annotation_label(self, workflow_service, test_session):
         """line_end가 있는 주석은 L{start}-L{end} 형식으로 표시된다."""
         artifact = await workflow_service.create_artifact(
             test_session["id"], "research", "A\nB\nC\nD"
@@ -668,9 +626,7 @@ class TestRenderAnnotatedContent:
         rendered = await workflow_service.render_annotated_content(artifact.id)
         assert "<!-- [COMMENT L1-L3]: 범위 주석 -->" in rendered
 
-    async def test_nonexistent_artifact_returns_empty(
-        self, workflow_service
-    ):
+    async def test_nonexistent_artifact_returns_empty(self, workflow_service):
         """존재하지 않는 아티팩트의 렌더링은 빈 문자열을 반환한다."""
         rendered = await workflow_service.render_annotated_content(999999)
         assert rendered == ""
@@ -685,9 +641,7 @@ class TestRenderAnnotatedContent:
 class TestBuildPhaseContext:
     """build_phase_context: Phase별 컨텍스트 프롬프트 생성."""
 
-    async def test_research_phase_context(
-        self, workflow_service, test_session
-    ):
+    async def test_research_phase_context(self, workflow_service, test_session):
         """research phase 컨텍스트에는 코드 수정 금지 지시가 포함된다."""
         context = await workflow_service.build_phase_context(
             test_session["id"], "research", "이 프로젝트의 인증 시스템 분석"
@@ -697,9 +651,7 @@ class TestBuildPhaseContext:
         assert "이 프로젝트의 인증 시스템 분석" in context
         assert "코드베이스를 깊이 탐색" in context
 
-    async def test_plan_phase_without_research(
-        self, workflow_service, test_session
-    ):
+    async def test_plan_phase_without_research(self, workflow_service, test_session):
         """research 아티팩트 없이 plan phase 컨텍스트를 생성하면 지시사항만 포함된다."""
         context = await workflow_service.build_phase_context(
             test_session["id"], "plan", "API 리팩토링 계획"
@@ -749,16 +701,12 @@ class TestBuildPhaseContext:
         # 승인 → plan으로 전환
         await workflow_service.approve_phase(session_id, session_manager)
 
-        context = await workflow_service.build_phase_context(
-            session_id, "plan", "계획"
-        )
+        context = await workflow_service.build_phase_context(session_id, "plan", "계획")
 
         assert "연구 결과 (research.md)" in context
         assert "<!-- [COMMENT L1]: 이 부분 보강 -->" in context
 
-    async def test_implement_phase_without_plan(
-        self, workflow_service, test_session
-    ):
+    async def test_implement_phase_without_plan(self, workflow_service, test_session):
         """plan 아티팩트 없이 implement phase 컨텍스트를 생성하면 지시사항만 포함된다."""
         context = await workflow_service.build_phase_context(
             test_session["id"], "implement", "구현 시작"
@@ -820,9 +768,7 @@ class TestFullWorkflowIntegration:
         session_id = test_session["id"]
 
         # 1. 워크플로우 시작
-        start = await workflow_service.start_workflow(
-            session_id, session_manager
-        )
+        start = await workflow_service.start_workflow(session_id, session_manager)
         assert start["phase"] == "research"
 
         # 2. research 아티팩트 생성
@@ -833,9 +779,7 @@ class TestFullWorkflowIntegration:
         assert research_artifact.version == 1
 
         # 3. research 승인 → plan 전환
-        approve1 = await workflow_service.approve_phase(
-            session_id, session_manager
-        )
+        approve1 = await workflow_service.approve_phase(session_id, session_manager)
         assert approve1["approved_phase"] == "research"
         assert approve1["next_phase"] == "plan"
 
@@ -847,16 +791,12 @@ class TestFullWorkflowIntegration:
         assert plan_artifact.version == 1
 
         # 5. plan 승인 → implement 전환
-        approve2 = await workflow_service.approve_phase(
-            session_id, session_manager
-        )
+        approve2 = await workflow_service.approve_phase(session_id, session_manager)
         assert approve2["approved_phase"] == "plan"
         assert approve2["next_phase"] == "implement"
 
         # 6. implement 승인 → 워크플로우 종료
-        approve3 = await workflow_service.approve_phase(
-            session_id, session_manager
-        )
+        approve3 = await workflow_service.approve_phase(session_id, session_manager)
         assert approve3["approved_phase"] == "implement"
         assert approve3["next_phase"] is None
 
@@ -877,9 +817,7 @@ class TestFullWorkflowIntegration:
 
         # 워크플로우 시작 + research 아티팩트
         await workflow_service.start_workflow(session_id, session_manager)
-        v1 = await workflow_service.create_artifact(
-            session_id, "research", "# v1 연구"
-        )
+        v1 = await workflow_service.create_artifact(session_id, "research", "# v1 연구")
         assert v1.version == 1
 
         # 수정 요청
@@ -902,9 +840,7 @@ class TestFullWorkflowIntegration:
         assert v2.status == "review"
 
         # v2 승인 → plan으로 전환
-        approve = await workflow_service.approve_phase(
-            session_id, session_manager
-        )
+        approve = await workflow_service.approve_phase(session_id, session_manager)
         assert approve["approved_phase"] == "research"
         assert approve["next_phase"] == "plan"
 

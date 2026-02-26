@@ -37,9 +37,7 @@ class TokenSnapshotRepository:
             func.coalesce(func.sum(TokenSnapshot.cache_creation_tokens), 0).label(
                 "total_cache_creation_tokens"
             ),
-            func.count(func.distinct(TokenSnapshot.session_id)).label(
-                "total_sessions"
-            ),
+            func.count(func.distinct(TokenSnapshot.session_id)).label("total_sessions"),
         ).where(
             TokenSnapshot.timestamp >= start,
             TokenSnapshot.timestamp < end,
@@ -48,9 +46,7 @@ class TokenSnapshotRepository:
         row = result.one()
         return dict(row._mapping)
 
-    async def get_daily_usage(
-        self, start: datetime, end: datetime
-    ) -> list[dict]:
+    async def get_daily_usage(self, start: datetime, end: datetime) -> list[dict]:
         """일별 토큰 사용량 집계."""
         date_col = cast(TokenSnapshot.timestamp, Date).label("date")
         stmt = (
@@ -136,9 +132,7 @@ class TokenSnapshotRepository:
                 top_model.c.model,
             )
             .outerjoin(Session, TokenSnapshot.session_id == Session.id)
-            .outerjoin(
-                top_model, top_model.c.session_id == TokenSnapshot.session_id
-            )
+            .outerjoin(top_model, top_model.c.session_id == TokenSnapshot.session_id)
             .where(
                 TokenSnapshot.timestamp >= start,
                 TokenSnapshot.timestamp < end,
@@ -155,9 +149,7 @@ class TokenSnapshotRepository:
         result = await self._session.execute(stmt)
         return [dict(row._mapping) for row in result.all()]
 
-    async def get_project_usage(
-        self, start: datetime, end: datetime
-    ) -> list[dict]:
+    async def get_project_usage(self, start: datetime, end: datetime) -> list[dict]:
         """프로젝트(work_dir)별 토큰 사용량 집계.
 
         token_snapshots에 work_dir이 있으므로 sessions JOIN 불필요.
@@ -196,9 +188,7 @@ class TokenSnapshotRepository:
         result = await self._session.execute(stmt)
         return [dict(row._mapping) for row in result.all()]
 
-    async def get_phase_usage(
-        self, start: datetime, end: datetime
-    ) -> list[dict]:
+    async def get_phase_usage(self, start: datetime, end: datetime) -> list[dict]:
         """워크플로우 Phase별 토큰 사용량 집계."""
         stmt = (
             select(

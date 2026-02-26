@@ -28,8 +28,12 @@ class SessionArtifact(Base):
     parent_artifact_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("session_artifacts.id", ondelete="SET NULL"), default=None
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # Relationships
     annotations: Mapped[list["ArtifactAnnotation"]] = relationship(
@@ -64,7 +68,9 @@ class ArtifactAnnotation(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     annotation_type: Mapped[str] = mapped_column(String, default="comment")
     status: Mapped[str] = mapped_column(String, default="pending")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # Relationships
     artifact: Mapped["SessionArtifact"] = relationship(

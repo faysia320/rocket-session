@@ -62,7 +62,9 @@ async def create_session(
     if not ws:
         raise HTTPException(status_code=404, detail="워크스페이스를 찾을 수 없습니다")
     if ws["status"] != "ready":
-        raise HTTPException(status_code=400, detail="워크스페이스가 준비되지 않았습니다")
+        raise HTTPException(
+            status_code=400, detail="워크스페이스가 준비되지 않았습니다"
+        )
     work_dir = ws["local_path"]
 
     # MCP 서버: 요청값 > 활성화된 모든 MCP 서버

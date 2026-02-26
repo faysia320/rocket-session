@@ -84,9 +84,7 @@ class WorkflowService:
         async with self._db.session() as db_sess:
             repo = SessionRepository(db_sess)
             session_entity = await repo.get_by_id(session_id)
-            def_id = (
-                session_entity.workflow_definition_id if session_entity else None
-            )
+            def_id = session_entity.workflow_definition_id if session_entity else None
         definition = await self._def_service.get_or_default(def_id)
         return sorted(definition.steps, key=lambda s: s.order_index)
 
@@ -149,14 +147,10 @@ class WorkflowService:
         steps = sorted(definition.steps, key=lambda s: s.order_index)
 
         if start_from_step:
-            first = next(
-                (s for s in steps if s.name == start_from_step), steps[0]
-            )
+            first = next((s for s in steps if s.name == start_from_step), steps[0])
         elif skip_research and skip_plan:
             # 하위 호환: 기본 프리셋에서 implement로 점프
-            first = next(
-                (s for s in steps if s.name == "implement"), steps[-1]
-            )
+            first = next((s for s in steps if s.name == "implement"), steps[-1])
         elif skip_research:
             first = next(
                 (s for s in steps if s.name == "plan"),
@@ -464,9 +458,7 @@ class WorkflowService:
             prev_step = steps[current_idx - 1]
             async with self._db.session() as db_sess:
                 repo = SessionArtifactRepository(db_sess)
-                artifact = await repo.get_latest_by_phase(
-                    session_id, prev_step.name
-                )
+                artifact = await repo.get_latest_by_phase(session_id, prev_step.name)
                 if artifact and artifact.status == "approved":
                     ann_repo = ArtifactAnnotationRepository(db_sess)
                     pending = await ann_repo.list_pending(artifact.id)
@@ -497,9 +489,7 @@ class WorkflowService:
         if session_manager:
             steps = await self._get_steps(session_id, session_manager)
             session_data = await session_manager.get(session_id)
-            current_phase = (
-                session_data.get("workflow_phase") if session_data else None
-            )
+            current_phase = session_data.get("workflow_phase") if session_data else None
         else:
             steps = await self._get_steps_from_db(session_id)
             from app.repositories.session_repo import SessionRepository

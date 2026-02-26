@@ -228,9 +228,7 @@ class TestRequestPermission:
         ):
             # 새 요청 추가 (MAX_PENDING 초과)
             body = PermissionRequest(tool_name="Write", tool_input={"file": "new.py"})
-            request_task = asyncio.create_task(
-                request_permission("sess_new", body)
-            )
+            request_task = asyncio.create_task(request_permission("sess_new", body))
 
             # 짧은 대기 후 확인
             await asyncio.sleep(0.1)

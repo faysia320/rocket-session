@@ -227,7 +227,9 @@ async def approve_phase(
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
-    result = await workflow.approve_phase(session_id, session_manager=manager, feedback=req.feedback)
+    result = await workflow.approve_phase(
+        session_id, session_manager=manager, feedback=req.feedback
+    )
 
     event_type = (
         WsEventType.WORKFLOW_COMPLETED
@@ -255,9 +257,7 @@ async def approve_phase(
             def_id = session.get("workflow_definition_id")
             definition = await def_service.get_or_default(def_id)
             steps = sorted(definition.steps, key=lambda s: s.order_index)
-            next_step = next(
-                (s for s in steps if s.name == next_phase), None
-            )
+            next_step = next((s for s in steps if s.name == next_phase), None)
 
             # auto_advance가 아닌 step에서의 승인 → 다음 phase 자동 실행
             original_prompt = session.get("workflow_original_prompt", "")
@@ -300,9 +300,7 @@ async def approve_phase(
                     ),
                 )
             )
-            task.add_done_callback(
-                lambda t: _auto_chain_done(t, session_id, manager)
-            )
+            task.add_done_callback(lambda t: _auto_chain_done(t, session_id, manager))
             manager.set_runner_task(session_id, task)
         except Exception:
             logger.warning(
@@ -333,7 +331,9 @@ async def request_revision(
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
-    result = await workflow.request_revision(session_id, session_manager=manager, feedback=req.feedback or "")
+    result = await workflow.request_revision(
+        session_id, session_manager=manager, feedback=req.feedback or ""
+    )
     current_phase = result.get("phase")
 
     await ws_manager.broadcast_event(
@@ -353,14 +353,14 @@ async def request_revision(
             def_id = session.get("workflow_definition_id")
             definition = await def_service.get_or_default(def_id)
             steps = sorted(definition.steps, key=lambda s: s.order_index)
-            current_step = next(
-                (s for s in steps if s.name == current_phase), None
-            )
+            current_step = next((s for s in steps if s.name == current_phase), None)
 
             if current_step and current_step.review_required:
                 original_prompt = session.get("workflow_original_prompt", "")
                 revision_context = await workflow.build_revision_context(
-                    session_id, original_prompt, req.feedback or "",
+                    session_id,
+                    original_prompt,
+                    req.feedback or "",
                     session_manager=manager,
                 )
 

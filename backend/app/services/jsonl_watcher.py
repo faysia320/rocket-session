@@ -165,13 +165,19 @@ class JsonlWatcher:
                     # 실제 새 데이터 감지 시에만 RUNNING 전환
                     if not activated_running:
                         session_now = await self._session_manager.get(session_id)
-                        if session_now and session_now.get("status") == SessionStatus.IDLE:
+                        if (
+                            session_now
+                            and session_now.get("status") == SessionStatus.IDLE
+                        ):
                             await self._session_manager.update_status(
                                 session_id, SessionStatus.RUNNING
                             )
                             await self._ws_manager.broadcast_event(
                                 session_id,
-                                {"type": WsEventType.STATUS, "status": SessionStatus.RUNNING},
+                                {
+                                    "type": WsEventType.STATUS,
+                                    "status": SessionStatus.RUNNING,
+                                },
                             )
                         activated_running = True
 
@@ -206,7 +212,8 @@ class JsonlWatcher:
                     session_id, SessionStatus.IDLE
                 )
                 await self._ws_manager.broadcast_event(
-                    session_id, {"type": WsEventType.STATUS, "status": SessionStatus.IDLE}
+                    session_id,
+                    {"type": WsEventType.STATUS, "status": SessionStatus.IDLE},
                 )
 
     @staticmethod
@@ -258,7 +265,10 @@ class JsonlWatcher:
             )
             await self._ws_manager.broadcast_event(
                 session_id,
-                {"type": WsEventType.SESSION_INFO, "claude_session_id": event["session_id"]},
+                {
+                    "type": WsEventType.SESSION_INFO,
+                    "claude_session_id": event["session_id"],
+                },
             )
         else:
             await self._ws_manager.broadcast_event(
@@ -349,7 +359,10 @@ class JsonlWatcher:
                         else raw_path
                     )
                     normalized = file_path.replace("\\", "/")
-                    if normalized.startswith(".claude/plans/") or "/.claude/plans/" in normalized:
+                    if (
+                        normalized.startswith(".claude/plans/")
+                        or "/.claude/plans/" in normalized
+                    ):
                         pass
                     else:
                         ts_dt = utc_now()
@@ -476,7 +489,9 @@ class JsonlWatcher:
                 cache_read_tokens=cache_read_tokens or 0,
             )
         except Exception:
-            logger.warning("토큰 스냅샷 기록 실패: session=%s", session_id, exc_info=True)
+            logger.warning(
+                "토큰 스냅샷 기록 실패: session=%s", session_id, exc_info=True
+            )
 
         # turn_state 리셋 (다음 턴 준비)
         turn_state["text"] = ""

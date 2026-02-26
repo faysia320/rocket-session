@@ -1,20 +1,14 @@
 """Tests for FilesystemService, GitService, and SkillsService."""
 
-import os
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.filesystem_service import FilesystemService
-from app.services.git_service import GitService
-from app.services.skills_service import SkillsService
 from app.schemas.filesystem import (
-    DirectoryEntry,
     DirectoryListResponse,
     GitInfo,
-    SkillInfo,
     SkillListResponse,
 )
 
@@ -135,7 +129,9 @@ class TestListSkills:
             commands_dir = Path(tmpdir) / ".claude" / "commands"
             commands_dir.mkdir(parents=True)
 
-            (commands_dir / "skill1.md").write_text("First line of skill1\nMore content")
+            (commands_dir / "skill1.md").write_text(
+                "First line of skill1\nMore content"
+            )
             (commands_dir / "skill2.md").write_text("First line of skill2")
 
             result = await skills_service.list_skills(tmpdir)
@@ -198,6 +194,7 @@ class TestListSkills:
         finally:
             # Cleanup
             import shutil
+
             if user_home.exists():
                 shutil.rmtree(user_home)
 
@@ -249,7 +246,7 @@ class TestRunGitCommand:
         with tempfile.TemporaryDirectory() as tmpdir:
             mock_result = AsyncMock(return_value=(0, "output", ""))
 
-            with patch.object(git_service, '_run_git_command', mock_result):
+            with patch.object(git_service, "_run_git_command", mock_result):
                 returncode, stdout, stderr = await git_service._run_git_command(
                     "status", cwd=tmpdir
                 )
@@ -262,9 +259,11 @@ class TestRunGitCommand:
     async def test_run_git_command_failure(self, git_service):
         """Should return non-zero returncode on failure."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            mock_result = AsyncMock(return_value=(128, "", "fatal: not a git repository"))
+            mock_result = AsyncMock(
+                return_value=(128, "", "fatal: not a git repository")
+            )
 
-            with patch.object(git_service, '_run_git_command', mock_result):
+            with patch.object(git_service, "_run_git_command", mock_result):
                 returncode, stdout, stderr = await git_service._run_git_command(
                     "status", cwd=tmpdir
                 )
@@ -286,7 +285,7 @@ class TestGetGitInfo:
                     return (128, "", "fatal: not a git repository")
                 return (0, "", "")
 
-            with patch.object(git_service, '_run_git_command', side_effect=mock_run):
+            with patch.object(git_service, "_run_git_command", side_effect=mock_run):
                 result = await git_service.get_git_info(tmpdir)
 
                 assert isinstance(result, GitInfo)
@@ -303,7 +302,7 @@ class TestGetGitInfo:
                 call_count += 1
                 return GitInfo(is_git_repo=True, branch="main")
 
-            with patch.object(git_service, '_fetch_git_info', side_effect=mock_fetch):
+            with patch.object(git_service, "_fetch_git_info", side_effect=mock_fetch):
                 # First call
                 result1 = await git_service.get_git_info(tmpdir)
                 # Second call (should use cache)

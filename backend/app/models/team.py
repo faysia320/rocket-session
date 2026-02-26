@@ -21,8 +21,12 @@ class Team(Base):
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
     lead_member_id: Mapped[int | None] = mapped_column(Integer, default=None)
     config: Mapped[dict | None] = mapped_column(JSONB, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # Relationships
     members: Mapped[list["TeamMember"]] = relationship(
@@ -61,8 +65,12 @@ class TeamMember(Base):
     max_budget_usd: Mapped[float | None] = mapped_column(Float, default=None)
     mcp_server_ids: Mapped[list | None] = mapped_column(JSONB, default=None)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # Relationships
     team: Mapped["Team"] = relationship("Team", back_populates="members")

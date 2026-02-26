@@ -41,7 +41,9 @@ async def get_node(
 ):
     result = await service.get_node(node_id)
     if not result:
-        raise HTTPException(status_code=404, detail="워크플로우 노드를 찾을 수 없습니다")
+        raise HTTPException(
+            status_code=404, detail="워크플로우 노드를 찾을 수 없습니다"
+        )
     return result
 
 
@@ -56,7 +58,9 @@ async def update_node(
         raise HTTPException(status_code=400, detail="변경할 필드가 없습니다")
     updated = await service.update_node(node_id, **update_data)
     if not updated:
-        raise HTTPException(status_code=404, detail="워크플로우 노드를 찾을 수 없습니다")
+        raise HTTPException(
+            status_code=404, detail="워크플로우 노드를 찾을 수 없습니다"
+        )
     return updated
 
 
@@ -67,5 +71,7 @@ async def delete_node(
 ):
     deleted = await service.delete_node(node_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="워크플로우 노드를 찾을 수 없습니다")
+        raise HTTPException(
+            status_code=404, detail="워크플로우 노드를 찾을 수 없습니다"
+        )
     return {"status": "deleted"}

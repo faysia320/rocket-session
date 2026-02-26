@@ -34,14 +34,18 @@ def upgrade() -> None:
         sa.Column("system_prompt", sa.Text(), nullable=True),
         sa.Column("timeout_seconds", sa.Integer(), nullable=True),
         sa.Column("mode", sa.String(), nullable=False, server_default="normal"),
-        sa.Column("permission_mode", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "permission_mode", sa.Boolean(), nullable=False, server_default="false"
+        ),
         sa.Column("permission_required_tools", JSONB(), nullable=True),
         sa.Column("name", sa.Text(), nullable=True),
         sa.Column("jsonl_path", sa.Text(), nullable=True),
         sa.Column("model", sa.String(), nullable=True),
         sa.Column("max_turns", sa.Integer(), nullable=True),
         sa.Column("max_budget_usd", sa.Float(), nullable=True),
-        sa.Column("system_prompt_mode", sa.String(), nullable=False, server_default="replace"),
+        sa.Column(
+            "system_prompt_mode", sa.String(), nullable=False, server_default="replace"
+        ),
         sa.Column("disallowed_tools", sa.Text(), nullable=True),
         sa.Column("mcp_server_ids", JSONB(), nullable=True),
         sa.Column("search_vector", TSVECTOR(), nullable=True),
@@ -51,7 +55,12 @@ def upgrade() -> None:
     op.create_table(
         "messages",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("session_id", sa.String(), sa.ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "session_id",
+            sa.String(),
+            sa.ForeignKey("sessions.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("role", sa.String(), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("cost", sa.Float(), nullable=True),
@@ -69,7 +78,12 @@ def upgrade() -> None:
     op.create_table(
         "file_changes",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("session_id", sa.String(), sa.ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "session_id",
+            sa.String(),
+            sa.ForeignKey("sessions.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("tool", sa.String(), nullable=False),
         sa.Column("file", sa.Text(), nullable=False),
         sa.Column("timestamp", sa.Text(), nullable=False),
@@ -79,7 +93,12 @@ def upgrade() -> None:
     op.create_table(
         "events",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("session_id", sa.String(), sa.ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "session_id",
+            sa.String(),
+            sa.ForeignKey("sessions.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("seq", sa.Integer(), nullable=False),
         sa.Column("event_type", sa.String(), nullable=False),
         sa.Column("payload", JSONB(), nullable=False),
@@ -100,7 +119,9 @@ def upgrade() -> None:
         sa.Column("model", sa.String(), nullable=True),
         sa.Column("max_turns", sa.Integer(), nullable=True),
         sa.Column("max_budget_usd", sa.Float(), nullable=True),
-        sa.Column("system_prompt_mode", sa.String(), nullable=True, server_default="replace"),
+        sa.Column(
+            "system_prompt_mode", sa.String(), nullable=True, server_default="replace"
+        ),
         sa.Column("disallowed_tools", sa.Text(), nullable=True),
         sa.Column("mcp_server_ids", JSONB(), nullable=True),
     )
@@ -110,7 +131,9 @@ def upgrade() -> None:
         "mcp_servers",
         sa.Column("id", sa.String(), primary_key=True),
         sa.Column("name", sa.String(), unique=True, nullable=False),
-        sa.Column("transport_type", sa.String(), nullable=False, server_default="stdio"),
+        sa.Column(
+            "transport_type", sa.String(), nullable=False, server_default="stdio"
+        ),
         sa.Column("command", sa.Text(), nullable=True),
         sa.Column("args", JSONB(), nullable=True),
         sa.Column("url", sa.Text(), nullable=True),
@@ -134,8 +157,18 @@ def upgrade() -> None:
     # ── 8. session_tags 테이블 ──────────────────────────────
     op.create_table(
         "session_tags",
-        sa.Column("session_id", sa.String(), sa.ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True),
-        sa.Column("tag_id", sa.String(), sa.ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column(
+            "session_id",
+            sa.String(),
+            sa.ForeignKey("sessions.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
+        sa.Column(
+            "tag_id",
+            sa.String(),
+            sa.ForeignKey("tags.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
         sa.Column("created_at", sa.Text(), nullable=False),
     )
 
@@ -151,7 +184,9 @@ def upgrade() -> None:
         sa.Column("disallowed_tools", sa.Text(), nullable=True),
         sa.Column("timeout_seconds", sa.Integer(), nullable=True),
         sa.Column("mode", sa.String(), server_default="normal"),
-        sa.Column("permission_mode", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "permission_mode", sa.Boolean(), nullable=False, server_default="false"
+        ),
         sa.Column("permission_required_tools", JSONB(), nullable=True),
         sa.Column("model", sa.String(), nullable=True),
         sa.Column("max_turns", sa.Integer(), nullable=True),
@@ -168,10 +203,17 @@ def upgrade() -> None:
     op.create_index("idx_sessions_status", "sessions", ["status"])
     op.create_index("idx_sessions_model", "sessions", ["model"])
     op.create_index("idx_sessions_work_dir", "sessions", ["work_dir"])
-    op.create_index("idx_sessions_search_vector", "sessions", ["search_vector"], postgresql_using="gin")
+    op.create_index(
+        "idx_sessions_search_vector",
+        "sessions",
+        ["search_vector"],
+        postgresql_using="gin",
+    )
 
     op.create_index("idx_messages_session_id", "messages", ["session_id"])
-    op.create_index("idx_messages_session_timestamp", "messages", ["session_id", "timestamp"])
+    op.create_index(
+        "idx_messages_session_timestamp", "messages", ["session_id", "timestamp"]
+    )
     op.create_index("idx_messages_timestamp", "messages", ["timestamp"])
     op.create_index("idx_messages_model", "messages", ["model"])
 
@@ -186,7 +228,8 @@ def upgrade() -> None:
     # ── 11. tsvector 트리거/함수 (FTS5 대체) ────────────────
 
     # sessions의 search_vector 갱신 함수
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE OR REPLACE FUNCTION update_session_search_vector()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -196,17 +239,21 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TRIGGER trg_sessions_search_vector
         BEFORE INSERT OR UPDATE OF name, work_dir ON sessions
         FOR EACH ROW
         EXECUTE FUNCTION update_session_search_vector();
-    """))
+    """)
+    )
 
     # messages INSERT 시 부모 session의 search_vector 갱신
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE OR REPLACE FUNCTION update_session_search_on_message()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -218,19 +265,24 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TRIGGER trg_messages_search_vector
         AFTER INSERT ON messages
         FOR EACH ROW
         EXECUTE FUNCTION update_session_search_on_message();
-    """))
+    """)
+    )
 
     # ── 12. 글로벌 설정 기본 행 ─────────────────────────────
-    op.execute(text(
-        "INSERT INTO global_settings (id) VALUES ('default') ON CONFLICT (id) DO NOTHING"
-    ))
+    op.execute(
+        text(
+            "INSERT INTO global_settings (id) VALUES ('default') ON CONFLICT (id) DO NOTHING"
+        )
+    )
 
 
 def downgrade() -> None:

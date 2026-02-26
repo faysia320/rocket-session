@@ -500,9 +500,11 @@ class LocalSessionScanner:
                     ts_str = obj.get("timestamp", "")
                     # JSONL 타임스탬프 문자열을 datetime 객체로 변환 (DB 저장용)
                     try:
-                        ts_dt = datetime.fromisoformat(
-                            ts_str.replace("Z", "+00:00")
-                        ) if ts_str else datetime.now(timezone.utc)
+                        ts_dt = (
+                            datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                            if ts_str
+                            else datetime.now(timezone.utc)
+                        )
                     except (ValueError, TypeError):
                         ts_dt = datetime.now(timezone.utc)
                     messages.append(

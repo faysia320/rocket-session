@@ -6,8 +6,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 import pytest
 
-from app.schemas.usage import PeriodUsage, UsageInfo
-from app.services.usage_service import UsageService
+from app.schemas.usage import UsageInfo
 
 
 @pytest.mark.asyncio
@@ -26,8 +25,12 @@ class TestUsageService:
         mock_resp.json.return_value = api_response
         mock_resp.raise_for_status = MagicMock()
 
-        with patch.object(usage_service, "_read_access_token", return_value="test-token"):
-            with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
+        with patch.object(
+            usage_service, "_read_access_token", return_value="test-token"
+        ):
+            with patch(
+                "httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp
+            ):
                 result = await usage_service.get_usage()
 
         assert result.available is True
@@ -49,8 +52,12 @@ class TestUsageService:
         mock_resp.json.return_value = api_response
         mock_resp.raise_for_status = MagicMock()
 
-        with patch.object(usage_service, "_read_access_token", return_value="test-token"):
-            with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp) as mock_get:
+        with patch.object(
+            usage_service, "_read_access_token", return_value="test-token"
+        ):
+            with patch(
+                "httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp
+            ) as mock_get:
                 result1 = await usage_service.get_usage()
                 result2 = await usage_service.get_usage()
 
@@ -78,8 +85,14 @@ class TestUsageService:
         mock_resp2.json.return_value = resp2_data
         mock_resp2.raise_for_status = MagicMock()
 
-        with patch.object(usage_service, "_read_access_token", return_value="test-token"):
-            with patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=[mock_resp1, mock_resp2]):
+        with patch.object(
+            usage_service, "_read_access_token", return_value="test-token"
+        ):
+            with patch(
+                "httpx.AsyncClient.get",
+                new_callable=AsyncMock,
+                side_effect=[mock_resp1, mock_resp2],
+            ):
                 result1 = await usage_service.get_usage()
                 usage_service._cache_time = time.time() - 100
                 result2 = await usage_service.get_usage()
@@ -102,8 +115,12 @@ class TestUsageService:
         mock_resp.text = "Unauthorized"
         http_error = httpx.HTTPStatusError("", request=MagicMock(), response=mock_resp)
 
-        with patch.object(usage_service, "_read_access_token", return_value="test-token"):
-            with patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=http_error):
+        with patch.object(
+            usage_service, "_read_access_token", return_value="test-token"
+        ):
+            with patch(
+                "httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=http_error
+            ):
                 result = await usage_service.get_usage()
 
         assert result.available is False
@@ -111,8 +128,14 @@ class TestUsageService:
 
     async def test_get_usage_timeout(self, usage_service):
         """Test get_usage handles timeout gracefully."""
-        with patch.object(usage_service, "_read_access_token", return_value="test-token"):
-            with patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=httpx.TimeoutException("")):
+        with patch.object(
+            usage_service, "_read_access_token", return_value="test-token"
+        ):
+            with patch(
+                "httpx.AsyncClient.get",
+                new_callable=AsyncMock,
+                side_effect=httpx.TimeoutException(""),
+            ):
                 result = await usage_service.get_usage()
 
         assert result.available is False
@@ -126,8 +149,12 @@ class TestUsageService:
         mock_resp.json.return_value = api_response
         mock_resp.raise_for_status = MagicMock()
 
-        with patch.object(usage_service, "_read_access_token", return_value="test-token"):
-            with patch("httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp):
+        with patch.object(
+            usage_service, "_read_access_token", return_value="test-token"
+        ):
+            with patch(
+                "httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp
+            ):
                 result = await usage_service.get_usage()
 
         assert result.available is True
@@ -136,13 +163,20 @@ class TestUsageService:
 
     async def test_warmup(self, usage_service):
         """Test warmup calls get_usage."""
-        with patch.object(usage_service, "get_usage", new_callable=AsyncMock) as mock_get:
+        with patch.object(
+            usage_service, "get_usage", new_callable=AsyncMock
+        ) as mock_get:
             mock_get.return_value = UsageInfo()
             await usage_service.warmup()
             mock_get.assert_called_once()
 
     async def test_warmup_failure(self, usage_service):
         """Test warmup handles failure gracefully."""
-        with patch.object(usage_service, "get_usage", new_callable=AsyncMock, side_effect=Exception("fail")):
+        with patch.object(
+            usage_service,
+            "get_usage",
+            new_callable=AsyncMock,
+            side_effect=Exception("fail"),
+        ):
             # Should not raise
             await usage_service.warmup()

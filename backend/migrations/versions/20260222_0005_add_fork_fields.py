@@ -25,9 +25,7 @@ def upgrade() -> None:
     op.add_column(
         "sessions", sa.Column("forked_at_message_id", sa.Integer(), nullable=True)
     )
-    op.create_index(
-        "idx_sessions_parent_session_id", "sessions", ["parent_session_id"]
-    )
+    op.create_index("idx_sessions_parent_session_id", "sessions", ["parent_session_id"])
 
 
 def downgrade() -> None:

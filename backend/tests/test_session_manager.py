@@ -77,12 +77,8 @@ class TestSessionManager:
 
         # Add messages and file changes
         timestamp = datetime.now(timezone.utc)
-        await session_manager.add_message(
-            session_id, "user", "Hello", timestamp
-        )
-        await session_manager.add_message(
-            session_id, "assistant", "Hi", timestamp
-        )
+        await session_manager.add_message(session_id, "user", "Hello", timestamp)
+        await session_manager.add_message(session_id, "assistant", "Hi", timestamp)
         await session_manager.add_file_change(
             session_id, "Write", "/test/file.txt", timestamp
         )
@@ -338,7 +334,9 @@ class TestSessionManager:
         assert updated["name"] == "Updated Session"
         assert updated["timeout_seconds"] == 30  # Unchanged
 
-    async def test_update_settings_permission_tools_serialization(self, session_manager):
+    async def test_update_settings_permission_tools_serialization(
+        self, session_manager
+    ):
         """Test update_settings serializes permission_required_tools to JSON."""
         work_dir = tempfile.gettempdir()
         created = await session_manager.create(work_dir=work_dir)

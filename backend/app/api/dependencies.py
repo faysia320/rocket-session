@@ -120,7 +120,9 @@ class ServiceRegistry:
         self.analytics_service = AnalyticsService(self.database)
         self.workflow_node_service = WorkflowNodeService(self.database)
         self.workflow_definition_service = WorkflowDefinitionService(self.database)
-        self.workflow_service = WorkflowService(self.database, self.workflow_definition_service)
+        self.workflow_service = WorkflowService(
+            self.database, self.workflow_definition_service
+        )
         self.workspace_service = WorkspaceService(
             self.database, self.git_service, workspaces_root=WORKSPACES_ROOT
         )

@@ -24,5 +24,9 @@ class WorkflowNode(Base):
     prompt_template: Mapped[str] = mapped_column(Text, default="")
     constraints: Mapped[str] = mapped_column(String, nullable=False, default="readonly")
     is_builtin: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

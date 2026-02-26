@@ -1,11 +1,17 @@
 """태그 및 세션-태그 연결 모델."""
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.session import Session
 
 
 class Tag(Base):
@@ -16,7 +22,9 @@ class Tag(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     color: Mapped[str] = mapped_column(String, nullable=False, default="#6366f1")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # Relationships
     session_tags: Mapped[list["SessionTag"]] = relationship(
@@ -35,7 +43,9 @@ class SessionTag(Base):
     tag_id: Mapped[str] = mapped_column(
         String, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # Relationships
     session: Mapped["Session"] = relationship("Session", back_populates="tags")

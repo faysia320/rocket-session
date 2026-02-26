@@ -85,9 +85,7 @@ def upgrade() -> None:
             )
 
         conn.execute(
-            text(
-                "UPDATE workflow_definitions SET steps = :steps WHERE id = :id"
-            ),
+            text("UPDATE workflow_definitions SET steps = :steps WHERE id = :id"),
             {"steps": json.dumps(new_steps), "id": row.id},
         )
 
@@ -98,7 +96,9 @@ def downgrade() -> None:
 
     # 모든 노드 정보 조회
     nodes = conn.execute(
-        text("SELECT id, name, label, icon, prompt_template, constraints FROM workflow_nodes")
+        text(
+            "SELECT id, name, label, icon, prompt_template, constraints FROM workflow_nodes"
+        )
     )
     node_map = {
         r.id: {

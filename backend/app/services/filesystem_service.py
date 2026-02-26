@@ -160,9 +160,7 @@ class FilesystemService:
                     if item.name in skip_names:
                         continue
                     if (item / ".git").exists():
-                        repos.append(
-                            GitRepoEntry(name=item.name, path=str(item))
-                        )
+                        repos.append(GitRepoEntry(name=item.name, path=str(item)))
                     elif remaining > 1:
                         repos.extend(_scan(item, remaining - 1))
             except PermissionError:

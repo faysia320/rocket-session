@@ -71,7 +71,11 @@ class WorkflowDefinitionService:
         ids: set[str] = set()
         for e in entities:
             for s in e.steps or []:
-                nid = s.get("node_id") if isinstance(s, dict) else getattr(s, "node_id", None)
+                nid = (
+                    s.get("node_id")
+                    if isinstance(s, dict)
+                    else getattr(s, "node_id", None)
+                )
                 if nid:
                     ids.add(nid)
         return ids
@@ -173,9 +177,7 @@ class WorkflowDefinitionService:
             await session.commit()
             return deleted
 
-    async def get_or_default(
-        self, def_id: str | None
-    ) -> WorkflowDefinitionInfo:
+    async def get_or_default(self, def_id: str | None) -> WorkflowDefinitionInfo:
         """def_id로 조회하되, None이거나 못 찾으면 builtin default 반환."""
         if def_id:
             info = await self.get_definition(def_id)
@@ -248,8 +250,7 @@ class WorkflowDefinitionService:
                 from app.services.workflow_node_service import WorkflowNodeService
 
                 nodes_info = [
-                    WorkflowNodeService._entity_to_info(n).model_dump()
-                    for n in nodes
+                    WorkflowNodeService._entity_to_info(n).model_dump() for n in nodes
                 ]
         return {
             "version": 1,

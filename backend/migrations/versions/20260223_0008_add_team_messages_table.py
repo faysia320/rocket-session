@@ -41,13 +41,9 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("content", sa.Text(), nullable=False),
-        sa.Column(
-            "message_type", sa.String(), nullable=False, server_default="info"
-        ),
+        sa.Column("message_type", sa.String(), nullable=False, server_default="info"),
         sa.Column("metadata_json", sa.Text(), nullable=True),
-        sa.Column(
-            "is_read", sa.Boolean(), nullable=False, server_default="0"
-        ),
+        sa.Column("is_read", sa.Boolean(), nullable=False, server_default="0"),
         sa.Column("created_at", sa.Text(), nullable=False),
     )
     op.create_index("idx_team_messages_team_id", "team_messages", ["team_id"])

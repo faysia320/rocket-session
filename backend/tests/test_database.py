@@ -10,10 +10,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import Database
-from app.models.event import Event
 from app.models.file_change import FileChange
-from app.models.message import Message
 from app.models.session import Session
 from app.repositories.event_repo import EventRepository
 from app.repositories.file_change_repo import FileChangeRepository

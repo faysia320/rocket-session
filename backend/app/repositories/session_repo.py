@@ -195,7 +195,9 @@ def _session_to_dict(session: Session) -> dict:
         "claude_session_id": session.claude_session_id,
         "work_dir": session.work_dir,
         "status": session.status,
-        "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else created_at,
+        "created_at": created_at.isoformat()
+        if hasattr(created_at, "isoformat")
+        else created_at,
         "allowed_tools": session.allowed_tools,
         "system_prompt": session.system_prompt,
         "timeout_seconds": session.timeout_seconds,

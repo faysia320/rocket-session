@@ -42,8 +42,12 @@ class TeamTask(Base):
     depends_on_task_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("team_tasks.id", ondelete="SET NULL"), default=None
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     __table_args__ = (
         Index("idx_team_tasks_team_id", "team_id"),

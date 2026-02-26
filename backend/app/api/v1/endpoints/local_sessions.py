@@ -2,7 +2,11 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.dependencies import get_local_scanner, get_session_manager, get_workspace_service
+from app.api.dependencies import (
+    get_local_scanner,
+    get_session_manager,
+    get_workspace_service,
+)
 from app.schemas.local_session import (
     ImportLocalSessionRequest,
     ImportLocalSessionResponse,
@@ -24,7 +28,8 @@ def _extract_repo_name(cwd: str) -> str:
 
 
 def _match_workspace(
-    cwd: str, workspaces: list[dict],
+    cwd: str,
+    workspaces: list[dict],
 ) -> WorkspaceMatch | None:
     """cwd의 레포명과 워크스페이스 name을 case-insensitive 매칭."""
     repo_name = _extract_repo_name(cwd).lower()
@@ -82,9 +87,13 @@ async def import_local_session(
     if req.workspace_id:
         ws = await workspace_service.get(req.workspace_id)
         if not ws:
-            raise HTTPException(status_code=404, detail="워크스페이스를 찾을 수 없습니다")
+            raise HTTPException(
+                status_code=404, detail="워크스페이스를 찾을 수 없습니다"
+            )
         if ws["status"] != "ready":
-            raise HTTPException(status_code=400, detail="워크스페이스가 준비되지 않았습니다")
+            raise HTTPException(
+                status_code=400, detail="워크스페이스가 준비되지 않았습니다"
+            )
         workspace_id = req.workspace_id
         work_dir_override = ws["local_path"]
 

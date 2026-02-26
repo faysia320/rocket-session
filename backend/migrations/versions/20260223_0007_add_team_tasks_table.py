@@ -30,12 +30,8 @@ def upgrade() -> None:
         ),
         sa.Column("title", sa.String(), nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
-        sa.Column(
-            "status", sa.String(), nullable=False, server_default="pending"
-        ),
-        sa.Column(
-            "priority", sa.String(), nullable=False, server_default="medium"
-        ),
+        sa.Column("status", sa.String(), nullable=False, server_default="pending"),
+        sa.Column("priority", sa.String(), nullable=False, server_default="medium"),
         sa.Column(
             "assigned_session_id",
             sa.String(),
@@ -61,9 +57,7 @@ def upgrade() -> None:
     )
     op.create_index("idx_team_tasks_team_id", "team_tasks", ["team_id"])
     op.create_index("idx_team_tasks_status", "team_tasks", ["status"])
-    op.create_index(
-        "idx_team_tasks_team_status", "team_tasks", ["team_id", "status"]
-    )
+    op.create_index("idx_team_tasks_team_status", "team_tasks", ["team_id", "status"])
 
 
 def downgrade() -> None:

@@ -20,11 +20,15 @@ class TokenSnapshot(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(String, nullable=False)
     work_dir: Mapped[str] = mapped_column(Text, nullable=False)
-    workflow_phase: Mapped[str | None] = mapped_column(String, default=None, nullable=True)
+    workflow_phase: Mapped[str | None] = mapped_column(
+        String, default=None, nullable=True
+    )
     model: Mapped[str | None] = mapped_column(String, default=None, nullable=True)
     input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    cache_creation_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cache_creation_tokens: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
     cache_read_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

@@ -107,10 +107,22 @@ class MessageRepository(BaseRepository[Message]):
 
         insert_stmt = insert(Message).from_select(
             [
-                "session_id", "role", "content", "cost", "duration_ms",
-                "timestamp", "is_error", "input_tokens", "output_tokens",
-                "cache_creation_tokens", "cache_read_tokens", "model",
-                "message_type", "tool_use_id", "tool_name", "tool_input",
+                "session_id",
+                "role",
+                "content",
+                "cost",
+                "duration_ms",
+                "timestamp",
+                "is_error",
+                "input_tokens",
+                "output_tokens",
+                "cache_creation_tokens",
+                "cache_read_tokens",
+                "model",
+                "message_type",
+                "tool_use_id",
+                "tool_name",
+                "tool_input",
             ],
             source_q,
         )

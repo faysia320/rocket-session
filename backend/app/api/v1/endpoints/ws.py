@@ -162,7 +162,9 @@ async def _handle_prompt(
                 claude_prompt = prompt
                 if workflow_phase and workflow_service:
                     phase_context = await workflow_service.build_phase_context(
-                        session_id, workflow_phase, prompt,
+                        session_id,
+                        workflow_phase,
+                        prompt,
                         session_manager=manager,
                     )
                     if phase_context:
@@ -227,7 +229,9 @@ async def _handle_prompt(
                     existing + "\n\n" + team_context if existing else team_context
                 )
         except Exception:
-            logger.debug("세션 %s: TeamCoordinator 컨텍스트 주입 실패 (미초기화)", session_id)
+            logger.debug(
+                "세션 %s: TeamCoordinator 컨텍스트 주입 실패 (미초기화)", session_id
+            )
 
         # MCP 서비스 주입
         mcp_service = get_mcp_service()
@@ -247,9 +251,7 @@ async def _handle_prompt(
                 workflow_service=workflow_service,
                 original_prompt=prompt,
                 workflow_step_config=(
-                    workflow_step_config.model_dump()
-                    if workflow_step_config
-                    else None
+                    workflow_step_config.model_dump() if workflow_step_config else None
                 ),
             )
         )
@@ -316,7 +318,11 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
     session = await manager.get(session_id)
     if not session:
         await ws.send_json(
-            {"type": WsEventType.ERROR, "message": "세션을 찾을 수 없습니다", "code": "SESSION_NOT_FOUND"}
+            {
+                "type": WsEventType.ERROR,
+                "message": "세션을 찾을 수 없습니다",
+                "code": "SESSION_NOT_FOUND",
+            }
         )
         await ws.close()
         return
@@ -444,14 +450,23 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
             except Exception as e:
                 logger.error(
                     "메시지 처리 오류 (세션 %s, type=%s): %s",
-                    session_id, msg_type, e, exc_info=True,
+                    session_id,
+                    msg_type,
+                    e,
+                    exc_info=True,
                 )
                 try:
                     await ws.send_json(
-                        {"type": WsEventType.ERROR, "message": "서버 내부 오류가 발생했습니다"}
+                        {
+                            "type": WsEventType.ERROR,
+                            "message": "서버 내부 오류가 발생했습니다",
+                        }
                     )
                 except Exception:
-                    logger.debug("세션 %s: 에러 메시지 WebSocket 전송 실패 (연결 끊김)", session_id)
+                    logger.debug(
+                        "세션 %s: 에러 메시지 WebSocket 전송 실패 (연결 끊김)",
+                        session_id,
+                    )
 
     except WebSocketDisconnect:
         pass

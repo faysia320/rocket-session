@@ -56,9 +56,7 @@ class TeamTaskService:
         return member.nickname if member else None
 
     @staticmethod
-    async def _resolve_workspace_name(
-        session, workspace_id: str | None
-    ) -> str | None:
+    async def _resolve_workspace_name(session, workspace_id: str | None) -> str | None:
         """워크스페이스 ID로 이름 조회."""
         if not workspace_id:
             return None

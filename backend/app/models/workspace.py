@@ -1,11 +1,17 @@
 """워크스페이스 모델."""
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.session import Session
 
 
 class Workspace(Base):
@@ -24,7 +30,9 @@ class Workspace(Base):
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), default=None
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), default=None
     )

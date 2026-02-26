@@ -17,7 +17,11 @@ from app.core.config import Settings
 from app.core.constants import READONLY_TOOLS
 from app.models.event_types import CliEventType, WsEventType
 from app.models.session import SessionStatus
-from app.services.event_handler import extract_result_data, extract_tool_result_output, utc_now
+from app.services.event_handler import (
+    extract_result_data,
+    extract_tool_result_output,
+    utc_now,
+)
 from app.services.websocket_manager import WebSocketManager
 
 if TYPE_CHECKING:
@@ -448,7 +452,10 @@ class ClaudeRunner:
                         },
                     )
                     # 세션 전환/새로고침 시 복원을 위해 인메모리 저장
-                    from app.api.v1.endpoints.pending_questions import set_pending_question
+                    from app.api.v1.endpoints.pending_questions import (
+                        set_pending_question,
+                    )
+
                     set_pending_question(
                         session_id=session_id,
                         questions=question_list,
@@ -501,7 +508,10 @@ class ClaudeRunner:
                         else raw_path
                     )
                     normalized = file_path.replace("\\", "/")
-                    if normalized.startswith(".claude/plans/") or "/.claude/plans/" in normalized:
+                    if (
+                        normalized.startswith(".claude/plans/")
+                        or "/.claude/plans/" in normalized
+                    ):
                         pass
                     else:
                         ts_dt = utc_now()
@@ -555,7 +565,10 @@ class ClaudeRunner:
                                         )
                                     )
             except Exception:
-                logger.debug("세션 %s: TeamCoordinator @delegate 처리 실패 (미초기화)", session_id)
+                logger.debug(
+                    "세션 %s: TeamCoordinator @delegate 처리 실패 (미초기화)",
+                    session_id,
+                )
 
     async def _handle_user_event(
         self,
@@ -689,7 +702,9 @@ class ClaudeRunner:
                 cache_read_tokens=cache_read_tokens or 0,
             )
         except Exception:
-            logger.warning("토큰 스냅샷 기록 실패: session=%s", session_id, exc_info=True)
+            logger.warning(
+                "토큰 스냅샷 기록 실패: session=%s", session_id, exc_info=True
+            )
 
     @staticmethod
     def create_turn_state(
@@ -1014,7 +1029,9 @@ class ClaudeRunner:
                         )
                         raw_prompt = original_prompt or prompt
                         next_context = await workflow_service.build_phase_context(
-                            session_id, next_phase, raw_prompt,
+                            session_id,
+                            next_phase,
+                            raw_prompt,
                             session_manager=session_manager,
                         )
                         # 다음 step config 로드
@@ -1045,9 +1062,7 @@ class ClaudeRunner:
                             )
                         )
                         chain_task.add_done_callback(
-                            lambda t: _auto_chain_done(
-                                t, session_id, session_manager
-                            )
+                            lambda t: _auto_chain_done(t, session_id, session_manager)
                         )
                         session_manager.set_runner_task(session_id, chain_task)
                     except Exception:

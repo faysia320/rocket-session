@@ -6,7 +6,9 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 WorkflowPhase = str
-WorkflowPhaseStatus = Literal["in_progress", "awaiting_approval", "approved", "revision_requested"]
+WorkflowPhaseStatus = Literal[
+    "in_progress", "awaiting_approval", "approved", "revision_requested"
+]
 ArtifactStatusType = Literal["draft", "review", "approved", "superseded"]
 AnnotationType = Literal["comment", "suggestion", "rejection"]
 AnnotationStatusType = Literal["pending", "resolved", "dismissed"]

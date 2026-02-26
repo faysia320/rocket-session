@@ -50,7 +50,9 @@ async def get_definition(
 ):
     result = await service.get_definition(def_id)
     if not result:
-        raise HTTPException(status_code=404, detail="워크플로우 정의를 찾을 수 없습니다")
+        raise HTTPException(
+            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
+        )
     return result
 
 
@@ -67,7 +69,9 @@ async def update_definition(
         steps=req.steps,
     )
     if not updated:
-        raise HTTPException(status_code=404, detail="워크플로우 정의를 찾을 수 없습니다")
+        raise HTTPException(
+            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
+        )
     return updated
 
 
@@ -78,7 +82,9 @@ async def delete_definition(
 ):
     deleted = await service.delete_definition(def_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="워크플로우 정의를 찾을 수 없습니다")
+        raise HTTPException(
+            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
+        )
     return {"status": "deleted"}
 
 
@@ -89,5 +95,7 @@ async def export_definition(
 ):
     result = await service.export_definition(def_id)
     if not result:
-        raise HTTPException(status_code=404, detail="워크플로우 정의를 찾을 수 없습니다")
+        raise HTTPException(
+            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
+        )
     return result

@@ -91,7 +91,9 @@ class SettingsService:
         if globally_trusted_tools is not None:
             kwargs["globally_trusted_tools"] = globally_trusted_tools
         if default_additional_workspace_ids is not None:
-            kwargs["default_additional_workspace_ids"] = default_additional_workspace_ids
+            kwargs["default_additional_workspace_ids"] = (
+                default_additional_workspace_ids
+            )
         if fallback_model is not None:
             kwargs["fallback_model"] = fallback_model
         async with self._db.session() as session:
