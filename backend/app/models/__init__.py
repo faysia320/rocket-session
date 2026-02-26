@@ -13,6 +13,7 @@ from app.models.team import Team, TeamMember
 from app.models.team_message import TeamMessage
 from app.models.team_task import TeamTask
 from app.models.token_snapshot import TokenSnapshot
+from app.models.workflow_definition import WorkflowDefinition
 from app.models.workspace import Workspace
 
 __all__ = [
@@ -33,5 +34,6 @@ __all__ = [
     "SessionArtifact",
     "ArtifactAnnotation",
     "TokenSnapshot",
+    "WorkflowDefinition",
     "Workspace",
 ]

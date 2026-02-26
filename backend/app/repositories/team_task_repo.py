@@ -94,12 +94,6 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
         await self._session.execute(stmt)
         await self._session.flush()
 
-    async def get_dependent_tasks(self, task_id: int) -> list[TeamTask]:
-        """특정 태스크에 의존하는 태스크 목록."""
-        stmt = select(TeamTask).where(TeamTask.depends_on_task_id == task_id)
-        result = await self._session.execute(stmt)
-        return list(result.scalars().all())
-
     async def reorder_tasks(self, team_id: str, task_ids: list[int]) -> None:
         """태스크 순서 변경."""
         now = datetime.now(timezone.utc)

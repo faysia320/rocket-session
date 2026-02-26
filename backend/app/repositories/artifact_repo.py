@@ -80,16 +80,6 @@ class ArtifactAnnotationRepository(BaseRepository[ArtifactAnnotation]):
 
     model_class = ArtifactAnnotation
 
-    async def list_by_artifact(self, artifact_id: int) -> list[ArtifactAnnotation]:
-        """아티팩트의 모든 주석 조회."""
-        stmt = (
-            select(ArtifactAnnotation)
-            .where(ArtifactAnnotation.artifact_id == artifact_id)
-            .order_by(ArtifactAnnotation.line_start)
-        )
-        result = await self._session.execute(stmt)
-        return list(result.scalars().all())
-
     async def list_pending(self, artifact_id: int) -> list[ArtifactAnnotation]:
         """아티팩트의 미해결 주석만 조회."""
         stmt = (
