@@ -18,7 +18,6 @@ export interface WorkflowStepConfig {
   prompt_template: string;
   constraints: string;
   order_index: number;
-  auto_advance: boolean;
   review_required: boolean;
 }
 

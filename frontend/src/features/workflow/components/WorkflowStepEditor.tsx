@@ -60,7 +60,6 @@ function createDefaultStep(orderIndex: number): WorkflowStepConfig {
     prompt_template: "",
     constraints: "readonly",
     order_index: orderIndex,
-    auto_advance: false,
     review_required: false,
   };
 }
@@ -126,14 +125,7 @@ function SortableStepCard({
             <span className="text-sm font-medium truncate flex-1">{stepLabel}</span>
 
             {/* Inline badges */}
-            {step.auto_advance ? (
-              <Badge
-                variant="outline"
-                className="font-mono text-2xs px-1.5 py-0 shrink-0 text-info border-info/30"
-              >
-                자동
-              </Badge>
-            ) : null}
+
             {step.review_required ? (
               <Badge
                 variant="outline"
@@ -246,21 +238,8 @@ function SortableStepCard({
                 />
               </div>
 
-              {/* auto_advance & review_required */}
+              {/* review_required */}
               <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`step-auto-advance-${index}`}
-                    checked={step.auto_advance}
-                    onCheckedChange={(checked) => onUpdate({ auto_advance: checked === true })}
-                  />
-                  <Label
-                    htmlFor={`step-auto-advance-${index}`}
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    자동 진행
-                  </Label>
-                </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id={`step-review-required-${index}`}

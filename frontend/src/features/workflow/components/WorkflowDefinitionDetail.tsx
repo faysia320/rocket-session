@@ -66,7 +66,6 @@ export function WorkflowDefinitionDetail({
           prompt_template: s.prompt_template,
           constraints: s.constraints,
           order_index: s.order_index,
-          auto_advance: s.auto_advance,
           review_required: s.review_required,
         })),
       });
@@ -98,7 +97,6 @@ export function WorkflowDefinitionDetail({
           prompt_template: s.prompt_template,
           constraints: s.constraints,
           order_index: s.order_index,
-          auto_advance: s.auto_advance,
           review_required: s.review_required,
         })),
       });
@@ -281,11 +279,7 @@ export function WorkflowDefinitionDetail({
                           <Badge variant="secondary" className="font-mono text-2xs px-1.5 py-0">
                             {CONSTRAINT_LABELS[step.constraints] ?? step.constraints}
                           </Badge>
-                          {step.auto_advance ? (
-                            <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0">
-                              자동 진행
-                            </Badge>
-                          ) : null}
+
                           {step.review_required ? (
                             <Badge
                               variant="outline"

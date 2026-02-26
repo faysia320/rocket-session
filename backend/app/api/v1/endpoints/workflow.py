@@ -259,7 +259,7 @@ async def approve_phase(
             steps = sorted(definition.steps, key=lambda s: s.order_index)
             next_step = next((s for s in steps if s.name == next_phase), None)
 
-            # auto_advance가 아닌 step에서의 승인 → 다음 phase 자동 실행
+            # 승인 → 다음 phase 자동 실행
             original_prompt = session.get("workflow_original_prompt", "")
             next_context = await workflow.build_phase_context(
                 session_id, next_phase, original_prompt, session_manager=manager

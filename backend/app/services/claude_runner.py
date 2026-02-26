@@ -995,14 +995,33 @@ class ClaudeRunner:
 
                 # step config로 후속 동작 결정
                 step = workflow_step_config or {}
-                auto_advance = step.get("auto_advance", False)
                 review_required = step.get("review_required", False)
                 next_phase = await workflow_service.get_next_phase(
                     workflow_phase, session_id, session_manager
                 )
 
-                if auto_advance and next_phase:
-                    # 자동 승인 + 다음 phase 자동 실행
+                if not next_phase:
+                    # 마지막 단계 완료 → 워크플로우 종료
+                    try:
+                        await session_manager.update_settings(
+                            session_id,
+                            workflow_phase=workflow_phase,
+                            workflow_phase_status="completed",
+                        )
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {"type": WsEventType.WORKFLOW_COMPLETED},
+                        )
+                        logger.info("워크플로우 완료: session=%s", session_id)
+                    except Exception:
+                        logger.warning(
+                            "세션 %s: 워크플로우 완료 처리 실패",
+                            session_id,
+                            exc_info=True,
+                        )
+
+                elif not review_required:
+                    # 승인 불필요 → 자동 승인 + 다음 phase 자동 실행
                     try:
                         await workflow_service.approve_phase(
                             session_id, session_manager=session_manager
@@ -1070,51 +1089,8 @@ class ClaudeRunner:
                             exc_info=True,
                         )
 
-                elif review_required and next_phase:
-                    # 사용자 승인 대기
-                    try:
-                        await session_manager.update_settings(
-                            session_id,
-                            workflow_phase_status="awaiting_approval",
-                        )
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {
-                                "type": WsEventType.WORKFLOW_PHASE_COMPLETED,
-                                "phase": workflow_phase,
-                            },
-                        )
-                    except Exception:
-                        logger.warning(
-                            "세션 %s: %s phase 완료 처리 실패",
-                            session_id,
-                            workflow_phase,
-                            exc_info=True,
-                        )
-
-                elif not next_phase:
-                    # 마지막 단계 완료 → 워크플로우 종료
-                    try:
-                        await session_manager.update_settings(
-                            session_id,
-                            workflow_phase=workflow_phase,
-                            workflow_phase_status="completed",
-                        )
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {"type": WsEventType.WORKFLOW_COMPLETED},
-                        )
-                        logger.info("워크플로우 완료: session=%s", session_id)
-                    except Exception:
-                        logger.warning(
-                            "세션 %s: 워크플로우 완료 처리 실패",
-                            session_id,
-                            exc_info=True,
-                        )
-
                 else:
-                    # auto_advance=false, review_required=false, 다음 phase 있음
-                    # → awaiting_approval 기본 동작
+                    # 승인 필요 → 사용자 승인 대기
                     try:
                         await session_manager.update_settings(
                             session_id,

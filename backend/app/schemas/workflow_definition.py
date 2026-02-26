@@ -15,7 +15,6 @@ class WorkflowStepConfig(BaseModel):
     prompt_template: str = ""
     constraints: str = "readonly"
     order_index: int = 0
-    auto_advance: bool = False
     review_required: bool = False
 
 
