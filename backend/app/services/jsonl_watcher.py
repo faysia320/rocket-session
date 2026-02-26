@@ -7,17 +7,15 @@ JSONL 파일을 1초 간격 폴링으로 감시하여 새 이벤트를
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
 
+from app.core.utils import utc_now, utc_now_iso
 from app.models.event_types import WsEventType
 from app.models.session import SessionStatus
 from app.services.event_handler import (
     extract_result_data,
     extract_tool_result_output,
     normalize_file_path,
-    utc_now,
-    utc_now_iso,
 )
 from app.services.session_manager import SessionManager
 from app.services.websocket_manager import WebSocketManager
@@ -111,7 +109,7 @@ class JsonlWatcher:
 
         # 최근 ACTIVE_THRESHOLD 이내 수정된 파일만 감시
         mtime = path.stat().st_mtime
-        now = datetime.now(timezone.utc).timestamp()
+        now = utc_now().timestamp()
         if now - mtime > ACTIVE_THRESHOLD:
             return False
 

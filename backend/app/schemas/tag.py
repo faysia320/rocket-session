@@ -1,9 +1,11 @@
 """태그 관련 Pydantic 요청/응답 스키마."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TagInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     color: str

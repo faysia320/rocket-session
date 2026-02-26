@@ -16,21 +16,6 @@ class TagRepository(BaseRepository[Tag]):
         result = await self._session.execute(select(Tag).where(Tag.name == name))
         return result.scalar_one_or_none()
 
-    async def list_all(self) -> list[Tag]:
-        """전체 태그 목록 (이름순)."""
-        result = await self._session.execute(select(Tag).order_by(Tag.name.asc()))
-        return list(result.scalars().all())
-
-    async def update_tag(self, tag_id: str, **kwargs) -> Tag | None:
-        """태그 속성 업데이트. kwargs에 있는 필드만 변경."""
-        tag = await self.get_by_id(tag_id)
-        if not tag:
-            return None
-        for key, value in kwargs.items():
-            setattr(tag, key, value)
-        await self._session.flush()
-        return tag
-
     # ── 세션-태그 연결 ──
 
     async def add_session_tag(

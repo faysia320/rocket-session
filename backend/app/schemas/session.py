@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.tag import TagInfo
 
@@ -56,6 +56,8 @@ class CurrentActivity(BaseModel):
 
 
 class SessionInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     claude_session_id: Optional[str] = None
     work_dir: str

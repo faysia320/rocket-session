@@ -1,9 +1,8 @@
 """팀 태스크 Repository."""
 
-from datetime import datetime, timezone
-
 from sqlalchemy import select, update
 
+from app.core.utils import utc_now
 from app.models.team_task import TeamTask
 from app.repositories.base import BaseRepository
 
@@ -37,7 +36,7 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
         task = (await self._session.execute(stmt)).scalar_one_or_none()
         if not task:
             return None
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         task.status = "in_progress"
         task.assigned_member_id = member_id
         task.updated_at = now
@@ -51,7 +50,7 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
         task = await self.get_by_id(task_id)
         if not task:
             return None
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         task.status = "completed"
         task.result_summary = result_summary
         task.updated_at = now
@@ -62,7 +61,7 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
         """태스크 속성 업데이트."""
         if not kwargs:
             return await self.get_by_id(task_id)
-        kwargs["updated_at"] = datetime.now(timezone.utc)
+        kwargs["updated_at"] = utc_now()
         stmt = update(TeamTask).where(TeamTask.id == task_id).values(**kwargs)
         await self._session.execute(stmt)
         await self._session.flush()
@@ -85,7 +84,7 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
 
     async def update_session_id(self, task_id: int, session_id: str) -> None:
         """태스크에 실행 세션 ID 기록."""
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         stmt = (
             update(TeamTask)
             .where(TeamTask.id == task_id)
@@ -96,7 +95,7 @@ class TeamTaskRepository(BaseRepository[TeamTask]):
 
     async def reorder_tasks(self, team_id: str, task_ids: list[int]) -> None:
         """태스크 순서 변경."""
-        now = datetime.now(timezone.utc)
+        now = utc_now()
         for idx, task_id in enumerate(task_ids):
             stmt = (
                 update(TeamTask)

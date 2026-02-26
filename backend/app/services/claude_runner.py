@@ -9,18 +9,17 @@ import os
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.core.config import Settings
 from app.core.constants import READONLY_TOOLS
+from app.core.utils import utc_now, utc_now_iso
 from app.models.event_types import CliEventType, WsEventType
 from app.models.session import SessionStatus
 from app.services.event_handler import (
     extract_result_data,
     extract_tool_result_output,
-    utc_now,
 )
 from app.services.websocket_manager import WebSocketManager
 
@@ -420,7 +419,7 @@ class ClaudeRunner:
                         {
                             "type": WsEventType.THINKING,
                             "text": thinking_text,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": utc_now_iso(),
                         },
                     )
             elif block.get("type") == "text":
@@ -436,7 +435,7 @@ class ClaudeRunner:
                 if tool_name == "AskUserQuestion":
                     turn_state["ask_user_question_tool_id"] = tool_use_id
                     turn_state["should_terminate"] = True
-                    question_timestamp = datetime.now(timezone.utc).isoformat()
+                    question_timestamp = utc_now_iso()
                     question_list = tool_input.get("questions", [])
                     await ws_manager.broadcast_event(
                         session_id,
@@ -476,7 +475,7 @@ class ClaudeRunner:
                     "tool": tool_name,
                     "input": tool_input,
                     "tool_use_id": tool_use_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": utc_now_iso(),
                 }
                 await ws_manager.broadcast_event(session_id, tool_event)
 
@@ -532,7 +531,7 @@ class ClaudeRunner:
                 {
                     "type": WsEventType.ASSISTANT_TEXT,
                     "text": turn_state["text"],
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": utc_now_iso(),
                 },
             )
 
@@ -600,7 +599,7 @@ class ClaudeRunner:
                         "type": WsEventType.TOOL_RESULT,
                         "tool_use_id": tool_use_id,
                         **result_info,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "timestamp": utc_now_iso(),
                     },
                 )
 
@@ -658,7 +657,7 @@ class ClaudeRunner:
             "cache_creation_tokens": cache_creation_tokens,
             "cache_read_tokens": cache_read_tokens,
             "model": model,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": utc_now_iso(),
         }
         await ws_manager.broadcast_event(session_id, result_event)
 

@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class WorkflowStepConfig(BaseModel):
@@ -41,6 +41,8 @@ class UpdateWorkflowDefinitionRequest(BaseModel):
 class WorkflowDefinitionInfo(BaseModel):
     """워크플로우 정의 응답."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     description: Optional[str] = None
@@ -50,6 +52,15 @@ class WorkflowDefinitionInfo(BaseModel):
     steps: list[WorkflowStepConfig]
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("steps", mode="before")
+    @classmethod
+    def parse_and_sort_steps(cls, v: list) -> list:
+        """JSONB dict → WorkflowStepConfig 변환 + order_index 정렬."""
+        if not v:
+            return []
+        parsed = [WorkflowStepConfig(**s) if isinstance(s, dict) else s for s in v]
+        return sorted(parsed, key=lambda x: x.order_index)
 
 
 class WorkflowDefinitionExport(BaseModel):

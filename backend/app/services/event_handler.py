@@ -4,18 +4,9 @@ CLI stream-json 이벤트를 파싱할 때 반복되는 로직을 추출하여
 두 서비스 간 코드 중복을 제거합니다.
 """
 
-from datetime import datetime, timezone
 from pathlib import Path
 
-
-def utc_now() -> datetime:
-    """현재 UTC 시각을 timezone-aware datetime 객체로 반환 (DB 저장용)."""
-    return datetime.now(timezone.utc)
-
-
-def utc_now_iso() -> str:
-    """현재 UTC 시각을 ISO 형식 문자열로 반환 (WS 이벤트 페이로드용)."""
-    return datetime.now(timezone.utc).isoformat()
+from app.core.utils import utc_now, utc_now_iso  # noqa: F401 (re-export)
 
 
 def normalize_file_path(file_path: str, work_dir: str) -> str:

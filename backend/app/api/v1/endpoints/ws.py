@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -17,12 +16,12 @@ from app.api.dependencies import (
     get_workflow_service,
     get_ws_manager,
 )
+from app.core.utils import utc_now
 from app.services.pending_questions import (
     clear_pending_question,
     get_pending_question,
 )
 from app.api.v1.endpoints.permissions import get_pending, respond_permission
-from app.core.constants import READONLY_TOOLS
 from app.models.event_types import WsEventType
 from app.services.claude_runner import ClaudeRunner
 from app.services.session_manager import SessionManager
@@ -176,7 +175,7 @@ async def _handle_prompt(
                 auto_name += "…"
             await manager.update_settings(session_id, name=auto_name)
 
-        ts_dt = datetime.now(timezone.utc)
+        ts_dt = utc_now()
         await manager.add_message(
             session_id=session_id,
             role="user",

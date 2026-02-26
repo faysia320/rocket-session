@@ -6,10 +6,11 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from fastapi import WebSocket
+
+from app.core.utils import utc_now, utc_now_iso
 from starlette.websockets import WebSocketState
 
 from app.core.database import Database
@@ -71,7 +72,7 @@ class TeamCoordinator:
     async def broadcast_team_event(self, team_id: str, event: dict) -> None:
         """팀 대시보드 WS에 이벤트 전파."""
         event["team_id"] = team_id
-        event["timestamp"] = datetime.now(timezone.utc).isoformat()
+        event["timestamp"] = utc_now_iso()
         payload = json.dumps(event)
 
         conns = self._team_connections.get(team_id, [])
@@ -174,7 +175,7 @@ class TeamCoordinator:
         )
 
         # 메시지 저장 + 전송
-        ts_dt = datetime.now(timezone.utc)
+        ts_dt = utc_now()
         await self._session_manager.add_message(
             session_id=new_session_id,
             role="user",

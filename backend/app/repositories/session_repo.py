@@ -32,8 +32,8 @@ class SessionRepository(BaseRepository[Session]):
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_with_counts(self) -> list[dict]:
-        """세션 목록 + message_count, file_changes_count (lateral subquery)."""
+    def _counts_query(self):
+        """message/file_change 카운트 서브쿼리를 포함한 기본 SELECT 반환."""
         msg_sub = (
             select(Message.session_id, func.count().label("cnt"))
             .group_by(Message.session_id)
@@ -44,7 +44,7 @@ class SessionRepository(BaseRepository[Session]):
             .group_by(FileChange.session_id)
             .subquery()
         )
-        stmt = (
+        return (
             select(
                 Session,
                 func.coalesce(msg_sub.c.cnt, 0).label("message_count"),
@@ -52,43 +52,24 @@ class SessionRepository(BaseRepository[Session]):
             )
             .outerjoin(msg_sub, msg_sub.c.session_id == Session.id)
             .outerjoin(fc_sub, fc_sub.c.session_id == Session.id)
-            .order_by(Session.created_at.desc())
         )
+
+    async def list_with_counts(self) -> list[dict]:
+        """세션 목록 + message_count, file_changes_count."""
+        stmt = self._counts_query().order_by(Session.created_at.desc())
         result = await self._session.execute(stmt)
-        rows = result.all()
         return [
             {
                 **_session_to_dict(row[0]),
                 "message_count": row[1],
                 "file_changes_count": row[2],
             }
-            for row in rows
+            for row in result.all()
         ]
 
     async def get_with_counts(self, session_id: str) -> dict | None:
         """단일 세션 + message_count, file_changes_count."""
-        msg_sub = (
-            select(Message.session_id, func.count().label("cnt"))
-            .where(Message.session_id == session_id)
-            .group_by(Message.session_id)
-            .subquery()
-        )
-        fc_sub = (
-            select(FileChange.session_id, func.count().label("cnt"))
-            .where(FileChange.session_id == session_id)
-            .group_by(FileChange.session_id)
-            .subquery()
-        )
-        stmt = (
-            select(
-                Session,
-                func.coalesce(msg_sub.c.cnt, 0).label("message_count"),
-                func.coalesce(fc_sub.c.cnt, 0).label("file_changes_count"),
-            )
-            .outerjoin(msg_sub, msg_sub.c.session_id == Session.id)
-            .outerjoin(fc_sub, fc_sub.c.session_id == Session.id)
-            .where(Session.id == session_id)
-        )
+        stmt = self._counts_query().where(Session.id == session_id)
         result = await self._session.execute(stmt)
         row = result.one_or_none()
         if not row:
@@ -185,41 +166,5 @@ class SessionRepository(BaseRepository[Session]):
 
 
 def _session_to_dict(session: Session) -> dict:
-    """Session ORM 객체 -> dict 변환 헬퍼.
-
-    created_at은 ISO 문자열로 변환 (WS send_json 호환).
-    """
-    created_at = session.created_at
-    return {
-        "id": session.id,
-        "claude_session_id": session.claude_session_id,
-        "work_dir": session.work_dir,
-        "status": session.status,
-        "created_at": created_at.isoformat()
-        if hasattr(created_at, "isoformat")
-        else created_at,
-        "allowed_tools": session.allowed_tools,
-        "system_prompt": session.system_prompt,
-        "timeout_seconds": session.timeout_seconds,
-        "workflow_enabled": session.workflow_enabled,
-        "workflow_phase": session.workflow_phase,
-        "workflow_phase_status": session.workflow_phase_status,
-        "permission_mode": session.permission_mode,
-        "permission_required_tools": session.permission_required_tools,
-        "name": session.name,
-        "jsonl_path": session.jsonl_path,
-        "model": session.model,
-        "max_turns": session.max_turns,
-        "max_budget_usd": session.max_budget_usd,
-        "system_prompt_mode": session.system_prompt_mode,
-        "disallowed_tools": session.disallowed_tools,
-        "mcp_server_ids": session.mcp_server_ids,
-        "additional_dirs": session.additional_dirs,
-        "fallback_model": session.fallback_model,
-        "workspace_id": session.workspace_id,
-        "worktree_name": session.worktree_name,
-        "parent_session_id": session.parent_session_id,
-        "forked_at_message_id": session.forked_at_message_id,
-        "workflow_original_prompt": session.workflow_original_prompt,
-        "workflow_definition_id": session.workflow_definition_id,
-    }
+    """Session ORM 객체 -> dict 변환 헬퍼 (컬럼 자동 매핑)."""
+    return {c.key: getattr(session, c.key) for c in Session.__table__.columns}

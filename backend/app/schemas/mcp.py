@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 McpTransportType = Literal["stdio", "sse", "streamable-http"]
 
@@ -31,6 +31,8 @@ class UpdateMcpServerRequest(BaseModel):
 
 
 class McpServerInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     transport_type: McpTransportType

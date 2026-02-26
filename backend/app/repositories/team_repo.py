@@ -41,15 +41,6 @@ class TeamRepository(BaseRepository[Team]):
             for row in rows
         ]
 
-    async def update_team(self, team_id: str, **kwargs) -> Team | None:
-        """팀 속성 업데이트."""
-        if not kwargs:
-            return await self.get_by_id(team_id)
-        stmt = update(Team).where(Team.id == team_id).values(**kwargs)
-        await self._session.execute(stmt)
-        await self._session.flush()
-        return await self.get_by_id(team_id)
-
     async def update_status(self, team_id: str, status: str) -> None:
         """팀 상태 업데이트."""
         stmt = update(Team).where(Team.id == team_id).values(status=status)
