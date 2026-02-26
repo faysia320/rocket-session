@@ -1,3 +1,4 @@
+export type { TokenFields, ToolResultFields } from "./shared-fields";
 export type {
   SessionStatus,
   CurrentActivity,

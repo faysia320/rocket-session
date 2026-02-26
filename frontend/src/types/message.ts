@@ -1,3 +1,5 @@
+import type { TokenFields, ToolResultFields } from "./shared-fields";
+
 // ---------------------------------------------------------------------------
 // FileChange
 // ---------------------------------------------------------------------------
@@ -33,7 +35,7 @@ export interface AssistantTextMsg extends BaseMessage {
   text: string;
 }
 
-export interface ResultMsg extends BaseMessage {
+export interface ResultMsg extends BaseMessage, TokenFields {
   type: "result";
   text?: string;
   is_error?: boolean;
@@ -41,10 +43,6 @@ export interface ResultMsg extends BaseMessage {
   duration_ms?: number;
   workflow_phase?: string;
   workflowApproved?: boolean;
-  input_tokens?: number;
-  output_tokens?: number;
-  cache_creation_tokens?: number;
-  cache_read_tokens?: number;
   model?: string;
   session_id?: string;
 }
@@ -62,13 +60,8 @@ export interface ToolUseMsg extends BaseMessage {
   completed_at?: string;
 }
 
-export interface ToolResultMsg extends BaseMessage {
+export interface ToolResultMsg extends BaseMessage, ToolResultFields {
   type: "tool_result";
-  tool_use_id?: string;
-  output?: string;
-  is_error?: boolean;
-  is_truncated?: boolean;
-  full_length?: number;
 }
 
 export interface FileChangeMsg extends BaseMessage {

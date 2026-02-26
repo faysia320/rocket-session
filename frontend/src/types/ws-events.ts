@@ -12,6 +12,7 @@ import type {
   FileChange,
   AskUserQuestionItem,
 } from "./message";
+import type { TokenFields, ToolResultFields } from "./shared-fields";
 
 // ---------------------------------------------------------------------------
 // 공통 필드
@@ -101,24 +102,18 @@ export interface WsToolUseEvent extends WsBaseEvent, ToolUseMsg {
 }
 
 /** 도구 실행 결과 */
-export interface WsToolResultEvent extends WsBaseEvent {
+export interface WsToolResultEvent extends WsBaseEvent, ToolResultFields {
   type: "tool_result";
   tool_use_id: string;
   output: string;
   is_error: boolean;
-  is_truncated?: boolean;
-  full_length?: number;
   timestamp: string;
 }
 
 /** Claude 최종 응답 결과 (비용, 토큰 포함) */
-export interface WsResultEvent extends WsBaseEvent, ResultMsg {
+export interface WsResultEvent extends WsBaseEvent, ResultMsg, TokenFields {
   type: "result";
   workflow_phase?: string;
-  input_tokens?: number;
-  output_tokens?: number;
-  cache_creation_tokens?: number;
-  cache_read_tokens?: number;
 }
 
 /** 파일 변경 감지 */
