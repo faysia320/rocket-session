@@ -91,7 +91,7 @@ export function useWorkflowActions({
   const handleRequestRevision = useCallback(
     async (feedback?: string) => {
       try {
-        await revisionMutation.mutateAsync({ feedback: feedback || undefined });
+        await revisionMutation.mutateAsync({ feedback: feedback || "" });
         toast.success("수정 요청이 전송되었습니다. 계획을 다시 작성합니다…");
 
         queryClient.invalidateQueries({
