@@ -94,15 +94,11 @@ async def _handle_prompt(
             or settings.claude_allowed_tools
         )
 
-        # 비워크플로우 세션: 읽기전용 도구만 허용 (요청/세션/글로벌 설정 무시)
-        if current_session and not current_session.get("workflow_enabled"):
-            allowed_tools = READONLY_TOOLS
-
         # 워크플로우 phase 감지
         workflow_phase = None
         workflow_service = None
         workflow_step_config = None
-        if current_session and current_session.get("workflow_enabled"):
+        if current_session:
             workflow_phase = current_session.get("workflow_phase")
             workflow_phase_status = current_session.get("workflow_phase_status")
 
@@ -279,9 +275,9 @@ async def _handle_clear(
     await manager.update_claude_session_id(session_id, "")
     # 2. DB에서 메시지/파일변경/이벤트 삭제
     await manager.clear_history(session_id)
-    # 3. 워크플로우 활성 시 상태 리셋 (Research 초기 상태 + 아티팩트 삭제)
+    # 3. 워크플로우 상태 리셋 (Research 초기 상태 + 아티팩트 삭제)
     current_session = await manager.get(session_id)
-    if current_session and current_session.get("workflow_enabled"):
+    if current_session:
         workflow_service = get_workflow_service()
         await workflow_service.reset_workflow(session_id, manager)
     # 4. 인메모리 이벤트 버퍼 + seq 카운터 초기화

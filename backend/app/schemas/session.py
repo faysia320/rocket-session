@@ -13,7 +13,6 @@ class CreateSessionRequest(BaseModel):
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = Field(None, ge=1, le=7200)
-    workflow_enabled: Optional[bool] = None
     permission_mode: Optional[bool] = None
     permission_required_tools: Optional[list[str]] = None
     model: Optional[str] = None
@@ -34,7 +33,6 @@ class UpdateSessionRequest(BaseModel):
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = Field(None, ge=1, le=7200)
-    workflow_enabled: Optional[bool] = None
     permission_mode: Optional[bool] = None
     permission_required_tools: Optional[list[str]] = None
     name: Optional[str] = None
@@ -68,7 +66,7 @@ class SessionInfo(BaseModel):
     allowed_tools: Optional[str] = None
     system_prompt: Optional[str] = None
     timeout_seconds: Optional[int] = None
-    workflow_enabled: bool = False
+    workflow_enabled: bool = True
     workflow_phase: Optional[str] = None
     workflow_phase_status: Optional[str] = None
     permission_mode: bool = False

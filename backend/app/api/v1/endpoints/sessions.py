@@ -102,7 +102,7 @@ async def create_session(
         additional_dirs=req.additional_dirs,
         fallback_model=req.fallback_model,
         worktree_name=req.worktree_name,
-        workflow_enabled=req.workflow_enabled or False,
+        workflow_enabled=True,
         workspace_id=workspace_id,
     )
     session_with_counts = await manager.get_with_counts(session["id"]) or session
@@ -195,7 +195,6 @@ async def update_session(
         allowed_tools=req.allowed_tools,
         system_prompt=req.system_prompt,
         timeout_seconds=req.timeout_seconds,
-        workflow_enabled=req.workflow_enabled,
         permission_mode=req.permission_mode,
         permission_required_tools=req.permission_required_tools,
         name=req.name,

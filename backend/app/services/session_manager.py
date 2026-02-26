@@ -56,7 +56,7 @@ class SessionManager:
         additional_dirs: list[str] | None = None,
         fallback_model: str | None = None,
         worktree_name: str | None = None,
-        workflow_enabled: bool = False,
+        workflow_enabled: bool = True,
         workspace_id: str | None = None,
     ) -> dict:
         sid = str(uuid.uuid4())[:16]
@@ -70,9 +70,9 @@ class SessionManager:
                 allowed_tools=allowed_tools,
                 system_prompt=system_prompt,
                 timeout_seconds=timeout_seconds,
-                workflow_enabled=workflow_enabled,
-                workflow_phase="research" if workflow_enabled else None,
-                workflow_phase_status="in_progress" if workflow_enabled else None,
+                workflow_enabled=True,
+                workflow_phase="research",
+                workflow_phase_status="in_progress",
                 permission_mode=permission_mode,
                 permission_required_tools=permission_required_tools,
                 model=model,
@@ -380,7 +380,7 @@ class SessionManager:
             allowed_tools=session.get("allowed_tools"),
             system_prompt=session.get("system_prompt"),
             timeout_seconds=session.get("timeout_seconds"),
-            workflow_enabled=bool(session.get("workflow_enabled", False)),
+            workflow_enabled=True,
             workflow_phase=session.get("workflow_phase"),
             workflow_phase_status=session.get("workflow_phase_status"),
             permission_mode=bool(session.get("permission_mode", False)),
@@ -417,7 +417,6 @@ class SessionManager:
             msg_repo = MessageRepository(session)
 
             # 1. 새 세션 생성 (설정 복사, claude_session_id 제외)
-            _fork_wf_enabled = source.get("workflow_enabled", False)
             entity = Session(
                 id=sid,
                 work_dir=source["work_dir"],
@@ -425,9 +424,9 @@ class SessionManager:
                 allowed_tools=source.get("allowed_tools"),
                 system_prompt=source.get("system_prompt"),
                 timeout_seconds=source.get("timeout_seconds"),
-                workflow_enabled=_fork_wf_enabled,
-                workflow_phase="research" if _fork_wf_enabled else None,
-                workflow_phase_status="in_progress" if _fork_wf_enabled else None,
+                workflow_enabled=True,
+                workflow_phase="research",
+                workflow_phase_status="in_progress",
                 permission_mode=source.get("permission_mode", False),
                 permission_required_tools=source.get("permission_required_tools"),
                 model=source.get("model"),

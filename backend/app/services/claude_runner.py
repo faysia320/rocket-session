@@ -149,10 +149,6 @@ class ClaudeRunner:
             allowed_tools = READONLY_TOOLS
         elif workflow_phase == "implement":
             pass
-        elif not session.get("workflow_enabled"):
-            # 비워크플로우 세션: 읽기전용 (분석/검색만 허용)
-            cmd.extend(["--permission-mode", "plan"])
-            allowed_tools = READONLY_TOOLS
         elif session.get("permission_mode"):
             # Permission MCP는 _setup_mcp_config에서 통합 처리됨
             required = session.get("permission_required_tools") or []

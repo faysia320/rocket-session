@@ -150,7 +150,7 @@ class TestSessionCRUD:
         assert "id" in data
         assert data["work_dir"] == TEST_WORKSPACE_PATH
         assert data["status"] == "idle"
-        assert data["workflow_enabled"] is False
+        assert data["workflow_enabled"] is True
         assert data["permission_mode"] is False
 
     async def test_create_session_without_workspace(self, test_client: AsyncClient):
@@ -350,30 +350,16 @@ class TestSessionWorkflow:
     """Tests for session workflow and permission functionality."""
 
     async def test_create_session_default_workflow(self, test_client: AsyncClient):
-        """Should create session with workflow disabled by default."""
+        """Should create session with workflow always enabled."""
         response = await test_client.post(
             "/api/sessions/", json={"workspace_id": TEST_WORKSPACE_ID}
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["workflow_enabled"] is False
-        assert data["workflow_phase"] is None
-        assert data["workflow_phase_status"] is None
-
-    async def test_create_session_with_workflow_enabled(self, test_client: AsyncClient):
-        """Should create session with workflow enabled."""
-        response = await test_client.post(
-            "/api/sessions/",
-            json={
-                "workspace_id": TEST_WORKSPACE_ID,
-                "workflow_enabled": True,
-            },
-        )
-
-        assert response.status_code == 200
-        data = response.json()
         assert data["workflow_enabled"] is True
+        assert data["workflow_phase"] == "research"
+        assert data["workflow_phase_status"] == "in_progress"
 
     async def test_create_session_with_permission_mode(self, test_client: AsyncClient):
         """Should create session with permission mode enabled."""
@@ -391,17 +377,16 @@ class TestSessionWorkflow:
         assert data["permission_mode"] is True
         assert data["permission_required_tools"] == ["Write", "Edit", "Bash"]
 
-    async def test_update_session_workflow_and_permission(
+    async def test_update_session_permission(
         self, test_client: AsyncClient
     ):
-        """Should update session workflow and permission settings."""
+        """Should update session permission settings."""
         created = await create_test_session(test_client)
         session_id = created["id"]
 
         response = await test_client.patch(
             f"/api/sessions/{session_id}",
             json={
-                "workflow_enabled": True,
                 "permission_mode": True,
                 "permission_required_tools": ["Bash"],
             },

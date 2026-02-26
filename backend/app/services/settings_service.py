@@ -27,7 +27,6 @@ class SettingsService:
                 "allowed_tools": entity.allowed_tools,
                 "system_prompt": entity.system_prompt,
                 "timeout_seconds": entity.timeout_seconds,
-                "workflow_enabled": entity.workflow_enabled,
                 "permission_mode": entity.permission_mode,
                 "permission_required_tools": entity.permission_required_tools,
                 "model": entity.model,
@@ -47,7 +46,6 @@ class SettingsService:
         allowed_tools: str | None = None,
         system_prompt: str | None = None,
         timeout_seconds: int | None = None,
-        workflow_enabled: bool | None = None,
         permission_mode: bool | None = None,
         permission_required_tools: list[str] | None = None,
         model: str | None = None,
@@ -70,8 +68,6 @@ class SettingsService:
             kwargs["system_prompt"] = system_prompt
         if timeout_seconds is not None:
             kwargs["timeout_seconds"] = timeout_seconds
-        if workflow_enabled is not None:
-            kwargs["workflow_enabled"] = workflow_enabled
         if permission_mode is not None:
             kwargs["permission_mode"] = permission_mode
         if permission_required_tools is not None:
@@ -108,7 +104,6 @@ class SettingsService:
                 "allowed_tools": entity.allowed_tools,
                 "system_prompt": entity.system_prompt,
                 "timeout_seconds": entity.timeout_seconds,
-                "workflow_enabled": entity.workflow_enabled,
                 "permission_mode": entity.permission_mode,
                 "permission_required_tools": entity.permission_required_tools,
                 "model": entity.model,

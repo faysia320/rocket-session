@@ -1,10 +1,9 @@
 """워크플로우 게이트 테스트.
 
 ws.py _handle_prompt 함수의 워크플로우 게이트 로직을 검증합니다:
-- 게이트 1: workflow_enabled=True + workflow_phase=None → 프롬프트 차단
+- 게이트 1: workflow_phase=None → 자동 복구 (첫 step으로)
 - 게이트 2: workflow_phase_status == "awaiting_approval" → 프롬프트 차단
-- 정상 흐름: workflow_enabled=False → 프롬프트 허용
-- 정상 흐름: workflow_enabled=True + workflow_phase 있음 → 프롬프트 허용
+- 정상 흐름: workflow_phase 있음 → 프롬프트 허용
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -54,12 +53,24 @@ def _make_mock_settings():
     return settings
 
 
+def _make_mock_def_service():
+    """테스트용 mock WorkflowDefinitionService 생성."""
+    step = MagicMock()
+    step.name = "research"
+    step.order_index = 0
+    definition = MagicMock()
+    definition.steps = [step]
+    def_svc = AsyncMock()
+    def_svc.get_or_default = AsyncMock(return_value=definition)
+    return def_svc
+
+
 @pytest.mark.asyncio
 class TestWorkflowGate1:
-    """게이트 1: workflow_enabled=True + workflow_phase=None → 프롬프트 차단."""
+    """게이트 1: workflow_phase=None → 자동 복구 (첫 step으로 설정 후 프롬프트 실행)."""
 
-    async def test_blocks_prompt_when_workflow_not_started(self):
-        """워크플로우 활성화 + 미시작 상태에서 프롬프트가 차단되는지 확인."""
+    async def test_auto_recovers_when_workflow_not_started(self):
+        """워크플로우 활성화 + 미시작 상태에서 자동 복구 후 프롬프트 실행."""
         ws = _make_mock_ws()
         session_data = {
             "workflow_enabled": True,
@@ -70,10 +81,25 @@ class TestWorkflowGate1:
         }
         manager = _make_mock_manager(session_data)
 
-        with patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc:
+        mock_workflow_svc = AsyncMock()
+        mock_workflow_svc.build_phase_context = AsyncMock(return_value=None)
+
+        with (
+            patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
+            patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
+            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
+            patch("app.api.v1.endpoints.ws.get_workflow_service", return_value=mock_workflow_svc),
+            patch("asyncio.create_task") as mock_create_task,
+        ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
             mock_settings_svc.return_value = mock_svc
+            mock_mcp_svc.return_value = MagicMock()
+            mock_def_svc.return_value = _make_mock_def_service()
+
+            mock_task = MagicMock()
+            mock_task.add_done_callback = MagicMock()
+            mock_create_task.return_value = mock_task
 
             await _handle_prompt(
                 data={"prompt": "hello"},
@@ -85,16 +111,13 @@ class TestWorkflowGate1:
                 runner=_make_mock_runner(),
             )
 
-        # 에러 메시지 전송 확인
-        ws.send_json.assert_called()
-        call_args = ws.send_json.call_args[0][0]
-        assert call_args["type"] == WsEventType.ERROR
-        assert (
-            "워크플로우가 활성화되어 있지만 시작되지 않았습니다" in call_args["message"]
-        )
+        # 자동 복구: update_settings가 호출되어야 함
+        manager.update_settings.assert_called()
+        # runner task가 생성되어야 함 (자동 복구 후 프롬프트 실행)
+        manager.add_message.assert_called_once()
 
-    async def test_blocks_prompt_when_workflow_phase_empty_string(self):
-        """workflow_phase가 빈 문자열일 때도 차단되는지 확인."""
+    async def test_auto_recovers_when_workflow_phase_empty_string(self):
+        """workflow_phase가 빈 문자열일 때도 자동 복구."""
         ws = _make_mock_ws()
         session_data = {
             "workflow_enabled": True,
@@ -105,10 +128,25 @@ class TestWorkflowGate1:
         }
         manager = _make_mock_manager(session_data)
 
-        with patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc:
+        mock_workflow_svc = AsyncMock()
+        mock_workflow_svc.build_phase_context = AsyncMock(return_value=None)
+
+        with (
+            patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
+            patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
+            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
+            patch("app.api.v1.endpoints.ws.get_workflow_service", return_value=mock_workflow_svc),
+            patch("asyncio.create_task") as mock_create_task,
+        ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
             mock_settings_svc.return_value = mock_svc
+            mock_mcp_svc.return_value = MagicMock()
+            mock_def_svc.return_value = _make_mock_def_service()
+
+            mock_task = MagicMock()
+            mock_task.add_done_callback = MagicMock()
+            mock_create_task.return_value = mock_task
 
             await _handle_prompt(
                 data={"prompt": "hello"},
@@ -120,42 +158,9 @@ class TestWorkflowGate1:
                 runner=_make_mock_runner(),
             )
 
-        call_args = ws.send_json.call_args[0][0]
-        assert call_args["type"] == WsEventType.ERROR
-        assert (
-            "워크플로우가 활성화되어 있지만 시작되지 않았습니다" in call_args["message"]
-        )
-
-    async def test_runner_not_started_when_gate_blocks(self):
-        """게이트 차단 시 runner.run이 호출되지 않는지 확인."""
-        ws = _make_mock_ws()
-        session_data = {
-            "workflow_enabled": True,
-            "workflow_phase": None,
-            "workflow_phase_status": None,
-            "allowed_tools": None,
-            "name": "test",
-        }
-        manager = _make_mock_manager(session_data)
-        runner = _make_mock_runner()
-
-        with patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc:
-            mock_svc = AsyncMock()
-            mock_svc.get = AsyncMock(return_value={})
-            mock_settings_svc.return_value = mock_svc
-
-            await _handle_prompt(
-                data={"prompt": "hello"},
-                session_id="test-session",
-                manager=manager,
-                ws_manager=_make_mock_ws_manager(),
-                ws=ws,
-                settings=_make_mock_settings(),
-                runner=runner,
-            )
-
-        runner.run.assert_not_called()
-        manager.add_message.assert_not_called()
+        # 자동 복구 확인
+        manager.update_settings.assert_called()
+        manager.add_message.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -174,10 +179,14 @@ class TestWorkflowGate2:
         }
         manager = _make_mock_manager(session_data)
 
-        with patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc:
+        with (
+            patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
+            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
+        ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
             mock_settings_svc.return_value = mock_svc
+            mock_def_svc.return_value = _make_mock_def_service()
 
             await _handle_prompt(
                 data={"prompt": "hello"},
@@ -206,12 +215,14 @@ class TestWorkflowGate2:
             }
             manager = _make_mock_manager(session_data)
 
-            with patch(
-                "app.api.v1.endpoints.ws.get_settings_service"
-            ) as mock_settings_svc:
+            with (
+                patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
+                patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
+            ):
                 mock_svc = AsyncMock()
                 mock_svc.get = AsyncMock(return_value={})
                 mock_settings_svc.return_value = mock_svc
+                mock_def_svc.return_value = _make_mock_def_service()
 
                 await _handle_prompt(
                     data={"prompt": "hello"},
@@ -233,11 +244,11 @@ class TestWorkflowGate2:
 class TestWorkflowAllowed:
     """워크플로우 게이트 통과: 정상 흐름."""
 
-    async def test_allows_prompt_when_workflow_disabled(self):
-        """workflow_enabled=False이면 프롬프트 허용."""
+    async def test_allows_prompt_when_workflow_no_phase(self):
+        """workflow_phase=None → 자동 복구 후 프롬프트 허용."""
         ws = _make_mock_ws()
         session_data = {
-            "workflow_enabled": False,
+            "workflow_enabled": True,
             "workflow_phase": None,
             "workflow_phase_status": None,
             "allowed_tools": None,
@@ -257,16 +268,21 @@ class TestWorkflowAllowed:
         runner = _make_mock_runner()
         ws_manager = _make_mock_ws_manager()
 
+        mock_workflow_svc = AsyncMock()
+        mock_workflow_svc.build_phase_context = AsyncMock(return_value=None)
+
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
-            patch("app.api.v1.endpoints.ws.get_workflow_service"),
+            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
+            patch("app.api.v1.endpoints.ws.get_workflow_service", return_value=mock_workflow_svc),
             patch("asyncio.create_task") as mock_create_task,
         ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
             mock_settings_svc.return_value = mock_svc
             mock_mcp_svc.return_value = MagicMock()
+            mock_def_svc.return_value = _make_mock_def_service()
 
             mock_task = MagicMock()
             mock_task.add_done_callback = MagicMock()
@@ -282,7 +298,7 @@ class TestWorkflowAllowed:
                 runner=runner,
             )
 
-        # runner task가 생성되어야 함 (게이트 통과 확인)
+        # runner task가 생성되어야 함 (자동 복구 후 게이트 통과 확인)
         manager.add_message.assert_called_once()
         manager.set_runner_task.assert_called_once()
 
@@ -316,6 +332,7 @@ class TestWorkflowAllowed:
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
+            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
             patch(
                 "app.api.v1.endpoints.ws.get_workflow_service",
                 return_value=mock_workflow_svc,
@@ -326,6 +343,7 @@ class TestWorkflowAllowed:
             mock_svc.get = AsyncMock(return_value={})
             mock_settings_svc.return_value = mock_svc
             mock_mcp_svc.return_value = MagicMock()
+            mock_def_svc.return_value = _make_mock_def_service()
 
             mock_task = MagicMock()
             mock_task.add_done_callback = MagicMock()
@@ -370,7 +388,7 @@ class TestPromptValidation:
     async def test_duplicate_runner_rejected(self):
         """이미 실행 중인 runner가 있으면 거부."""
         ws = _make_mock_ws()
-        manager = _make_mock_manager({"workflow_enabled": False})
+        manager = _make_mock_manager({"workflow_enabled": True})
         manager.get_runner_task = MagicMock(return_value=MagicMock())  # 기존 task 존재
 
         with patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc:

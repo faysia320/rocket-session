@@ -73,7 +73,7 @@ class TestSessionRepository:
                 allowed_tools="Read,Write",
                 system_prompt="Test prompt",
                 timeout_seconds=300,
-                workflow_enabled=False,
+                workflow_enabled=True,
                 permission_mode=False,
             )
             await repo.add(entity)
@@ -89,7 +89,7 @@ class TestSessionRepository:
             assert result.allowed_tools == "Read,Write"
             assert result.system_prompt == "Test prompt"
             assert result.timeout_seconds == 300
-            assert result.workflow_enabled is False
+            assert result.workflow_enabled is True
             assert result.permission_mode is False
 
     async def test_get_nonexistent_session_returns_none(self, db):
