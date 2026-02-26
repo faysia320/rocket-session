@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback, useMemo, memo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, memo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Columns2,
   Download,
+  FileSearch,
   GitFork,
   LayoutGrid,
   MessageSquare,
@@ -11,11 +12,14 @@ import {
   Plus,
   Search,
   X,
+  ChevronDown as ChevronDownIcon,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +34,8 @@ import { cn, formatWorkDir } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { ImportLocalDialog } from "./ImportLocalDialog";
 import { useSessionStore } from "@/store";
+import { useSessionSearch } from "@/features/history/hooks/useSessionSearch";
+import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 
 interface SidebarProps {
   sessions: SessionInfo[];
@@ -37,6 +43,7 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
   onRename?: (id: string, name: string) => void;
   onImported?: (id: string) => void;
   isMobileOverlay?: boolean;
@@ -50,6 +57,7 @@ export const Sidebar = memo(function Sidebar({
   onSelect,
   onNew,
   onDelete,
+  onArchive,
   onRename,
   onImported,
   isMobileOverlay,
@@ -64,11 +72,81 @@ export const Sidebar = memo(function Sidebar({
   const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
   const [importOpen, setImportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [ftsMode, setFtsMode] = useState(false);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "running" | "idle" | "error" | "archived"
   >("all");
 
+  // Debounce for FTS search
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleQueryChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      setDebouncedQuery(value);
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
+
+  // FTS search params
+  const ftsSearchParams = useMemo(
+    () => ({
+      fts: ftsMode && debouncedQuery ? debouncedQuery : undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      sort: "created_at",
+      order: "desc" as const,
+      limit: 100,
+      offset: 0,
+    }),
+    [debouncedQuery, ftsMode, statusFilter],
+  );
+
+  const { data: ftsData } = useSessionSearch({
+    ...ftsSearchParams,
+    fts: ftsSearchParams.fts,
+  });
+
+  // Workspace data for grouping
+  const { data: workspaces } = useWorkspaces();
+
+  const workspaceMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (workspaces) {
+      for (const ws of workspaces) {
+        map.set(ws.id, ws.name);
+      }
+    }
+    return map;
+  }, [workspaces]);
+
+  // Non-archived total count (for badge)
+  const nonArchivedTotal = useMemo(
+    () => sessions.filter((s) => s.status !== "archived").length,
+    [sessions],
+  );
+
+  // Filtered sessions - either FTS results or local filter
   const filteredSessions = useMemo(() => {
+    // FTS mode: use server-side search results
+    if (ftsMode && debouncedQuery && ftsData?.items) {
+      let filtered = ftsData.items;
+      if (statusFilter === "all") {
+        filtered = filtered.filter((s) => s.status !== "archived");
+      } else {
+        filtered = filtered.filter((s) => s.status === statusFilter);
+      }
+      return filtered;
+    }
+
+    // Normal mode: local filter
     let filtered = sessions;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -82,7 +160,31 @@ export const Sidebar = memo(function Sidebar({
       filtered = filtered.filter((s) => s.status === statusFilter);
     }
     return filtered;
-  }, [sessions, searchQuery, statusFilter]);
+  }, [sessions, searchQuery, statusFilter, ftsMode, debouncedQuery, ftsData]);
+
+  // Always group sessions by workspace
+  const groupedSessions = useMemo(() => {
+    if (!filteredSessions.length) return null;
+
+    const groups = new Map<string | null, SessionInfo[]>();
+    for (const session of filteredSessions) {
+      const key = session.workspace_id ?? null;
+      const list = groups.get(key);
+      if (list) {
+        list.push(session);
+      } else {
+        groups.set(key, [session]);
+      }
+    }
+
+    return Array.from(groups.entries()).sort(([a], [b]) => {
+      if (a === null) return 1;
+      if (b === null) return -1;
+      const nameA = workspaceMap.get(a) ?? a;
+      const nameB = workspaceMap.get(b) ?? b;
+      return nameA.localeCompare(nameB);
+    });
+  }, [filteredSessions, workspaceMap]);
 
   return (
     <aside
@@ -144,33 +246,52 @@ export const Sidebar = memo(function Sidebar({
           </span>
           <Badge variant="secondary" className="font-mono text-2xs">
             {filteredSessions.length}
-            {filteredSessions.length !== sessions.length ? `/${sessions.length}` : ""}
+            {filteredSessions.length !== nonArchivedTotal ? `/${nonArchivedTotal}` : ""}
           </Badge>
         </div>
       )}
 
-      {/* 검색 + 상태 필터 */}
+      {/* 검색 + FTS 토글 + 상태 필터 */}
       {collapsed ? null : (
         <div className="px-3 space-y-2 pb-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
-            <input
-              className="w-full font-mono text-xs bg-input border border-border rounded pl-7 pr-7 py-1.5 outline-none focus:border-primary/50"
-              placeholder="세션 검색…"
-              aria-label="세션 검색"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            {searchQuery ? (
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground"
-                onClick={() => setSearchQuery("")}
-                aria-label="검색 초기화"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
+          <div className="flex items-center gap-1">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+              <input
+                className="w-full font-mono text-xs bg-input border border-border rounded pl-7 pr-7 py-1.5 outline-none focus:border-primary/50"
+                placeholder={ftsMode ? "대화 내용 검색 (FTS)…" : "세션 검색…"}
+                aria-label="세션 검색"
+                value={searchQuery}
+                onChange={(e) => handleQueryChange(e.target.value)}
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground"
+                  onClick={() => handleQueryChange("")}
+                  aria-label="검색 초기화"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
+            {/* FTS 토글 */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-[30px] w-[30px] shrink-0", ftsMode && "text-primary")}
+                  onClick={() => setFtsMode(!ftsMode)}
+                  aria-label={ftsMode ? "일반 검색으로 전환" : "전문 검색으로 전환"}
+                >
+                  <FileSearch className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {ftsMode ? "전문 검색 켜짐 (대화 내용 포함)" : "전문 검색 (대화 내용)"}
+              </TooltipContent>
+            </Tooltip>
           </div>
           <div className="flex gap-1">
             {(["all", "running", "idle", "error", "archived"] as const).map((f) => (
@@ -222,6 +343,20 @@ export const Sidebar = memo(function Sidebar({
               검색 결과가 없습니다
             </div>
           )
+        ) : groupedSessions ? (
+          groupedSessions.map(([wsId, groupSessions]) => (
+            <SidebarWorkspaceGroup
+              key={wsId ?? "__none__"}
+              workspaceName={wsId ? (workspaceMap.get(wsId) ?? wsId) : null}
+              sessions={groupSessions}
+              activeSessionId={activeSessionId}
+              onSelect={onSelect}
+              onDelete={onDelete}
+              onArchive={onArchive}
+              onRename={onRename}
+              collapsed={collapsed}
+            />
+          ))
         ) : (
           filteredSessions.map((s) =>
             collapsed ? (
@@ -263,6 +398,7 @@ export const Sidebar = memo(function Sidebar({
                 isActive={s.id === activeSessionId}
                 onSelect={onSelect}
                 onDelete={onDelete}
+                onArchive={onArchive}
                 onRename={onRename}
               />
             ),
@@ -375,17 +511,118 @@ export const Sidebar = memo(function Sidebar({
   );
 });
 
+/** 워크스페이스별 Collapsible 그룹 (사이드바용) */
+const SidebarWorkspaceGroup = memo(function SidebarWorkspaceGroup({
+  workspaceName,
+  sessions,
+  activeSessionId,
+  onSelect,
+  onDelete,
+  onArchive,
+  onRename,
+  collapsed,
+}: {
+  workspaceName: string | null;
+  sessions: SessionInfo[];
+  activeSessionId: string | null;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
+  onRename?: (id: string, name: string) => void;
+  collapsed: boolean;
+}) {
+  const [open, setOpen] = useState(true);
+
+  if (collapsed) {
+    return (
+      <>
+        {sessions.map((s) => (
+          <Tooltip key={s.id}>
+            <TooltipTrigger asChild>
+              <button
+                className={cn(
+                  "w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-colors border border-transparent",
+                  s.id === activeSessionId && "bg-muted border-[hsl(var(--border-bright))]",
+                )}
+                onClick={() => onSelect(s.id)}
+                aria-label={`세션 ${s.id}`}
+              >
+                <span
+                  className={cn(
+                    "w-2.5 h-2.5 rounded-full shrink-0",
+                    s.status === "running" && "bg-success",
+                    s.status === "error" && "bg-destructive",
+                    s.status === "archived" && "bg-muted-foreground/40",
+                    s.status !== "running" &&
+                      s.status !== "error" &&
+                      s.status !== "archived" &&
+                      "bg-muted-foreground",
+                  )}
+                />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-mono text-xs">
+              <p className="font-semibold">{s.id}</p>
+              <p className="text-muted-foreground">
+                {s.message_count} msgs · {s.file_changes_count} changes
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="mb-1">
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="w-full flex items-center gap-1.5 px-3 py-1.5 bg-muted/30 hover:bg-muted/50 transition-colors rounded-sm"
+        >
+          {open ? (
+            <ChevronDownIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+          )}
+          <span className="font-mono text-2xs font-semibold text-foreground truncate">
+            {workspaceName ?? "워크스페이스 미지정"}
+          </span>
+          <span className="font-mono text-2xs text-muted-foreground shrink-0">
+            ({sessions.length})
+          </span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {sessions.map((s) => (
+          <SessionItem
+            key={s.id}
+            session={s}
+            isActive={s.id === activeSessionId}
+            onSelect={onSelect}
+            onDelete={onDelete}
+            onArchive={onArchive}
+            onRename={onRename}
+          />
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+});
+
 const SessionItem = memo(function SessionItem({
   session: s,
   isActive,
   onSelect,
   onDelete,
+  onArchive,
   onRename,
 }: {
   session: SessionInfo;
   isActive: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
   onRename?: (id: string, name: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -407,7 +644,20 @@ const SessionItem = memo(function SessionItem({
     }
   }, [editValue, s.name, s.id, onRename]);
 
+  const isArchived = s.status === "archived";
   const displayName = s.name || s.id;
+
+  const handleXClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isArchived) {
+        setDeleteConfirmOpen(true);
+      } else {
+        onArchive(s.id);
+      }
+    },
+    [isArchived, onArchive, s.id],
+  );
 
   return (
     <button
@@ -464,18 +714,22 @@ const SessionItem = memo(function SessionItem({
             <TooltipContent className="font-mono text-xs">포크된 세션</TooltipContent>
           </Tooltip>
         ) : null}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-5 h-5 opacity-50 hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            setDeleteConfirmOpen(true);
-          }}
-          aria-label="세션 삭제"
-        >
-          {"×"}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-5 h-5 opacity-50 hover:opacity-100"
+              onClick={handleXClick}
+              aria-label={isArchived ? "세션 삭제" : "세션 보관"}
+            >
+              {"×"}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="font-mono text-xs">
+            {isArchived ? "삭제" : "보관"}
+          </TooltipContent>
+        </Tooltip>
         <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
           <AlertDialogContent onClick={(e) => e.stopPropagation()}>
             <AlertDialogHeader>

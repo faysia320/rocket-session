@@ -1,12 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import {
-  ChevronDown,
-  ChevronUp,
-  Trash2,
-  Plus,
-  GripVertical,
-  FileText,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Plus, GripVertical, FileText } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -25,9 +18,11 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -35,17 +30,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { WORKFLOW_ICON_MAP } from "../utils/workflowIcons";
-import type { WorkflowStepConfig, WorkflowNodeInfo } from "@/types/workflow";
+import type { WorkflowStepConfig } from "@/types/workflow";
+
+const CONSTRAINT_OPTIONS = [
+  { value: "readonly", label: "Readonly" },
+  { value: "full", label: "Full" },
+];
+
+const ICON_OPTIONS = [
+  "Search",
+  "FileText",
+  "Code",
+  "CheckCircle",
+  "Settings",
+  "Database",
+  "Globe",
+  "Zap",
+  "Shield",
+  "Layers",
+];
 
 function createDefaultStep(orderIndex: number): WorkflowStepConfig {
   return {
-    node_id: "",
+    name: "",
+    label: "",
+    icon: "FileText",
+    prompt_template: "",
+    constraints: "readonly",
     order_index: orderIndex,
     auto_advance: false,
     review_required: false,
@@ -58,8 +71,6 @@ interface SortableStepCardProps {
   id: string;
   step: WorkflowStepConfig;
   index: number;
-  nodes: WorkflowNodeInfo[];
-  nodeMap: Map<string, WorkflowNodeInfo>;
   isOpen: boolean;
   onToggleOpen: () => void;
   onUpdate: (patch: Partial<WorkflowStepConfig>) => void;
@@ -70,21 +81,14 @@ function SortableStepCard({
   id,
   step,
   index,
-  nodes,
-  nodeMap,
   isOpen,
   onToggleOpen,
   onUpdate,
   onDelete,
 }: SortableStepCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -93,24 +97,11 @@ function SortableStepCard({
     zIndex: isDragging ? 10 : undefined,
   };
 
-  const selectedNode = nodeMap.get(step.node_id);
-  const StepIcon = selectedNode
-    ? (WORKFLOW_ICON_MAP[selectedNode.icon] ?? FileText)
-    : FileText;
-  const stepLabel = selectedNode?.label ?? `단계 ${index + 1}`;
+  const StepIcon = WORKFLOW_ICON_MAP[step.icon] ?? FileText;
+  const stepLabel = step.label || `단계 ${index + 1}`;
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
-      {/* 연결선 (첫 번째 카드 제외) */}
-      {index > 0 ? (
-        <div className="flex justify-center py-1">
-          <div className="flex flex-col items-center">
-            <div className="w-px h-3 bg-border" />
-            <ChevronDown className="w-3 h-3 text-muted-foreground -my-0.5" />
-          </div>
-        </div>
-      ) : null}
-
+    <div ref={setNodeRef} style={style}>
       <Collapsible open={isOpen} onOpenChange={onToggleOpen}>
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           {/* Card Header */}
@@ -132,26 +123,28 @@ function SortableStepCard({
             </span>
 
             <StepIcon className="w-4 h-4 text-primary shrink-0" />
-            <span className="text-sm font-medium truncate flex-1">
-              {stepLabel}
-            </span>
+            <span className="text-sm font-medium truncate flex-1">{stepLabel}</span>
 
             {/* Inline badges */}
             {step.auto_advance ? (
-              <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 shrink-0 text-info border-info/30">
+              <Badge
+                variant="outline"
+                className="font-mono text-2xs px-1.5 py-0 shrink-0 text-info border-info/30"
+              >
                 자동
               </Badge>
             ) : null}
             {step.review_required ? (
-              <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 shrink-0 text-warning border-warning/30">
+              <Badge
+                variant="outline"
+                className="font-mono text-2xs px-1.5 py-0 shrink-0 text-warning border-warning/30"
+              >
                 승인
               </Badge>
             ) : null}
-            {selectedNode ? (
-              <Badge variant="secondary" className="font-mono text-2xs shrink-0">
-                {selectedNode.constraints}
-              </Badge>
-            ) : null}
+            <Badge variant="secondary" className="font-mono text-2xs shrink-0">
+              {step.constraints}
+            </Badge>
 
             <div className="flex items-center gap-0.5 shrink-0">
               <Button
@@ -174,66 +167,84 @@ function SortableStepCard({
                   className="h-7 w-7 p-0"
                   aria-label={isOpen ? "접기" : "펼치기"}
                 >
-                  {isOpen ? (
-                    <ChevronUp className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
+                  {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </Button>
               </CollapsibleTrigger>
             </div>
           </div>
 
-          {/* Card Content */}
+          {/* Card Content — Inline Editing */}
           <CollapsibleContent>
             <div className="px-4 py-3 border-t border-border space-y-4">
-              {/* Node 선택 */}
-              <div className="space-y-1.5">
-                <Label className="text-xs">노드 선택</Label>
-                <Select
-                  value={step.node_id}
-                  onValueChange={(val) => onUpdate({ node_id: val })}
-                >
-                  <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="노드를 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nodes.map((node) => {
-                      const NodeIcon = WORKFLOW_ICON_MAP[node.icon] ?? FileText;
-                      return (
-                        <SelectItem key={node.id} value={node.id} className="text-sm">
-                          <div className="flex items-center gap-2">
-                            <NodeIcon className="w-4 h-4" />
-                            <span>{node.label}</span>
-                            <span className="text-muted-foreground text-xs">({node.name})</span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+              {/* name + label */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">이름 (name)</Label>
+                  <Input
+                    className="font-mono text-xs h-8"
+                    value={step.name}
+                    onChange={(e) => onUpdate({ name: e.target.value })}
+                    placeholder="research"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">라벨 (label)</Label>
+                  <Input
+                    className="font-mono text-xs h-8"
+                    value={step.label}
+                    onChange={(e) => onUpdate({ label: e.target.value })}
+                    placeholder="Research"
+                  />
+                </div>
               </div>
 
-              {/* 선택된 노드 정보 표시 */}
-              {selectedNode ? (
-                <div className="rounded-md bg-muted/50 p-3 space-y-1">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>제약조건:</span>
-                    <Badge variant="outline" className="font-mono text-2xs">
-                      {selectedNode.constraints}
-                    </Badge>
-                  </div>
-                  {selectedNode.prompt_template ? (
-                    <div className="text-xs text-muted-foreground">
-                      <span>프롬프트: </span>
-                      <span className="text-foreground/70 line-clamp-2">
-                        {selectedNode.prompt_template.slice(0, 100)}
-                        {selectedNode.prompt_template.length > 100 ? "…" : ""}
-                      </span>
-                    </div>
-                  ) : null}
+              {/* icon + constraints */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">아이콘</Label>
+                  <Select value={step.icon} onValueChange={(val) => onUpdate({ icon: val })}>
+                    <SelectTrigger className="h-8 font-mono text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ICON_OPTIONS.map((icon) => (
+                        <SelectItem key={icon} value={icon} className="font-mono text-xs">
+                          {icon}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : null}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">제약조건</Label>
+                  <Select
+                    value={step.constraints}
+                    onValueChange={(val) => onUpdate({ constraints: val })}
+                  >
+                    <SelectTrigger className="h-8 font-mono text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONSTRAINT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="font-mono text-xs">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* prompt_template */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">프롬프트 템플릿</Label>
+                <Textarea
+                  className="font-mono text-xs min-h-[120px] resize-y"
+                  value={step.prompt_template}
+                  onChange={(e) => onUpdate({ prompt_template: e.target.value })}
+                  placeholder="프롬프트 템플릿을 입력하세요. {user_prompt}, {previous_artifact} 변수를 사용할 수 있습니다."
+                />
+              </div>
 
               {/* auto_advance & review_required */}
               <div className="flex flex-col gap-3">
@@ -241,9 +252,7 @@ function SortableStepCard({
                   <Checkbox
                     id={`step-auto-advance-${index}`}
                     checked={step.auto_advance}
-                    onCheckedChange={(checked) =>
-                      onUpdate({ auto_advance: checked === true })
-                    }
+                    onCheckedChange={(checked) => onUpdate({ auto_advance: checked === true })}
                   />
                   <Label
                     htmlFor={`step-auto-advance-${index}`}
@@ -256,9 +265,7 @@ function SortableStepCard({
                   <Checkbox
                     id={`step-review-required-${index}`}
                     checked={step.review_required}
-                    onCheckedChange={(checked) =>
-                      onUpdate({ review_required: checked === true })
-                    }
+                    onCheckedChange={(checked) => onUpdate({ review_required: checked === true })}
                   />
                   <Label
                     htmlFor={`step-review-required-${index}`}
@@ -280,19 +287,13 @@ function SortableStepCard({
 
 interface WorkflowStepEditorProps {
   steps: WorkflowStepConfig[];
-  nodes: WorkflowNodeInfo[];
   onChange: (steps: WorkflowStepConfig[]) => void;
 }
 
-export function WorkflowStepEditor({ steps, nodes, onChange }: WorkflowStepEditorProps) {
+export function WorkflowStepEditor({ steps, onChange }: WorkflowStepEditorProps) {
   const [openIndices, setOpenIndices] = useState<Set<number>>(new Set());
 
-  const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
-
-  const sortableIds = useMemo(
-    () => steps.map((_, i) => `step-${i}`),
-    [steps],
-  );
+  const sortableIds = useMemo(() => steps.map((_, i) => `step-${i}`), [steps]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -317,9 +318,7 @@ export function WorkflowStepEditor({ steps, nodes, onChange }: WorkflowStepEdito
 
   const updateStep = useCallback(
     (index: number, patch: Partial<WorkflowStepConfig>) => {
-      const updated = steps.map((step, i) =>
-        i === index ? { ...step, ...patch } : step,
-      );
+      const updated = steps.map((step, i) => (i === index ? { ...step, ...patch } : step));
       onChange(updated);
     },
     [steps, onChange],
@@ -364,10 +363,12 @@ export function WorkflowStepEditor({ steps, nodes, onChange }: WorkflowStepEdito
       const newIndex = sortableIds.indexOf(over.id as string);
       if (oldIndex === -1 || newIndex === -1) return;
 
-      const reordered = arrayMove(steps, oldIndex, newIndex).map((step, i) => ({
-        ...step,
-        order_index: i,
-      }));
+      const reordered = arrayMove(steps, oldIndex, newIndex).map(
+        (step: WorkflowStepConfig, i: number) => ({
+          ...step,
+          order_index: i,
+        }),
+      );
 
       setOpenIndices((prev) => {
         const next = new Set<number>();
@@ -391,24 +392,15 @@ export function WorkflowStepEditor({ steps, nodes, onChange }: WorkflowStepEdito
   );
 
   return (
-    <div className="space-y-0">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={sortableIds}
-          strategy={verticalListSortingStrategy}
-        >
+    <div className="space-y-2">
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
           {steps.map((step, index) => (
             <SortableStepCard
               key={sortableIds[index]}
               id={sortableIds[index]}
               step={step}
               index={index}
-              nodes={nodes}
-              nodeMap={nodeMap}
               isOpen={openIndices.has(index)}
               onToggleOpen={() => toggleOpen(index)}
               onUpdate={(patch) => updateStep(index, patch)}
@@ -420,11 +412,7 @@ export function WorkflowStepEditor({ steps, nodes, onChange }: WorkflowStepEdito
 
       {/* Add step button */}
       <div className={steps.length > 0 ? "pt-3" : ""}>
-        <Button
-          variant="outline"
-          className="w-full border-dashed"
-          onClick={addStep}
-        >
+        <Button variant="outline" className="w-full border-dashed" onClick={addStep}>
           <Plus className="w-4 h-4 mr-2" />
           단계 추가
         </Button>

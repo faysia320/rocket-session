@@ -35,9 +35,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   const location = useLocation();
 
-  const isSessionArea =
-    location.pathname === "/" ||
-    location.pathname.startsWith("/session");
+  const isSessionArea = location.pathname === "/" || location.pathname.startsWith("/session");
 
   const isTeamArea = location.pathname.startsWith("/team");
 
@@ -48,13 +46,7 @@ function RootComponent() {
 
       {/* 사이드바 + 콘텐츠 영역 */}
       <div className="flex flex-1 overflow-hidden">
-        {isSessionArea ? (
-          <SessionLayout />
-        ) : isTeamArea ? (
-          <TeamLayout />
-        ) : (
-          <Outlet />
-        )}
+        {isSessionArea ? <SessionLayout /> : isTeamArea ? <TeamLayout /> : <Outlet />}
       </div>
       <CommandPaletteProvider />
     </div>
@@ -78,6 +70,7 @@ function SessionLayout() {
     renameSession,
     selectSession,
     refreshSessions,
+    archiveSession,
   } = useSessions();
   const viewMode = useSessionStore((s) => s.viewMode);
   const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
@@ -165,6 +158,7 @@ function SessionLayout() {
       onSelect={handleSelect}
       onNew={handleNew}
       onDelete={deleteSession}
+      onArchive={archiveSession}
       onRename={renameSession}
       onImported={handleImported}
       isMobileOverlay={isMobile}

@@ -21,8 +21,7 @@ export const workflowDefinitionApi = {
 
   delete: (id: string) => api.delete<void>(`${BASE}/${id}`),
 
-  export: (id: string) =>
-    api.get<WorkflowDefinitionExport>(`${BASE}/${id}/export`),
+  export: (id: string) => api.get<WorkflowDefinitionExport>(`${BASE}/${id}/export`),
 
   import: (data: WorkflowDefinitionExport) =>
     api.post<WorkflowDefinitionInfo>(`${BASE}/import`, data),

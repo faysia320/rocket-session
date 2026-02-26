@@ -12,6 +12,7 @@ from app.api.dependencies import (
     get_session_manager,
     get_settings_service,
     get_tag_service,
+    get_workflow_definition_service,
     get_workspace_service,
     get_ws_manager,
 )
@@ -31,11 +32,11 @@ from app.schemas.tag import SessionTagRequest, TagInfo
 from app.services.git_service import GitService
 from app.services.mcp_service import McpService
 from app.services.search_service import SearchService
-from app.services.tag_service import TagService
 from app.services.session_manager import SessionManager
-from app.services.workspace_service import WorkspaceService
 from app.services.settings_service import SettingsService
+from app.services.tag_service import TagService
 from app.services.websocket_manager import WebSocketManager
+from app.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -86,6 +87,12 @@ async def create_session(
         except (ValueError, RuntimeError) as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    # 워크플로우 정의 로드 (선택된 정의 or builtin default)
+    def_service = get_workflow_definition_service()
+    definition = await def_service.get_or_default(req.workflow_definition_id)
+    sorted_steps = sorted(definition.steps, key=lambda s: s.order_index)
+    first_phase = sorted_steps[0].name if sorted_steps else "research"
+
     session = await manager.create(
         work_dir=work_dir,
         allowed_tools=req.allowed_tools,
@@ -104,6 +111,8 @@ async def create_session(
         worktree_name=req.worktree_name,
         workflow_enabled=True,
         workspace_id=workspace_id,
+        workflow_definition_id=definition.id,
+        workflow_phase=first_phase,
     )
     session_with_counts = await manager.get_with_counts(session["id"]) or session
     return manager.to_info(session_with_counts)

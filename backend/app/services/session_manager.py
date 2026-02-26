@@ -58,6 +58,8 @@ class SessionManager:
         worktree_name: str | None = None,
         workflow_enabled: bool = True,
         workspace_id: str | None = None,
+        workflow_definition_id: str | None = None,
+        workflow_phase: str | None = None,
     ) -> dict:
         sid = str(uuid.uuid4())[:16]
         created_at = datetime.now(timezone.utc)
@@ -71,7 +73,8 @@ class SessionManager:
                 system_prompt=system_prompt,
                 timeout_seconds=timeout_seconds,
                 workflow_enabled=True,
-                workflow_phase="research",
+                workflow_definition_id=workflow_definition_id,
+                workflow_phase=workflow_phase or "research",
                 workflow_phase_status="in_progress",
                 permission_mode=permission_mode,
                 permission_required_tools=permission_required_tools,
@@ -398,6 +401,7 @@ class SessionManager:
             worktree_name=session.get("worktree_name"),
             parent_session_id=session.get("parent_session_id"),
             forked_at_message_id=session.get("forked_at_message_id"),
+            workflow_definition_id=session.get("workflow_definition_id"),
         )
 
     async def fork(

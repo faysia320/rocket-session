@@ -7,13 +7,12 @@ from app.models.global_settings import GlobalSettings
 from app.models.mcp_server import McpServer
 from app.models.message import Message
 from app.models.session import Session, SessionStatus
+from app.models.session_artifact import ArtifactAnnotation, SessionArtifact
 from app.models.tag import SessionTag, Tag
 from app.models.team import Team, TeamMember
 from app.models.team_message import TeamMessage
 from app.models.team_task import TeamTask
-from app.models.session_artifact import ArtifactAnnotation, SessionArtifact
 from app.models.token_snapshot import TokenSnapshot
-from app.models.workflow_node import WorkflowNode
 from app.models.workspace import Workspace
 
 __all__ = [
@@ -34,6 +33,5 @@ __all__ = [
     "SessionArtifact",
     "ArtifactAnnotation",
     "TokenSnapshot",
-    "WorkflowNode",
     "Workspace",
 ]

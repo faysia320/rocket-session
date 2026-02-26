@@ -11,6 +11,7 @@ from typing import Any
 
 from app.core.config import WORKSPACES_ROOT, Settings
 from app.core.database import Database
+from app.services.analytics_service import AnalyticsService
 from app.services.claude_runner import ClaudeRunner
 from app.services.filesystem_service import FilesystemService
 from app.services.git_service import GitService
@@ -18,11 +19,10 @@ from app.services.github_service import GitHubService
 from app.services.jsonl_watcher import JsonlWatcher
 from app.services.local_session_scanner import LocalSessionScanner
 from app.services.mcp_service import McpService
+from app.services.search_service import SearchService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
 from app.services.skills_service import SkillsService
-from app.services.analytics_service import AnalyticsService
-from app.services.search_service import SearchService
 from app.services.tag_service import TagService
 from app.services.team_coordinator import TeamCoordinator
 from app.services.team_message_service import TeamMessageService
@@ -31,7 +31,6 @@ from app.services.team_task_service import TeamTaskService
 from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
 from app.services.workflow_definition_service import WorkflowDefinitionService
-from app.services.workflow_node_service import WorkflowNodeService
 from app.services.workflow_service import WorkflowService
 from app.services.workspace_service import WorkspaceService
 
@@ -69,7 +68,7 @@ class ServiceRegistry:
         self.team_message_service: TeamMessageService | None = None
         self.search_service: SearchService | None = None
         self.analytics_service: AnalyticsService | None = None
-        self.workflow_node_service: WorkflowNodeService | None = None
+
         self.workflow_definition_service: WorkflowDefinitionService | None = None
         self.workflow_service: WorkflowService | None = None
         self.workspace_service: WorkspaceService | None = None
@@ -118,7 +117,7 @@ class ServiceRegistry:
         self.team_message_service = TeamMessageService(self.database)
         self.search_service = SearchService(self.database)
         self.analytics_service = AnalyticsService(self.database)
-        self.workflow_node_service = WorkflowNodeService(self.database)
+
         self.workflow_definition_service = WorkflowDefinitionService(self.database)
         self.workflow_service = WorkflowService(
             self.database, self.workflow_definition_service
@@ -271,10 +270,6 @@ def get_team_message_service() -> TeamMessageService:
 
 def get_analytics_service() -> AnalyticsService:
     return _registry._require("analytics_service")
-
-
-def get_workflow_node_service() -> WorkflowNodeService:
-    return _registry._require("workflow_node_service")
 
 
 def get_workflow_definition_service() -> WorkflowDefinitionService:

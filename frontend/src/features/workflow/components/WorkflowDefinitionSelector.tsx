@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Workflow } from "lucide-react";
 import {
   Select,
@@ -13,32 +14,32 @@ interface WorkflowDefinitionSelectorProps {
   onSelect: (definitionId: string | null) => void;
 }
 
-export function WorkflowDefinitionSelector({
-  value,
-  onSelect,
-}: WorkflowDefinitionSelectorProps) {
+export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefinitionSelectorProps) {
   const { data: definitions, isLoading } = useWorkflowDefinitions();
 
-  const handleChange = (val: string) => {
-    if (val === "__none__") {
-      onSelect(null);
-      return;
+  // definitions 로드 후, value가 null이면 builtin default 자동 선택
+  useEffect(() => {
+    if (!value && definitions && definitions.length > 0) {
+      const builtin = definitions.find((d) => d.is_builtin);
+      if (builtin) {
+        onSelect(builtin.id);
+      }
     }
+  }, [value, definitions, onSelect]);
+
+  const handleChange = (val: string) => {
     onSelect(val);
   };
 
   return (
-    <Select onValueChange={handleChange} value={value ?? "__none__"}>
+    <Select onValueChange={handleChange} value={value ?? ""}>
       <SelectTrigger className="font-mono text-xs bg-input border-border">
         <div className="flex items-center gap-2">
           <Workflow className="h-3.5 w-3.5 text-muted-foreground" />
-          <SelectValue placeholder="기본 워크플로우" />
+          <SelectValue placeholder="워크플로우 선택…" />
         </div>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="__none__" className="font-mono text-xs">
-          기본 워크플로우
-        </SelectItem>
         {isLoading ? (
           <SelectItem value="__loading__" disabled className="font-mono text-xs">
             불러오는 중...
@@ -48,13 +49,9 @@ export function WorkflowDefinitionSelector({
           <SelectItem key={def.id} value={def.id} className="font-mono text-xs">
             <span>{def.name}</span>
             {def.description ? (
-              <span className="ml-2 text-muted-foreground">
-                — {def.description}
-              </span>
+              <span className="ml-2 text-muted-foreground">— {def.description}</span>
             ) : null}
-            <span className="ml-2 text-muted-foreground/60">
-              ({def.steps.length}단계)
-            </span>
+            <span className="ml-2 text-muted-foreground/60">({def.steps.length}단계)</span>
           </SelectItem>
         ))}
       </SelectContent>

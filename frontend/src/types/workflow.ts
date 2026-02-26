@@ -9,47 +9,9 @@ export type ArtifactStatus = "draft" | "review" | "approved" | "superseded";
 export type AnnotationType = "comment" | "suggestion" | "rejection";
 export type AnnotationStatus = "pending" | "resolved" | "dismissed";
 
-// ── Workflow Node (독립 엔티티) ──────────────────────────
-
-export interface WorkflowNodeInfo {
-  id: string;
-  name: string;
-  label: string;
-  icon: string;
-  prompt_template: string;
-  constraints: string;
-  is_builtin: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CreateWorkflowNodeRequest {
-  name: string;
-  label: string;
-  icon?: string;
-  prompt_template?: string;
-  constraints?: string;
-}
-
-export interface UpdateWorkflowNodeRequest {
-  name?: string;
-  label?: string;
-  icon?: string;
-  prompt_template?: string;
-  constraints?: string;
-}
-
-// ── Workflow Step (Definition 내 node_id 참조) ──────────
+// ── Workflow Step (노드 속성 인라인) ────────────────────────
 
 export interface WorkflowStepConfig {
-  node_id: string;
-  order_index: number;
-  auto_advance: boolean;
-  review_required: boolean;
-}
-
-export interface ResolvedWorkflowStep {
-  node_id: string;
   name: string;
   label: string;
   icon: string;
@@ -59,6 +21,9 @@ export interface ResolvedWorkflowStep {
   auto_advance: boolean;
   review_required: boolean;
 }
+
+// 하위 호환 별칭
+export type ResolvedWorkflowStep = WorkflowStepConfig;
 
 // ── Workflow Definition ─────────────────────────────────
 
@@ -67,7 +32,7 @@ export interface WorkflowDefinitionInfo {
   name: string;
   description: string | null;
   is_builtin: boolean;
-  steps: ResolvedWorkflowStep[];
+  steps: WorkflowStepConfig[];
   created_at: string;
   updated_at: string;
 }
@@ -109,7 +74,7 @@ export interface WorkflowStatusResponse {
   workflow_phase: string | null;
   workflow_phase_status: WorkflowPhaseStatus | null;
   workflow_definition_id: string | null;
-  steps: ResolvedWorkflowStep[];
+  steps: WorkflowStepConfig[];
   artifacts: SessionArtifactInfo[];
 }
 
@@ -151,5 +116,4 @@ export interface UpdateWorkflowDefinitionRequest {
 export interface WorkflowDefinitionExport {
   version: number;
   definition: WorkflowDefinitionInfo;
-  nodes: WorkflowNodeInfo[];
 }
