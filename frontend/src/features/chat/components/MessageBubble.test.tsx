@@ -42,13 +42,13 @@ function makeMsg(overrides: Record<string, unknown> = {}): Message {
 // 1. Type Routing
 // ---------------------------------------------------------------------------
 describe("Type Routing", () => {
-  it('user_message renders "You" label', () => {
+  it("user_message renders prompt text in right-aligned bubble", () => {
     render(<MessageBubble message={makeMsg({ type: "user_message", prompt: "hello" })} />);
-    expect(screen.getByText("You")).toBeInTheDocument();
+    expect(screen.getByText("hello")).toBeInTheDocument();
   });
 
   it("assistant_text renders MarkdownRenderer with streaming indicator", () => {
-    render(<MessageBubble message={makeMsg({ type: "assistant_text", text: "thinking..." })} />);
+    render(<MessageBubble message={makeMsg({ type: "assistant_text", text: "thinking..." })} isRunning={true} />);
     expect(screen.getByTestId("markdown")).toHaveTextContent("thinking...");
     expect(screen.getByText(/streaming/)).toBeInTheDocument();
   });
@@ -60,9 +60,9 @@ describe("Type Routing", () => {
   });
 
   it("tool_use renders tool name in Collapsible", () => {
-    render(<MessageBubble message={makeMsg({ type: "tool_use", tool: "Read" })} />);
+    render(<MessageBubble message={makeMsg({ type: "tool_use", tool: "Task" })} />);
     expect(screen.getByTestId("collapsible")).toBeInTheDocument();
-    expect(screen.getByText("Read")).toBeInTheDocument();
+    expect(screen.getByText("Task")).toBeInTheDocument();
   });
 
   it("file_change renders file change info", () => {
@@ -77,10 +77,11 @@ describe("Type Routing", () => {
     expect(screen.getByText("src/app.ts")).toBeInTheDocument();
   });
 
-  it("error renders error text with warning icon", () => {
-    render(<MessageBubble message={makeMsg({ type: "error", text: "something broke" })} />);
+  it("error renders error text with AlertTriangle icon", () => {
+    const { container } = render(<MessageBubble message={makeMsg({ type: "error", text: "something broke" })} />);
     expect(screen.getByText("something broke")).toBeInTheDocument();
-    expect(screen.getByText("\u26A0")).toBeInTheDocument();
+    // AlertTriangle renders as SVG, not text character
+    expect(container.querySelector("svg")).toBeInTheDocument();
   });
 
   it("stderr renders stderr text", () => {
@@ -95,11 +96,10 @@ describe("Type Routing", () => {
     expect(el.closest(".italic")).toBeTruthy();
   });
 
-  it("event renders Event label", () => {
+  it("event renders event type", () => {
     render(<MessageBubble message={makeMsg({ type: "event", event: { type: "heartbeat" } })} />);
-    expect(screen.getByText(/Event:/)).toBeInTheDocument();
-    // "heartbeat" appears in both the trigger label and the JSON dump
-    expect(screen.getAllByText(/heartbeat/).length).toBeGreaterThanOrEqual(1);
+    // EventMessage renders event.type directly (no "Event:" prefix)
+    expect(screen.getByText("heartbeat")).toBeInTheDocument();
   });
 
   it('permission_request renders "Permission Required" text', () => {
@@ -152,8 +152,8 @@ describe("AssistantText", () => {
     expect(screen.getByTestId("markdown")).toHaveTextContent("hello from claude");
   });
 
-  it('shows "streaming..." indicator', () => {
-    render(<MessageBubble message={makeMsg({ type: "assistant_text", text: "" })} />);
+  it('shows "streaming..." indicator when streaming', () => {
+    render(<MessageBubble message={makeMsg({ type: "assistant_text", text: "" })} isRunning={true} />);
     expect(screen.getByText(/streaming/)).toBeInTheDocument();
   });
 });
@@ -162,14 +162,9 @@ describe("AssistantText", () => {
 // 4. ResultMessage
 // ---------------------------------------------------------------------------
 describe("ResultMessage", () => {
-  it('shows cost when present (e.g. "$0.0123")', () => {
-    render(<MessageBubble message={makeMsg({ type: "result", cost: 0.0123 })} />);
-    // Text nodes are split by the emoji and whitespace, so use a function matcher
-    expect(
-      screen.getByText(
-        (_content, el) => el?.tagName === "SPAN" && el.textContent?.includes("$0.0123") === true,
-      ),
-    ).toBeInTheDocument();
+  it("shows model name when present", () => {
+    render(<MessageBubble message={makeMsg({ type: "result", model: "claude-sonnet-4-20250514" })} />);
+    expect(screen.getByText("Sonnet")).toBeInTheDocument();
   });
 
   it('shows duration when present (e.g. "1.5s")', () => {

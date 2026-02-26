@@ -35,6 +35,11 @@ function openAndInit(ws: MockWebSocket, extra: Record<string, unknown> = {}) {
   });
 }
 
+/** assistant_text RAF 배치를 flush하는 헬퍼 (fake timer 기반) */
+function flushRAF() {
+  vi.advanceTimersByTime(16);
+}
+
 // ============================================================
 // 1. Connection Lifecycle
 // ============================================================
@@ -247,15 +252,15 @@ describe("handleMessage: missed_events", () => {
       ws.simulateMessage({
         type: "missed_events",
         events: [
-          { type: "user_message", text: "msg1", seq: 1 },
-          { type: "user_message", text: "msg2", seq: 2 },
+          { type: "user_message", message: { content: "msg1" }, seq: 1 },
+          { type: "user_message", message: { content: "msg2" }, seq: 2 },
         ],
       });
     });
 
     expect(result.current.messages).toHaveLength(2);
-    expect((result.current.messages[0] as any).text).toBe("msg1");
-    expect((result.current.messages[1] as any).text).toBe("msg2");
+    expect((result.current.messages[0] as any).content).toBe("msg1");
+    expect((result.current.messages[1] as any).content).toBe("msg2");
   });
 
   it("handles empty events array", () => {
@@ -343,14 +348,14 @@ describe("handleMessage: user_message", () => {
       openAndInit(ws);
       ws.simulateMessage({
         type: "user_message",
-        text: "Hello Claude",
+        message: { content: "Hello Claude" },
         seq: 1,
       });
     });
 
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].type).toBe("user_message");
-    expect((result.current.messages[0] as any).text).toBe("Hello Claude");
+    expect((result.current.messages[0] as any).content).toBe("Hello Claude");
     expect(result.current.messages[0].id).toMatch(/^msg-/);
   });
 });
@@ -366,6 +371,7 @@ describe("handleMessage: assistant_text", () => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
       ws.simulateMessage({ type: "assistant_text", text: "Hello!", seq: 1 });
+      flushRAF();
     });
 
     expect(result.current.messages).toHaveLength(1);
@@ -380,6 +386,7 @@ describe("handleMessage: assistant_text", () => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
       ws.simulateMessage({ type: "assistant_text", text: "Hello", seq: 1 });
+      flushRAF();
     });
 
     const firstId = result.current.messages[0].id;
@@ -390,6 +397,7 @@ describe("handleMessage: assistant_text", () => {
         text: "Hello World!",
         seq: 2,
       });
+      flushRAF();
     });
 
     // 메시지 개수는 여전히 1개 (덮어쓰기)
@@ -405,22 +413,17 @@ describe("handleMessage: assistant_text", () => {
     act(() => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
-      ws.simulateMessage({
-        type: "assistant_text",
-        text: "First text",
-        seq: 1,
-      });
-      ws.simulateMessage({
-        type: "tool_use",
-        tool: "Read",
-        tool_use_id: "tu-1",
-        seq: 2,
-      });
-      ws.simulateMessage({
-        type: "assistant_text",
-        text: "After tool",
-        seq: 3,
-      });
+      ws.simulateMessage({ type: "assistant_text", text: "First text", seq: 1 });
+      flushRAF();
+    });
+
+    act(() => {
+      MockWebSocket.latest.simulateMessage({ type: "tool_use", tool: "Read", tool_use_id: "tu-1", seq: 2 });
+    });
+
+    act(() => {
+      MockWebSocket.latest.simulateMessage({ type: "assistant_text", text: "After tool", seq: 3 });
+      flushRAF();
     });
 
     // assistant_text + tool_use + assistant_text = 3 messages
@@ -441,24 +444,18 @@ describe("handleMessage: assistant_text", () => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
       ws.simulateMessage({ type: "assistant_text", text: "Before", seq: 1 });
-      ws.simulateMessage({
-        type: "tool_use",
-        tool: "Read",
-        tool_use_id: "tu-1",
-        seq: 2,
-      });
-      ws.simulateMessage({
-        type: "tool_result",
-        tool_use_id: "tu-1",
-        output: "ok",
-        is_error: false,
-        seq: 3,
-      });
-      ws.simulateMessage({
-        type: "assistant_text",
-        text: "After result",
-        seq: 4,
-      });
+      flushRAF();
+    });
+
+    act(() => {
+      const ws = MockWebSocket.latest;
+      ws.simulateMessage({ type: "tool_use", tool: "Read", tool_use_id: "tu-1", seq: 2 });
+      ws.simulateMessage({ type: "tool_result", tool_use_id: "tu-1", output: "ok", is_error: false, seq: 3 });
+    });
+
+    act(() => {
+      MockWebSocket.latest.simulateMessage({ type: "assistant_text", text: "After result", seq: 4 });
+      flushRAF();
     });
 
     // tool_result 는 tool_use를 업데이트하므로 새 메시지 추가 안됨
@@ -588,6 +585,7 @@ describe("handleMessage: result", () => {
         text: "streaming text",
         seq: 1,
       });
+      flushRAF();
       ws.simulateMessage({ type: "result", text: "final result", seq: 2 });
     });
 
@@ -608,6 +606,7 @@ describe("handleMessage: result", () => {
         text: "fallback text",
         seq: 1,
       });
+      flushRAF();
       ws.simulateMessage({ type: "result", text: "", seq: 2 });
     });
 
@@ -639,6 +638,7 @@ describe("handleMessage: result", () => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
       ws.simulateMessage({ type: "assistant_text", text: "stream", seq: 1 });
+      flushRAF();
     });
 
     const assistantId = result.current.messages[0].id;
@@ -709,7 +709,8 @@ describe("handleMessage: error", () => {
       openAndInit(ws);
       ws.simulateMessage({
         type: "error",
-        message: "Session not found",
+        code: "SESSION_NOT_FOUND",
+        message: "세션을 찾을 수 없습니다",
         seq: 1,
       });
     });
@@ -906,7 +907,7 @@ describe("Seq dedup", () => {
     act(() => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
-      ws.simulateMessage({ type: "user_message", text: "first", seq: 1 });
+      ws.simulateMessage({ type: "user_message", message: { content: "first" }, seq: 1 });
     });
 
     expect(result.current.messages).toHaveLength(1);
@@ -918,13 +919,13 @@ describe("Seq dedup", () => {
     act(() => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
-      ws.simulateMessage({ type: "user_message", text: "first", seq: 5 });
-      ws.simulateMessage({ type: "user_message", text: "duplicate", seq: 5 });
+      ws.simulateMessage({ type: "user_message", message: { content: "first" }, seq: 5 });
+      ws.simulateMessage({ type: "user_message", message: { content: "duplicate" }, seq: 5 });
     });
 
     // 중복 seq는 스킵됨
     expect(result.current.messages).toHaveLength(1);
-    expect((result.current.messages[0] as any).text).toBe("first");
+    expect((result.current.messages[0] as any).content).toBe("first");
   });
 
   it("events without seq are always processed", () => {
@@ -933,8 +934,8 @@ describe("Seq dedup", () => {
     act(() => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
-      ws.simulateMessage({ type: "user_message", text: "no-seq-1" });
-      ws.simulateMessage({ type: "user_message", text: "no-seq-2" });
+      ws.simulateMessage({ type: "user_message", message: { content: "no-seq-1" } });
+      ws.simulateMessage({ type: "user_message", message: { content: "no-seq-2" } });
     });
 
     expect(result.current.messages).toHaveLength(2);
@@ -946,9 +947,9 @@ describe("Seq dedup", () => {
     act(() => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
-      ws.simulateMessage({ type: "user_message", text: "a", seq: 3 });
-      ws.simulateMessage({ type: "user_message", text: "b", seq: 10 });
-      ws.simulateMessage({ type: "user_message", text: "c", seq: 7 });
+      ws.simulateMessage({ type: "user_message", message: { content: "a" }, seq: 3 });
+      ws.simulateMessage({ type: "user_message", message: { content: "b" }, seq: 10 });
+      ws.simulateMessage({ type: "user_message", message: { content: "c" }, seq: 7 });
     });
 
     // close 후 reconnect URL에 last_seq=10 이 포함되어야 함
@@ -1023,7 +1024,7 @@ describe("Reconnection", () => {
     act(() => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
-      ws.simulateMessage({ type: "user_message", text: "hello", seq: 42 });
+      ws.simulateMessage({ type: "user_message", message: { content: "hello" }, seq: 42 });
     });
 
     // close + reconnect
@@ -1110,7 +1111,7 @@ describe("Actions", () => {
     act(() => {
       const ws = MockWebSocket.latest;
       openAndInit(ws);
-      ws.simulateMessage({ type: "user_message", text: "msg", seq: 5 });
+      ws.simulateMessage({ type: "user_message", message: { content: "msg" }, seq: 5 });
       ws.simulateMessage({
         type: "file_change",
         change: { tool: "Write", file: "test.ts", timestamp: "2024-01-01" },

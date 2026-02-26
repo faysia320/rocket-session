@@ -83,7 +83,7 @@ describe("computeMessageGaps", () => {
       "tight", // assistant_text → tool_use (같은 턴)
       "tight", // tool_use → tool_result (같은 턴)
       "normal", // tool_result → result (턴 종료)
-      "normal", // result → user (턴 경계)
+      "turn-start", // result → user (새 턴 시작)
     ]);
   });
 });
@@ -101,8 +101,8 @@ describe("computeSearchMatches", () => {
 
   it("text 필드에서 대소문자 구분 없이 매칭한다", () => {
     const messages = [
-      makeMsg({ id: "msg-1", text: "Hello World" }),
-      makeMsg({ id: "msg-2", text: "Goodbye" }),
+      makeMsg({ id: "msg-1", type: "assistant_text", text: "Hello World" }),
+      makeMsg({ id: "msg-2", type: "assistant_text", text: "Goodbye" }),
     ];
     expect(computeSearchMatches(messages, "WORLD")).toEqual([0]);
   });
@@ -117,10 +117,10 @@ describe("computeSearchMatches", () => {
 
   it("여러 매치가 있으면 올바른 인덱스를 반환한다", () => {
     const messages = [
-      makeMsg({ id: "msg-1", text: "First error" }),
-      makeMsg({ id: "msg-2", text: "No match" }),
+      makeMsg({ id: "msg-1", type: "assistant_text", text: "First error" }),
+      makeMsg({ id: "msg-2", type: "assistant_text", text: "No match" }),
       makeMsg({ id: "msg-3", content: "Second error" }),
-      makeMsg({ id: "msg-4", text: "Error again" }),
+      makeMsg({ id: "msg-4", type: "assistant_text", text: "Error again" }),
     ];
     expect(computeSearchMatches(messages, "error")).toEqual([0, 2, 3]);
   });
