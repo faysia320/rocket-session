@@ -1,4 +1,4 @@
-import { LayoutGrid, Plus, Monitor, BarChart3, Clock, GitBranch } from "lucide-react";
+import { LayoutGrid, Plus, Monitor, BarChart3, Clock, GitBranch, Workflow } from "lucide-react";
 import type { PaletteCommand } from "../types";
 import type { SessionInfo } from "@/types";
 
@@ -45,6 +45,15 @@ export function createNavigationCommands(deps: {
       icon: GitBranch,
       action: () => navigate({ to: "/git-monitor" }),
       keywords: ["git", "monitor", "깃", "모니터", "pr", "commit", "커밋", "풀리퀘스트"],
+    },
+    {
+      id: "nav:workflows",
+      label: "워크플로우 정의 관리",
+      description: "워크플로우 정의 생성, 수정, 삭제",
+      category: "navigation",
+      icon: Workflow,
+      action: () => navigate({ to: "/workflows" }),
+      keywords: ["workflow", "워크플로우", "정의", "definition"],
     },
     {
       id: "nav:new-session",

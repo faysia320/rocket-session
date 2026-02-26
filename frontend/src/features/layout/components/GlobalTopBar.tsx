@@ -15,6 +15,7 @@ import {
   Settings,
   MoreHorizontal,
   Users,
+  Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -40,6 +41,7 @@ const GlobalSettingsDialog = lazy(() =>
 const NAV_ITEMS = [
   { to: "/" as const, label: "Sessions", icon: MessageSquare },
   { to: "/team" as const, label: "Team", icon: Users },
+  { to: "/workflows" as const, label: "Workflows", icon: Workflow },
   { to: "/history" as const, label: "History", icon: Clock },
   { to: "/analytics" as const, label: "Analytics", icon: BarChart3 },
   { to: "/git-monitor" as const, label: "Git", icon: GitBranch },
