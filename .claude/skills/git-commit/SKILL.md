@@ -3,8 +3,8 @@ name: git-commit
 description: 변경사항을 작업 단위별로 분석하여 자동으로 커밋하고 푸시합니다. .gitmessage.txt 형식을 따르며, 논리적으로 관련된 변경사항을 그룹화하여 여러 커밋으로 나눕니다. 커밋 전 작업 이력 문서를 자동 생성합니다.
 argument-hint: "[--no-push] [--no-history]"
 metadata:
-  author: query-manager
-  version: "1.1.0"
+  author: Rocket
+  version: "1.2.0"
 ---
 
 # Smart Commit & Push
@@ -185,11 +185,6 @@ git push origin <current-branch>
 1. **민감한 파일 제외**: `.env`, `credentials.json` 등은 커밋하지 않음
 2. **충돌 확인**: 푸시 전 원격 브랜치와 충돌 여부 확인
 3. **브랜치 확인**: main/master 직접 푸시 시 경고
-4. **Co-Author 추가**: 모든 커밋에 Claude 공동 작성자 추가
-
-```
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
 
 ## 옵션
 
