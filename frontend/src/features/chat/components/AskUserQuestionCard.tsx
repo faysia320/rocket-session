@@ -241,7 +241,7 @@ function QuestionItem({
             {isCustom ? (
               <div className="flex gap-1.5 mt-1 ml-5">
                 <input
-                  className="flex-1 font-mono text-xs bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
+                  className="flex-1 font-mono text-lg md:text-xs bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
                   placeholder="custom answer"
                   value={customText}
                   onChange={(e) => setCustomText(e.target.value)}
@@ -271,7 +271,7 @@ function QuestionItem({
         /* options가 없는 경우: 자유 입력 */
         <div>
           <textarea
-            className="w-full font-mono text-xs bg-input border border-border rounded px-2.5 py-1.5 outline-none focus:border-primary/50 resize-none min-h-[60px]"
+            className="w-full font-mono text-lg md:text-xs bg-input border border-border rounded px-2.5 py-1.5 outline-none focus:border-primary/50 resize-none min-h-[60px]"
             placeholder="answer here"
             value={selected[0] || ""}
             onChange={(e) => onAnswer(messageId, questionIndex, [e.target.value])}
