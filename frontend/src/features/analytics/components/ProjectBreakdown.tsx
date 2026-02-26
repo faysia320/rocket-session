@@ -1,111 +1,121 @@
 import { memo, useMemo } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  LabelList,
-} from "recharts";
 import { formatTokens } from "@/lib/utils";
 import type { ProjectTokenUsage } from "@/types";
+import { useECharts } from "../lib/useECharts";
 import {
-  useChartColors,
-  getXAxisProps,
-  getYAxisProps,
-  getGridProps,
   CHART_DIMENSIONS,
   CHART_ANIMATION,
-} from "../lib/chartConfig";
-import { ChartTooltip } from "./ChartTooltip";
-import { ChartLegend } from "./ChartLegend";
+  CHART_FONT,
+  getBaseAxis,
+  getBaseGrid,
+  getBaseTooltip,
+  getBaseLegend,
+  getSplitLineStyle,
+} from "../lib/echartsConfig";
+import { tokenTooltipFormatter } from "../lib/tooltipFormatter";
 import { ChartCard } from "./ChartCard";
 
 interface ProjectBreakdownProps {
   data: ProjectTokenUsage[];
 }
 
-export const ProjectBreakdown = memo(function ProjectBreakdown({ data }: ProjectBreakdownProps) {
-  const colors = useChartColors();
-
+export const ProjectBreakdown = memo(function ProjectBreakdown({
+  data,
+}: ProjectBreakdownProps) {
   const chartData = useMemo(
     () =>
       data.slice(0, 10).map((d) => ({
         name: d.project_name,
         Input: d.input_tokens,
         Output: d.output_tokens,
-        sessions: d.session_count,
       })),
     [data],
   );
 
-  const colorMap = useMemo(
-    () => ({ Input: colors.input, Output: colors.output }),
-    [colors],
-  );
+  const option = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const names = chartData.map((d) => d.name);
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        ...getBaseTooltip(),
+        formatter: tokenTooltipFormatter,
+      },
+      legend: {
+        ...getBaseLegend(),
+        data: ["Input", "Output"],
+      },
+      grid: getBaseGrid({
+        left: CHART_DIMENSIONS.yAxisWidth.medium,
+        right: 60,
+        bottom: 16,
+      }),
+      xAxis: {
+        type: "value",
+        ...getBaseAxis(),
+        axisLabel: {
+          fontSize: CHART_FONT.axisTick,
+          fontFamily: CHART_FONT.family,
+          formatter: (v: number) => formatTokens(v),
+        },
+        splitLine: getSplitLineStyle(),
+      },
+      yAxis: {
+        type: "category",
+        data: names,
+        ...getBaseAxis(),
+      },
+      animationDuration: CHART_ANIMATION.duration,
+      animationEasing: CHART_ANIMATION.easing,
+      series: [
+        {
+          name: "Input",
+          type: "bar" as const,
+          data: chartData.map((d) => d.Input),
+          itemStyle: { borderRadius: [0, 3, 3, 0] },
+          barGap: "15%",
+          label: {
+            show: true,
+            position: "right" as const,
+            formatter: (p: { value: number }) => formatTokens(p.value),
+            fontSize: 10,
+            fontFamily: CHART_FONT.family,
+          },
+        },
+        {
+          name: "Output",
+          type: "bar" as const,
+          data: chartData.map((d) => d.Output),
+          itemStyle: { borderRadius: [0, 3, 3, 0] },
+          label: {
+            show: true,
+            position: "right" as const,
+            formatter: (p: { value: number }) => formatTokens(p.value),
+            fontSize: 10,
+            fontFamily: CHART_FONT.family,
+          },
+          animationDelay: CHART_ANIMATION.delayPerSeries,
+        },
+      ],
+    };
+  }, [chartData]);
+
+  const containerRef = useECharts(option);
 
   return (
     <ChartCard title="프로젝트별 토큰" isEmpty={chartData.length === 0}>
-      <ResponsiveContainer
-        width="100%"
-        height={Math.max(chartData.length * CHART_DIMENSIONS.barRowHeight, CHART_DIMENSIONS.minChartHeight)}
-      >
-        <BarChart data={chartData} layout="vertical" barGap={CHART_DIMENSIONS.barGap}>
-          <CartesianGrid {...getGridProps(colors, { horizontal: false })} />
-          <XAxis
-            type="number"
-            {...getXAxisProps(colors)}
-            tickFormatter={(v: number) => formatTokens(v)}
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            {...getYAxisProps(colors, { width: CHART_DIMENSIONS.yAxisWidth.medium })}
-          />
-          <Tooltip
-            content={<ChartTooltip colors={colors} colorMap={colorMap} />}
-          />
-          <Legend content={<ChartLegend colors={colors} />} />
-          <Bar
-            dataKey="Input"
-            fill={colors.input}
-            radius={[0, 3, 3, 0]}
-            animationDuration={CHART_ANIMATION.duration}
-          >
-            <LabelList
-              dataKey="Input"
-              position="right"
-              formatter={formatTokens}
-              style={{
-                fontSize: 10,
-                fill: colors.axisText,
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
-            />
-          </Bar>
-          <Bar
-            dataKey="Output"
-            fill={colors.output}
-            radius={[0, 3, 3, 0]}
-            animationDuration={CHART_ANIMATION.duration}
-            animationBegin={CHART_ANIMATION.delayPerSeries}
-          >
-            <LabelList
-              dataKey="Output"
-              position="right"
-              formatter={formatTokens}
-              style={{
-                fontSize: 10,
-                fill: colors.axisText,
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
-            />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      <div
+        ref={containerRef}
+        style={{
+          width: "100%",
+          height: Math.max(
+            chartData.length * CHART_DIMENSIONS.barRowHeight,
+            CHART_DIMENSIONS.minChartHeight,
+          ),
+        }}
+      />
     </ChartCard>
   );
 });

@@ -1,26 +1,18 @@
 import { memo, useMemo } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
 import { formatTokens, formatWorkDir } from "@/lib/utils";
 import type { SessionPhaseTokenUsage } from "@/types";
+import { useECharts } from "../lib/useECharts";
 import {
-  useChartColors,
-  getXAxisProps,
-  getYAxisProps,
-  getGridProps,
   CHART_DIMENSIONS,
   CHART_ANIMATION,
-} from "../lib/chartConfig";
-import { ChartTooltip } from "./ChartTooltip";
-import { ChartLegend } from "./ChartLegend";
+  CHART_FONT,
+  getBaseAxis,
+  getBaseGrid,
+  getBaseTooltip,
+  getBaseLegend,
+  getSplitLineStyle,
+} from "../lib/echartsConfig";
+import { tokenTooltipFormatter } from "../lib/tooltipFormatter";
 import { ChartCard } from "./ChartCard";
 
 interface SessionPhaseChartProps {
@@ -35,33 +27,25 @@ const PHASE_LABELS: Record<string, string> = {
   test: "Test",
 };
 
-const PHASE_COLOR_KEYS: Record<string, string> = {
-  research: "research",
-  plan: "plan",
-  implement: "implement",
-  review: "review",
-  test: "test",
-};
-
 export const SessionPhaseChart = memo(function SessionPhaseChart({
   data,
 }: SessionPhaseChartProps) {
-  const colors = useChartColors();
-
-  const { chartData, phases } = useMemo(() => {
+  const { chartData, phases, sessionNames } = useMemo(() => {
     const phaseSet = new Set<string>();
     for (const row of data) {
       if (row.workflow_phase) phaseSet.add(row.workflow_phase);
     }
-    const phases = Array.from(phaseSet);
+    const phases = Array.from(phaseSet).map((p) => PHASE_LABELS[p] ?? p);
 
     const sessionMap = new Map<string, Record<string, unknown>>();
+    const nameList: string[] = [];
     for (const row of data) {
       const phase = row.workflow_phase ?? "unknown";
       const phaseLabel = PHASE_LABELS[phase] ?? phase;
       if (!sessionMap.has(row.session_id)) {
         const label = row.session_name ?? formatWorkDir(row.session_id, 28);
         sessionMap.set(row.session_id, { name: label });
+        nameList.push(label);
       }
       const entry = sessionMap.get(row.session_id)!;
       entry[phaseLabel] = row.total_tokens;
@@ -69,18 +53,61 @@ export const SessionPhaseChart = memo(function SessionPhaseChart({
 
     return {
       chartData: Array.from(sessionMap.values()),
-      phases: phases.map((p) => PHASE_LABELS[p] ?? p),
+      phases,
+      sessionNames: nameList,
     };
   }, [data]);
 
-  const phaseColorMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const [key, label] of Object.entries(PHASE_LABELS)) {
-      const colorKey = PHASE_COLOR_KEYS[key] as keyof typeof colors | undefined;
-      map[label] = colorKey ? colors[colorKey] : colors.cacheWrite;
-    }
-    return map;
-  }, [colors]);
+  const option = useMemo(() => {
+    if (chartData.length === 0) return null;
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        ...getBaseTooltip(),
+        formatter: tokenTooltipFormatter,
+      },
+      legend: {
+        ...getBaseLegend(),
+        data: phases,
+      },
+      grid: getBaseGrid({
+        left: CHART_DIMENSIONS.yAxisWidth.long,
+        bottom: 16,
+      }),
+      xAxis: {
+        type: "value",
+        ...getBaseAxis(),
+        axisLabel: {
+          fontSize: CHART_FONT.axisTick,
+          fontFamily: CHART_FONT.family,
+          formatter: (v: number) => formatTokens(v),
+        },
+        splitLine: getSplitLineStyle(),
+      },
+      yAxis: {
+        type: "category",
+        data: sessionNames,
+        ...getBaseAxis(),
+      },
+      animationDuration: CHART_ANIMATION.duration,
+      animationEasing: CHART_ANIMATION.easing,
+      series: phases.map((phase, i) => ({
+        name: phase,
+        type: "bar" as const,
+        stack: "session",
+        data: chartData.map(
+          (d) => (d[phase] as number | undefined) ?? 0,
+        ),
+        itemStyle: { borderRadius: [0, 3, 3, 0] },
+        barCategoryGap: CHART_DIMENSIONS.barCategoryGap,
+        animationDelay: i * CHART_ANIMATION.delayPerSeries,
+      })),
+    };
+  }, [chartData, phases, sessionNames]);
+
+  const containerRef = useECharts(option);
 
   if (chartData.length === 0) {
     return null;
@@ -88,45 +115,16 @@ export const SessionPhaseChart = memo(function SessionPhaseChart({
 
   return (
     <ChartCard title="세션별 Phase 토큰 분포">
-      <ResponsiveContainer
-        width="100%"
-        height={Math.max(chartData.length * CHART_DIMENSIONS.barRowHeight, CHART_DIMENSIONS.minChartHeight)}
-      >
-        <BarChart data={chartData} layout="vertical" barGap={CHART_DIMENSIONS.barGap}>
-          <CartesianGrid {...getGridProps(colors, { horizontal: false })} />
-          <XAxis
-            type="number"
-            {...getXAxisProps(colors)}
-            tickFormatter={(v: number) => formatTokens(v)}
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            {...getYAxisProps(colors, { width: CHART_DIMENSIONS.yAxisWidth.long })}
-          />
-          <Tooltip
-            content={<ChartTooltip colors={colors} colorMap={phaseColorMap} />}
-          />
-          <Legend content={<ChartLegend colors={colors} />} />
-          {phases.map((phase, i) => {
-            const originalKey =
-              Object.entries(PHASE_LABELS).find(([, v]) => v === phase)?.[0] ??
-              phase.toLowerCase();
-            const colorKey = PHASE_COLOR_KEYS[originalKey] as keyof typeof colors | undefined;
-            return (
-              <Bar
-                key={phase}
-                dataKey={phase}
-                stackId="session"
-                fill={colorKey ? colors[colorKey] : colors.cacheWrite}
-                radius={[0, 3, 3, 0]}
-                animationDuration={CHART_ANIMATION.duration}
-                animationBegin={i * CHART_ANIMATION.delayPerSeries}
-              />
-            );
-          })}
-        </BarChart>
-      </ResponsiveContainer>
+      <div
+        ref={containerRef}
+        style={{
+          width: "100%",
+          height: Math.max(
+            chartData.length * CHART_DIMENSIONS.barRowHeight,
+            CHART_DIMENSIONS.minChartHeight,
+          ),
+        }}
+      />
     </ChartCard>
   );
 });

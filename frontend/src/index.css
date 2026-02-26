@@ -48,12 +48,6 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --chart-grid: 225 14% 77%;
-    --chart-axis-text: 233 10% 47%;
-    --chart-tooltip-bg: 220 22% 92%;
-    --chart-tooltip-border: 225 14% 77%;
-    --chart-tooltip-text: 234 16% 35%;
-    --chart-tooltip-label: 234 16% 25%;
 
     /* Legacy hex variables (Catppuccin Latte) */
     --bg-primary: #eff1f5;
@@ -126,12 +120,6 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --chart-grid: 217 33% 17%;
-    --chart-axis-text: 215 16% 57%;
-    --chart-tooltip-bg: 220 37% 7%;
-    --chart-tooltip-border: 217 33% 17%;
-    --chart-tooltip-text: 215 25% 90%;
-    --chart-tooltip-label: 215 25% 95%;
 
     /* Legacy Deep Space variables (그라데이션 호환) */
     --bg-primary: #0a0e17;

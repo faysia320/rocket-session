@@ -1,26 +1,19 @@
-import { memo, useId, useMemo } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import { memo, useMemo } from "react";
 import { formatTokens } from "@/lib/utils";
 import type { DailyTokenUsage } from "@/types";
+import { echarts } from "../lib/echarts";
+import { useECharts } from "../lib/useECharts";
 import {
-  useChartColors,
-  getXAxisProps,
-  getYAxisProps,
-  getGridProps,
   CHART_DIMENSIONS,
   CHART_ANIMATION,
-} from "../lib/chartConfig";
-import { ChartTooltip } from "./ChartTooltip";
-import { ChartLegend } from "./ChartLegend";
+  CHART_FONT,
+  getBaseAxis,
+  getBaseGrid,
+  getBaseTooltip,
+  getBaseLegend,
+  getSplitLineStyle,
+} from "../lib/echartsConfig";
+import { tokenTooltipFormatter } from "../lib/tooltipFormatter";
 import { ChartCard } from "./ChartCard";
 
 interface DailyTokenChartProps {
@@ -32,105 +25,108 @@ function formatDate(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-export const DailyTokenChart = memo(function DailyTokenChart({ data }: DailyTokenChartProps) {
-  const colors = useChartColors();
-  const id = useId();
+const SERIES_KEYS = ["Input", "Output", "Cache Read", "Cache Write"] as const;
 
-  const chartData = useMemo(
-    () =>
-      data.map((d) => ({
-        date: formatDate(d.date),
-        Input: d.input_tokens,
-        Output: d.output_tokens,
-        "Cache Read": d.cache_read_tokens,
-        "Cache Write": d.cache_creation_tokens,
+function makeGradient(color: string, topOpacity: number) {
+  return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+    { offset: 0, color: `rgba(${hexOrNameToRgb(color)},${topOpacity})` },
+    { offset: 1, color: `rgba(${hexOrNameToRgb(color)},0)` },
+  ]);
+}
+
+/** Best-effort color string → r,g,b for rgba(). Falls back to theme color directly. */
+function hexOrNameToRgb(color: string): string {
+  // #rrggbb
+  const hex = color.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+  }
+  // #rgb
+  const short = color.match(/^#([0-9a-f]{3})$/i);
+  if (short) {
+    const r = parseInt(short[1][0] + short[1][0], 16);
+    const g = parseInt(short[1][1] + short[1][1], 16);
+    const b = parseInt(short[1][2] + short[1][2], 16);
+    return `${r},${g},${b}`;
+  }
+  // rgba(r,g,b,a) or rgb(r,g,b)
+  const rgb = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (rgb) return `${rgb[1]},${rgb[2]},${rgb[3]}`;
+  return "128,128,128";
+}
+
+export const DailyTokenChart = memo(function DailyTokenChart({
+  data,
+}: DailyTokenChartProps) {
+  const option = useMemo(() => {
+    const dates = data.map((d) => formatDate(d.date));
+    const values = {
+      Input: data.map((d) => d.input_tokens),
+      Output: data.map((d) => d.output_tokens),
+      "Cache Read": data.map((d) => d.cache_read_tokens),
+      "Cache Write": data.map((d) => d.cache_creation_tokens),
+    };
+
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "cross" },
+        ...getBaseTooltip(),
+        formatter: tokenTooltipFormatter,
+      },
+      legend: {
+        ...getBaseLegend(),
+        data: [...SERIES_KEYS],
+      },
+      grid: getBaseGrid({ left: CHART_DIMENSIONS.yAxisWidth.short }),
+      xAxis: {
+        type: "category",
+        data: dates,
+        ...getBaseAxis(),
+      },
+      yAxis: {
+        type: "value",
+        ...getBaseAxis(),
+        axisLabel: {
+          fontSize: CHART_FONT.axisTick,
+          fontFamily: CHART_FONT.family,
+          formatter: (v: number) => formatTokens(v),
+        },
+        splitLine: getSplitLineStyle(),
+      },
+      animationDuration: CHART_ANIMATION.duration,
+      animationEasing: CHART_ANIMATION.easing,
+      series: SERIES_KEYS.map((key, i) => ({
+        name: key,
+        type: "line" as const,
+        stack: "total",
+        smooth: true,
+        symbol: "none",
+        lineStyle: { width: 2 },
+        areaStyle: {
+          color: makeGradient(
+            // ECharts 테마가 color palette를 제공하므로, 기본 색상은 테마에서 가져옴
+            // 여기서는 그라데이션만 적용
+            ["#9b8bba", "#e098c7", "#8fd3e8", "#71669e"][i],
+            [0.3, 0.3, 0.25, 0.2][i],
+          ),
+        },
+        animationDelay: i * CHART_ANIMATION.delayPerSeries,
+        data: values[key],
       })),
-    [data],
-  );
+    };
+  }, [data]);
 
-  const colorMap = useMemo(
-    () => ({
-      Input: colors.input,
-      Output: colors.output,
-      "Cache Read": colors.cacheRead,
-      "Cache Write": colors.cacheWrite,
-    }),
-    [colors],
-  );
+  const containerRef = useECharts(option);
 
   return (
-    <ChartCard title="일별 토큰 사용량" isEmpty={chartData.length === 0}>
-      <ResponsiveContainer width="100%" height={CHART_DIMENSIONS.areaChartHeight}>
-        <AreaChart data={chartData}>
-          <defs>
-            <linearGradient id={`${id}-input`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={colors.input} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={colors.input} stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id={`${id}-output`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={colors.output} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={colors.output} stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id={`${id}-cacheRead`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={colors.cacheRead} stopOpacity={0.25} />
-              <stop offset="95%" stopColor={colors.cacheRead} stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id={`${id}-cacheWrite`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={colors.cacheWrite} stopOpacity={0.2} />
-              <stop offset="95%" stopColor={colors.cacheWrite} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid {...getGridProps(colors, { vertical: false })} />
-          <XAxis dataKey="date" {...getXAxisProps(colors)} />
-          <YAxis
-            {...getYAxisProps(colors, { width: CHART_DIMENSIONS.yAxisWidth.short })}
-            tickFormatter={(v: number) => formatTokens(v)}
-          />
-          <Tooltip
-            content={<ChartTooltip colors={colors} colorMap={colorMap} />}
-          />
-          <Legend content={<ChartLegend colors={colors} />} />
-          <Area
-            type="monotone"
-            dataKey="Input"
-            stackId="1"
-            stroke={colors.input}
-            fill={`url(#${id}-input)`}
-            strokeWidth={2}
-            animationDuration={CHART_ANIMATION.duration}
-          />
-          <Area
-            type="monotone"
-            dataKey="Output"
-            stackId="1"
-            stroke={colors.output}
-            fill={`url(#${id}-output)`}
-            strokeWidth={2}
-            animationDuration={CHART_ANIMATION.duration}
-            animationBegin={CHART_ANIMATION.delayPerSeries}
-          />
-          <Area
-            type="monotone"
-            dataKey="Cache Read"
-            stackId="1"
-            stroke={colors.cacheRead}
-            fill={`url(#${id}-cacheRead)`}
-            strokeWidth={2}
-            animationDuration={CHART_ANIMATION.duration}
-            animationBegin={CHART_ANIMATION.delayPerSeries * 2}
-          />
-          <Area
-            type="monotone"
-            dataKey="Cache Write"
-            stackId="1"
-            stroke={colors.cacheWrite}
-            fill={`url(#${id}-cacheWrite)`}
-            strokeWidth={2}
-            animationDuration={CHART_ANIMATION.duration}
-            animationBegin={CHART_ANIMATION.delayPerSeries * 3}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+    <ChartCard title="일별 토큰 사용량" isEmpty={data.length === 0}>
+      <div
+        ref={containerRef}
+        style={{ width: "100%", height: CHART_DIMENSIONS.areaChartHeight }}
+      />
     </ChartCard>
   );
 });
