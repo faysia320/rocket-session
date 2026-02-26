@@ -5,8 +5,9 @@ import logging
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,6 +19,7 @@ logging.basicConfig(
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
+from app.core.exceptions import AppError  # noqa: E402
 from app.api.dependencies import (  # noqa: E402
     get_database,
     get_settings,
@@ -82,10 +84,29 @@ async def lifespan(application: FastAPI):
     await shutdown_dependencies()
 
 
+async def _app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """도메인 예외 → {"detail": "..."} 응답."""
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+
+
+async def _unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """미처리 예외 → 안전한 500 응답 (스택 트레이스 미노출)."""
+    logging.getLogger(__name__).error(
+        "미처리 예외: %s %s - %s", request.method, request.url.path, exc, exc_info=True
+    )
+    return JSONResponse(
+        status_code=500, content={"detail": "서버 내부 오류가 발생했습니다"}
+    )
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
 
     application = FastAPI(title="rocket-session API", lifespan=lifespan)
+
+    # 글로벌 예외 핸들러
+    application.add_exception_handler(AppError, _app_error_handler)
+    application.add_exception_handler(Exception, _unhandled_error_handler)
 
     application.add_middleware(
         CORSMiddleware,
