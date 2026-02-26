@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
+import { isMobileDevice } from "@/lib/platform";
 import { useNavigate } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -219,6 +220,8 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   useEffect(() => {
     let hiddenAt = 0;
     let savedNearBottom = true;
+    const isMobile = isMobileDevice();
+    const HIDDEN_THRESHOLD = isMobile ? 2_000 : 5_000;
 
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
@@ -231,8 +234,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       const duration = hiddenAt > 0 ? Date.now() - hiddenAt : 0;
       hiddenAt = 0;
 
-      // 5초 미만 백그라운드는 무시
-      if (duration < 5_000) return;
+      if (duration < HIDDEN_THRESHOLD) return;
 
       // 1) 스크롤 위치 복원 (백그라운드 전 하단에 있었으면 하단으로)
       if (savedNearBottom) {
@@ -249,6 +251,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       // P0: Split View 시 focused pane만 갱신하여 중복 호출 방지
       if (!isSplitView || focusedSessionId === sessionId) {
         queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["workflow-status", sessionId] });
       }
     };
 

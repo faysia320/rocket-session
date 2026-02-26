@@ -1,4 +1,5 @@
 import { useEffect, useRef, useReducer, useCallback } from "react";
+import { isMobileDevice } from "@/lib/platform";
 import type {
   Message,
   FileChange,
@@ -434,6 +435,27 @@ export function useClaudeSocket(sessionId: string) {
     let hiddenAt = 0;
     let probeTimeout: ReturnType<typeof setTimeout> | null = null;
     let probeListener: ((evt: MessageEvent) => void) | null = null;
+    const isMobile = isMobileDevice();
+    const HIDDEN_THRESHOLD = isMobile ? 2_000 : 5_000;
+
+    const forceFullReconnect = () => {
+      // lastSeqRef를 0으로 리셋 → 백엔드가 full history를 전송하도록 강제
+      lastSeqRef.current = 0;
+      reconnectAttempt.current = 0;
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+      const existingWs = wsRef.current;
+      if (existingWs) {
+        existingWs.onclose = null;
+        existingWs.onerror = null;
+        existingWs.close();
+        wsRef.current = null;
+      }
+      dispatch({ type: "RECONNECT_RESET" });
+      connect();
+    };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
@@ -445,9 +467,16 @@ export function useClaudeSocket(sessionId: string) {
       const hiddenDuration = hiddenAt > 0 ? Date.now() - hiddenAt : 0;
       hiddenAt = 0;
 
-      // 5초 미만 백그라운드는 무시 (빠른 탭 전환)
-      if (hiddenDuration < 5_000) return;
+      if (hiddenDuration < HIDDEN_THRESHOLD) return;
 
+      // 모바일: iOS가 WS를 공격적으로 kill하므로 항상 full reconnect
+      if (isMobile) {
+        console.log("[Visibility] Mobile return after", hiddenDuration, "ms, forcing full reconnect");
+        forceFullReconnect();
+        return;
+      }
+
+      // 데스크톱: 기존 ping probe 로직 유지
       const ws = wsRef.current;
 
       // Case 1: WS가 이미 닫혀 있거나 없음
