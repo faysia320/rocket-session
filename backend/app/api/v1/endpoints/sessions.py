@@ -182,8 +182,6 @@ async def get_session(
     ws_manager: WebSocketManager = Depends(get_ws_manager),
 ):
     session = await manager.get_with_counts(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     info = manager.to_info(session)
     if session.get("status") == "running":
         activity = ws_manager.get_current_activity(session_id)
@@ -198,9 +196,7 @@ async def update_session(
     req: UpdateSessionRequest,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    if not await manager.exists(session_id):
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-    updated = await manager.update_settings(
+    await manager.update_settings(
         session_id=session_id,
         allowed_tools=req.allowed_tools,
         system_prompt=req.system_prompt,
@@ -218,9 +214,7 @@ async def update_session(
         fallback_model=req.fallback_model,
         work_dir=req.work_dir,
     )
-    if not updated:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-    session_with_counts = await manager.get_with_counts(session_id) or updated
+    session_with_counts = await manager.get_with_counts(session_id)
     return manager.to_info(session_with_counts)
 
 
@@ -229,9 +223,7 @@ async def get_history(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.get(session_id)  # 존재 확인 (NotFoundError 발생)
     return await manager.get_history(session_id)
 
 
@@ -240,9 +232,7 @@ async def get_file_changes(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.get(session_id)  # 존재 확인 (NotFoundError 발생)
     return await manager.get_file_changes(session_id)
 
 
@@ -251,9 +241,7 @@ async def stop_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.get(session_id)  # 존재 확인 (NotFoundError 발생)
     await manager.kill_process(session_id)
     return StatusResponse(status="stopped")
 
@@ -263,9 +251,7 @@ async def get_session_stats(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
 ):
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.get(session_id)  # 존재 확인 (NotFoundError 발생)
     stats = await manager.get_session_stats(session_id)
     return stats or {
         "total_messages": 0,
@@ -284,8 +270,6 @@ async def export_session(
     manager: SessionManager = Depends(get_session_manager),
 ):
     session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     history = await manager.get_history(session_id)
     session_name = session.get("name") or session_id
     lines = [f"# {session_name}", ""]
@@ -321,8 +305,6 @@ async def fork_session(
 ):
     """세션을 포크합니다. 설정과 메시지를 새 세션으로 복사합니다."""
     result = await manager.fork(session_id, req.message_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     return manager.to_info(result)
 
 
@@ -340,8 +322,6 @@ async def convert_session_to_worktree(
     대화 기록, 파일 변경 이력, claude_session_id 등 모든 컨텍스트가 보존됩니다.
     """
     session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
     if session.get("status") == SessionStatus.RUNNING:
         raise HTTPException(
@@ -368,14 +348,12 @@ async def convert_session_to_worktree(
         raise HTTPException(status_code=400, detail=str(e))
 
     # 2. 세션에 worktree_name 저장
-    updated = await manager.update_settings(
+    await manager.update_settings(
         session_id=session_id,
         worktree_name=req.worktree_name,
     )
-    if not updated:
-        raise HTTPException(status_code=500, detail="세션 업데이트에 실패했습니다")
 
-    session_with_counts = await manager.get_with_counts(session_id) or updated
+    session_with_counts = await manager.get_with_counts(session_id)
     return manager.to_info(session_with_counts)
 
 
@@ -386,8 +364,6 @@ async def archive_session(
 ):
     """세션을 보관 처리합니다."""
     session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
     if session.get("status") == SessionStatus.RUNNING:
         await manager.kill_process(session_id)
     await manager.update_status(session_id, SessionStatus.ARCHIVED)
@@ -400,9 +376,7 @@ async def unarchive_session(
     manager: SessionManager = Depends(get_session_manager),
 ):
     """세션 보관을 해제합니다."""
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.get(session_id)  # 존재 확인 (NotFoundError 발생)
     await manager.update_status(session_id, SessionStatus.IDLE)
     return StatusResponse(status="unarchived")
 
@@ -413,9 +387,7 @@ async def delete_session(
     manager: SessionManager = Depends(get_session_manager),
     ws_manager: WebSocketManager = Depends(get_ws_manager),
 ):
-    deleted = await manager.delete(session_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.delete(session_id)
     # 인메모리 자원 정리 (seq 카운터, 이벤트 버퍼, 세션 신뢰 도구, 대기 질문)
     ws_manager.reset_session(session_id)
     clear_session_trusted(session_id)
@@ -434,9 +406,7 @@ async def add_session_tags(
     tag_service: TagService = Depends(get_tag_service),
 ):
     """세션에 태그를 추가합니다."""
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.get(session_id)  # 존재 확인 (NotFoundError 발생)
     return await tag_service.add_tags_to_session(session_id, req.tag_ids)
 
 
@@ -448,9 +418,7 @@ async def remove_session_tag(
     tag_service: TagService = Depends(get_tag_service),
 ):
     """세션에서 태그를 제거합니다."""
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.get(session_id)  # 존재 확인 (NotFoundError 발생)
     removed = await tag_service.remove_tag_from_session(session_id, tag_id)
     if not removed:
         raise HTTPException(status_code=404, detail="세션에 해당 태그가 없습니다")

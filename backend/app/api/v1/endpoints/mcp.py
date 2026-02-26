@@ -72,7 +72,7 @@ async def update_mcp_server(
     req: UpdateMcpServerRequest,
     service: McpService = Depends(get_mcp_service),
 ):
-    updated = await service.update_server(
+    return await service.update_server(
         server_id=server_id,
         name=req.name,
         transport_type=req.transport_type,
@@ -83,9 +83,6 @@ async def update_mcp_server(
         env=req.env,
         enabled=req.enabled,
     )
-    if not updated:
-        raise HTTPException(status_code=404, detail="MCP 서버를 찾을 수 없습니다")
-    return updated
 
 
 @router.delete("/{server_id}", response_model=StatusResponse)
@@ -93,7 +90,5 @@ async def delete_mcp_server(
     server_id: str,
     service: McpService = Depends(get_mcp_service),
 ):
-    deleted = await service.delete_server(server_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="MCP 서버를 찾을 수 없습니다")
+    await service.delete_server(server_id)
     return StatusResponse(status="deleted")

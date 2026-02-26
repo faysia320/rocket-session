@@ -49,9 +49,7 @@ async def start_workflow(
     ws_manager: WebSocketManager = Depends(get_ws_manager),
 ):
     """워크플로우 시작."""
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.get(session_id)  # 존재 확인 (NotFoundError 발생)
 
     result = await workflow.start_workflow(
         session_id,
@@ -81,8 +79,6 @@ async def get_workflow_status(
 ):
     """워크플로우 상태 조회."""
     session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
     artifacts = await workflow.list_artifacts(session_id)
     def_id = session.get("workflow_definition_id")
@@ -142,8 +138,6 @@ async def update_artifact(
     if not existing or existing.session_id != session_id:
         raise HTTPException(status_code=404, detail="아티팩트를 찾을 수 없습니다")
     artifact = await workflow.update_artifact(artifact_id, req.content)
-    if not artifact:
-        raise HTTPException(status_code=404, detail="아티팩트를 찾을 수 없습니다")
 
     await ws_manager.broadcast_event(
         session_id,
@@ -204,10 +198,7 @@ async def update_annotation(
     existing = await workflow.get_artifact(artifact_id)
     if not existing or existing.session_id != session_id:
         raise HTTPException(status_code=404, detail="아티팩트를 찾을 수 없습니다")
-    annotation = await workflow.update_annotation_status(annotation_id, req.status)
-    if not annotation:
-        raise HTTPException(status_code=404, detail="주석을 찾을 수 없습니다")
-    return annotation
+    return await workflow.update_annotation_status(annotation_id, req.status)
 
 
 @router.post("/approve")
@@ -224,8 +215,6 @@ async def approve_phase(
 ):
     """현재 phase 승인 → 다음 phase 전환 (Plan→Implement 자동 실행)."""
     session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
     result = await workflow.approve_phase(
         session_id, session_manager=manager, feedback=req.feedback
@@ -328,8 +317,6 @@ async def request_revision(
 ):
     """수정 요청 → Plan 자동 재실행."""
     session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
     result = await workflow.request_revision(
         session_id, session_manager=manager, feedback=req.feedback or ""

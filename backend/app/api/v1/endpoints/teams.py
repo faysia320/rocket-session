@@ -71,10 +71,7 @@ async def get_team(
     team_id: str,
     service: TeamService = Depends(get_team_service),
 ):
-    team = await service.get_team(team_id)
-    if not team:
-        raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
-    return team
+    return await service.get_team(team_id)
 
 
 @router.patch("/{team_id}", response_model=TeamInfo)
@@ -86,10 +83,7 @@ async def update_team(
     kwargs = req.model_dump(exclude_unset=True)
     if not kwargs:
         raise HTTPException(status_code=400, detail="변경할 필드가 없습니다")
-    team = await service.update_team(team_id, **kwargs)
-    if not team:
-        raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
-    return team
+    return await service.update_team(team_id, **kwargs)
 
 
 @router.delete("/{team_id}", response_model=StatusResponse)
@@ -97,9 +91,7 @@ async def delete_team(
     team_id: str,
     service: TeamService = Depends(get_team_service),
 ):
-    deleted = await service.delete_team(team_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
+    await service.delete_team(team_id)
     return StatusResponse(status="deleted")
 
 
@@ -121,22 +113,19 @@ async def add_member(
     service: TeamService = Depends(get_team_service),
 ):
     """페르소나 정의로 멤버 추가."""
-    try:
-        return await service.add_member(
-            team_id=team_id,
-            nickname=req.nickname,
-            role=req.role,
-            description=req.description,
-            system_prompt=req.system_prompt,
-            allowed_tools=req.allowed_tools,
-            disallowed_tools=req.disallowed_tools,
-            model=req.model,
-            max_turns=req.max_turns,
-            max_budget_usd=req.max_budget_usd,
-            mcp_server_ids=req.mcp_server_ids,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await service.add_member(
+        team_id=team_id,
+        nickname=req.nickname,
+        role=req.role,
+        description=req.description,
+        system_prompt=req.system_prompt,
+        allowed_tools=req.allowed_tools,
+        disallowed_tools=req.disallowed_tools,
+        model=req.model,
+        max_turns=req.max_turns,
+        max_budget_usd=req.max_budget_usd,
+        mcp_server_ids=req.mcp_server_ids,
+    )
 
 
 @router.patch("/{team_id}/members/{member_id}", response_model=TeamMemberInfo)
@@ -162,9 +151,7 @@ async def remove_member(
     member_id: int,
     service: TeamService = Depends(get_team_service),
 ):
-    removed = await service.remove_member(team_id, member_id)
-    if not removed:
-        raise HTTPException(status_code=404, detail="멤버를 찾을 수 없습니다")
+    await service.remove_member(team_id, member_id)
     return StatusResponse(status="removed")
 
 
@@ -174,13 +161,7 @@ async def set_lead(
     req: SetLeadRequest,
     service: TeamService = Depends(get_team_service),
 ):
-    try:
-        team = await service.set_lead(team_id, req.member_id)
-        if not team:
-            raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
-        return team
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await service.set_lead(team_id, req.member_id)
 
 
 # ── 팀 상태 ──
@@ -192,8 +173,6 @@ async def get_team_status(
     service: TeamService = Depends(get_team_service),
 ):
     team = await service.get_team(team_id)
-    if not team:
-        raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
     return {
         "team_id": team.id,
         "status": team.status,
@@ -398,12 +377,15 @@ async def team_websocket_endpoint(
     team_id: str,
 ):
     """팀 대시보드 전용 WebSocket. 팀 이벤트 실시간 수신."""
+    from app.core.exceptions import NotFoundError
+
     coordinator = get_team_coordinator()
     team_service = get_team_service()
 
     # 팀 존재 확인
-    team = await team_service.get_team(team_id)
-    if not team:
+    try:
+        team = await team_service.get_team(team_id)
+    except NotFoundError:
         await websocket.close(code=4004, reason="팀을 찾을 수 없습니다")
         return
 

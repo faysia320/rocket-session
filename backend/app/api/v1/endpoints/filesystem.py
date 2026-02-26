@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
+from app.core.exceptions import ValidationError
 from app.schemas.common import StatusResponse
 from app.api.dependencies import (
     get_filesystem_service,
@@ -51,12 +52,7 @@ async def list_directory(
     path: str = Query(default="~", description="탐색할 디렉토리 경로"),
     fs: FilesystemService = Depends(get_filesystem_service),
 ):
-    try:
-        return await fs.list_directory(path)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except PermissionError:
-        raise HTTPException(status_code=403, detail="접근 권한이 없습니다")
+    return await fs.list_directory(path)
 
 
 @router.get("/scan-git-repos", response_model=GitRepoScanResponse)
@@ -68,10 +64,7 @@ async def scan_git_repos(
     fs: FilesystemService = Depends(get_filesystem_service),
 ):
     """지정 경로 아래에서 Git 저장소를 스캔합니다."""
-    try:
-        return await fs.scan_git_repos(path, max_depth)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await fs.scan_git_repos(path, max_depth)
 
 
 @router.get("/git-info", response_model=GitInfo)
@@ -79,10 +72,7 @@ async def get_git_info(
     path: str = Query(..., description="Git 정보를 조회할 경로"),
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        return await git.get_git_info(path)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await git.get_git_info(path)
 
 
 @router.get("/git-status", response_model=GitStatusResponse)
@@ -90,10 +80,7 @@ async def get_git_status(
     path: str = Query(..., description="Git 상태를 조회할 경로"),
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        return await git.get_git_status(path)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await git.get_git_status(path)
 
 
 @router.get("/git-diff", response_class=PlainTextResponse)
@@ -104,11 +91,8 @@ async def get_git_diff(
     ),
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        result = await git.get_file_diff(path, file)
-        return PlainTextResponse(result or "")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    result = await git.get_file_diff(path, file)
+    return PlainTextResponse(result or "")
 
 
 @router.get("/worktrees", response_model=WorktreeListResponse)
@@ -116,10 +100,7 @@ async def list_worktrees(
     path: str = Query(..., description="Git 저장소 경로"),
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        return await git.list_worktrees(path)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await git.list_worktrees(path)
 
 
 @router.delete("/worktrees", response_model=StatusResponse)
@@ -131,13 +112,8 @@ async def remove_worktree(
     ),
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        await git.remove_claude_worktree(repo_path, name, force=force)
-        return StatusResponse(status="deleted")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except (RuntimeError, OSError) as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    await git.remove_claude_worktree(repo_path, name, force=force)
+    return StatusResponse(status="deleted")
 
 
 @router.get("/git-log", response_model=GitLogResponse)
@@ -151,18 +127,15 @@ async def get_git_log(
     search: str | None = Query(default=None),
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        return await git.get_git_log(
-            path,
-            limit=limit,
-            offset=offset,
-            author=author,
-            since=since,
-            until=until,
-            search=search,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    return await git.get_git_log(
+        path,
+        limit=limit,
+        offset=offset,
+        author=author,
+        since=since,
+        until=until,
+        search=search,
+    )
 
 
 @router.get("/git-commit-diff", response_class=PlainTextResponse)
@@ -171,11 +144,8 @@ async def get_commit_diff(
     commit: str = Query(..., min_length=7, max_length=40, description="커밋 해시"),
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        result = await git.get_commit_diff(path, commit)
-        return PlainTextResponse(result or "")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    result = await git.get_commit_diff(path, commit)
+    return PlainTextResponse(result or "")
 
 
 @router.get("/gh-status", response_model=GitHubCLIStatus)
@@ -279,15 +249,12 @@ async def list_git_branches(
     path: str = Query(..., description="Git 저장소 경로"),
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        branches, current, default_branch = await git.list_branches(path)
-        return GitBranchListResponse(
-            branches=branches,
-            current_branch=current,
-            default_branch=default_branch,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    branches, current, default_branch = await git.list_branches(path)
+    return GitBranchListResponse(
+        branches=branches,
+        current_branch=current,
+        default_branch=default_branch,
+    )
 
 
 @router.post("/git-checkout", response_model=GitCheckoutResponse)
@@ -295,13 +262,10 @@ async def checkout_git_branch(
     req: GitCheckoutRequest,
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        success, message = await git.checkout_branch(req.path, req.branch)
-        if not success:
-            raise HTTPException(status_code=400, detail=message)
-        return GitCheckoutResponse(success=True, message=message)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    success, message = await git.checkout_branch(req.path, req.branch)
+    if not success:
+        raise ValidationError(message)
+    return GitCheckoutResponse(success=True, message=message)
 
 
 @router.post("/git-stage", response_model=GitStageResponse)
@@ -309,13 +273,10 @@ async def stage_git_files(
     req: GitStageRequest,
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        success, error = await git.stage_files(req.path, req.files)
-        if not success:
-            raise HTTPException(status_code=400, detail=error)
-        return GitStageResponse(success=True)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    success, error = await git.stage_files(req.path, req.files)
+    if not success:
+        raise ValidationError(error)
+    return GitStageResponse(success=True)
 
 
 @router.post("/git-unstage", response_model=GitUnstageResponse)
@@ -323,13 +284,10 @@ async def unstage_git_files(
     req: GitUnstageRequest,
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        success, error = await git.unstage_files(req.path, req.files)
-        if not success:
-            raise HTTPException(status_code=400, detail=error)
-        return GitUnstageResponse(success=True)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    success, error = await git.unstage_files(req.path, req.files)
+    if not success:
+        raise ValidationError(error)
+    return GitUnstageResponse(success=True)
 
 
 @router.post("/git-commit", response_model=GitCommitResponse)
@@ -337,13 +295,10 @@ async def commit_git(
     req: GitCommitRequest,
     git: GitService = Depends(get_git_service),
 ):
-    try:
-        success, commit_hash, error = await git.commit(req.path, req.message)
-        if not success:
-            raise HTTPException(status_code=400, detail=error)
-        return GitCommitResponse(success=True, commit_hash=commit_hash)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    success, commit_hash, error = await git.commit(req.path, req.message)
+    if not success:
+        raise ValidationError(error)
+    return GitCommitResponse(success=True, commit_hash=commit_hash)
 
 
 @router.post("/git-fetch", response_model=GitFetchResponse)
@@ -352,10 +307,7 @@ async def fetch_git_remote(
     git: GitService = Depends(get_git_service),
 ):
     """git fetch --prune 실행."""
-    try:
-        success, message = await git.fetch_remote(req.path)
-        if not success:
-            raise HTTPException(status_code=400, detail=message)
-        return GitFetchResponse(success=True, message=message)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    success, message = await git.fetch_remote(req.path)
+    if not success:
+        raise ValidationError(message)
+    return GitFetchResponse(success=True, message=message)

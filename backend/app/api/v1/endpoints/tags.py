@@ -1,6 +1,6 @@
 """태그 CRUD REST 엔드포인트."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_tag_service
 from app.schemas.common import StatusResponse
@@ -31,10 +31,7 @@ async def update_tag(
     req: UpdateTagRequest,
     service: TagService = Depends(get_tag_service),
 ):
-    tag = await service.update_tag(tag_id, name=req.name, color=req.color)
-    if not tag:
-        raise HTTPException(status_code=404, detail="태그를 찾을 수 없습니다")
-    return tag
+    return await service.update_tag(tag_id, name=req.name, color=req.color)
 
 
 @router.delete("/{tag_id}", response_model=StatusResponse)
@@ -42,7 +39,5 @@ async def delete_tag(
     tag_id: str,
     service: TagService = Depends(get_tag_service),
 ):
-    deleted = await service.delete_tag(tag_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="태그를 찾을 수 없습니다")
+    await service.delete_tag(tag_id)
     return StatusResponse(status="deleted")

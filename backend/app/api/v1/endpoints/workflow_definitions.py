@@ -12,6 +12,8 @@ from app.schemas.workflow_definition import (
 )
 from app.services.workflow_definition_service import WorkflowDefinitionService
 
+# NOTE: HTTPException은 import 엔드포인트의 버전 검증에서만 사용
+
 router = APIRouter(prefix="/workflow-definitions", tags=["workflow-definitions"])
 
 
@@ -49,12 +51,7 @@ async def get_definition(
     def_id: str,
     service: WorkflowDefinitionService = Depends(get_workflow_definition_service),
 ):
-    result = await service.get_definition(def_id)
-    if not result:
-        raise HTTPException(
-            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
-        )
-    return result
+    return await service.get_definition(def_id)
 
 
 @router.patch("/{def_id}", response_model=WorkflowDefinitionInfo)
@@ -63,20 +60,12 @@ async def update_definition(
     req: UpdateWorkflowDefinitionRequest,
     service: WorkflowDefinitionService = Depends(get_workflow_definition_service),
 ):
-    try:
-        updated = await service.update_definition(
-            def_id=def_id,
-            name=req.name,
-            description=req.description,
-            steps=req.steps,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    if not updated:
-        raise HTTPException(
-            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
-        )
-    return updated
+    return await service.update_definition(
+        def_id=def_id,
+        name=req.name,
+        description=req.description,
+        steps=req.steps,
+    )
 
 
 @router.delete("/{def_id}", response_model=StatusResponse)
@@ -84,14 +73,7 @@ async def delete_definition(
     def_id: str,
     service: WorkflowDefinitionService = Depends(get_workflow_definition_service),
 ):
-    try:
-        deleted = await service.delete_definition(def_id)
-    except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    if not deleted:
-        raise HTTPException(
-            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
-        )
+    await service.delete_definition(def_id)
     return StatusResponse(status="deleted")
 
 
@@ -100,12 +82,7 @@ async def set_default_definition(
     def_id: str,
     service: WorkflowDefinitionService = Depends(get_workflow_definition_service),
 ):
-    result = await service.set_default(def_id)
-    if not result:
-        raise HTTPException(
-            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
-        )
-    return result
+    return await service.set_default(def_id)
 
 
 @router.get("/{def_id}/export", response_model=WorkflowDefinitionExport)
@@ -113,9 +90,4 @@ async def export_definition(
     def_id: str,
     service: WorkflowDefinitionService = Depends(get_workflow_definition_service),
 ):
-    result = await service.export_definition(def_id)
-    if not result:
-        raise HTTPException(
-            status_code=404, detail="워크플로우 정의를 찾을 수 없습니다"
-        )
-    return result
+    return await service.export_definition(def_id)

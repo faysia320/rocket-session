@@ -57,9 +57,6 @@ async def get_file_content(
     manager: SessionManager = Depends(get_session_manager),
 ):
     session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-
     work_dir = Path(session["work_dir"])
     target = _resolve_safe_path(file_path, work_dir)
 
@@ -91,9 +88,6 @@ async def get_file_diff(
 ):
     """파일의 git diff를 조회합니다."""
     session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
-
     work_dir = Path(session["work_dir"])
     target = _resolve_safe_path(file_path, work_dir)
     # git diff에는 work_dir 기준 상대 경로 사용
@@ -192,9 +186,7 @@ async def upload_file(
     settings: Settings = Depends(get_settings),
 ):
     """세션에 이미지 파일을 업로드합니다."""
-    session = await manager.get(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    await manager.get(session_id)  # 세션 존재 검증 (NotFoundError)
 
     # MIME 타입 검증
     content_type = file.content_type or ""

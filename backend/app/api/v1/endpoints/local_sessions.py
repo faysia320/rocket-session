@@ -7,6 +7,7 @@ from app.api.dependencies import (
     get_session_manager,
     get_workspace_service,
 )
+from app.core.exceptions import ValidationError
 from app.schemas.local_session import (
     ImportLocalSessionRequest,
     ImportLocalSessionResponse,
@@ -86,14 +87,8 @@ async def import_local_session(
 
     if req.workspace_id:
         ws = await workspace_service.get(req.workspace_id)
-        if not ws:
-            raise HTTPException(
-                status_code=404, detail="워크스페이스를 찾을 수 없습니다"
-            )
         if ws["status"] != "ready":
-            raise HTTPException(
-                status_code=400, detail="워크스페이스가 준비되지 않았습니다"
-            )
+            raise ValidationError("워크스페이스가 준비되지 않았습니다")
         workspace_id = req.workspace_id
         work_dir_override = ws["local_path"]
 
