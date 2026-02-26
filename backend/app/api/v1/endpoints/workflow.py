@@ -11,6 +11,7 @@ from app.api.dependencies import (
     get_session_manager,
     get_settings,
     get_settings_service,
+    get_workflow_definition_service,
     get_workflow_service,
     get_ws_manager,
 )
@@ -55,6 +56,8 @@ async def start_workflow(
     result = await workflow.start_workflow(
         session_id,
         session_manager=manager,
+        workflow_definition_id=req.workflow_definition_id,
+        start_from_step=req.start_from_step,
         skip_research=req.skip_research,
         skip_plan=req.skip_plan,
     )
@@ -74,6 +77,7 @@ async def get_workflow_status(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
     workflow: WorkflowService = Depends(get_workflow_service),
+    def_service=Depends(get_workflow_definition_service),
 ):
     """워크플로우 상태 조회."""
     session = await manager.get(session_id)
@@ -81,10 +85,15 @@ async def get_workflow_status(
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
 
     artifacts = await workflow.list_artifacts(session_id)
+    def_id = session.get("workflow_definition_id")
+    definition = await def_service.get_or_default(def_id)
+    steps_data = [s.model_dump() for s in definition.steps]
     return WorkflowStatusResponse(
         workflow_enabled=session.get("workflow_enabled", False),
         workflow_phase=session.get("workflow_phase"),
         workflow_phase_status=session.get("workflow_phase_status"),
+        workflow_definition_id=def_id,
+        steps=steps_data,
         artifacts=artifacts,
     )
 
@@ -234,16 +243,28 @@ async def approve_phase(
         },
     )
 
-    # Plan 승인 → Implement 자동 실행
+    # 승인 후 다음 phase 자동 실행 (definition 기반)
     next_phase = result.get("next_phase")
-    if next_phase == "implement":
+    approved_phase = result.get("approved_phase")
+    if next_phase:
         try:
-            original_prompt = session.get("workflow_original_prompt", "")
-            impl_context = await workflow.build_phase_context(
-                session_id, "implement", original_prompt
+            # 다음 step config 조회
+            from app.api.dependencies import get_workflow_definition_service
+
+            def_service = get_workflow_definition_service()
+            def_id = session.get("workflow_definition_id")
+            definition = await def_service.get_or_default(def_id)
+            steps = sorted(definition.steps, key=lambda s: s.order_index)
+            next_step = next(
+                (s for s in steps if s.name == next_phase), None
             )
 
-            # allowed_tools: 세션 > 글로벌 > env
+            # auto_advance가 아닌 step에서의 승인 → 다음 phase 자동 실행
+            original_prompt = session.get("workflow_original_prompt", "")
+            next_context = await workflow.build_phase_context(
+                session_id, next_phase, original_prompt, session_manager=manager
+            )
+
             global_settings = await settings_service.get()
             allowed_tools = (
                 session.get("allowed_tools")
@@ -257,23 +278,26 @@ async def approve_phase(
                 session_id,
                 {
                     "type": WsEventType.WORKFLOW_AUTO_CHAIN,
-                    "from_phase": "plan",
-                    "to_phase": "implement",
+                    "from_phase": approved_phase,
+                    "to_phase": next_phase,
                 },
             )
 
             task = asyncio.create_task(
                 runner.run(
                     updated,
-                    impl_context,
+                    next_context,
                     allowed_tools,
                     session_id,
                     ws_manager,
                     manager,
                     mcp_service=mcp_service,
-                    workflow_phase="implement",
+                    workflow_phase=next_phase,
                     workflow_service=workflow,
                     original_prompt=original_prompt,
+                    workflow_step_config=(
+                        next_step.model_dump() if next_step else None
+                    ),
                 )
             )
             task.add_done_callback(
@@ -282,8 +306,10 @@ async def approve_phase(
             manager.set_runner_task(session_id, task)
         except Exception:
             logger.warning(
-                "세션 %s: Plan→Implement 자동 실행 실패",
+                "세션 %s: %s→%s 자동 실행 실패",
                 session_id,
+                approved_phase,
+                next_phase,
                 exc_info=True,
             )
 
@@ -318,46 +344,59 @@ async def request_revision(
         },
     )
 
-    # Plan 수정 요청 → 자동 재실행
-    if current_phase == "plan":
+    # review_required step → 자동 재실행
+    if current_phase:
         try:
-            original_prompt = session.get("workflow_original_prompt", "")
-            revision_context = await workflow.build_revision_context(
-                session_id, original_prompt, req.feedback
+            from app.api.dependencies import get_workflow_definition_service
+
+            def_service = get_workflow_definition_service()
+            def_id = session.get("workflow_definition_id")
+            definition = await def_service.get_or_default(def_id)
+            steps = sorted(definition.steps, key=lambda s: s.order_index)
+            current_step = next(
+                (s for s in steps if s.name == current_phase), None
             )
 
-            # allowed_tools: 세션 > 글로벌 > env
-            global_settings = await settings_service.get()
-            allowed_tools = (
-                session.get("allowed_tools")
-                or global_settings.get("allowed_tools")
-                or settings.claude_allowed_tools
-            )
-
-            updated = await manager.get(session_id)
-
-            task = asyncio.create_task(
-                runner.run(
-                    updated,
-                    revision_context,
-                    allowed_tools,
-                    session_id,
-                    ws_manager,
-                    manager,
-                    mcp_service=mcp_service,
-                    workflow_phase="plan",
-                    workflow_service=workflow,
-                    original_prompt=original_prompt,
+            if current_step and current_step.review_required:
+                original_prompt = session.get("workflow_original_prompt", "")
+                revision_context = await workflow.build_revision_context(
+                    session_id, original_prompt, req.feedback,
+                    session_manager=manager,
                 )
-            )
-            task.add_done_callback(
-                lambda t: _auto_chain_done(t, session_id, manager)
-            )
-            manager.set_runner_task(session_id, task)
+
+                global_settings = await settings_service.get()
+                allowed_tools = (
+                    session.get("allowed_tools")
+                    or global_settings.get("allowed_tools")
+                    or settings.claude_allowed_tools
+                )
+
+                updated = await manager.get(session_id)
+
+                task = asyncio.create_task(
+                    runner.run(
+                        updated,
+                        revision_context,
+                        allowed_tools,
+                        session_id,
+                        ws_manager,
+                        manager,
+                        mcp_service=mcp_service,
+                        workflow_phase=current_phase,
+                        workflow_service=workflow,
+                        original_prompt=original_prompt,
+                        workflow_step_config=current_step.model_dump(),
+                    )
+                )
+                task.add_done_callback(
+                    lambda t: _auto_chain_done(t, session_id, manager)
+                )
+                manager.set_runner_task(session_id, task)
         except Exception:
             logger.warning(
-                "세션 %s: Plan 수정 자동 재실행 실패",
+                "세션 %s: %s 수정 자동 재실행 실패",
                 session_id,
+                current_phase,
                 exc_info=True,
             )
 

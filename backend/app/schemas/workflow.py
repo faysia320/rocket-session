@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-WorkflowPhase = Literal["research", "plan", "implement"]
+WorkflowPhase = str
 WorkflowPhaseStatus = Literal["in_progress", "awaiting_approval", "approved", "revision_requested"]
 ArtifactStatusType = Literal["draft", "review", "approved", "superseded"]
 AnnotationType = Literal["comment", "suggestion", "rejection"]
@@ -30,7 +30,7 @@ class SessionArtifactInfo(BaseModel):
 
     id: int
     session_id: str
-    phase: WorkflowPhase
+    phase: str
     title: str
     content: str
     status: ArtifactStatusType
@@ -44,6 +44,8 @@ class SessionArtifactInfo(BaseModel):
 class StartWorkflowRequest(BaseModel):
     """워크플로우 시작 요청."""
 
+    workflow_definition_id: Optional[str] = None
+    start_from_step: Optional[str] = None
     skip_research: bool = False
     skip_plan: bool = False
 
@@ -52,8 +54,10 @@ class WorkflowStatusResponse(BaseModel):
     """워크플로우 상태 응답."""
 
     workflow_enabled: bool
-    workflow_phase: Optional[WorkflowPhase] = None
+    workflow_phase: Optional[str] = None
     workflow_phase_status: Optional[WorkflowPhaseStatus] = None
+    workflow_definition_id: Optional[str] = None
+    steps: list[dict] = []
     artifacts: list[SessionArtifactInfo] = []
 
 

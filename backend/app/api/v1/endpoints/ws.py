@@ -13,6 +13,7 @@ from app.api.dependencies import (
     get_session_manager,
     get_settings,
     get_settings_service,
+    get_workflow_definition_service,
     get_workflow_service,
     get_ws_manager,
 )
@@ -100,6 +101,7 @@ async def _handle_prompt(
         # 워크플로우 phase 감지
         workflow_phase = None
         workflow_service = None
+        workflow_step_config = None
         if current_session and current_session.get("workflow_enabled"):
             workflow_phase = current_session.get("workflow_phase")
             workflow_phase_status = current_session.get("workflow_phase_status")
@@ -108,19 +110,32 @@ async def _handle_prompt(
             if workflow_phase_status == "completed":
                 workflow_phase = None
             else:
-                # 게이트 1: 워크플로우 미시작 상태 → 자동 복구
+                # definition에서 steps 로드
+                def_service = get_workflow_definition_service()
+                def_id = current_session.get("workflow_definition_id")
+                definition = await def_service.get_or_default(def_id)
+                steps = sorted(definition.steps, key=lambda s: s.order_index)
+
+                # 게이트 1: 워크플로우 미시작 상태 → 자동 복구 (첫 번째 step으로)
                 if not workflow_phase:
+                    first_name = steps[0].name if steps else "research"
                     logger.warning(
-                        "워크플로우 자동 복구: session=%s (enabled=True, phase=None → research)",
+                        "워크플로우 자동 복구: session=%s (enabled=True, phase=None → %s)",
                         session_id,
+                        first_name,
                     )
                     await manager.update_settings(
                         session_id,
-                        workflow_phase="research",
+                        workflow_phase=first_name,
                         workflow_phase_status="in_progress",
                     )
-                    workflow_phase = "research"
+                    workflow_phase = first_name
                     current_session = await manager.get(session_id)
+
+                # 현재 step config 로드
+                workflow_step_config = next(
+                    (s for s in steps if s.name == workflow_phase), None
+                )
 
                 # 게이트 2: 승인 대기 중 → 프롬프트 차단
                 if workflow_phase_status == "awaiting_approval":
@@ -147,7 +162,8 @@ async def _handle_prompt(
                 claude_prompt = prompt
                 if workflow_phase and workflow_service:
                     phase_context = await workflow_service.build_phase_context(
-                        session_id, workflow_phase, prompt
+                        session_id, workflow_phase, prompt,
+                        session_manager=manager,
                     )
                     if phase_context:
                         claude_prompt = phase_context
@@ -229,6 +245,11 @@ async def _handle_prompt(
                 workflow_phase=workflow_phase,
                 workflow_service=workflow_service,
                 original_prompt=prompt,
+                workflow_step_config=(
+                    workflow_step_config.model_dump()
+                    if workflow_step_config
+                    else None
+                ),
             )
         )
         task.add_done_callback(lambda t: _on_runner_task_done(t, session_id, manager))

@@ -1,4 +1,4 @@
-"""워크플로우 서비스 — 세션 레벨 Research → Plan → Implement 관리."""
+"""워크플로우 서비스 — 세션 레벨 동적 단계 관리."""
 
 import logging
 from datetime import datetime, timezone
@@ -10,11 +10,10 @@ from app.repositories.artifact_repo import (
     SessionArtifactRepository,
 )
 from app.schemas.workflow import ArtifactAnnotationInfo, SessionArtifactInfo
+from app.schemas.workflow_definition import WorkflowStepConfig
+from app.services.workflow_definition_service import WorkflowDefinitionService
 
 logger = logging.getLogger(__name__)
-
-# 고정 3단계 순서
-PHASE_ORDER = ["research", "plan", "implement"]
 
 
 def _artifact_to_info(artifact: SessionArtifact) -> SessionArtifactInfo:
@@ -63,15 +62,57 @@ def _annotation_to_info(ann: ArtifactAnnotation) -> ArtifactAnnotationInfo:
 class WorkflowService:
     """세션 워크플로우 상태 및 아티팩트 관리."""
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, definition_service: WorkflowDefinitionService):
         self._db = db
+        self._def_service = definition_service
 
-    # ─── 커밋 메시지 자동 생성 ───
+    # ─── 헬퍼 메서드 ───
+
+    async def _get_steps(
+        self, session_id: str, session_manager
+    ) -> list[WorkflowStepConfig]:
+        """세션의 workflow_definition_id로 steps 로드. null이면 기본 프리셋."""
+        session_data = await session_manager.get(session_id)
+        def_id = session_data.get("workflow_definition_id") if session_data else None
+        definition = await self._def_service.get_or_default(def_id)
+        return sorted(definition.steps, key=lambda s: s.order_index)
+
+    async def _get_steps_from_db(self, session_id: str) -> list[WorkflowStepConfig]:
+        """session_manager 없이 DB에서 직접 steps 로드."""
+        from app.repositories.session_repo import SessionRepository
+
+        async with self._db.session() as db_sess:
+            repo = SessionRepository(db_sess)
+            session_entity = await repo.get_by_id(session_id)
+            def_id = (
+                session_entity.workflow_definition_id if session_entity else None
+            )
+        definition = await self._def_service.get_or_default(def_id)
+        return sorted(definition.steps, key=lambda s: s.order_index)
+
+    @staticmethod
+    def _get_step(
+        steps: list[WorkflowStepConfig], phase_name: str
+    ) -> WorkflowStepConfig | None:
+        """steps에서 이름으로 단계 찾기."""
+        return next((s for s in steps if s.name == phase_name), None)
+
+    @staticmethod
+    def _get_next_step(
+        steps: list[WorkflowStepConfig], current_name: str
+    ) -> WorkflowStepConfig | None:
+        """steps에서 현재 단계 다음 단계 반환."""
+        names = [s.name for s in steps]
+        try:
+            idx = names.index(current_name)
+            return steps[idx + 1] if idx + 1 < len(steps) else None
+        except ValueError:
+            return None
 
     # ─── 워크플로우 제어 ───
 
     async def reset_workflow(self, session_id: str, session_manager) -> None:
-        """워크플로우 상태를 초기(Research) 상태로 리셋하고 아티팩트를 삭제."""
+        """워크플로우 상태를 첫 번째 단계로 리셋하고 아티팩트를 삭제."""
         # 1. 아티팩트 + 주석 삭제
         async with self._db.session() as db_sess:
             repo = SessionArtifactRepository(db_sess)
@@ -80,48 +121,77 @@ class WorkflowService:
             if deleted:
                 logger.info("아티팩트 삭제: session=%s, count=%d", session_id, deleted)
 
-        # 2. 워크플로우 상태 초기화 (research, in_progress)
+        # 2. 워크플로우 상태 초기화 (첫 번째 단계)
+        steps = await self._get_steps(session_id, session_manager)
+        first_name = steps[0].name if steps else "research"
         await session_manager.update_settings(
             session_id,
-            workflow_phase="research",
+            workflow_phase=first_name,
             workflow_phase_status="in_progress",
             workflow_original_prompt=None,
         )
-        logger.info("워크플로우 리셋: session=%s → research/in_progress", session_id)
+        logger.info(
+            "워크플로우 리셋: session=%s → %s/in_progress", session_id, first_name
+        )
 
     async def start_workflow(
         self,
         session_id: str,
         session_manager,
+        *,
+        workflow_definition_id: str | None = None,
+        start_from_step: str | None = None,
         skip_research: bool = False,
         skip_plan: bool = False,
     ) -> dict:
         """워크플로우 시작: 첫 번째 phase 설정."""
-        if skip_research and skip_plan:
-            first_phase = "implement"
+        definition = await self._def_service.get_or_default(workflow_definition_id)
+        steps = sorted(definition.steps, key=lambda s: s.order_index)
+
+        if start_from_step:
+            first = next(
+                (s for s in steps if s.name == start_from_step), steps[0]
+            )
+        elif skip_research and skip_plan:
+            # 하위 호환: 기본 프리셋에서 implement로 점프
+            first = next(
+                (s for s in steps if s.name == "implement"), steps[-1]
+            )
         elif skip_research:
-            first_phase = "plan"
+            first = next(
+                (s for s in steps if s.name == "plan"),
+                steps[1] if len(steps) > 1 else steps[0],
+            )
         else:
-            first_phase = "research"
+            first = steps[0]
 
         await session_manager.update_settings(
             session_id,
             workflow_enabled=True,
-            workflow_phase=first_phase,
+            workflow_definition_id=definition.id,
+            workflow_phase=first.name,
             workflow_phase_status="in_progress",
         )
-        logger.info("워크플로우 시작: session=%s, phase=%s", session_id, first_phase)
-        return {"phase": first_phase, "status": "in_progress"}
+        logger.info("워크플로우 시작: session=%s, phase=%s", session_id, first.name)
+        return {"phase": first.name, "status": "in_progress"}
 
-    async def get_next_phase(self, current_phase: str) -> str | None:
-        """현재 phase의 다음 단계 반환. implement 다음은 None."""
-        try:
-            idx = PHASE_ORDER.index(current_phase)
-            if idx + 1 < len(PHASE_ORDER):
-                return PHASE_ORDER[idx + 1]
-        except ValueError:
-            pass
-        return None
+    async def get_next_phase(
+        self,
+        current_phase: str,
+        session_id: str | None = None,
+        session_manager=None,
+    ) -> str | None:
+        """현재 phase의 다음 단계 반환. 마지막이면 None."""
+        if session_id and session_manager:
+            steps = await self._get_steps(session_id, session_manager)
+        elif session_id:
+            steps = await self._get_steps_from_db(session_id)
+        else:
+            default_def = await self._def_service.get_or_default(None)
+            steps = sorted(default_def.steps, key=lambda s: s.order_index)
+
+        next_step = self._get_next_step(steps, current_phase)
+        return next_step.name if next_step else None
 
     async def approve_phase(
         self,
@@ -148,7 +218,9 @@ class WorkflowService:
                 await db_sess.commit()
 
         # 다음 phase로 전환
-        next_phase = await self.get_next_phase(current_phase)
+        next_phase = await self.get_next_phase(
+            current_phase, session_id, session_manager
+        )
         if next_phase:
             await session_manager.update_settings(
                 session_id,
@@ -163,10 +235,10 @@ class WorkflowService:
             )
             return {"approved_phase": current_phase, "next_phase": next_phase}
         else:
-            # implement 완료 → 워크플로우 완료 상태로 전환
+            # 마지막 단계 완료 → 워크플로우 완료
             await session_manager.update_settings(
                 session_id,
-                workflow_phase="implement",
+                workflow_phase=current_phase,
                 workflow_phase_status="completed",
             )
             logger.info("워크플로우 완료: session=%s", session_id)
@@ -363,109 +435,119 @@ class WorkflowService:
     # ─── Phase별 프롬프트 컨텍스트 ───
 
     async def build_phase_context(
-        self, session_id: str, workflow_phase: str, user_prompt: str
+        self,
+        session_id: str,
+        workflow_phase: str,
+        user_prompt: str,
+        session_manager=None,
     ) -> str:
-        """Phase별 컨텍스트 프롬프트를 구성하여 반환."""
-        if workflow_phase == "research":
-            return (
-                "## 지시사항\n"
-                "아래 요청에 대해 코드베이스를 깊이 탐색하고 **분석 결과만** 마크다운으로 정리하세요.\n\n"
-                "### 분석 항목\n"
-                "- 관련 파일 및 함수 목록\n"
-                "- 현재 코드의 동작 방식과 데이터 흐름\n"
-                "- 아키텍처 패턴 및 의존성 관계\n"
-                "- 현재 구현의 제약사항이나 주의점\n\n"
-                "### 금지 사항\n"
-                "- **구현 계획, 변경 제안, 해결 방안을 작성하지 마세요.**\n"
-                "- **코드를 수정하거나 구현하지 마세요.**\n"
-                "- 계획 작성은 다음 단계(Plan)에서 별도로 수행됩니다.\n"
-                "- 이 단계에서는 현재 상태의 분석과 발견 사항만 보고하세요.\n\n"
-                f"## 요청\n{user_prompt}"
-            )
+        """Phase별 컨텍스트 프롬프트를 구성하여 반환.
 
-        if workflow_phase == "plan":
-            # 이전 research 아티팩트 내용 주입
-            research_context = ""
+        definition의 step.prompt_template에 {user_prompt}와 {previous_artifact}를 치환.
+        """
+        # definition에서 steps 로드
+        if session_manager:
+            steps = await self._get_steps(session_id, session_manager)
+        else:
+            steps = await self._get_steps_from_db(session_id)
+
+        current_step = self._get_step(steps, workflow_phase)
+        if not current_step or not current_step.prompt_template:
+            return user_prompt
+
+        # 직전 단계의 approved 아티팩트 가져오기
+        previous_artifact = ""
+        current_idx = next(
+            (i for i, s in enumerate(steps) if s.name == workflow_phase), -1
+        )
+        if current_idx > 0:
+            prev_step = steps[current_idx - 1]
             async with self._db.session() as db_sess:
                 repo = SessionArtifactRepository(db_sess)
-                research_artifact = await repo.get_latest_by_phase(
-                    session_id, "research"
+                artifact = await repo.get_latest_by_phase(
+                    session_id, prev_step.name
                 )
-                if research_artifact and research_artifact.status == "approved":
-                    # 주석이 있으면 annotated 버전 사용
+                if artifact and artifact.status == "approved":
                     ann_repo = ArtifactAnnotationRepository(db_sess)
-                    pending = await ann_repo.list_pending(research_artifact.id)
+                    pending = await ann_repo.list_pending(artifact.id)
                     if pending:
-                        research_context = await self.render_annotated_content(
-                            research_artifact.id
-                        )
+                        content = await self.render_annotated_content(artifact.id)
                     else:
-                        research_context = research_artifact.content
+                        content = artifact.content
+                    previous_artifact = (
+                        f"## {prev_step.label} 결과 ({prev_step.name}.md)\n{content}"
+                    )
 
-            parts = []
-            if research_context:
-                parts.append(f"## 연구 결과 (research.md)\n{research_context}")
-            parts.append(
-                "## 지시사항\n"
-                "위 연구 결과를 바탕으로 상세한 구현 계획을 마크다운으로 작성하세요.\n"
-                "변경할 파일, 구체적인 코드 변경 내용, 순서를 명시하세요.\n"
-                "**중요: 아직 코드를 수정하거나 구현하지 마세요.**\n\n"
-                f"## 요청\n{user_prompt}"
-            )
-            return "\n\n".join(parts)
-
-        if workflow_phase == "implement":
-            # 이전 plan 아티팩트 내용 주입
-            plan_context = ""
-            async with self._db.session() as db_sess:
-                repo = SessionArtifactRepository(db_sess)
-                plan_artifact = await repo.get_latest_by_phase(session_id, "plan")
-                if plan_artifact and plan_artifact.status == "approved":
-                    plan_context = plan_artifact.content
-
-            parts = []
-            if plan_context:
-                parts.append(f"## 구현 계획 (plan.md)\n{plan_context}")
-            parts.append(
-                "## 지시사항\n"
-                "위 계획에 따라 구현하세요. 모든 단계가 완료될 때까지 멈추지 마세요.\n"
-                "구현 후 빌드/린트 검증까지 수행하세요.\n\n"
-                f"## 요청\n{user_prompt}"
-            )
-            return "\n\n".join(parts)
-
-        # 알 수 없는 phase → 원본 프롬프트 반환
-        return user_prompt
+        return current_step.prompt_template.format(
+            user_prompt=user_prompt,
+            previous_artifact=previous_artifact,
+        )
 
     async def build_revision_context(
-        self, session_id: str, original_prompt: str, feedback: str
+        self,
+        session_id: str,
+        original_prompt: str,
+        feedback: str,
+        session_manager=None,
     ) -> str:
-        """Plan 수정 요청 시 컨텍스트 구성: 이전 plan + 주석 + 피드백 + 원본 요구사항."""
+        """수정 요청 시 컨텍스트 구성: 이전 아티팩트들 + 주석 + 피드백 + 원본 요구사항."""
         parts: list[str] = []
+
+        # definition에서 steps 로드
+        if session_manager:
+            steps = await self._get_steps(session_id, session_manager)
+            session_data = await session_manager.get(session_id)
+            current_phase = (
+                session_data.get("workflow_phase") if session_data else None
+            )
+        else:
+            steps = await self._get_steps_from_db(session_id)
+            from app.repositories.session_repo import SessionRepository
+
+            async with self._db.session() as db_sess:
+                repo = SessionRepository(db_sess)
+                session_entity = await repo.get_by_id(session_id)
+                current_phase = (
+                    session_entity.workflow_phase if session_entity else None
+                )
 
         async with self._db.session() as db_sess:
             repo = SessionArtifactRepository(db_sess)
 
-            # Research 결과 주입
-            research = await repo.get_latest_by_phase(session_id, "research")
-            if research:
-                parts.append(f"## 연구 결과 (research.md)\n{research.content}")
+            # 현재 step 이전의 모든 approved 아티팩트 수집
+            for step in steps:
+                if step.name == current_phase:
+                    break
+                artifact = await repo.get_latest_by_phase(session_id, step.name)
+                if artifact:
+                    parts.append(
+                        f"## {step.label} 결과 ({step.name}.md)\n{artifact.content}"
+                    )
 
-            # 이전 Plan (superseded) 내용 + 주석
-            plan = await repo.get_latest_by_phase(session_id, "plan")
-            if plan:
-                ann_repo = ArtifactAnnotationRepository(db_sess)
-                pending = await ann_repo.list_pending(plan.id)
-                if pending:
-                    annotated = await self.render_annotated_content(plan.id)
-                    parts.append(f"## 이전 계획 (수정 필요)\n{annotated}")
-                else:
-                    parts.append(f"## 이전 계획 (수정 필요)\n{plan.content}")
+            # 현재 step의 아티팩트 + 주석
+            if current_phase:
+                current_artifact = await repo.get_latest_by_phase(
+                    session_id, current_phase
+                )
+                if current_artifact:
+                    ann_repo = ArtifactAnnotationRepository(db_sess)
+                    pending = await ann_repo.list_pending(current_artifact.id)
+                    current_step = self._get_step(steps, current_phase)
+                    label = current_step.label if current_step else current_phase
+                    if pending:
+                        annotated = await self.render_annotated_content(
+                            current_artifact.id
+                        )
+                        parts.append(f"## 이전 {label} (수정 필요)\n{annotated}")
+                    else:
+                        parts.append(
+                            f"## 이전 {label} (수정 필요)\n{current_artifact.content}"
+                        )
 
         parts.append(f"## 수정 요청 피드백\n{feedback}")
         parts.append(
             "## 지시사항\n"
-            "위 피드백과 주석을 반영하여 구현 계획을 **수정**하세요.\n"
+            "위 피드백과 주석을 반영하여 결과물을 **수정**하세요.\n"
             "변경할 파일, 구체적인 코드 변경 내용, 순서를 명시하세요.\n"
             "**중요: 아직 코드를 수정하거나 구현하지 마세요.**\n\n"
             f"## 원본 요청\n{original_prompt}"

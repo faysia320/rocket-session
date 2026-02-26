@@ -114,6 +114,7 @@ class ClaudeRunner:
         session_id: str,
         images: list[str] | None = None,
         workflow_phase: str | None = None,
+        workflow_step_config: dict | None = None,
     ) -> tuple[list[str], str | None, Path | None]:
         """CLI 커맨드를 구성하고, (cmd, system_prompt, mcp_config_path)를 반환."""
         cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose"]
@@ -126,13 +127,23 @@ class ClaudeRunner:
         system_prompt = session.get("system_prompt")
         mcp_config_path = None
 
-        # 워크플로우 phase 기반 동작
-        if workflow_phase in ("research", "plan"):
-            # 읽기 전용: --permission-mode plan + 제한된 도구
+        # 워크플로우 phase 기반 동작 (definition의 step constraints 사용)
+        if workflow_phase and workflow_step_config:
+            constraints = workflow_step_config.get("constraints", "readonly")
+            if constraints == "full":
+                pass  # 전체 도구 허용
+            elif constraints == "readonly":
+                cmd.extend(["--permission-mode", "plan"])
+                allowed_tools = READONLY_TOOLS
+            else:
+                # 커스텀 도구 목록
+                cmd.extend(["--permission-mode", "plan"])
+                allowed_tools = constraints
+        elif workflow_phase in ("research", "plan"):
+            # 하위 호환: step_config 없이 호출된 경우
             cmd.extend(["--permission-mode", "plan"])
             allowed_tools = READONLY_TOOLS
         elif workflow_phase == "implement":
-            # 전체 도구 허용 (기존 allowed_tools 유지)
             pass
         elif not session.get("workflow_enabled"):
             # 비워크플로우 세션: 읽기전용 (분석/검색만 허용)
@@ -140,7 +151,6 @@ class ClaudeRunner:
             allowed_tools = READONLY_TOOLS
         elif session.get("permission_mode"):
             # Permission MCP는 _setup_mcp_config에서 통합 처리됨
-            # permission_required_tools에 해당하는 도구는 allowedTools에서 제외
             required = session.get("permission_required_tools") or []
             if required and allowed_tools:
                 tool_list = [t.strip() for t in allowed_tools.split(",")]
@@ -772,6 +782,7 @@ class ClaudeRunner:
         workflow_phase: str | None = None,
         workflow_service=None,
         original_prompt: str | None = None,
+        workflow_step_config: dict | None = None,
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
         await session_manager.update_status(session_id, SessionStatus.RUNNING)
@@ -789,6 +800,7 @@ class ClaudeRunner:
             session_id,
             images,
             workflow_phase,
+            workflow_step_config,
         )
 
         # MCP config 통합: 사용자 MCP 서버 + Permission MCP 병합
@@ -943,83 +955,13 @@ class ClaudeRunner:
             ws_manager.clear_buffer(session_id)
             self._cleanup_mcp_config(mcp_config_path)
 
-            # 워크플로우: research 완료 → 아티팩트 저장 + Plan 자동 체이닝
+            # 워크플로우 완료 처리 (모든 phase 공통 — definition 기반)
             if (
-                workflow_phase == "research"
+                workflow_phase
                 and workflow_service
                 and turn_state.get("result_received")
                 and not turn_state.get("is_error")
             ):
-                result_text = turn_state.get("text", "")
-                if result_text:
-                    try:
-                        # 1) Research 아티팩트 저장
-                        await workflow_service.create_artifact(
-                            session_id=session_id,
-                            phase="research",
-                            content=result_text,
-                        )
-                        # 2) Research 자동 승인 + Plan 전환
-                        await workflow_service.approve_phase(
-                            session_id, session_manager=session_manager
-                        )
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {
-                                "type": WsEventType.WORKFLOW_PHASE_APPROVED,
-                                "phase": "research",
-                                "next_phase": "plan",
-                            },
-                        )
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {
-                                "type": WsEventType.WORKFLOW_AUTO_CHAIN,
-                                "from_phase": "research",
-                                "to_phase": "plan",
-                            },
-                        )
-                        # 3) Plan 자동 실행
-                        raw_prompt = original_prompt or prompt
-                        plan_context = await workflow_service.build_phase_context(
-                            session_id, "plan", raw_prompt
-                        )
-                        updated = await session_manager.get(session_id)
-                        plan_task = asyncio.create_task(
-                            self.run(
-                                updated,
-                                plan_context,
-                                allowed_tools,
-                                session_id,
-                                ws_manager,
-                                session_manager,
-                                mcp_service=mcp_service,
-                                workflow_phase="plan",
-                                workflow_service=workflow_service,
-                                original_prompt=raw_prompt,
-                            )
-                        )
-                        plan_task.add_done_callback(
-                            lambda t: _auto_chain_done(
-                                t, session_id, session_manager
-                            )
-                        )
-                        session_manager.set_runner_task(session_id, plan_task)
-                    except Exception:
-                        logger.warning(
-                            "세션 %s: Research→Plan 자동 체이닝 실패",
-                            session_id,
-                            exc_info=True,
-                        )
-
-            # 워크플로우: plan 완료 → 아티팩트 저장 + awaiting_approval
-            elif (
-                workflow_phase == "plan"
-                and workflow_service
-                and turn_state.get("result_received")
-                and not turn_state.get("is_error")
-            ):
-                # ExitPlanMode의 상세 플랜이 있으면 우선 사용, 없으면 result_text 폴백
                 result_text = (
                     turn_state.get("exit_plan_content")
                     or turn_state.get("result_text")
@@ -1029,64 +971,158 @@ class ClaudeRunner:
                     try:
                         await workflow_service.create_artifact(
                             session_id=session_id,
-                            phase="plan",
+                            phase=workflow_phase,
                             content=result_text,
                         )
+                    except Exception:
+                        logger.warning(
+                            "세션 %s: %s 아티팩트 저장 실패",
+                            session_id,
+                            workflow_phase,
+                            exc_info=True,
+                        )
+
+                # step config로 후속 동작 결정
+                step = workflow_step_config or {}
+                auto_advance = step.get("auto_advance", False)
+                review_required = step.get("review_required", False)
+                next_phase = await workflow_service.get_next_phase(
+                    workflow_phase, session_id, session_manager
+                )
+
+                if auto_advance and next_phase:
+                    # 자동 승인 + 다음 phase 자동 실행
+                    try:
+                        await workflow_service.approve_phase(
+                            session_id, session_manager=session_manager
+                        )
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {
+                                "type": WsEventType.WORKFLOW_PHASE_APPROVED,
+                                "phase": workflow_phase,
+                                "next_phase": next_phase,
+                            },
+                        )
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {
+                                "type": WsEventType.WORKFLOW_AUTO_CHAIN,
+                                "from_phase": workflow_phase,
+                                "to_phase": next_phase,
+                            },
+                        )
+                        raw_prompt = original_prompt or prompt
+                        next_context = await workflow_service.build_phase_context(
+                            session_id, next_phase, raw_prompt,
+                            session_manager=session_manager,
+                        )
+                        # 다음 step config 로드
+                        next_steps = await workflow_service._get_steps(
+                            session_id, session_manager
+                        )
+                        next_step_config = next(
+                            (s for s in next_steps if s.name == next_phase), None
+                        )
+                        updated = await session_manager.get(session_id)
+                        chain_task = asyncio.create_task(
+                            self.run(
+                                updated,
+                                next_context,
+                                allowed_tools,
+                                session_id,
+                                ws_manager,
+                                session_manager,
+                                mcp_service=mcp_service,
+                                workflow_phase=next_phase,
+                                workflow_service=workflow_service,
+                                original_prompt=raw_prompt,
+                                workflow_step_config=(
+                                    next_step_config.model_dump()
+                                    if next_step_config
+                                    else None
+                                ),
+                            )
+                        )
+                        chain_task.add_done_callback(
+                            lambda t: _auto_chain_done(
+                                t, session_id, session_manager
+                            )
+                        )
+                        session_manager.set_runner_task(session_id, chain_task)
+                    except Exception:
+                        logger.warning(
+                            "세션 %s: %s→%s 자동 체이닝 실패",
+                            session_id,
+                            workflow_phase,
+                            next_phase,
+                            exc_info=True,
+                        )
+
+                elif review_required and next_phase:
+                    # 사용자 승인 대기
+                    try:
                         await session_manager.update_settings(
-                            session_id, workflow_phase_status="awaiting_approval"
+                            session_id,
+                            workflow_phase_status="awaiting_approval",
                         )
                         await ws_manager.broadcast_event(
                             session_id,
                             {
                                 "type": WsEventType.WORKFLOW_PHASE_COMPLETED,
-                                "phase": "plan",
+                                "phase": workflow_phase,
                             },
                         )
                     except Exception:
                         logger.warning(
-                            "세션 %s: Plan 아티팩트 저장 실패",
+                            "세션 %s: %s phase 완료 처리 실패",
+                            session_id,
+                            workflow_phase,
+                            exc_info=True,
+                        )
+
+                elif not next_phase:
+                    # 마지막 단계 완료 → 워크플로우 종료
+                    try:
+                        await session_manager.update_settings(
+                            session_id,
+                            workflow_phase=workflow_phase,
+                            workflow_phase_status="completed",
+                        )
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {"type": WsEventType.WORKFLOW_COMPLETED},
+                        )
+                        logger.info("워크플로우 완료: session=%s", session_id)
+                    except Exception:
+                        logger.warning(
+                            "세션 %s: 워크플로우 완료 처리 실패",
                             session_id,
                             exc_info=True,
                         )
 
-            # 워크플로우: implement 완료 → 아티팩트 저장 + 워크플로우 종료
-            elif (
-                workflow_phase == "implement"
-                and workflow_service
-                and turn_state.get("result_received")
-                and not turn_state.get("is_error")
-            ):
-                result_text = turn_state.get("result_text") or turn_state.get("text", "")
-                if result_text:
+                else:
+                    # auto_advance=false, review_required=false, 다음 phase 있음
+                    # → awaiting_approval 기본 동작
                     try:
-                        await workflow_service.create_artifact(
-                            session_id=session_id,
-                            phase="implement",
-                            content=result_text,
+                        await session_manager.update_settings(
+                            session_id,
+                            workflow_phase_status="awaiting_approval",
+                        )
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {
+                                "type": WsEventType.WORKFLOW_PHASE_COMPLETED,
+                                "phase": workflow_phase,
+                            },
                         )
                     except Exception:
                         logger.warning(
-                            "세션 %s: Implement 아티팩트 저장 실패",
+                            "세션 %s: %s phase 완료 처리 실패",
                             session_id,
+                            workflow_phase,
                             exc_info=True,
                         )
-                try:
-                    await session_manager.update_settings(
-                        session_id,
-                        workflow_phase="implement",
-                        workflow_phase_status="completed",
-                    )
-
-                    await ws_manager.broadcast_event(
-                        session_id, {"type": WsEventType.WORKFLOW_COMPLETED}
-                    )
-                    logger.info("워크플로우 완료: session=%s", session_id)
-                except Exception:
-                    logger.warning(
-                        "세션 %s: 워크플로우 완료 처리 실패",
-                        session_id,
-                        exc_info=True,
-                    )
 
             # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
             try:
