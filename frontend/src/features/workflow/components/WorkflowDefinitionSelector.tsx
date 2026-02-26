@@ -17,19 +17,19 @@ interface WorkflowDefinitionSelectorProps {
 export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefinitionSelectorProps) {
   const { data: definitions, isLoading } = useWorkflowDefinitions();
 
-  // definitions 로드 후, value가 null이면 builtin default 자동 선택
+  // definitions 로드 후, value가 null이면 default 자동 선택
   useEffect(() => {
     if (!value && definitions && definitions.length > 0) {
-      const builtin = definitions.find((d) => d.is_builtin);
-      if (builtin) {
-        onSelect(builtin.id);
+      const defaultDef = definitions.find((d) => d.is_default);
+      if (defaultDef) {
+        onSelect(defaultDef.id);
       }
     }
   }, [value, definitions, onSelect]);
 
   const sortedDefinitions = useMemo(() => {
     if (!definitions) return [];
-    return [...definitions].sort((a, b) => Number(b.is_builtin) - Number(a.is_builtin));
+    return [...definitions].sort((a, b) => Number(b.is_default) - Number(a.is_default));
   }, [definitions]);
 
   const handleChange = (val: string) => {

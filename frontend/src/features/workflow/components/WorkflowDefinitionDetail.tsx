@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Pencil, Download, Trash2, Save, X, FileText } from "lucide-react";
+import { Pencil, Download, Trash2, Save, X, FileText, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ interface WorkflowDefinitionDetailProps {
   onSave: (data: { name: string; description?: string; steps: WorkflowStepConfig[] }) => void;
   onExport: () => void;
   onDelete: () => void;
+  onSetDefault: () => void;
   onCancelCreate?: () => void;
 }
 
@@ -41,6 +42,7 @@ export function WorkflowDefinitionDetail({
   onSave,
   onExport,
   onDelete,
+  onSetDefault,
   onCancelCreate,
 }: WorkflowDefinitionDetailProps) {
   const [isEditing, setIsEditing] = useState(isCreating);
@@ -114,8 +116,6 @@ export function WorkflowDefinitionDetail({
     );
   }
 
-  const isBuiltin = definition?.is_builtin ?? false;
-
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* 액션 바 */}
@@ -123,9 +123,9 @@ export function WorkflowDefinitionDetail({
         <span className="font-mono text-sm font-semibold text-foreground truncate">
           {isCreating ? "새 정의" : definition?.name}
         </span>
-        {isBuiltin ? (
-          <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 shrink-0">
-            기본 제공
+        {definition?.is_default ? (
+          <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 shrink-0 text-primary border-primary/30">
+            Default
           </Badge>
         ) : null}
 
@@ -154,22 +154,36 @@ export function WorkflowDefinitionDetail({
           </>
         ) : (
           <>
-            {!isBuiltin ? (
+            {!definition?.is_default ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => setIsEditing(true)}
-                    aria-label="수정"
+                    onClick={onSetDefault}
+                    aria-label="기본으로 설정"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Star className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="font-mono text-xs">수정</TooltipContent>
+                <TooltipContent className="font-mono text-xs">기본으로 설정</TooltipContent>
               </Tooltip>
             ) : null}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setIsEditing(true)}
+                  aria-label="수정"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">수정</TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -184,22 +198,20 @@ export function WorkflowDefinitionDetail({
               </TooltipTrigger>
               <TooltipContent className="font-mono text-xs">내보내기</TooltipContent>
             </Tooltip>
-            {!isBuiltin ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive/60 hover:text-destructive"
-                    onClick={onDelete}
-                    aria-label="삭제"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="font-mono text-xs">삭제</TooltipContent>
-              </Tooltip>
-            ) : null}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive/60 hover:text-destructive"
+                  onClick={onDelete}
+                  aria-label="삭제"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="font-mono text-xs">삭제</TooltipContent>
+            </Tooltip>
           </>
         )}
       </div>

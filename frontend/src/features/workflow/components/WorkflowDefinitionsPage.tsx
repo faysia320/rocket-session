@@ -15,6 +15,7 @@ import {
   useImportWorkflowDefinition,
   useCreateWorkflowDefinition,
   useUpdateWorkflowDefinition,
+  useSetDefaultWorkflowDefinition,
 } from "../hooks/useWorkflowDefinitions";
 import { workflowDefinitionApi } from "@/lib/api/workflowDefinition.api";
 import { WorkflowDefinitionList } from "./WorkflowDefinitionList";
@@ -30,6 +31,7 @@ export function WorkflowDefinitionsPage() {
   const importMutation = useImportWorkflowDefinition();
   const createMutation = useCreateWorkflowDefinition();
   const updateMutation = useUpdateWorkflowDefinition();
+  const setDefaultMutation = useSetDefaultWorkflowDefinition();
   const isMobile = useIsMobile();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export function WorkflowDefinitionsPage() {
 
   const readyDefinitions = useMemo(() => {
     if (!definitions) return [];
-    return [...definitions].sort((a, b) => Number(b.is_builtin) - Number(a.is_builtin));
+    return [...definitions].sort((a, b) => Number(b.is_default) - Number(a.is_default));
   }, [definitions]);
 
   const selectedDefinition = useMemo(
@@ -96,7 +98,7 @@ export function WorkflowDefinitionsPage() {
   }, [selectedDefinition]);
 
   const handleDelete = useCallback(() => {
-    if (!selectedDefinition || selectedDefinition.is_builtin) return;
+    if (!selectedDefinition) return;
     deleteMutation.mutate(selectedDefinition.id, {
       onSuccess: () => {
         if (selectedId === selectedDefinition.id) {
@@ -105,6 +107,11 @@ export function WorkflowDefinitionsPage() {
       },
     });
   }, [selectedDefinition, selectedId, deleteMutation]);
+
+  const handleSetDefault = useCallback(() => {
+    if (!selectedDefinition) return;
+    setDefaultMutation.mutate(selectedDefinition.id);
+  }, [selectedDefinition, setDefaultMutation]);
 
   const handleImport = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,6 +185,7 @@ export function WorkflowDefinitionsPage() {
               onSave={handleSave}
               onExport={handleExport}
               onDelete={handleDelete}
+              onSetDefault={handleSetDefault}
               onCancelCreate={handleCancelCreate}
             />
           </div>

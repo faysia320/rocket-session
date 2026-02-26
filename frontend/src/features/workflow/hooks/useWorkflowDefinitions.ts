@@ -85,6 +85,23 @@ export function useDeleteWorkflowDefinition() {
   });
 }
 
+export function useSetDefaultWorkflowDefinition() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => workflowDefinitionApi.setDefault(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: workflowDefinitionKeys.all,
+      });
+      toast.success("기본 워크플로우가 설정되었습니다");
+    },
+    onError: () => {
+      toast.error("기본 워크플로우 설정에 실패했습니다");
+    },
+  });
+}
+
 export function useImportWorkflowDefinition() {
   const queryClient = useQueryClient();
 

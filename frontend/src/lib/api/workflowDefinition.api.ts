@@ -25,4 +25,7 @@ export const workflowDefinitionApi = {
 
   import: (data: WorkflowDefinitionExport) =>
     api.post<WorkflowDefinitionInfo>(`${BASE}/import`, data),
+
+  setDefault: (id: string) =>
+    api.post<WorkflowDefinitionInfo>(`${BASE}/${id}/set-default`),
 };
