@@ -27,10 +27,8 @@ interface SessionSetupPanelProps {
     workDir?: string,
     options?: {
       system_prompt?: string;
-      timeout_seconds?: number;
       template_id?: string;
       additional_dirs?: string[];
-      fallback_model?: string;
       worktree_name?: string;
       workflow_enabled?: boolean;
       workflow_definition_id?: string;
@@ -43,13 +41,11 @@ interface SessionSetupPanelProps {
 
 export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps) {
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [creating, setCreating] = useState(false);
   const [useWorktree, setUseWorktree] = useState(false);
   const [worktreeName, setWorktreeName] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [additionalWorkspaceIds, setAdditionalWorkspaceIds] = useState<string[]>([]);
-  const [fallbackModel, setFallbackModel] = useState("");
   const [workflowEnabled, setWorkflowEnabled] = useState(true);
   const [workflowDefinitionId, setWorkflowDefinitionId] = useState<string | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
@@ -93,12 +89,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
     if (template.system_prompt) {
       setSystemPrompt(template.system_prompt);
     }
-    if (template.timeout_seconds) {
-      setTimeoutMinutes(String(template.timeout_seconds / 60));
-    }
-    if (template.fallback_model) {
-      setFallbackModel(template.fallback_model);
-    }
   };
 
   const handleCreate = async () => {
@@ -106,10 +96,8 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
     try {
       const options: {
         system_prompt?: string;
-        timeout_seconds?: number;
         template_id?: string;
         additional_dirs?: string[];
-        fallback_model?: string;
         worktree_name?: string;
         workflow_enabled?: boolean;
         workflow_definition_id?: string;
@@ -118,9 +106,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       } = {};
       if (systemPrompt.trim()) {
         options.system_prompt = systemPrompt.trim();
-      }
-      if (timeoutMinutes && Number(timeoutMinutes) > 0) {
-        options.timeout_seconds = Number(timeoutMinutes) * 60;
       }
       if (selectedTemplateId) {
         options.template_id = selectedTemplateId;
@@ -131,9 +116,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         .filter(Boolean) as string[];
       if (additionalPaths.length > 0) {
         options.additional_dirs = additionalPaths;
-      }
-      if (fallbackModel.trim()) {
-        options.fallback_model = fallbackModel.trim();
       }
       if (useWorktree && worktreeName.trim()) {
         options.worktree_name = worktreeName.trim();
@@ -318,22 +300,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           </Button>
         </div>
 
-        {/* Fallback Model */}
-        <div className="space-y-2">
-          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-            FALLBACK MODEL
-          </Label>
-          <p className="font-mono text-2xs text-muted-foreground/70">
-            메인 모델 사용 불가 시 대체할 모델입니다. (--fallback-model 플래그)
-          </p>
-          <Input
-            className="font-mono text-xs bg-input border-border"
-            placeholder="예: claude-sonnet-4-20250514"
-            value={fallbackModel}
-            onChange={(e) => setFallbackModel(e.target.value)}
-          />
-        </div>
-
         {/* Workflow Mode */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -370,24 +336,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             placeholder="예: 모든 코드에 한국어 주석을 달아주세요."
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
-          />
-        </div>
-
-        {/* Timeout */}
-        <div className="space-y-2">
-          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-            TIMEOUT (분)
-          </Label>
-          <p className="font-mono text-2xs text-muted-foreground/70">
-            프로세스 최대 실행 시간. 비워두면 무제한입니다.
-          </p>
-          <Input
-            className="font-mono text-xs bg-input border-border w-28"
-            type="number"
-            min="1"
-            placeholder="없음"
-            value={timeoutMinutes}
-            onChange={(e) => setTimeoutMinutes(e.target.value)}
           />
         </div>
 

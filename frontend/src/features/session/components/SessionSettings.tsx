@@ -35,7 +35,6 @@ export function SessionSettings({
   portalContainer,
 }: SessionSettingsProps) {
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [timeoutMinutes, setTimeoutMinutes] = useState("");
   const [permissionMode, setPermissionMode] = useState(false);
   const [permissionTools, setPermissionTools] = useState<string[]>([]);
   const [model, setModel] = useState("");
@@ -43,7 +42,6 @@ export function SessionSettings({
   const [disallowedTools, setDisallowedTools] = useState<string[]>([]);
   const [mcpServerIds, setMcpServerIds] = useState<string[]>([]);
   const [additionalWorkspaceIds, setAdditionalWorkspaceIds] = useState<string[]>([]);
-  const [fallbackModel, setFallbackModel] = useState("");
   const [saving, setSaving] = useState(false);
 
   const { data: workspaces } = useWorkspaces();
@@ -52,7 +50,6 @@ export function SessionSettings({
     try {
       const s = await sessionsApi.get(sessionId);
       setSystemPrompt(s.system_prompt ?? "");
-      setTimeoutMinutes(s.timeout_seconds ? String(Math.round(s.timeout_seconds / 60)) : "");
       setPermissionMode(s.permission_mode ?? false);
       setPermissionTools(s.permission_required_tools ?? []);
       setModel(s.model ?? "");
@@ -61,7 +58,6 @@ export function SessionSettings({
         s.disallowed_tools ? s.disallowed_tools.split(",").map((t) => t.trim()) : [],
       );
       setMcpServerIds(s.mcp_server_ids ?? []);
-      setFallbackModel(s.fallback_model ?? "");
 
       // additional_dirs(경로)를 워크스페이스 ID로 역매칭
       if (s.additional_dirs && s.additional_dirs.length > 0 && workspaces) {
@@ -93,8 +89,6 @@ export function SessionSettings({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const timeoutSec = timeoutMinutes ? Number(timeoutMinutes) * 60 : null;
-
       // 워크스페이스 ID → local_path 변환
       const additionalDirPaths = additionalWorkspaceIds
         .map((wsId) => {
@@ -105,7 +99,6 @@ export function SessionSettings({
 
       await sessionsApi.update(sessionId, {
         system_prompt: systemPrompt || null,
-        timeout_seconds: timeoutSec,
         permission_mode: permissionMode,
         permission_required_tools:
           permissionMode && permissionTools.length > 0 ? permissionTools : null,
@@ -114,7 +107,6 @@ export function SessionSettings({
         disallowed_tools: disallowedTools.length > 0 ? disallowedTools.join(",") : null,
         mcp_server_ids: mcpServerIds.length > 0 ? mcpServerIds : null,
         additional_dirs: additionalDirPaths.length > 0 ? additionalDirPaths : null,
-        fallback_model: fallbackModel || null,
       });
       toast.success("설정이 저장되었습니다.");
       onOpenChange(false);
@@ -164,22 +156,6 @@ export function SessionSettings({
                 <option value="sonnet">Sonnet</option>
                 <option value="haiku">Haiku</option>
               </select>
-            </div>
-
-            {/* Fallback Model */}
-            <div className="space-y-2">
-              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                FALLBACK MODEL
-              </Label>
-              <p className="font-mono text-2xs text-muted-foreground/70">
-                기본 모델 사용 불가 시 대체 모델입니다.
-              </p>
-              <Input
-                className="font-mono text-xs bg-input border-border"
-                placeholder="예: claude-sonnet-4-20250514"
-                value={fallbackModel}
-                onChange={(e) => setFallbackModel(e.target.value)}
-              />
             </div>
 
             {/* Additional Workspaces */}
@@ -329,24 +305,6 @@ export function SessionSettings({
 
             {/* MCP Servers */}
             <McpServerSelector selectedIds={mcpServerIds} onChange={setMcpServerIds} />
-
-            {/* 타임아웃 */}
-            <div className="space-y-2">
-              <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-                TIMEOUT (분)
-              </Label>
-              <p className="font-mono text-2xs text-muted-foreground/70">
-                프로세스 최대 실행 시간. 비워두면 무제한입니다.
-              </p>
-              <Input
-                className="font-mono text-xs bg-input border-border w-24"
-                type="number"
-                min="1"
-                placeholder="없음"
-                value={timeoutMinutes}
-                onChange={(e) => setTimeoutMinutes(e.target.value)}
-              />
-            </div>
           </div>
         </div>
 

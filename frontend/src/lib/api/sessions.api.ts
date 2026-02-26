@@ -39,10 +39,8 @@ export const sessionsApi = {
     workDir?: string,
     options?: {
       system_prompt?: string;
-      timeout_seconds?: number;
       template_id?: string;
       additional_dirs?: string[];
-      fallback_model?: string;
       worktree_name?: string;
       workspace_id?: string;
       workflow_enabled?: boolean;

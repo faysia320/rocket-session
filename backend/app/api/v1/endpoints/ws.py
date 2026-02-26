@@ -210,6 +210,7 @@ async def _handle_prompt(
             "system_prompt_mode",
             "disallowed_tools",
             "mcp_server_ids",
+            "fallback_model",
         ]:
             if not merged_session.get(key) and global_settings.get(key):
                 merged_session[key] = global_settings[key]
