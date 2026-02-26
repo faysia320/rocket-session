@@ -83,7 +83,6 @@
   - 사용량 추적 (5시간 블록 + 주간, ccusage 연동)
   - 디렉토리 탐색 + Git 워크트리 관리
   - MCP 서버 관리 (설정, 활성화/비활성화, 세션별 연결)
-  - 세션 템플릿 (자주 사용하는 설정 저장/재사용)
   - 세션 태그 (태그로 세션 분류/필터링)
   - 분석 대시보드 (토큰, 비용, 모델별 통계)
   - 명령 팔레트 (Ctrl+K, 세션/Git/채팅 빠른 명령)
@@ -164,7 +163,7 @@ rocket-session/
 │   │   │           ├── ws.py         # WebSocket 엔드포인트
 │   │   │           ├── settings.py   # 글로벌 설정
 │   │   │           ├── mcp.py        # MCP 서버 관리
-│   │   │           ├── templates.py  # 세션 템플릿
+
 │   │   │           ├── tags.py       # 세션 태그
 │   │   │           ├── analytics.py  # 분석 데이터
 │   │   │           ├── workflow.py   # 워크플로우 관리
@@ -181,7 +180,7 @@ rocket-session/
 │   │   │   ├── global_settings.py    # GlobalSettings ORM 모델
 │   │   │   ├── mcp_server.py         # McpServer ORM 모델
 │   │   │   ├── tag.py                # Tag + SessionTag ORM 모델
-│   │   │   ├── template.py           # SessionTemplate ORM 모델
+
 │   │   │   ├── workspace.py         # Workspace ORM 모델
 │   │   │   ├── team.py              # Team ORM 모델
 │   │   │   ├── team_message.py      # TeamMessage ORM 모델
@@ -195,7 +194,7 @@ rocket-session/
 │   │   │   ├── settings_repo.py      # SettingsRepository
 │   │   │   ├── mcp_server_repo.py    # McpServerRepository
 │   │   │   ├── tag_repo.py           # TagRepository
-│   │   │   ├── template_repo.py      # TemplateRepository
+
 │   │   │   ├── search_repo.py        # SearchRepository
 │   │   │   ├── analytics_repo.py     # AnalyticsRepository
 │   │   │   ├── artifact_repo.py      # ArtifactRepository
@@ -211,7 +210,7 @@ rocket-session/
 │   │   │   ├── local_session.py      # 로컬 세션 스키마
 │   │   │   ├── settings.py           # 글로벌 설정 스키마
 │   │   │   ├── mcp.py               # MCP 서버 스키마
-│   │   │   ├── template.py           # 템플릿 스키마
+
 │   │   │   ├── tag.py                # 태그 스키마
 │   │   │   ├── analytics.py          # 분석 스키마
 │   │   │   ├── search.py             # 검색 스키마
@@ -226,7 +225,7 @@ rocket-session/
 │   │       ├── local_session_scanner.py # 로컬 세션 스캐너
 │   │       ├── settings_service.py   # 글로벌 설정 관리
 │   │       ├── mcp_service.py        # MCP 서버 관리
-│   │       ├── template_service.py   # 세션 템플릿 관리
+
 │   │       ├── tag_service.py        # 태그 관리
 │   │       ├── search_service.py     # 전문 검색 (TSVECTOR)
 │   │       ├── analytics_service.py  # 분석 데이터 집계
@@ -272,7 +271,7 @@ rocket-session/
 │   │   │   ├── settings.ts           # 설정 타입
 │   │   │   ├── notification.ts       # 알림 타입
 │   │   │   ├── analytics.ts           # 분석 타입
-│   │   │   ├── template.ts            # 템플릿 타입
+
 │   │   │   ├── workspace.ts           # 워크스페이스 타입
 │   │   │   ├── team.ts                # 팀 타입
 │   │   │   ├── ws-events.ts           # WebSocket 이벤트 타입
@@ -330,7 +329,7 @@ rocket-session/
 │   │   │   ├── workspace/             # 워크스페이스 관리
 │   │   │   ├── team/                  # 팀 채팅
 │   │   │   ├── tags/                  # 태그 관리
-│   │   │   └── template/              # 세션 템플릿
+
 │   │   └── lib/
 │   │       ├── utils.ts              # cn() 유틸리티 (clsx + tailwind-merge)
 │   │       └── api/                  # ApiClient + 도메인별 API 함수
@@ -371,14 +370,14 @@ rocket-session/
 ┌─────────────────────────────────────────────────────────────┐
 │                  API Layer (FastAPI)                         │
 │  Sessions · Files · Filesystem · Usage · Permissions · WS   │
-│  Settings · MCP · Templates · Tags · Analytics · Workflow    │
+│  Settings · MCP · Tags · Analytics · Workflow                │
 └─────────────────────────────────────────────────────────────┘
                     │
 ┌─────────────────────────────────────────────────────────────┐
 │                  Service Layer                               │
 │  SessionManager / WebSocketManager / ClaudeRunner            │
 │  UsageService / FilesystemService / LocalSessionScanner      │
-│  SettingsService / McpService / TemplateService              │
+│  SettingsService / McpService                                │
 │  TagService / SearchService / AnalyticsService               │
 │  WorkflowService / JsonlWatcher / EventHandler               │
 │  PermissionMCPServer                                         │
@@ -394,7 +393,7 @@ rocket-session/
 │              PostgreSQL (asyncpg + SQLAlchemy ORM)            │
 │  sessions · messages · file_changes · events · workspaces    │
 │  session_artifacts · artifact_annotations                    │
-│  global_settings · mcp_servers · tags · session_templates     │
+│  global_settings · mcp_servers · tags                         │
 │  teams · team_messages · team_tasks                           │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -428,7 +427,6 @@ rocket-session/
 | `PermissionMCPServer` | 도구 사용 승인 요청/응답 MCP 서버 (stdio) | asyncio.Event 기반 대기 |
 | `SettingsService` | 글로벌 기본 설정 관리 | PostgreSQL |
 | `McpService` | MCP 서버 설정 관리 | PostgreSQL |
-| `TemplateService` | 세션 템플릿 CRUD | PostgreSQL |
 | `TagService` | 세션 태그 관리 | PostgreSQL |
 | `SearchService` | 전문 검색 (TSVECTOR) | PostgreSQL |
 | `AnalyticsService` | 세션 분석 데이터 집계 | PostgreSQL |
@@ -685,7 +683,6 @@ get_local_scanner()      # LocalSessionScanner (DB 의존)
 get_usage_service()      # UsageService (Settings 의존)
 get_settings_service()   # SettingsService (DB 의존)
 get_mcp_service()        # McpService (DB 의존)
-get_template_service()   # TemplateService (DB 의존)
 get_tag_service()        # TagService (DB 의존)
 get_search_service()     # SearchService (DB 의존)
 get_analytics_service()  # AnalyticsService (DB 의존)
@@ -948,27 +945,6 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | session_id | String (FK → sessions, PK) | 세션 참조 |
 | tag_id | String (FK → tags, PK) | 태그 참조 |
 | created_at | Text | 생성 시각 |
-
-### session_templates (세션 템플릿)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 템플릿 ID |
-| name | String (unique) | 템플릿 이름 |
-| description | Text | 설명 |
-| work_dir | Text | 작업 디렉토리 |
-| system_prompt | Text | 시스템 프롬프트 |
-| allowed_tools | Text | 허용 도구 |
-| disallowed_tools | Text | 비허용 도구 |
-| timeout_seconds | Integer | 타임아웃 |
-| workflow_enabled | Boolean | 워크플로우 활성화 |
-| permission_mode | Boolean | Permission 모드 |
-| model | String | 모델 |
-| max_turns | Integer | 최대 턴 |
-| max_budget_usd | Float | 예산 한도 |
-| mcp_server_ids | JSONB | MCP 서버 |
-| created_at | Text | 생성 시각 |
-| updated_at | Text | 수정 시각 |
 
 ### teams (팀)
 

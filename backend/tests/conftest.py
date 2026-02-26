@@ -92,7 +92,6 @@ _TRUNCATE_TABLES = [
     "workspaces",
     "mcp_servers",
     "tags",
-    "session_templates",
     "global_settings",
 ]
 

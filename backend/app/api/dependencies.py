@@ -28,7 +28,6 @@ from app.services.team_coordinator import TeamCoordinator
 from app.services.team_message_service import TeamMessageService
 from app.services.team_service import TeamService
 from app.services.team_task_service import TeamTaskService
-from app.services.template_service import TemplateService
 from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
 from app.services.workflow_definition_service import WorkflowDefinitionService
@@ -62,7 +61,6 @@ class ServiceRegistry:
         self.settings_service: SettingsService | None = None
         self.jsonl_watcher: JsonlWatcher | None = None
         self.mcp_service: McpService | None = None
-        self.template_service: TemplateService | None = None
         self.tag_service: TagService | None = None
         self.team_service: TeamService | None = None
         self.team_task_service: TeamTaskService | None = None
@@ -109,7 +107,6 @@ class ServiceRegistry:
         self.claude_runner = ClaudeRunner(settings)
         self.settings_service = SettingsService(self.database)
         self.mcp_service = McpService(self.database)
-        self.template_service = TemplateService(self.database)
         self.tag_service = TagService(self.database)
         self.team_service = TeamService(self.database)
         self.team_task_service = TeamTaskService(self.database)
@@ -241,10 +238,6 @@ def get_jsonl_watcher() -> JsonlWatcher:
 
 def get_mcp_service() -> McpService:
     return _registry._require("mcp_service")
-
-
-def get_template_service() -> TemplateService:
-    return _registry._require("template_service")
 
 
 def get_tag_service() -> TagService:

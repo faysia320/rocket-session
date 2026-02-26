@@ -24,7 +24,6 @@ from app.services.skills_service import SkillsService
 from app.services.mcp_service import McpService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
-from app.services.template_service import TemplateService
 from app.services.websocket_manager import WebSocketManager
 from app.services.workspace_service import WorkspaceService
 from tests.conftest import _TEST_DB_URL
@@ -79,7 +78,6 @@ async def test_client():
     cr = ClaudeRunner(test_settings)
     ss = SettingsService(db)
     ms = McpService(db)
-    ts = TemplateService(db)
 
     # Override dependencies
     app.dependency_overrides[deps.get_database] = lambda: db
@@ -89,7 +87,6 @@ async def test_client():
     app.dependency_overrides[deps.get_settings] = lambda: test_settings
     app.dependency_overrides[deps.get_settings_service] = lambda: ss
     app.dependency_overrides[deps.get_mcp_service] = lambda: ms
-    app.dependency_overrides[deps.get_template_service] = lambda: ts
     fs = FilesystemService()
     app.dependency_overrides[deps.get_filesystem_service] = lambda: fs
     git_svc = GitService()

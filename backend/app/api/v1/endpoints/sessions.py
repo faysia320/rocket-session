@@ -12,7 +12,6 @@ from app.api.dependencies import (
     get_session_manager,
     get_settings_service,
     get_tag_service,
-    get_template_service,
     get_workspace_service,
     get_ws_manager,
 )
@@ -36,7 +35,6 @@ from app.services.tag_service import TagService
 from app.services.session_manager import SessionManager
 from app.services.workspace_service import WorkspaceService
 from app.services.settings_service import SettingsService
-from app.services.template_service import TemplateService
 from app.services.websocket_manager import WebSocketManager
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -48,18 +46,10 @@ async def create_session(
     manager: SessionManager = Depends(get_session_manager),
     settings_service: SettingsService = Depends(get_settings_service),
     mcp_service: McpService = Depends(get_mcp_service),
-    template_service: TemplateService = Depends(get_template_service),
     git: GitService = Depends(get_git_service),
     workspace_service: WorkspaceService = Depends(get_workspace_service),
 ):
     global_settings = await settings_service.get()
-
-    # 템플릿 적용: template_id가 있으면 템플릿에서 기본값 채움
-    tpl = None
-    if req.template_id:
-        tpl = await template_service.get_template(req.template_id)
-        if not tpl:
-            raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
 
     # workspace_id 우선순위: 요청 > 글로벌 기본값
     workspace_id = req.workspace_id or global_settings.get("default_workspace_id")
@@ -75,68 +65,8 @@ async def create_session(
         raise HTTPException(status_code=400, detail="워크스페이스가 준비되지 않았습니다")
     work_dir = ws["local_path"]
 
-    # 각 필드 우선순위: 요청값 > 템플릿값
-    system_prompt = (
-        req.system_prompt
-        if req.system_prompt is not None
-        else (tpl.system_prompt if tpl else None)
-    )
-    allowed_tools = (
-        req.allowed_tools
-        if req.allowed_tools is not None
-        else (tpl.allowed_tools if tpl else None)
-    )
-    disallowed_tools = (
-        req.disallowed_tools
-        if req.disallowed_tools is not None
-        else (tpl.disallowed_tools if tpl else None)
-    )
-    timeout_seconds = (
-        req.timeout_seconds
-        if req.timeout_seconds is not None
-        else (tpl.timeout_seconds if tpl else None)
-    )
-    permission_mode = (
-        req.permission_mode
-        if req.permission_mode is not None
-        else (tpl.permission_mode if tpl else False)
-    )
-    permission_required_tools = (
-        req.permission_required_tools
-        if req.permission_required_tools is not None
-        else (tpl.permission_required_tools if tpl else None)
-    )
-    model = req.model if req.model is not None else (tpl.model if tpl else None)
-    max_turns = (
-        req.max_turns if req.max_turns is not None else (tpl.max_turns if tpl else None)
-    )
-    max_budget_usd = (
-        req.max_budget_usd
-        if req.max_budget_usd is not None
-        else (tpl.max_budget_usd if tpl else None)
-    )
-    system_prompt_mode = (
-        req.system_prompt_mode
-        if req.system_prompt_mode is not None
-        else (tpl.system_prompt_mode if tpl else "replace")
-    )
-    workflow_enabled = (
-        req.workflow_enabled
-        if req.workflow_enabled is not None
-        else (tpl.workflow_enabled if tpl else None)
-    )
-
-    additional_dirs = req.additional_dirs
-    fallback_model = (
-        req.fallback_model
-        if req.fallback_model is not None
-        else (tpl.fallback_model if tpl else None)
-    )
-
-    # MCP 서버: 요청 > 템플릿 > 활성화된 모든 MCP 서버
+    # MCP 서버: 요청값 > 활성화된 모든 MCP 서버
     mcp_server_ids = req.mcp_server_ids
-    if not mcp_server_ids and tpl and tpl.mcp_server_ids:
-        mcp_server_ids = tpl.mcp_server_ids
     if not mcp_server_ids:
         enabled_servers = await mcp_service.list_servers()
         mcp_server_ids = [s.id for s in enabled_servers if s.enabled]
@@ -156,21 +86,21 @@ async def create_session(
 
     session = await manager.create(
         work_dir=work_dir,
-        allowed_tools=allowed_tools,
-        system_prompt=system_prompt,
-        timeout_seconds=timeout_seconds,
-        permission_mode=permission_mode or False,
-        permission_required_tools=permission_required_tools,
-        model=model,
-        max_turns=max_turns,
-        max_budget_usd=max_budget_usd,
-        system_prompt_mode=system_prompt_mode or "replace",
-        disallowed_tools=disallowed_tools,
+        allowed_tools=req.allowed_tools,
+        system_prompt=req.system_prompt,
+        timeout_seconds=req.timeout_seconds,
+        permission_mode=req.permission_mode or False,
+        permission_required_tools=req.permission_required_tools,
+        model=req.model,
+        max_turns=req.max_turns,
+        max_budget_usd=req.max_budget_usd,
+        system_prompt_mode=req.system_prompt_mode or "replace",
+        disallowed_tools=req.disallowed_tools,
         mcp_server_ids=mcp_server_ids if mcp_server_ids else None,
-        additional_dirs=additional_dirs,
-        fallback_model=fallback_model,
+        additional_dirs=req.additional_dirs,
+        fallback_model=req.fallback_model,
         worktree_name=req.worktree_name,
-        workflow_enabled=workflow_enabled or False,
+        workflow_enabled=req.workflow_enabled or False,
         workspace_id=workspace_id,
     )
     session_with_counts = await manager.get_with_counts(session["id"]) or session

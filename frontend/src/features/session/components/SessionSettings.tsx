@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Save, FileStack, Plus, X } from "lucide-react";
+import { Save, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,6 @@ import { sessionsApi } from "@/lib/api/sessions.api";
 import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
-import { SaveAsTemplateDialog } from "@/features/template/components/SaveAsTemplateDialog";
 import { AVAILABLE_TOOLS, PERMISSION_TOOLS } from "../constants/tools";
 
 interface SessionSettingsProps {
@@ -317,12 +316,6 @@ export function SessionSettings({
             <Save className="h-3.5 w-3.5 mr-1.5" />
             {saving ? "Saving\u2026" : "Save Settings"}
           </Button>
-          <SaveAsTemplateDialog sessionId={sessionId}>
-            <Button variant="outline" className="w-full font-mono text-xs gap-1.5">
-              <FileStack className="h-3.5 w-3.5" />
-              템플릿으로 저장
-            </Button>
-          </SaveAsTemplateDialog>
         </SheetFooter>
       </SheetContent>
     </Sheet>

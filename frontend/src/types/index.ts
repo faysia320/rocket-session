@@ -79,13 +79,6 @@ export type {
 } from "./mcp";
 export type { GlobalSettings, UpdateGlobalSettingsRequest } from "./settings";
 export type {
-  TemplateInfo,
-  CreateTemplateRequest,
-  UpdateTemplateRequest,
-  CreateTemplateFromSessionRequest,
-  TemplateExport,
-} from "./template";
-export type {
   NotificationCategory,
   NotificationChannel,
   CategoryNotificationConfig,

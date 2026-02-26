@@ -12,7 +12,6 @@ from app.models.team import Team, TeamMember
 from app.models.team_message import TeamMessage
 from app.models.team_task import TeamTask
 from app.models.session_artifact import ArtifactAnnotation, SessionArtifact
-from app.models.template import SessionTemplate
 from app.models.token_snapshot import TokenSnapshot
 from app.models.workspace import Workspace
 
@@ -33,7 +32,6 @@ __all__ = [
     "TeamTask",
     "SessionArtifact",
     "ArtifactAnnotation",
-    "SessionTemplate",
     "TokenSnapshot",
     "Workspace",
 ]

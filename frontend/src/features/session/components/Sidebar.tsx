@@ -3,7 +3,6 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Columns2,
   Download,
-  FileStack,
   GitFork,
   LayoutGrid,
   MessageSquare,
@@ -30,7 +29,6 @@ import {
 import { cn, formatWorkDir } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { ImportLocalDialog } from "./ImportLocalDialog";
-import { TemplateListDialog } from "@/features/template/components/TemplateListDialog";
 import { useSessionStore } from "@/store";
 
 interface SidebarProps {
@@ -114,21 +112,6 @@ export const Sidebar = memo(function Sidebar({
               </TooltipTrigger>
               <TooltipContent side="right">새 세션</TooltipContent>
             </Tooltip>
-            <TemplateListDialog>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="w-full h-9"
-                    aria-label="세션 템플릿"
-                  >
-                    <FileStack className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">템플릿</TooltipContent>
-              </Tooltip>
-            </TemplateListDialog>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
@@ -149,16 +132,6 @@ export const Sidebar = memo(function Sidebar({
               <Download className="h-3.5 w-3.5" />
               Import Local
             </Button>
-            <TemplateListDialog>
-              <Button
-                variant="outline"
-                className="w-full flex items-center gap-2 px-3 py-2 font-mono text-xs"
-                aria-label="세션 템플릿"
-              >
-                <FileStack className="h-3.5 w-3.5" />
-                Templates
-              </Button>
-            </TemplateListDialog>
           </div>
         )}
       </div>

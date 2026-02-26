@@ -57,7 +57,6 @@ export interface CreateSessionRequest {
   mcp_server_ids?: string[] | null;
   additional_dirs?: string[] | null;
   fallback_model?: string | null;
-  template_id?: string | null;
   worktree_name?: string | null;
   workspace_id?: string | null;
 }

@@ -25,7 +25,6 @@ class CreateSessionRequest(BaseModel):
     additional_dirs: Optional[list[str]] = None
     fallback_model: Optional[str] = None
     worktree_name: Optional[str] = None
-    template_id: Optional[str] = None
     workspace_id: Optional[str] = None
     branch: Optional[str] = None
     workflow_definition_id: Optional[str] = None

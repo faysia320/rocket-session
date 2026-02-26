@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useGlobalSettings } from "@/features/settings/hooks/useGlobalSettings";
-import { TemplateSelector } from "@/features/template/components/TemplateSelector";
 import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
 import { WorkflowDefinitionSelector } from "@/features/workflow/components/WorkflowDefinitionSelector";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
@@ -20,14 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { TemplateInfo } from "@/types";
-
 interface SessionSetupPanelProps {
   onCreate: (
     workDir?: string,
     options?: {
       system_prompt?: string;
-      template_id?: string;
       additional_dirs?: string[];
       worktree_name?: string;
       workflow_enabled?: boolean;
@@ -44,7 +40,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [creating, setCreating] = useState(false);
   const [useWorktree, setUseWorktree] = useState(false);
   const [worktreeName, setWorktreeName] = useState("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [additionalWorkspaceIds, setAdditionalWorkspaceIds] = useState<string[]>([]);
   const [workflowEnabled, setWorkflowEnabled] = useState(true);
   const [workflowDefinitionId, setWorkflowDefinitionId] = useState<string | null>(null);
@@ -80,23 +75,11 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
     setSelectedBranch(null);
   }, [selectedWorkspaceId]);
 
-  const handleTemplateSelect = (template: TemplateInfo | null) => {
-    if (!template) {
-      setSelectedTemplateId(null);
-      return;
-    }
-    setSelectedTemplateId(template.id);
-    if (template.system_prompt) {
-      setSystemPrompt(template.system_prompt);
-    }
-  };
-
   const handleCreate = async () => {
     setCreating(true);
     try {
       const options: {
         system_prompt?: string;
-        template_id?: string;
         additional_dirs?: string[];
         worktree_name?: string;
         workflow_enabled?: boolean;
@@ -106,9 +89,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       } = {};
       if (systemPrompt.trim()) {
         options.system_prompt = systemPrompt.trim();
-      }
-      if (selectedTemplateId) {
-        options.template_id = selectedTemplateId;
       }
       // additionalWorkspaceIds → local_path 배열로 변환
       const additionalPaths = additionalWorkspaceIds
@@ -153,17 +133,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
               Configure and launch a new Claude Code session
             </p>
           </div>
-        </div>
-
-        {/* Template Selector */}
-        <div className="space-y-2">
-          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
-            TEMPLATE
-          </Label>
-          <p className="font-mono text-2xs text-muted-foreground/70">
-            저장된 템플릿으로 설정을 빠르게 채울 수 있습니다.
-          </p>
-          <TemplateSelector onSelect={handleTemplateSelect} />
         </div>
 
         {/* Workspace */}

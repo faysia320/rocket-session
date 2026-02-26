@@ -40,7 +40,7 @@ export function useCreateSession() {
       workDir?: string;
       options?: {
         system_prompt?: string;
-        template_id?: string;
+
         additional_dirs?: string[];
         worktree_name?: string;
         workspace_id?: string;
@@ -61,7 +61,7 @@ export function useCreateSession() {
       workDir?: string,
       options?: {
         system_prompt?: string;
-        template_id?: string;
+
         additional_dirs?: string[];
         worktree_name?: string;
         workspace_id?: string;
