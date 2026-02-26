@@ -29,21 +29,11 @@ htmlcov/
 
 # Temporary Claude files
 tmpclaude-*-cwd
-
-# Temporary Wijmo reference files
-tmp-wijmo/
-
-# Git worktrees
-.worktrees/
-.serena/
 nul
 
 # Claude local settings
 .claude/settings.local.json
-
 .playwright-mcp
-
-.omc
 
 # Docker environment
 .env.docker
