@@ -28,6 +28,7 @@ import { useTags } from "@/features/tags/hooks/useTags";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import { TagBadgeList } from "@/features/tags/components/TagBadgeList";
 import { TagManagerDialog } from "@/features/tags/components/TagManagerDialog";
+import { SessionContextMenu } from "./SessionContextMenu";
 import type { SessionInfo, TagInfo } from "@/types";
 
 const PAGE_SIZE = 20;
@@ -568,46 +569,60 @@ const HistorySessionRow = memo(function HistorySessionRow({
     onClick(session.id);
   }, [onClick, session.id]);
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onClick(session.id);
+      }
+    },
+    [onClick, session.id],
+  );
+
   return (
-    <button
-      type="button"
-      className="w-full text-left px-6 py-3 hover:bg-muted/50 transition-colors"
-      onClick={handleClick}
-    >
-      <div className="flex items-center gap-3">
-        <span
-          className={cn(
-            "w-2 h-2 rounded-full shrink-0",
-            statusColors[session.status] || "bg-muted-foreground",
-          )}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="font-mono text-sm font-medium text-foreground truncate">
-              {session.name || session.id}
-            </span>
-            {session.model ? (
-              <span className="font-mono text-2xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                {session.model}
+    <SessionContextMenu session={session}>
+      <div
+        role="button"
+        tabIndex={0}
+        className="w-full text-left px-6 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+      >
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "w-2 h-2 rounded-full shrink-0",
+              statusColors[session.status] || "bg-muted-foreground",
+            )}
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-mono text-sm font-medium text-foreground truncate">
+                {session.name || session.id}
               </span>
+              {session.model ? (
+                <span className="font-mono text-2xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                  {session.model}
+                </span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2 text-2xs text-muted-foreground font-mono">
+              <span>{created}</span>
+              <span>·</span>
+              <span>{session.message_count} msgs</span>
+              <span>·</span>
+              <span>{session.file_changes_count} changes</span>
+              <span>·</span>
+              <span className="truncate">{formatWorkDir(session.work_dir)}</span>
+            </div>
+            {session.tags && session.tags.length > 0 ? (
+              <div className="mt-1">
+                <TagBadgeList tags={session.tags} max={5} size="sm" />
+              </div>
             ) : null}
           </div>
-          <div className="flex items-center gap-2 text-2xs text-muted-foreground font-mono">
-            <span>{created}</span>
-            <span>·</span>
-            <span>{session.message_count} msgs</span>
-            <span>·</span>
-            <span>{session.file_changes_count} changes</span>
-            <span>·</span>
-            <span className="truncate">{formatWorkDir(session.work_dir)}</span>
-          </div>
-          {session.tags && session.tags.length > 0 ? (
-            <div className="mt-1">
-              <TagBadgeList tags={session.tags} max={5} size="sm" />
-            </div>
-          ) : null}
         </div>
       </div>
-    </button>
+    </SessionContextMenu>
   );
 });
