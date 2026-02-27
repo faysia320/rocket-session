@@ -11,6 +11,7 @@ interface MemoBlockEditorProps {
   onCtrlEnter: () => void;
   onBackspaceEmpty: () => void;
   autoFocus?: boolean;
+  onBlur?: () => void;
 }
 
 const memoTheme = EditorView.theme(
@@ -45,16 +46,19 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
   onCtrlEnter,
   onBackspaceEmpty,
   autoFocus = false,
+  onBlur,
 }: MemoBlockEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const onCtrlEnterRef = useRef(onCtrlEnter);
   const onBackspaceEmptyRef = useRef(onBackspaceEmpty);
+  const onBlurRef = useRef(onBlur);
 
   onChangeRef.current = onChange;
   onCtrlEnterRef.current = onCtrlEnter;
   onBackspaceEmptyRef.current = onBackspaceEmpty;
+  onBlurRef.current = onBlur;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -89,6 +93,12 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
       },
     });
 
+    const blurHandler = EditorView.domEventHandlers({
+      blur() {
+        onBlurRef.current?.();
+      },
+    });
+
     const state = EditorState.create({
       doc: initialContent,
       extensions: [
@@ -104,6 +114,7 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
         placeholderExt("Type something..."),
         EditorView.lineWrapping,
         preventGlobalShortcuts,
+        blurHandler,
       ],
     });
 

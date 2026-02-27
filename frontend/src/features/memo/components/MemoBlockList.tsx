@@ -68,10 +68,11 @@ export const MemoBlockList = memo(function MemoBlockList() {
   return (
     <ScrollArea className="flex-1" ref={scrollRef}>
       <div className="flex flex-col">
-        {blocks.map((block) => (
+        {blocks.map((block, index) => (
           <MemoBlockItem
             key={block.id}
             block={block}
+            index={index}
             onCreateAfter={() => handleCreateBlock(block.id)}
             onDelete={() => handleDeleteBlock(block.id)}
             autoFocus={block.id === newBlockId}
