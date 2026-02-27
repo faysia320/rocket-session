@@ -1,5 +1,6 @@
 """토큰 분석 Repository."""
 
+import logging
 from datetime import datetime
 
 from sqlalchemy import cast, func, select, text
@@ -9,12 +10,67 @@ from sqlalchemy.types import Date
 from app.models.message import Message
 from app.models.session import Session
 
+logger = logging.getLogger(__name__)
+
+# Materialized View 정의 (세션별/모델별 토큰·비용 집계)
+_MV_NAME = "mv_analytics_summary"
+_MV_CREATE_SQL = f"""
+CREATE MATERIALIZED VIEW IF NOT EXISTS {_MV_NAME} AS
+SELECT
+    m.session_id,
+    s.name AS session_name,
+    s.work_dir,
+    m.model,
+    CAST(m.timestamp AS DATE) AS date,
+    COUNT(*) AS message_count,
+    COALESCE(SUM(m.input_tokens), 0) AS input_tokens,
+    COALESCE(SUM(m.output_tokens), 0) AS output_tokens,
+    COALESCE(SUM(m.cache_read_tokens), 0) AS cache_read_tokens,
+    COALESCE(SUM(m.cache_creation_tokens), 0) AS cache_creation_tokens,
+    COALESCE(SUM(m.cost), 0) AS total_cost
+FROM messages m
+LEFT JOIN sessions s ON m.session_id = s.id
+WHERE m.role = 'assistant'
+GROUP BY m.session_id, s.name, s.work_dir, m.model, CAST(m.timestamp AS DATE)
+"""
+
+_MV_INDEX_SQL = f"""
+CREATE UNIQUE INDEX IF NOT EXISTS idx_{_MV_NAME}_pk
+ON {_MV_NAME} (session_id, model, date)
+"""
+
 
 class AnalyticsRepository:
     """토큰 사용량 집계 쿼리."""
 
     def __init__(self, session: AsyncSession):
         self._session = session
+
+    @staticmethod
+    async def ensure_materialized_view(session: AsyncSession) -> None:
+        """Materialized View 생성 (없을 경우에만)."""
+        try:
+            await session.execute(text(_MV_CREATE_SQL))
+            await session.execute(text(_MV_INDEX_SQL))
+            await session.commit()
+            logger.info("Materialized View '%s' 확인/생성 완료", _MV_NAME)
+        except Exception:
+            await session.rollback()
+            logger.warning(
+                "Materialized View '%s' 생성 실패", _MV_NAME, exc_info=True
+            )
+
+    @staticmethod
+    async def refresh_materialized_view(session: AsyncSession) -> None:
+        """Materialized View 갱신 (CONCURRENTLY)."""
+        try:
+            await session.execute(
+                text(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {_MV_NAME}")
+            )
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            logger.warning("Materialized View 갱신 실패", exc_info=True)
 
     async def get_summary(self, start: datetime, end: datetime) -> dict:
         """기간 내 전체 토큰 요약 (assistant 메시지 기준).

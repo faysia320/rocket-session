@@ -1,9 +1,14 @@
 """이벤트 Repository."""
 
+import json
+import logging
+
 from sqlalchemy import delete, func, insert, select, text
 
 from app.models.event import Event
 from app.repositories.base import BaseRepository
+
+logger = logging.getLogger(__name__)
 
 
 class EventRepository(BaseRepository[Event]):
@@ -71,6 +76,37 @@ class EventRepository(BaseRepository[Event]):
         )
         result = await self._session.execute(stmt)
         return {row.session_id: row.max_seq for row in result.all()}
+
+    @staticmethod
+    async def add_batch_copy(raw_conn, events: list[dict]) -> None:
+        """asyncpg COPY 프로토콜로 이벤트 벌크 삽입 (일반 INSERT 대비 5~50배 빠름).
+
+        Args:
+            raw_conn: asyncpg connection (Database.raw_connection()으로 획득)
+            events: 이벤트 dict 목록 (session_id, seq, event_type, payload, timestamp)
+        """
+        if not events:
+            return
+        records = []
+        for evt in events:
+            records.append((
+                evt["session_id"],
+                evt["seq"],
+                evt["event_type"],
+                json.dumps(evt["payload"], ensure_ascii=False),
+                evt["timestamp"],
+            ))
+        try:
+            await raw_conn.copy_records_to_table(
+                "events",
+                records=records,
+                columns=["session_id", "seq", "event_type", "payload", "timestamp"],
+            )
+        except Exception:
+            logger.warning(
+                "asyncpg COPY 실패 (%d건) — INSERT fallback", len(events), exc_info=True
+            )
+            raise
 
     async def cleanup_old_events(self, max_age_hours: int = 24) -> int:
         """지정 시간 이전의 오래된 이벤트 삭제. 삭제된 행 수 반환."""

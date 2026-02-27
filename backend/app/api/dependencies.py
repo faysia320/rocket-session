@@ -95,13 +95,28 @@ class ServiceRegistry:
         logger.info("업로드 디렉토리: %s", upload_path)
 
         # WebSocketManager를 DB 초기화 전에 인스턴스 생성
-        self.ws_manager = WebSocketManager()
-        self.database = Database(settings.database_url)
+        self.ws_manager = WebSocketManager(
+            event_queue_maxsize=settings.event_queue_maxsize,
+            event_flush_interval=settings.event_flush_interval,
+            event_batch_max_size=settings.event_batch_max_size,
+            heartbeat_interval=settings.ws_heartbeat_interval,
+        )
+        self.database = Database(
+            settings.database_url,
+            pool_size=settings.db_pool_size,
+            max_overflow=settings.db_max_overflow,
+            pool_timeout=settings.db_pool_timeout,
+            pool_recycle=settings.db_pool_recycle,
+        )
         await self.database.initialize()
         self.ws_manager.set_database(self.database)
 
         self.session_manager = SessionManager(
             self.database, upload_dir=settings.resolved_upload_dir
+        )
+        self.session_manager.start_message_batch_writer(
+            maxsize=settings.message_queue_maxsize,
+            flush_interval=settings.message_flush_interval,
         )
         self.local_scanner = LocalSessionScanner(self.database)
         self.usage_service = UsageService()
@@ -150,8 +165,20 @@ class ServiceRegistry:
         if self.workspace_service:
             await self.workspace_service.cleanup_stale()
 
+        # Materialized View 생성/확인 (분석 쿼리 최적화)
+        from app.repositories.analytics_repo import AnalyticsRepository
+
+        async with self.database.session() as session:
+            await AnalyticsRepository.ensure_materialized_view(session)
+
     async def shutdown(self) -> None:
         """앱 종료 시 서비스 정리."""
+        # 0. 메시지 배치 라이터 종료 (잔여 메시지 flush)
+        if self.session_manager:
+            try:
+                await self.session_manager.stop_message_batch_writer()
+            except Exception as e:
+                logger.error("메시지 배치 라이터 종료 실패: %s", e)
         # 1. 실행 중인 세션 프로세스 종료
         if self.session_manager:
             for sid in list(self.session_manager._process_manager.active_session_ids):

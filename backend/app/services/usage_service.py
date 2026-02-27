@@ -42,8 +42,9 @@ class UsageService:
         self._cache_time: float = 0
         # 재사용 가능한 HTTP 클라이언트 (연결 풀링)
         self._client: httpx.AsyncClient | None = None
-        # 캐시 스탬피드 방지용 락
-        self._lock = asyncio.Lock()
+        # inflight dedup: 동시 요청을 하나의 fetch로 통합
+        self._inflight_event: asyncio.Event | None = None
+        self._inflight_result: UsageInfo | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """재사용 가능한 HTTP 클라이언트 반환."""
@@ -67,24 +68,45 @@ class UsageService:
             logger.warning("사용량 캐시 워밍업 실패: %s", e)
 
     async def get_usage(self) -> UsageInfo:
-        """캐시된 사용량 정보를 반환합니다 (스탬피드 방지)."""
+        """캐시된 사용량 정보를 반환합니다 (inflight dedup 패턴).
+
+        첫 번째 호출만 실제 fetch를 수행하고,
+        동시 호출들은 Event.wait()로 결과를 공유합니다.
+        """
         now = time.time()
         if self._cache and (now - self._cache_time) < _CACHE_TTL:
             return self._cache
 
-        async with self._lock:
-            # Double-check: lock 획득 사이에 다른 코루틴이 캐시를 갱신했을 수 있음
+        # 이미 누군가 fetch 중이면 결과를 기다림
+        if self._inflight_event is not None:
+            await self._inflight_event.wait()
+            if self._inflight_result is not None:
+                return self._inflight_result
+            # fallback: inflight 결과가 없으면 캐시 반환
+            if self._cache:
+                return self._cache
+
+        # 이 코루틴이 fetch 담당
+        self._inflight_event = asyncio.Event()
+        self._inflight_result = None
+        try:
+            # Double-check: Event 설정 사이에 다른 코루틴이 캐시를 갱신했을 수 있음
             now = time.time()
             if self._cache and (now - self._cache_time) < _CACHE_TTL:
                 return self._cache
 
             result = await self._fetch_usage()
             self._cache = result
-            # 에러 응답은 짧은 TTL로 캐싱하여 빠른 재시도 허용
             self._cache_time = (
                 now if result.available else now - _CACHE_TTL + USAGE_CACHE_ERROR_TTL
             )
+            self._inflight_result = result
             return result
+        finally:
+            event = self._inflight_event
+            self._inflight_event = None
+            if event:
+                event.set()
 
     async def _fetch_usage(self) -> UsageInfo:
         """Anthropic OAuth API에서 사용량을 조회합니다."""

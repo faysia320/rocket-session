@@ -78,3 +78,11 @@ class SessionProcessManager:
     def active_session_ids(self) -> list[str]:
         """프로세스가 실행 중인 세션 ID 목록."""
         return list(self._processes.keys())
+
+    def get_metrics(self) -> dict:
+        """프로세스 관리 메트릭 반환."""
+        return {
+            "active": len(self._processes),
+            "runner_tasks": len(self._runner_tasks),
+            "session_ids": list(self._processes.keys()),
+        }

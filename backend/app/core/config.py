@@ -24,6 +24,27 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session"
     )
 
+    # DB 연결 풀 설정
+    db_pool_size: int = 20
+    db_max_overflow: int = 40
+    db_pool_timeout: int = 30
+    db_pool_recycle: int = 3600
+
+    # 동시성 제한
+    max_concurrent_sessions: int = 50
+
+    # 이벤트 큐 설정
+    event_queue_maxsize: int = 50000
+    event_flush_interval: float = 0.2
+    event_batch_max_size: int = 1000
+
+    # 메시지 배치 설정
+    message_queue_maxsize: int = 50000
+    message_flush_interval: float = 0.3
+
+    # 하트비트 간격 (초)
+    ws_heartbeat_interval: int = 15
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from collections import OrderedDict
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -31,8 +32,25 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# 세션별 프롬프트 Lock (TOCTOU 방지: runner_task 체크와 설정 사이의 경합 방지)
-_prompt_locks: dict[str, asyncio.Lock] = {}
+# 세션별 프롬프트 Lock (LRU 200: 메모리 누수 방지)
+_PROMPT_LOCKS_MAX = 200
+
+
+class _LRULocks(OrderedDict):
+    """LRU 제한이 있는 asyncio.Lock 딕셔너리."""
+
+    def get_or_create(self, key: str) -> asyncio.Lock:
+        if key in self:
+            self.move_to_end(key)
+            return self[key]
+        lock = asyncio.Lock()
+        self[key] = lock
+        while len(self) > _PROMPT_LOCKS_MAX:
+            self.popitem(last=False)
+        return lock
+
+
+_prompt_locks = _LRULocks()
 
 
 def _on_runner_task_done(
@@ -65,7 +83,7 @@ async def _handle_prompt(
         return
 
     # 세션별 Lock으로 TOCTOU 방지 (runner_task 체크 → 설정 사이의 경합 차단)
-    lock = _prompt_locks.setdefault(session_id, asyncio.Lock())
+    lock = _prompt_locks.get_or_create(session_id)
     async with lock:
         # 이미 실행 중인 runner가 있으면 거부
         existing_task = manager.get_runner_task(session_id)
@@ -126,6 +144,10 @@ async def _handle_prompt(
                     )
                     workflow_phase = first_name
                     current_session = await manager.get(session_id)
+                    await ws_manager.broadcast_event(
+                        session_id,
+                        {"type": WsEventType.WORKFLOW_STARTED, "phase": first_name},
+                    )
 
                 # 현재 step config 로드
                 workflow_step_config = next(
@@ -468,6 +490,4 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
     finally:
         # runner_task는 취소하지 않음 - Claude 프로세스와 함께 살아있어야 함
         ws_manager.unregister(session_id, ws)
-        # 해당 세션에 더 이상 연결된 WS가 없으면 Lock 정리 (메모리 누수 방지)
-        if not ws_manager.has_connections(session_id):
-            _prompt_locks.pop(session_id, None)
+        # LRU가 자동으로 크기를 관리하므로 명시적 정리 불필요

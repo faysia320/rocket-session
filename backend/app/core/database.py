@@ -21,14 +21,27 @@ class Database:
     연결 풀링 + async_sessionmaker로 세션 팩토리 제공.
     """
 
-    def __init__(self, database_url: str):
+    def __init__(
+        self,
+        database_url: str,
+        pool_size: int = 20,
+        max_overflow: int = 40,
+        pool_timeout: int = 30,
+        pool_recycle: int = 3600,
+    ):
         self._database_url = database_url
         self._engine = create_async_engine(
             database_url,
-            pool_size=10,
-            max_overflow=20,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_timeout=pool_timeout,
+            pool_recycle=pool_recycle,
             pool_pre_ping=True,
             echo=False,
+            connect_args={
+                "timeout": 10,
+                "command_timeout": 60,
+            },
         )
         self._session_factory = async_sessionmaker(
             self._engine,
@@ -87,6 +100,13 @@ class Database:
     @property
     def engine(self):
         return self._engine
+
+    @asynccontextmanager
+    async def raw_connection(self):
+        """raw asyncpg connection 접근 (COPY 등 저수준 작업용)."""
+        async with self._engine.connect() as conn:
+            raw = await conn.get_raw_connection()
+            yield raw.dbapi_connection
 
     async def close(self):
         """엔진 및 연결 풀 종료."""

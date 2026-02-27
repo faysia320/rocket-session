@@ -40,6 +40,67 @@ class SessionManager(DBService):
         super().__init__(db)
         self._upload_dir = upload_dir
         self._process_manager = SessionProcessManager()
+        # 메시지 배치 큐 + 배치 라이터
+        self._message_queue: asyncio.Queue | None = None
+        self._message_flush_task: asyncio.Task | None = None
+
+    def start_message_batch_writer(
+        self, maxsize: int = 50000, flush_interval: float = 0.3
+    ) -> None:
+        """메시지 배치 라이터 백그라운드 태스크 시작."""
+        self._message_queue = asyncio.Queue(maxsize=maxsize)
+        self._message_flush_interval = flush_interval
+        self._message_flush_task = asyncio.create_task(self._message_batch_writer_loop())
+
+    async def stop_message_batch_writer(self) -> None:
+        """메시지 배치 라이터 종료 + 잔여 메시지 flush."""
+        if self._message_flush_task:
+            self._message_flush_task.cancel()
+            try:
+                await self._message_flush_task
+            except asyncio.CancelledError:
+                pass
+        await self._flush_messages()
+
+    async def _message_batch_writer_loop(self) -> None:
+        """주기적으로 큐의 메시지를 배치 DB 저장."""
+        while True:
+            await asyncio.sleep(self._message_flush_interval)
+            await self._flush_messages()
+
+    async def _flush_messages(self) -> None:
+        """큐에 쌓인 메시지를 한번에 배치 저장."""
+        if not self._message_queue:
+            return
+        batch: list[dict] = []
+        while not self._message_queue.empty():
+            try:
+                batch.append(self._message_queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+        if not batch:
+            return
+        try:
+            async with self._session_scope(MessageRepository) as (session, repo):
+                await repo.add_batch(batch)
+                await session.commit()
+        except Exception:
+            logger.warning("메시지 배치 저장 실패 (%d건)", len(batch), exc_info=True)
+
+    def queue_message(self, **kwargs) -> bool:
+        """메시지를 배치 큐에 추가. 큐가 없거나 가득 차면 False 반환."""
+        if not self._message_queue:
+            return False
+        try:
+            self._message_queue.put_nowait(kwargs)
+            return True
+        except asyncio.QueueFull:
+            logger.warning("메시지 배치 큐 가득 참 — 드롭")
+            return False
+
+    async def flush_messages(self) -> None:
+        """외부에서 호출 가능한 메시지 flush."""
+        await self._flush_messages()
 
     async def create(
         self,

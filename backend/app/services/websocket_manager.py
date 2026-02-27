@@ -35,16 +35,31 @@ class BufferedEvent:
 class WebSocketManager(DBService):
     """세션별 WebSocket 연결 관리, 이벤트 버퍼링 및 메시지 브로드캐스트."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        event_queue_maxsize: int = 50000,
+        event_flush_interval: float = 0.2,
+        event_batch_max_size: int = 1000,
+        heartbeat_interval: int = 15,
+    ):
         # DBService.__init__ 호출하지 않음: DB는 set_database()로 지연 주입
         self._db: Database | None = None
-        self._connections: dict[str, list[WebSocket]] = {}
+        self._connections: dict[str, set[WebSocket]] = {}
         self._event_buffers: dict[str, deque[BufferedEvent]] = {}
         self._seq_counters: dict[str, int] = {}
-        self._event_queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=10000)
+        self._event_queue: asyncio.Queue[dict] = asyncio.Queue(
+            maxsize=event_queue_maxsize
+        )
+        self._event_flush_interval = event_flush_interval
+        self._event_batch_max_size = event_batch_max_size
+        self._heartbeat_interval = heartbeat_interval
         self._flush_task: asyncio.Task | None = None
         self._heartbeat_task: asyncio.Task | None = None
         self._pending_broadcasts: set[asyncio.Task] = set()
+        # 이벤트 재시도 버퍼
+        self._retry_batch: list[dict] = []
+        self._retry_count: int = 0
+        self._max_retries: int = 3
 
     def set_database(self, db: Database):
         """DB 참조 설정 (의존성 주입)."""
@@ -76,40 +91,66 @@ class WebSocketManager(DBService):
         await self._flush_events()
 
     async def _batch_writer_loop(self):
-        """0.5초 간격으로 큐에 쌓인 이벤트를 배치 DB 저장."""
+        """주기적으로 큐에 쌓인 이벤트를 배치 DB 저장."""
         while True:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(self._event_flush_interval)
             await self._flush_events()
 
     async def _flush_events(self):
-        """큐의 이벤트를 한번에 배치로 저장."""
+        """큐의 이벤트를 한번에 배치로 저장 (배치 최대 크기 제한 + 재시도)."""
         batch: list[dict] = []
-        while not self._event_queue.empty():
+        # 재시도 대기 이벤트 먼저 소비
+        if self._retry_batch:
+            batch.extend(self._retry_batch)
+            self._retry_batch = []
+        # 큐에서 배치 최대 크기까지 꺼내기
+        while not self._event_queue.empty() and len(batch) < self._event_batch_max_size:
             try:
                 batch.append(self._event_queue.get_nowait())
             except asyncio.QueueEmpty:
                 break
         if batch and self._db:
             try:
-                from app.repositories.event_repo import EventRepository
+                # asyncpg COPY 프로토콜 시도 (5~50배 빠름)
+                try:
+                    from app.repositories.event_repo import EventRepository
 
-                async with self._session_scope(EventRepository) as (session, repo):
-                    await repo.add_batch(batch)
-                    await session.commit()
+                    async with self._db.raw_connection() as raw_conn:
+                        await EventRepository.add_batch_copy(raw_conn, batch)
+                except Exception:
+                    # COPY 실패 시 기존 INSERT fallback
+                    from app.repositories.event_repo import EventRepository
+
+                    async with self._session_scope(EventRepository) as (session, repo):
+                        await repo.add_batch(batch)
+                        await session.commit()
+                self._retry_count = 0
             except Exception as e:
-                logger.warning("이벤트 배치 DB 저장 실패 (%d건): %s", len(batch), e)
+                self._retry_count += 1
+                if self._retry_count <= self._max_retries:
+                    logger.warning(
+                        "이벤트 배치 DB 저장 실패 (%d건, 재시도 %d/%d): %s",
+                        len(batch), self._retry_count, self._max_retries, e,
+                    )
+                    self._retry_batch = batch
+                else:
+                    logger.error(
+                        "이벤트 배치 DB 저장 최종 실패 — %d건 드롭 (재시도 %d회 초과): %s",
+                        len(batch), self._max_retries, e,
+                    )
+                    self._retry_count = 0
 
     async def flush_events(self):
         """외부에서 호출 가능한 이벤트 flush."""
         await self._flush_events()
 
     async def _heartbeat_loop(self):
-        """30초 간격 ping으로 dead 연결 감지."""
+        """주기적 ping으로 dead 연결 감지."""
         ping_payload = json.dumps({"type": "ping"})
         while True:
-            await asyncio.sleep(30)
-            for session_id, ws_list in list(self._connections.items()):
-                if not ws_list:
+            await asyncio.sleep(self._heartbeat_interval)
+            for session_id, ws_set in list(self._connections.items()):
+                if not ws_set:
                     continue
 
                 async def _ping(ws: WebSocket) -> WebSocket | None:
@@ -121,23 +162,22 @@ class WebSocketManager(DBService):
                     except Exception:
                         return ws
 
-                results = await asyncio.gather(*[_ping(ws) for ws in ws_list])
-                dead = [ws for ws in results if ws is not None]
-                for ws in dead:
-                    if ws in ws_list:
-                        ws_list.remove(ws)
+                results = await asyncio.gather(*[_ping(ws) for ws in list(ws_set)])
+                dead = {ws for ws in results if ws is not None}
+                if dead:
+                    ws_set -= dead
 
     def register(self, session_id: str, ws: WebSocket):
         if session_id not in self._connections:
-            self._connections[session_id] = []
-        self._connections[session_id].append(ws)
+            self._connections[session_id] = set()
+        self._connections[session_id].add(ws)
 
     def unregister(self, session_id: str, ws: WebSocket):
-        ws_list = self._connections.get(session_id, [])
-        if ws in ws_list:
-            ws_list.remove(ws)
-        # 빈 리스트 정리
-        if not ws_list and session_id in self._connections:
+        ws_set = self._connections.get(session_id)
+        if ws_set:
+            ws_set.discard(ws)
+        # 빈 set 정리
+        if not ws_set and session_id in self._connections:
             del self._connections[session_id]
 
     def has_connections(self, session_id: str) -> bool:
@@ -184,9 +224,27 @@ class WebSocketManager(DBService):
                     }
                 )
             except asyncio.QueueFull:
+                # 긴급 flush 후 재시도
                 logger.warning(
-                    "이벤트 큐 가득 참 — 이벤트 드롭 (세션 %s, seq %d)", session_id, seq
+                    "이벤트 큐 가득 참 — 긴급 flush 시도 (세션 %s, seq %d)",
+                    session_id, seq,
                 )
+                await self._flush_events()
+                try:
+                    self._event_queue.put_nowait(
+                        {
+                            "session_id": session_id,
+                            "seq": seq,
+                            "event_type": event_type,
+                            "payload": message_with_seq,
+                            "timestamp": ts,
+                        }
+                    )
+                except asyncio.QueueFull:
+                    logger.error(
+                        "이벤트 큐 긴급 flush 후에도 가득 참 — 이벤트 드롭 (세션 %s, seq %d)",
+                        session_id, seq,
+                    )
 
         # fire-and-forget: 느린 WS 클라이언트가 stdout 파이프라인을 블로킹하지 않도록
         task = asyncio.create_task(self.broadcast(session_id, message_with_seq))
@@ -196,8 +254,8 @@ class WebSocketManager(DBService):
 
     async def broadcast(self, session_id: str, message: dict):
         """세션에 연결된 모든 WebSocket에 메시지 병렬 전송."""
-        ws_list = self._connections.get(session_id, [])
-        if not ws_list:
+        ws_set = self._connections.get(session_id)
+        if not ws_set:
             return
 
         payload = json.dumps(message, ensure_ascii=False)
@@ -211,11 +269,10 @@ class WebSocketManager(DBService):
             except Exception:
                 return ws
 
-        results = await asyncio.gather(*[_safe_send(ws) for ws in ws_list])
-        dead = [ws for ws in results if ws is not None]
-        for ws in dead:
-            if ws in ws_list:
-                ws_list.remove(ws)
+        results = await asyncio.gather(*[_safe_send(ws) for ws in list(ws_set)])
+        dead = {ws for ws in results if ws is not None}
+        if dead:
+            ws_set -= dead
 
     async def get_buffered_events_after(
         self, session_id: str, after_seq: int
@@ -314,6 +371,19 @@ class WebSocketManager(DBService):
                     logger.info("seq 카운터 복원 완료: %d개 세션", len(seq_map))
         except Exception as e:
             logger.warning("seq 카운터 복원 실패: %s", e)
+
+    def get_metrics(self) -> dict:
+        """WebSocket 서비스 메트릭 반환."""
+        total_connections = sum(len(ws_set) for ws_set in self._connections.values())
+        return {
+            "connections": total_connections,
+            "sessions_with_connections": len(self._connections),
+            "event_queue_size": self._event_queue.qsize(),
+            "event_queue_maxsize": self._event_queue.maxsize,
+            "pending_broadcasts": len(self._pending_broadcasts),
+            "retry_batch_size": len(self._retry_batch),
+            "retry_count": self._retry_count,
+        }
 
     def reset_session(self, session_id: str):
         self._event_buffers.pop(session_id, None)

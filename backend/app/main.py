@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import sys
 from contextlib import asynccontextmanager
 
@@ -9,11 +10,20 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+# structlog 구조화 로깅 설정 (기존 logging.basicConfig 대체)
+try:
+    from app.core.logging import setup_logging
+
+    # ROCKET_LOG_FORMAT=console 이면 개발 모드 (기본: JSON)
+    json_format = os.environ.get("ROCKET_LOG_FORMAT", "json") != "console"
+    setup_logging(json_format=json_format)
+except ImportError:
+    # structlog 미설치 시 fallback
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 # Windows에서 asyncio subprocess 지원을 위해 ProactorEventLoop 사용
 if sys.platform == "win32":
@@ -54,6 +64,20 @@ async def _periodic_cleanup():
             logging.getLogger(__name__).warning("주기적 이벤트 정리 실패: %s", e)
 
 
+async def _periodic_mv_refresh():
+    """5분마다 분석 Materialized View를 갱신."""
+    from app.repositories.analytics_repo import AnalyticsRepository
+
+    while True:
+        await asyncio.sleep(300)  # 5분
+        try:
+            db = get_database()
+            async with db.session() as session:
+                await AnalyticsRepository.refresh_materialized_view(session)
+        except Exception as e:
+            logging.getLogger(__name__).warning("MV 갱신 실패: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """앱 라이프사이클: DB 초기화 및 정리."""
@@ -61,6 +85,7 @@ async def lifespan(application: FastAPI):
     ws_mgr = get_ws_manager()
     await ws_mgr.start_background_tasks()
     cleanup_task = asyncio.create_task(_periodic_cleanup())
+    mv_refresh_task = asyncio.create_task(_periodic_mv_refresh())
     # 사용량 캐시 백그라운드 워밍업 (서버 시작 시 미리 로드)
     warmup_task = asyncio.create_task(get_usage_service().warmup())
     warmup_task.add_done_callback(
@@ -74,8 +99,13 @@ async def lifespan(application: FastAPI):
     )
     yield
     cleanup_task.cancel()
+    mv_refresh_task.cancel()
     try:
         await cleanup_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await mv_refresh_task
     except asyncio.CancelledError:
         pass
     await ws_mgr.stop_background_tasks()
