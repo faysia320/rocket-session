@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect, memo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  BookOpen,
   Columns2,
   Download,
   FileSearch,
@@ -476,20 +475,6 @@ export const Sidebar = memo(function Sidebar({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side={collapsed ? "right" : "top"}>Split</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => navigate({ to: "/knowledge-base" })}
-                  aria-label="Knowledge Base"
-                >
-                  <BookOpen className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side={collapsed ? "right" : "top"}>Knowledge Base</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>

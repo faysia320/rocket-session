@@ -3,6 +3,7 @@ import { useTheme } from "next-themes";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import {
   BarChart3,
+  BookOpen,
   GitBranch,
   MessageSquare,
   PanelLeft,
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { to: "/git-monitor" as const, label: "Git", icon: GitBranch },
   { to: "/team" as const, label: "Team", icon: Users },
   { to: "/analytics" as const, label: "Analytics", icon: BarChart3 },
+  { to: "/knowledge-base" as const, label: "Knowledge", icon: BookOpen },
 ] as const;
 
 export const GlobalTopBar = memo(function GlobalTopBar() {
