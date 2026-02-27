@@ -26,6 +26,13 @@ def setup_logging(json_format: bool = True, log_level: str = "INFO") -> None:
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.UnicodeDecoder(),
+        structlog.processors.CallsiteParameterAdder(
+            [
+                structlog.processors.CallsiteParameter.FILENAME,
+                structlog.processors.CallsiteParameter.FUNC_NAME,
+                structlog.processors.CallsiteParameter.LINENO,
+            ]
+        ),
     ]
 
     if json_format:

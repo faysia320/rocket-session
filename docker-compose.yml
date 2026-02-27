@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./observability/postgres/init-glitchtip.sql:/docker-entrypoint-initdb.d/02-init-glitchtip.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rocket -d rocket_session"]
       interval: 5s
@@ -61,7 +62,88 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: rocket-session-redis
+    restart: unless-stopped
+
+  glitchtip-web:
+    image: glitchtip/glitchtip:v4.1
+    container_name: rocket-session-glitchtip
+    ports:
+      - "8200:8080"
+    environment:
+      DATABASE_URL: postgres://rocket:${POSTGRES_PASSWORD:-rocket_secret}@postgres:5432/glitchtip
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-change-me-in-production}
+      PORT: "8080"
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost:8200}
+      DEFAULT_FROM_EMAIL: noreply@localhost
+      CELERY_WORKER_AUTOSCALE: "1,3"
+      ENABLE_OPEN_USER_REGISTRATION: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  glitchtip-worker:
+    image: glitchtip/glitchtip:v4.1
+    container_name: rocket-session-glitchtip-worker
+    command: ./bin/run-celery-with-beat.sh
+    environment:
+      DATABASE_URL: postgres://rocket:${POSTGRES_PASSWORD:-rocket_secret}@postgres:5432/glitchtip
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:-change-me-in-production}
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://localhost:8200}
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: rocket-session-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: rocket-session-promtail
+    volumes:
+      - ./observability/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:11.0.0
+    container_name: rocket-session-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   rocket-uploads:
   rocket-workspaces:
+  loki_data:
+  grafana_data:

@@ -1190,6 +1190,10 @@ class ClaudeRunner:
         workflow_step_config: dict | None = None,
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
+        import structlog as _structlog
+
+        _structlog.contextvars.bind_contextvars(session_id=session_id)
+
         # 세션별 레이트 리미터 (분당 프롬프트 수 제한)
         if session_id not in self._session_limiters:
             self._session_limiters[session_id] = AsyncLimiter(

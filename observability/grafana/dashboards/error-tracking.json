@@ -1,0 +1,139 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "에러/경고 로그 볼륨",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by(level) (count_over_time({service=\"backend\"} | level=~\"error|warning\" [1m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "drawStyle": "bars"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "error" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "warning" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "에러 로그 스트림",
+      "type": "logs",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=\"backend\", level=\"error\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "title": "Request ID로 로그 검색",
+      "type": "logs",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=\"backend\"} |= \"$request_id\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Ascending"
+      }
+    },
+    {
+      "title": "로거별 에러 분포",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by(logger) (count_over_time({service=\"backend\", level=\"error\"} [$__range]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Session ID로 로그 검색",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=\"backend\"} |= \"$session_id\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Ascending"
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["error-tracking", "rocket-session"],
+  "templating": {
+    "list": [
+      {
+        "name": "request_id",
+        "type": "textbox",
+        "label": "Request ID",
+        "current": { "value": "" }
+      },
+      {
+        "name": "session_id",
+        "type": "textbox",
+        "label": "Session ID",
+        "current": { "value": "" }
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "title": "Rocket Session - Error Tracking",
+  "uid": "rocket-error-tracking"
+}

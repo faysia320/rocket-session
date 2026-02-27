@@ -8,6 +8,10 @@ import { config } from "@/config/env";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const LONG_TIMEOUT_MS = 60_000;
 
+function generateRequestId(): string {
+  return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+}
+
 /** HTTP 상태 코드를 포함하는 API 에러. */
 export class ApiError extends Error {
   readonly status: number;
@@ -39,7 +43,11 @@ class ApiClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const headers: HeadersInit = { ...options.headers };
+    const requestId = generateRequestId();
+    const headers: HeadersInit = {
+      "X-Request-ID": requestId,
+      ...options.headers,
+    };
     if (options.body && typeof options.body === "string") {
       (headers as Record<string, string>)["Content-Type"] = "application/json";
     }
@@ -53,11 +61,22 @@ class ApiClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-        throw new ApiError(
+        const apiError = new ApiError(
           error.detail || `HTTP ${response.status}`,
           response.status,
           error.detail,
         );
+        import("@sentry/react")
+          .then((Sentry) => {
+            Sentry.withScope((scope) => {
+              scope.setTag("request_id", requestId);
+              scope.setExtra("endpoint", endpoint);
+              scope.setExtra("status", response.status);
+              Sentry.captureException(apiError);
+            });
+          })
+          .catch(() => {});
+        throw apiError;
       }
 
       return parseResponse(response);

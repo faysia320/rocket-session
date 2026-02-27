@@ -278,6 +278,10 @@ async def _handle_permission_respond(data: dict) -> None:
 async def websocket_endpoint(ws: WebSocket, session_id: str):
     await ws.accept()
 
+    import structlog as _structlog
+
+    _structlog.contextvars.bind_contextvars(session_id=session_id)
+
     manager = get_session_manager()
     ws_manager = get_ws_manager()
     settings = get_settings()

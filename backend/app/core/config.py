@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # 하트비트 간격 (초)
     ws_heartbeat_interval: int = 15
 
+    # Sentry / GlitchTip
+    sentry_dsn: str = ""  # 비어있으면 비활성화
+    sentry_environment: str = "development"
+
     # Rate Limiting (aiolimiter)
     # 글로벌: 분당 최대 세션 시작 수
     rate_limit_global_per_minute: float = 60

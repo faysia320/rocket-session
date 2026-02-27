@@ -122,6 +122,11 @@ async def _run_background_tasks(shutdown_event: asyncio.Event) -> None:
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """앱 라이프사이클: DB 초기화 및 정리."""
+    settings = get_settings()
+    from app.core.sentry import setup_sentry
+
+    setup_sentry(settings.sentry_dsn, settings.sentry_environment)
+
     await init_dependencies()
 
     shutdown_event = asyncio.Event()
@@ -168,6 +173,10 @@ def create_app() -> FastAPI:
     # 글로벌 예외 핸들러
     application.add_exception_handler(AppError, _app_error_handler)
     application.add_exception_handler(Exception, _unhandled_error_handler)
+
+    from app.core.middleware import RequestIdMiddleware
+
+    application.add_middleware(RequestIdMiddleware)
 
     application.add_middleware(
         CORSMiddleware,
