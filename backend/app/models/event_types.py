@@ -76,3 +76,6 @@ class WsEventType:
     TEAM_MEMBER_LEFT = "team_member_left"
     TEAM_STATUS_CHANGED = "team_status_changed"
     TEAM_MESSAGE = "team_message"
+
+    # Knowledge / Insight
+    INSIGHT_EXTRACTED = "insight_extracted"

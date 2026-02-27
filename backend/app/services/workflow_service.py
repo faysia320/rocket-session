@@ -541,3 +541,61 @@ class WorkflowService:
             f"## 원본 요청\n{original_prompt}"
         )
         return "\n\n".join(parts)
+
+    @staticmethod
+    def parse_qa_checklist(artifact_content: str) -> dict:
+        """QA 아티팩트에서 체크리스트를 파싱.
+
+        Returns:
+            {
+                "all_passed": bool,
+                "items": [{"item": str, "status": "pass"|"fail"|"warn", "detail": str}],
+                "summary": {"pass": int, "fail": int, "warn": int}
+            }
+        """
+        import re
+
+        items: list[dict] = []
+        # [PASS], [FAIL], [WARN] 형식 매칭
+        pattern = re.compile(
+            r"\[?(PASS|FAIL|WARN)\]?\s*[:\-–]?\s*(.+?)(?:\s*[:\-–]\s*(.+))?$",
+            re.IGNORECASE | re.MULTILINE,
+        )
+        for match in pattern.finditer(artifact_content):
+            status = match.group(1).lower()
+            item_text = match.group(2).strip()
+            detail = (match.group(3) or "").strip()
+            items.append({"item": item_text, "status": status, "detail": detail})
+
+        # 마크다운 체크박스 형식도 지원: - [x] ... / - [ ] ...
+        checkbox_pattern = re.compile(
+            r"-\s*\[(x|X| )\]\s*(.+?)$", re.MULTILINE
+        )
+        if not items:
+            for match in checkbox_pattern.finditer(artifact_content):
+                checked = match.group(1).strip().lower() == "x"
+                item_text = match.group(2).strip()
+                items.append({
+                    "item": item_text,
+                    "status": "pass" if checked else "fail",
+                    "detail": "",
+                })
+
+        # 파싱 실패 시 전체를 단일 항목으로 처리
+        if not items:
+            items.append({
+                "item": "Manual review required",
+                "status": "warn",
+                "detail": artifact_content[:200] if artifact_content else "",
+            })
+
+        summary = {
+            "pass": sum(1 for i in items if i["status"] == "pass"),
+            "fail": sum(1 for i in items if i["status"] == "fail"),
+            "warn": sum(1 for i in items if i["status"] == "warn"),
+        }
+        return {
+            "all_passed": summary["fail"] == 0,
+            "items": items,
+            "summary": summary,
+        }
