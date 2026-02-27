@@ -539,7 +539,7 @@ class ClaudeRunner:
             )
             from app.services.pending_questions import set_pending_question
 
-            set_pending_question(
+            await set_pending_question(
                 session_id=session_id,
                 questions=question_list,
                 tool_use_id=tool_use_id,

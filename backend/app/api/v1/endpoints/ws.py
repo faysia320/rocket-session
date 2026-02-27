@@ -214,7 +214,7 @@ async def _handle_prompt(
         )
 
         # 대기 중인 AskUserQuestion 클리어 (사용자가 답변 또는 새 프롬프트 전송)
-        clear_pending_question(session_id)
+        await clear_pending_question(session_id)
 
         # 글로벌 기본값으로 세션 설정 병합 (세션에 값이 없는 필드만)
         merged_session = dict(current_session) if current_session else {}
@@ -422,7 +422,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                     }
                     break
             # 대기 중인 AskUserQuestion 복원
-            pending_q = get_pending_question(session_id)
+            pending_q = await get_pending_question(session_id)
             if pending_q:
                 pending_interactions["ask_user_question"] = {
                     "questions": pending_q["questions"],

@@ -319,14 +319,23 @@ class JsonlWatcher:
 
                 # AskUserQuestion 감지: 인터랙티브 질문 이벤트로 변환
                 if tool_name == "AskUserQuestion":
+                    question_ts = utc_now_iso()
                     await self._ws_manager.broadcast_event(
                         session_id,
                         {
                             "type": WsEventType.ASK_USER_QUESTION,
                             "questions": tool_input.get("questions", []),
                             "tool_use_id": tool_use_id,
-                            "timestamp": utc_now_iso(),
+                            "timestamp": question_ts,
                         },
+                    )
+                    from app.services.pending_questions import set_pending_question
+
+                    await set_pending_question(
+                        session_id=session_id,
+                        questions=tool_input.get("questions", []),
+                        tool_use_id=tool_use_id,
+                        timestamp=question_ts,
                     )
                     continue
 

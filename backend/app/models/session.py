@@ -83,6 +83,7 @@ class Session(Base):
     workflow_definition_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("workflow_definitions.id", ondelete="SET NULL"), default=None
     )
+    pending_question: Mapped[dict | None] = mapped_column(JSONB, default=None)
 
     # Relationships — lazy="raise"로 실수로 N+1 쿼리가 발생하는 것을 방지
     # 필요 시 selectinload()로 명시적으로 로드해야 함

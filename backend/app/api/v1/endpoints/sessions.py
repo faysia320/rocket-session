@@ -394,7 +394,7 @@ async def delete_session(
     # 인메모리 자원 정리 (seq 카운터, 이벤트 버퍼, 세션 신뢰 도구, 대기 질문, 레이트 리미터)
     ws_manager.reset_session(session_id)
     clear_session_trusted(session_id)
-    clear_pending_question(session_id)
+    await clear_pending_question(session_id)
     claude_runner.cleanup_session_limiter(session_id)
     return StatusResponse(status="deleted")
 

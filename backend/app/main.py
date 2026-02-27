@@ -40,7 +40,7 @@ from app.api.dependencies import (  # noqa: E402
 )
 from app.api.v1.api import api_router  # noqa: E402
 from app.api.v1.endpoints import ws  # noqa: E402
-from app.services.pending_questions import clear_all_pending_questions  # noqa: E402
+from app.services.pending_questions import clear_all_cache  # noqa: E402
 from app.api.v1.endpoints.permissions import clear_pending  # noqa: E402
 
 
@@ -141,7 +141,7 @@ async def lifespan(application: FastAPI):
             pass
 
     clear_pending()
-    clear_all_pending_questions()
+    clear_all_cache()
     await shutdown_dependencies()
 
 

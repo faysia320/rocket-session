@@ -117,6 +117,10 @@ class ServiceRegistry:
         await self.database.initialize()
         self.ws_manager.set_database(self.database)
 
+        from app.services.pending_questions import init as init_pending_questions
+
+        init_pending_questions(self.database)
+
         self.session_manager = SessionManager(
             self.database, upload_dir=settings.resolved_upload_dir
         )
