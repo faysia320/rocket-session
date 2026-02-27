@@ -49,7 +49,7 @@ export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefiniti
           <SelectValue placeholder="워크플로우 선택…" />
         </div>
       </SelectTrigger>
-      <SelectContent className="max-w-[min(400px,90vw)]">
+      <SelectContent>
         {isLoading ? (
           <SelectItem value="__loading__" disabled className="font-mono text-xs">
             불러오는 중...
@@ -60,9 +60,9 @@ export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefiniti
             <span className="truncate">
               <span>{def.name}</span>
               {def.description ? (
-                <span className="ml-2 text-muted-foreground">— {def.description}</span>
+                <span className="ml-2 opacity-70">— {def.description}</span>
               ) : null}
-              <span className="ml-2 text-muted-foreground/60">({def.steps.length}단계)</span>
+              <span className="ml-2 opacity-50">({def.steps.length}단계)</span>
             </span>
           </SelectItem>
         ))}

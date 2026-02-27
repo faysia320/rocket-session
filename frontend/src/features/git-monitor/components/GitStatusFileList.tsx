@@ -115,14 +115,14 @@ function GitStatusFileItem({
         </button>
       </div>
       <CollapsibleContent>
-        <div className="ml-4 mr-1 mb-1 border border-border rounded-sm bg-background max-h-[300px] overflow-auto">
+        <div className="ml-4 mr-1 mb-1 border border-border rounded-sm bg-background overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-6">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : diff !== null ? (
             <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
-              <DiffViewer diff={diff} />
+              <DiffViewer diff={diff} hideHeaders />
             </ErrorBoundary>
           ) : null}
         </div>

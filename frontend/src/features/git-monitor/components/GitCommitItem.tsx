@@ -76,7 +76,7 @@ export function GitCommitItem({ repoPath, commit }: GitCommitItemProps) {
             </div>
           ) : diff ? (
             <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
-              <DiffViewer diff={diff} />
+              <DiffViewer diff={diff} hideHeaders />
             </ErrorBoundary>
           ) : (
             <div className="font-mono text-xs text-muted-foreground py-4 text-center">

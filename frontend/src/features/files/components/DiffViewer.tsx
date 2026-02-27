@@ -153,7 +153,7 @@ export const DiffViewer = memo(function DiffViewer({ diff, hideHeaders }: DiffVi
   // 200줄 이하: 직접 렌더 (가상화 오버헤드 불필요)
   if (!useVirtual) {
     return (
-      <div className="font-mono text-xs leading-relaxed select-text">
+      <div className="font-mono text-xs leading-relaxed select-text overflow-auto max-h-[600px]">
         {lines.map((line, i) => (
           <DiffLineRow key={i} line={line} />
         ))}
