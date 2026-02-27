@@ -126,6 +126,7 @@ class TestRespondPermission:
                 "type": "permission_response",
                 "permission_id": "perm123",
                 "behavior": "allow",
+                "trust_level": "once",
             },
         )
 

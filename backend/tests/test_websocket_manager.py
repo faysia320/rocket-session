@@ -1,5 +1,6 @@
 """WebSocketManager comprehensive test suite."""
 
+import asyncio
 import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
@@ -10,6 +11,12 @@ from starlette.websockets import WebSocketState
 from app.models.session import Session
 from app.repositories.event_repo import EventRepository
 from app.repositories.session_repo import SessionRepository
+
+
+async def _drain_broadcasts(ws_manager):
+    """fire-and-forget broadcast 태스크들이 완료될 때까지 대기."""
+    if ws_manager._pending_broadcasts:
+        await asyncio.gather(*ws_manager._pending_broadcasts, return_exceptions=True)
 
 
 @pytest.mark.asyncio
@@ -109,6 +116,7 @@ async def test_broadcast_event_assigns_seq(ws_manager, mock_websocket):
 
     message = {"type": "status", "data": "running"}
     seq = await ws_manager.broadcast_event(session_id, message)
+    await _drain_broadcasts(ws_manager)  # fire-and-forget broadcast 태스크 완료 대기
 
     assert seq == 1
     mock_websocket.send_text.assert_called_once()
@@ -181,6 +189,7 @@ async def test_broadcast_event_db_failure_continues_broadcast(
     # DB가 없는 상태에서 broadcast_event (DB 저장은 건너뜀)
     message = {"type": "status", "data": "running"}
     seq = await ws_manager.broadcast_event(session_id, message)
+    await _drain_broadcasts(ws_manager)  # fire-and-forget broadcast 태스크 완료 대기
 
     assert seq == 1
     mock_websocket.send_text.assert_called_once()
@@ -473,6 +482,7 @@ async def test_broadcast_event_includes_original_message_fields(
         "nested": {"key": "value"},
     }
     await ws_manager.broadcast_event(session_id, message)
+    await _drain_broadcasts(ws_manager)  # fire-and-forget broadcast 태스크 완료 대기
 
     sent_message = json.loads(mock_websocket.send_text.call_args[0][0])
     assert sent_message["type"] == "tool_use"

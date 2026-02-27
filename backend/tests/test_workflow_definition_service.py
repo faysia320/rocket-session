@@ -408,10 +408,10 @@ class TestGetOrDefault:
         assert result.is_default is True
 
     async def test_get_or_default_fallback(self, workflow_definition_service):
-        """def_id=None이고 기본 정의도 없으면 하드코딩 fallback을 반환한다."""
+        """def_id=None이고 기본 정의도 없으면 fallback을 자동 생성하여 DB에 저장한다."""
         result = await workflow_definition_service.get_or_default(None)
 
-        assert result.id == "fallback"
+        assert result.id.startswith("default-")
         assert result.name == "Default"
         assert result.is_default is True
         assert len(result.steps) == 3

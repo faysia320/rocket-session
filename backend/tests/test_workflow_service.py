@@ -12,6 +12,7 @@ import tempfile
 
 import pytest
 
+from app.core.exceptions import NotFoundError, ValidationError
 from app.services.workflow_definition_service import WorkflowDefinitionService
 from app.services.workflow_service import WorkflowService
 
@@ -181,10 +182,10 @@ class TestApprovePhase:
         assert result["approved_phase"] == "implement"
         assert result["next_phase"] is None
 
-        # DB 확인: phase가 None으로 초기화
+        # DB 확인: 마지막 phase 유지 + status=completed
         session = await session_manager.get(session_id)
-        assert session["workflow_phase"] is None
-        assert session["workflow_phase_status"] is None
+        assert session["workflow_phase"] == "implement"
+        assert session["workflow_phase_status"] == "completed"
 
     async def test_approve_sets_artifact_status_approved(
         self, workflow_service, session_manager, test_session
@@ -208,17 +209,21 @@ class TestApprovePhase:
     async def test_approve_nonexistent_session_raises(
         self, workflow_service, session_manager
     ):
-        """존재하지 않는 세션 승인 시 ValueError가 발생한다."""
-        with pytest.raises(ValueError, match="세션을 찾을 수 없습니다"):
+        """존재하지 않는 세션 승인 시 NotFoundError가 발생한다."""
+        with pytest.raises(NotFoundError, match="세션을 찾을 수 없습니다"):
             await workflow_service.approve_phase("nonexistent-id", session_manager)
 
     async def test_approve_without_active_workflow_raises(
         self, workflow_service, session_manager, test_session
     ):
-        """워크플로우가 활성 상태가 아닌 세션 승인 시 ValueError가 발생한다."""
-        # workflow_phase가 None인 세션
-        with pytest.raises(ValueError, match="워크플로우가 활성 상태가 아닙니다"):
-            await workflow_service.approve_phase(test_session["id"], session_manager)
+        """워크플로우가 활성 상태가 아닌 세션 승인 시 ValidationError가 발생한다."""
+        session_id = test_session["id"]
+        # workflow_phase를 None으로 설정하여 비활성 상태 만들기
+        await session_manager.update_settings(
+            session_id, workflow_phase=None, workflow_phase_status=None
+        )
+        with pytest.raises(ValidationError, match="워크플로우가 활성 상태가 아닙니다"):
+            await workflow_service.approve_phase(session_id, session_manager)
 
 
 @pytest.mark.asyncio
@@ -272,7 +277,7 @@ class TestRequestRevision:
         self, workflow_service, session_manager
     ):
         """존재하지 않는 세션 수정 요청 시 ValueError가 발생한다."""
-        with pytest.raises(ValueError, match="세션을 찾을 수 없습니다"):
+        with pytest.raises(NotFoundError, match="세션을 찾을 수 없습니다"):
             await workflow_service.request_revision(
                 "nonexistent-id", session_manager, feedback="수정 필요"
             )
@@ -284,7 +289,7 @@ class TestRequestRevision:
         session_id = test_session["id"]
         await workflow_service.start_workflow(session_id, session_manager)
 
-        with pytest.raises(ValueError, match="아티팩트를 찾을 수 없습니다"):
+        with pytest.raises(NotFoundError, match="아티팩트를 찾을 수 없습니다"):
             await workflow_service.request_revision(
                 session_id, session_manager, feedback="수정 요청"
             )
@@ -439,7 +444,7 @@ class TestUpdateArtifact:
 
     async def test_update_nonexistent_raises(self, workflow_service):
         """존재하지 않는 아티팩트 수정 시 ValueError가 발생한다."""
-        with pytest.raises(ValueError, match="아티팩트를 찾을 수 없습니다"):
+        with pytest.raises(NotFoundError, match="아티팩트를 찾을 수 없습니다"):
             await workflow_service.update_artifact(999999, "새 내용")
 
 
@@ -533,7 +538,7 @@ class TestUpdateAnnotationStatus:
 
     async def test_update_nonexistent_annotation_raises(self, workflow_service):
         """존재하지 않는 주석 상태 변경 시 ValueError가 발생한다."""
-        with pytest.raises(ValueError, match="주석을 찾을 수 없습니다"):
+        with pytest.raises(NotFoundError, match="주석을 찾을 수 없습니다"):
             await workflow_service.update_annotation_status(999999, "resolved")
 
 
@@ -643,34 +648,28 @@ class TestRenderAnnotatedContent:
 class TestBuildPhaseContext:
     """build_phase_context: Phase별 컨텍스트 프롬프트 생성."""
 
-    async def test_research_phase_context(self, workflow_service, test_session):
-        """research phase 컨텍스트에는 코드 수정 금지 지시가 포함된다."""
+    async def test_research_phase_no_template(self, workflow_service, test_session):
+        """prompt_template이 없으면 원본 프롬프트를 그대로 반환한다."""
         context = await workflow_service.build_phase_context(
             test_session["id"], "research", "이 프로젝트의 인증 시스템 분석"
         )
 
-        assert "코드를 수정하거나 구현하지 마세요" in context
-        assert "이 프로젝트의 인증 시스템 분석" in context
-        assert "코드베이스를 깊이 탐색" in context
+        assert context == "이 프로젝트의 인증 시스템 분석"
 
     async def test_plan_phase_without_research(self, workflow_service, test_session):
-        """research 아티팩트 없이 plan phase 컨텍스트를 생성하면 지시사항만 포함된다."""
+        """prompt_template이 없으면 원본 프롬프트를 그대로 반환한다."""
         context = await workflow_service.build_phase_context(
             test_session["id"], "plan", "API 리팩토링 계획"
         )
 
-        assert "구현 계획을 마크다운으로 작성" in context
-        assert "API 리팩토링 계획" in context
-        # research 결과가 없으므로 "연구 결과" 섹션 없음
-        assert "연구 결과 (research.md)" not in context
+        assert context == "API 리팩토링 계획"
 
     async def test_plan_phase_with_approved_research(
         self, workflow_service, session_manager, test_session
     ):
-        """approved된 research 아티팩트가 있으면 plan 컨텍스트에 포함된다."""
+        """prompt_template이 비어있으면 approved 아티팩트가 있어도 원본 프롬프트 반환."""
         session_id = test_session["id"]
 
-        # research 아티팩트 생성 + approved 처리
         await workflow_service.start_workflow(session_id, session_manager)
         await workflow_service.create_artifact(
             session_id, "research", "# 연구 결과\n인증 모듈 분석 완료"
@@ -681,50 +680,42 @@ class TestBuildPhaseContext:
             session_id, "plan", "계획 수립"
         )
 
-        assert "연구 결과 (research.md)" in context
-        assert "인증 모듈 분석 완료" in context
+        # prompt_template이 비어있으므로 원본 프롬프트 반환
+        assert context == "계획 수립"
 
     async def test_plan_phase_with_annotated_research(
         self, workflow_service, session_manager, test_session
     ):
-        """research 아티팩트에 pending 주석이 있으면 annotated 버전이 plan 컨텍스트에 포함된다."""
+        """prompt_template이 비어있으면 주석이 있어도 원본 프롬프트 반환."""
         session_id = test_session["id"]
 
         await workflow_service.start_workflow(session_id, session_manager)
         artifact = await workflow_service.create_artifact(
             session_id, "research", "line0\nline1\nline2"
         )
-
-        # 주석 추가
         await workflow_service.add_annotation(
             artifact.id, line_start=1, content="이 부분 보강"
         )
-
-        # 승인 → plan으로 전환
         await workflow_service.approve_phase(session_id, session_manager)
 
         context = await workflow_service.build_phase_context(session_id, "plan", "계획")
 
-        assert "연구 결과 (research.md)" in context
-        assert "<!-- [COMMENT L1]: 이 부분 보강 -->" in context
+        assert context == "계획"
 
     async def test_implement_phase_without_plan(self, workflow_service, test_session):
-        """plan 아티팩트 없이 implement phase 컨텍스트를 생성하면 지시사항만 포함된다."""
+        """prompt_template이 비어있으면 원본 프롬프트를 그대로 반환한다."""
         context = await workflow_service.build_phase_context(
             test_session["id"], "implement", "구현 시작"
         )
 
-        assert "계획에 따라 구현하세요" in context
-        assert "구현 시작" in context
-        assert "구현 계획 (plan.md)" not in context
+        assert context == "구현 시작"
 
     async def test_implement_phase_with_approved_plan(
         self, workflow_service, session_manager, test_session
     ):
-        """approved된 plan 아티팩트가 있으면 implement 컨텍스트에 포함된다."""
+        """prompt_template이 비어있으면 approved plan이 있어도 원본 프롬프트 반환."""
         session_id = test_session["id"]
 
-        # plan phase 설정 + 아티팩트 생성 + 승인
         await session_manager.update_settings(
             session_id,
             workflow_enabled=True,
@@ -740,8 +731,7 @@ class TestBuildPhaseContext:
             session_id, "implement", "구현"
         )
 
-        assert "구현 계획 (plan.md)" in context
-        assert "API 엔드포인트 추가" in context
+        assert context == "구현"
 
     async def test_unknown_phase_returns_original_prompt(
         self, workflow_service, test_session
@@ -802,10 +792,10 @@ class TestFullWorkflowIntegration:
         assert approve3["approved_phase"] == "implement"
         assert approve3["next_phase"] is None
 
-        # 최종 상태 확인
+        # 최종 상태 확인: 마지막 phase 유지 + status=completed
         session = await session_manager.get(session_id)
-        assert session["workflow_phase"] is None
-        assert session["workflow_phase_status"] is None
+        assert session["workflow_phase"] == "implement"
+        assert session["workflow_phase_status"] == "completed"
 
         # 전체 아티팩트 확인
         all_artifacts = await workflow_service.list_artifacts(session_id)
