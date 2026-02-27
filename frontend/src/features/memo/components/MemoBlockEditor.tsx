@@ -1,9 +1,13 @@
 import { memo, useEffect, useRef } from "react";
-import { EditorView, keymap, placeholder as placeholderExt } from "@codemirror/view";
+import { EditorView, keymap, lineNumbers, placeholder as placeholderExt } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { defaultKeymap } from "@codemirror/commands";
+import {
+  liveMarkdownPreview,
+  liveMarkdownTheme,
+} from "../extensions/liveMarkdownPreview";
 
 interface MemoBlockEditorProps {
   initialContent: string;
@@ -35,6 +39,19 @@ const memoTheme = EditorView.theme(
     },
     ".cm-placeholder": {
       color: "hsl(var(--muted-foreground))",
+    },
+    ".cm-gutters": {
+      backgroundColor: "transparent",
+      borderRight: "none",
+      color: "hsl(var(--muted-foreground) / 0.5)",
+      fontSize: "11px",
+      fontFamily: "var(--font-mono, ui-monospace, monospace)",
+      minWidth: "2em",
+    },
+    ".cm-lineNumbers .cm-gutterElement": {
+      padding: "0 4px 0 4px",
+      minWidth: "1.5em",
+      textAlign: "right",
     },
   },
   { dark: true },
@@ -105,6 +122,9 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
         customKeymap,
         keymap.of(defaultKeymap),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
+        lineNumbers(),
+        liveMarkdownPreview,
+        liveMarkdownTheme,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString());
