@@ -1,24 +1,11 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { GitCommitHorizontal, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useStageAndCommit } from "../hooks/useGitActions";
 import { useCreateSession } from "@/features/session/hooks/useSessions";
-import { useWorkflowDefinitions } from "@/features/workflow/hooks/useWorkflowDefinitions";
+import { WorkflowDefinitionSelector } from "@/features/workflow/components/WorkflowDefinitionSelector";
 import { useSessionStore } from "@/store";
 import { cn } from "@/lib/utils";
 
@@ -32,22 +19,20 @@ interface CommitDialogProps {
 
 type CommitMode = "manual" | "ai";
 
-export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, workspaceId }: CommitDialogProps) {
+export function CommitDialog({
+  open,
+  onOpenChange,
+  repoPath,
+  workspacePath,
+  workspaceId,
+}: CommitDialogProps) {
   const [mode, setMode] = useState<CommitMode>("ai");
   const [message, setMessage] = useState("");
   const commitMutation = useStageAndCommit(repoPath);
   const { createSession } = useCreateSession();
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
-  const [commitMethod, setCommitMethod] = useState<string>("__skill__");
-  const { data: workflowDefinitions } = useWorkflowDefinitions();
-
-  useEffect(() => {
-    if (workflowDefinitions) {
-      const wf3 = workflowDefinitions.find((d) => d.name === "Workflow 3");
-      if (wf3) setCommitMethod(wf3.id);
-    }
-  }, [workflowDefinitions]);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
 
   const handleManualCommit = useCallback(() => {
     if (!message.trim()) return;
@@ -63,20 +48,16 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, work
     if (isCreatingSession) return;
     setIsCreatingSession(true);
     try {
-      if (commitMethod === "__skill__") {
-        const session = await createSession(workspacePath, { workspace_id: workspaceId });
-        setPendingPrompt("/git-commit", session.id);
-      } else {
-        await createSession(workspacePath, {
-          workspace_id: workspaceId,
-          workflow_definition_id: commitMethod,
-        });
-      }
+      const session = await createSession(workspacePath, {
+        workspace_id: workspaceId,
+        ...(selectedWorkflow ? { workflow_definition_id: selectedWorkflow } : {}),
+      });
+      setPendingPrompt("/git-commit", session.id);
       onOpenChange(false);
     } catch {
       setIsCreatingSession(false);
     }
-  }, [createSession, workspacePath, workspaceId, setPendingPrompt, onOpenChange, isCreatingSession, commitMethod]);
+  }, [createSession, workspacePath, workspaceId, selectedWorkflow, setPendingPrompt, onOpenChange, isCreatingSession]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -129,35 +110,10 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, work
         {mode === "ai" ? (
           <div className="space-y-3">
             <p className="font-mono text-xs text-muted-foreground">
-              {commitMethod === "__skill__" ? (
-                <>새 세션을 열고 <code className="bg-muted px-1 py-0.5 rounded">/git-commit</code> 스킬을 실행합니다.</>
-              ) : (
-                <>새 세션을 열고 선택한 워크플로우로 커밋을 수행합니다.</>
-              )}
+              선택한 워크플로우로 새 세션을 열고{" "}
+              <code className="bg-muted px-1 py-0.5 rounded">/git-commit</code> 스킬을 실행합니다.
             </p>
-            <Select value={commitMethod} onValueChange={setCommitMethod}>
-              <SelectTrigger className="font-mono text-xs h-8 bg-input border-border">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__skill__" className="font-mono text-xs">
-                  Skill: /git-commit
-                </SelectItem>
-                {workflowDefinitions && workflowDefinitions.length > 0 && (
-                  <>
-                    <SelectSeparator />
-                    {workflowDefinitions.map((def) => (
-                      <SelectItem key={def.id} value={def.id} className="font-mono text-xs">
-                        {def.name}
-                        {def.description && (
-                          <span className="ml-2 text-muted-foreground">— {def.description}</span>
-                        )}
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-              </SelectContent>
-            </Select>
+            <WorkflowDefinitionSelector value={selectedWorkflow} onSelect={setSelectedWorkflow} />
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -171,7 +127,7 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, work
                 size="sm"
                 className="font-mono text-xs"
                 onClick={handleAiCommit}
-                disabled={isCreatingSession || !workflowDefinitions}
+                disabled={isCreatingSession || !selectedWorkflow}
               >
                 {isCreatingSession ? (
                   <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -193,9 +149,7 @@ export function CommitDialog({ open, onOpenChange, repoPath, workspacePath, work
               autoFocus
             />
             <div className="flex items-center justify-between">
-              <span className="font-mono text-2xs text-muted-foreground">
-                Ctrl+Enter로 커밋
-              </span>
+              <span className="font-mono text-2xs text-muted-foreground">Ctrl+Enter로 커밋</span>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
