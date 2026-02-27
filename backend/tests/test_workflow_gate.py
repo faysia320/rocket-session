@@ -53,43 +53,36 @@ def _make_mock_settings():
     return settings
 
 
-def _make_mock_def_service():
-    """테스트용 mock WorkflowDefinitionService 생성."""
-    step = MagicMock()
-    step.name = "research"
-    step.order_index = 0
-    definition = MagicMock()
-    definition.steps = [step]
-    def_svc = AsyncMock()
-    def_svc.get_or_default = AsyncMock(return_value=definition)
-    return def_svc
-
-
 @pytest.mark.asyncio
 class TestWorkflowGate1:
     """게이트 1: workflow_phase=None → 자동 복구 (첫 step으로 설정 후 프롬프트 실행)."""
 
     async def test_auto_recovers_when_workflow_not_started(self):
-        """워크플로우 활성화 + 미시작 상태에서 자동 복구 후 프롬프트 실행."""
+        """워크플로우 phase 없이 status만 있는 비정상 상태에서 자동 복구 후 프롬프트 실행.
+
+        게이트 진입 조건: wf_phase or (wf_status and wf_status != "completed")
+        workflow_phase=None + workflow_phase_status="in_progress" → 게이트 진입 → 자동 복구.
+        """
         ws = _make_mock_ws()
         session_data = {
             "workflow_enabled": True,
             "workflow_phase": None,
-            "workflow_phase_status": None,
+            "workflow_phase_status": "in_progress",
             "allowed_tools": None,
             "name": "test",
         }
         manager = _make_mock_manager(session_data)
 
+        # resolve_workflow_state: 자동 복구 후 (phase, step_config, None) 반환
         mock_workflow_svc = AsyncMock()
+        mock_workflow_svc.resolve_workflow_state = AsyncMock(
+            return_value=("research", {"name": "research", "order_index": 0}, None)
+        )
         mock_workflow_svc.build_phase_context = AsyncMock(return_value=None)
 
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
-            patch(
-                "app.api.v1.endpoints.ws.get_workflow_definition_service"
-            ) as mock_def_svc,
             patch(
                 "app.api.v1.endpoints.ws.get_workflow_service",
                 return_value=mock_workflow_svc,
@@ -98,9 +91,11 @@ class TestWorkflowGate1:
         ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
+            mock_svc.merge_session_with_globals = MagicMock(
+                side_effect=lambda session, _: session or {}
+            )
             mock_settings_svc.return_value = mock_svc
             mock_mcp_svc.return_value = MagicMock()
-            mock_def_svc.return_value = _make_mock_def_service()
 
             mock_task = MagicMock()
             mock_task.add_done_callback = MagicMock()
@@ -116,8 +111,8 @@ class TestWorkflowGate1:
                 runner=_make_mock_runner(),
             )
 
-        # 자동 복구: update_settings가 호출되어야 함
-        manager.update_settings.assert_called()
+        # resolve_workflow_state가 호출되어야 함
+        mock_workflow_svc.resolve_workflow_state.assert_called_once()
         # runner task가 생성되어야 함 (자동 복구 후 프롬프트 실행)
         manager.add_message.assert_called_once()
 
@@ -133,26 +128,21 @@ class TestWorkflowGate1:
         }
         manager = _make_mock_manager(session_data)
 
-        mock_workflow_svc = AsyncMock()
-        mock_workflow_svc.build_phase_context = AsyncMock(return_value=None)
-
+        # wf_phase="" → falsy이므로 게이트 로직 진입하지 않음 (wf_status도 None)
+        # _handle_prompt에서 `if wf_phase or (wf_status and wf_status != "completed"):`
+        # "" is falsy, None is falsy → 게이트 미진입 → 일반 프롬프트로 처리
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
-            patch(
-                "app.api.v1.endpoints.ws.get_workflow_definition_service"
-            ) as mock_def_svc,
-            patch(
-                "app.api.v1.endpoints.ws.get_workflow_service",
-                return_value=mock_workflow_svc,
-            ),
             patch("asyncio.create_task") as mock_create_task,
         ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
+            mock_svc.merge_session_with_globals = MagicMock(
+                side_effect=lambda session, _: session or {}
+            )
             mock_settings_svc.return_value = mock_svc
             mock_mcp_svc.return_value = MagicMock()
-            mock_def_svc.return_value = _make_mock_def_service()
 
             mock_task = MagicMock()
             mock_task.add_done_callback = MagicMock()
@@ -168,8 +158,7 @@ class TestWorkflowGate1:
                 runner=_make_mock_runner(),
             )
 
-        # 자동 복구 확인
-        manager.update_settings.assert_called()
+        # 빈 문자열 phase + None status → 게이트 미진입, 일반 프롬프트로 처리
         manager.add_message.assert_called_once()
 
 
@@ -189,16 +178,27 @@ class TestWorkflowGate2:
         }
         manager = _make_mock_manager(session_data)
 
+        # resolve_workflow_state: 승인 대기 → (phase, None, error_msg) 반환
+        mock_workflow_svc = AsyncMock()
+        mock_workflow_svc.resolve_workflow_state = AsyncMock(
+            return_value=(
+                "research",
+                None,
+                "현재 단계의 검토가 완료되지 않았습니다. "
+                "아티팩트를 승인하거나 수정 요청해주세요.",
+            )
+        )
+
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch(
-                "app.api.v1.endpoints.ws.get_workflow_definition_service"
-            ) as mock_def_svc,
+                "app.api.v1.endpoints.ws.get_workflow_service",
+                return_value=mock_workflow_svc,
+            ),
         ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
             mock_settings_svc.return_value = mock_svc
-            mock_def_svc.return_value = _make_mock_def_service()
 
             await _handle_prompt(
                 data={"prompt": "hello"},
@@ -227,18 +227,28 @@ class TestWorkflowGate2:
             }
             manager = _make_mock_manager(session_data)
 
+            mock_workflow_svc = AsyncMock()
+            mock_workflow_svc.resolve_workflow_state = AsyncMock(
+                return_value=(
+                    phase,
+                    None,
+                    "현재 단계의 검토가 완료되지 않았습니다. "
+                    "아티팩트를 승인하거나 수정 요청해주세요.",
+                )
+            )
+
             with (
                 patch(
                     "app.api.v1.endpoints.ws.get_settings_service"
                 ) as mock_settings_svc,
                 patch(
-                    "app.api.v1.endpoints.ws.get_workflow_definition_service"
-                ) as mock_def_svc,
+                    "app.api.v1.endpoints.ws.get_workflow_service",
+                    return_value=mock_workflow_svc,
+                ),
             ):
                 mock_svc = AsyncMock()
                 mock_svc.get = AsyncMock(return_value={})
                 mock_settings_svc.return_value = mock_svc
-                mock_def_svc.return_value = _make_mock_def_service()
 
                 await _handle_prompt(
                     data={"prompt": "hello"},
@@ -285,14 +295,14 @@ class TestWorkflowAllowed:
         ws_manager = _make_mock_ws_manager()
 
         mock_workflow_svc = AsyncMock()
+        mock_workflow_svc.resolve_workflow_state = AsyncMock(
+            return_value=("research", {"name": "research", "order_index": 0}, None)
+        )
         mock_workflow_svc.build_phase_context = AsyncMock(return_value=None)
 
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
-            patch(
-                "app.api.v1.endpoints.ws.get_workflow_definition_service"
-            ) as mock_def_svc,
             patch(
                 "app.api.v1.endpoints.ws.get_workflow_service",
                 return_value=mock_workflow_svc,
@@ -301,9 +311,11 @@ class TestWorkflowAllowed:
         ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
+            mock_svc.merge_session_with_globals = MagicMock(
+                side_effect=lambda session, _: session or {}
+            )
             mock_settings_svc.return_value = mock_svc
             mock_mcp_svc.return_value = MagicMock()
-            mock_def_svc.return_value = _make_mock_def_service()
 
             mock_task = MagicMock()
             mock_task.add_done_callback = MagicMock()
@@ -348,14 +360,14 @@ class TestWorkflowAllowed:
         ws_manager = _make_mock_ws_manager()
 
         mock_workflow_svc = AsyncMock()
+        mock_workflow_svc.resolve_workflow_state = AsyncMock(
+            return_value=("research", {"name": "research", "order_index": 0}, None)
+        )
         mock_workflow_svc.build_phase_context = AsyncMock(return_value=None)
 
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
-            patch(
-                "app.api.v1.endpoints.ws.get_workflow_definition_service"
-            ) as mock_def_svc,
             patch(
                 "app.api.v1.endpoints.ws.get_workflow_service",
                 return_value=mock_workflow_svc,
@@ -364,9 +376,11 @@ class TestWorkflowAllowed:
         ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
+            mock_svc.merge_session_with_globals = MagicMock(
+                side_effect=lambda session, _: session or {}
+            )
             mock_settings_svc.return_value = mock_svc
             mock_mcp_svc.return_value = MagicMock()
-            mock_def_svc.return_value = _make_mock_def_service()
 
             mock_task = MagicMock()
             mock_task.add_done_callback = MagicMock()
