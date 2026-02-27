@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { memoApi } from "@/lib/api/memo.api";
 import { memoKeys } from "./memoKeys";
-import type { CreateMemoBlockRequest, UpdateMemoBlockRequest } from "@/types";
+import { ApiError } from "@/lib/api/client";
+import type { CreateMemoBlockRequest, MemoBlockInfo, UpdateMemoBlockRequest } from "@/types";
 
 /** 전체 블록 목록 조회 */
 export function useMemoBlocks() {
@@ -38,7 +39,9 @@ export function useUpdateMemoBlock() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateMemoBlockRequest }) =>
       memoApi.updateBlock(id, data),
-    onError: () => {
+    onError: (error) => {
+      // 이미 삭제된 블록에 대한 pending save → 무시
+      if (error instanceof ApiError && error.status === 404) return;
       toast.error("메모 저장에 실패했습니다");
     },
     onSettled: () => {
@@ -53,11 +56,22 @@ export function useDeleteMemoBlock() {
 
   return useMutation({
     mutationFn: (id: string) => memoApi.deleteBlock(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: memoKeys.all });
+    onMutate: async (deletedId) => {
+      await qc.cancelQueries({ queryKey: memoKeys.blocks() });
+      const previousBlocks = qc.getQueryData<MemoBlockInfo[]>(memoKeys.blocks());
+      qc.setQueryData<MemoBlockInfo[]>(memoKeys.blocks(), (old) =>
+        old ? old.filter((b) => b.id !== deletedId) : [],
+      );
+      return { previousBlocks };
     },
-    onError: () => {
+    onError: (_err, _id, context) => {
+      if (context?.previousBlocks) {
+        qc.setQueryData(memoKeys.blocks(), context.previousBlocks);
+      }
       toast.error("블록 삭제에 실패했습니다");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: memoKeys.all });
     },
   });
 }
