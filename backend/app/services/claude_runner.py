@@ -9,6 +9,8 @@ import os
 import subprocess
 import sys
 import tempfile
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -27,6 +29,38 @@ if TYPE_CHECKING:
     from app.services.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class WorkflowContext:
+    """run() 메서드의 워크플로우 관련 파라미터를 묶는 데이터 클래스."""
+
+    phase: str | None = None
+    service: object | None = None
+    step_config: dict | None = None
+    original_prompt: str | None = None
+
+
+@dataclass
+class TurnState:
+    """현재 턴의 공유 상태.
+
+    plain dict 대신 dataclass를 사용하여 IDE 자동완성 및 키 오타를 방지합니다.
+    """
+
+    text: str = ""
+    model: str | None = None
+    work_dir: str = ""
+    worktree_name: str | None = None
+    workflow_phase: str | None = None
+    result_received: bool = False
+    result_text: str | None = None
+    is_error: bool = False
+    should_terminate: bool = False
+    ask_user_question_tool_id: str | None = None
+    exit_plan_tool_id: str | None = None
+    exit_plan_content: str | None = None
+    exit_plan_allowed_prompts: list = field(default_factory=list)
 
 
 class _AsyncStreamReader:
@@ -83,8 +117,50 @@ class ClaudeRunner:
 
     _MAX_TOOL_OUTPUT_LENGTH = 5000
 
+    # 특수 도구 이름 상수
+    TOOL_ASK_USER_QUESTION = "AskUserQuestion"
+    TOOL_EXIT_PLAN_MODE = "ExitPlanMode"
+    FILE_WRITE_TOOLS = frozenset({"Write", "Edit", "MultiEdit"})
+
+    # subprocess 버퍼 크기 (bytes)
+    _SUBPROCESS_BUFFER_LIMIT = 10 * 1024 * 1024  # 10MB
+
+    # 프로세스 종료 타임아웃 (초)
+    _GRACEFUL_TERMINATE_TIMEOUT = 5.0
+    _STDERR_READ_TIMEOUT = 10.0
+    _PROCESS_WAIT_TIMEOUT = 10.0
+
     def __init__(self, settings: Settings):
         self._settings = settings
+        self._semaphore = asyncio.Semaphore(settings.max_concurrent_sessions)
+
+    @staticmethod
+    async def _terminate_process(
+        process, graceful_timeout: float = 5.0, session_id: str = ""
+    ) -> None:
+        """프로세스를 graceful 종료 시도 후, 타임아웃 시 강제 종료."""
+        process.terminate()
+        try:
+            await asyncio.wait_for(process.wait(), timeout=graceful_timeout)
+        except asyncio.TimeoutError:
+            if session_id:
+                logger.warning(
+                    "세션 %s: 프로세스 종료 대기 타임아웃 — 강제 종료", session_id
+                )
+            process.kill()
+
+    @staticmethod
+    async def _update_and_broadcast_status(
+        session_id: str,
+        status: str,
+        session_manager: "SessionManager",
+        ws_manager: WebSocketManager,
+    ) -> None:
+        """세션 상태 업데이트 + WebSocket 브로드캐스트를 단일 호출로 통합."""
+        await session_manager.update_status(session_id, status)
+        await ws_manager.broadcast_event(
+            session_id, {"type": WsEventType.STATUS, "status": status}
+        )
 
     @staticmethod
     def _copy_images_to_workdir(images: list[str], work_dir: str) -> list[str]:
@@ -312,7 +388,7 @@ class ClaudeRunner:
             stderr=asyncio.subprocess.PIPE,
             cwd=work_dir,
             env=env,
-            limit=10 * 1024 * 1024,  # 10MB - Claude 스트림 JSON 대용량 라인 대응
+            limit=self._SUBPROCESS_BUFFER_LIMIT,
         )
 
     @staticmethod
@@ -344,7 +420,7 @@ class ClaudeRunner:
         session_id: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
-        turn_state: dict,
+        turn_state: TurnState,
     ) -> None:
         """파싱된 JSON 이벤트를 타입별로 처리."""
         event_type = event.get("type", "")
@@ -391,179 +467,205 @@ class ClaudeRunner:
                 session_id, {"type": WsEventType.EVENT, "event": event}
             )
 
+    async def _handle_thinking_block(
+        self,
+        block: dict,
+        session_id: str,
+        ws_manager: WebSocketManager,
+    ) -> None:
+        """thinking 블록 처리 (extended thinking 모드)."""
+        thinking_text = block.get("thinking", "")
+        if thinking_text:
+            await ws_manager.broadcast_event(
+                session_id,
+                {
+                    "type": WsEventType.THINKING,
+                    "text": thinking_text,
+                    "timestamp": utc_now_iso(),
+                },
+            )
+
+    async def _handle_tool_use_block(
+        self,
+        block: dict,
+        session_id: str,
+        ws_manager: WebSocketManager,
+        session_manager: "SessionManager",
+        turn_state: TurnState,
+    ) -> bool:
+        """tool_use 블록 처리. should_continue=True이면 다음 블록 건너뜀."""
+        tool_name = block.get("name", "unknown")
+        tool_input = block.get("input", {})
+        tool_use_id = block.get("id", "")
+
+        # AskUserQuestion 감지: 인터랙티브 질문 이벤트로 변환
+        if tool_name == self.TOOL_ASK_USER_QUESTION:
+            turn_state.ask_user_question_tool_id = tool_use_id
+            turn_state.should_terminate = True
+            question_timestamp = utc_now_iso()
+            question_list = tool_input.get("questions", [])
+            await ws_manager.broadcast_event(
+                session_id,
+                {
+                    "type": WsEventType.ASK_USER_QUESTION,
+                    "questions": question_list,
+                    "tool_use_id": tool_use_id,
+                    "timestamp": question_timestamp,
+                },
+            )
+            from app.services.pending_questions import set_pending_question
+
+            set_pending_question(
+                session_id=session_id,
+                questions=question_list,
+                tool_use_id=tool_use_id,
+                timestamp=question_timestamp,
+            )
+            return True
+
+        # ExitPlanMode 감지: 상세 플랜을 turn_state에 캡처
+        if tool_name == self.TOOL_EXIT_PLAN_MODE:
+            plan_content = tool_input.get("plan", "")
+            allowed_prompts = tool_input.get("allowedPrompts", [])
+            if plan_content:
+                turn_state.exit_plan_content = plan_content
+                turn_state.exit_plan_allowed_prompts = allowed_prompts
+            turn_state.exit_plan_tool_id = tool_use_id
+            return True
+
+        # 일반 tool_use 브로드캐스트
+        await ws_manager.broadcast_event(
+            session_id,
+            {
+                "type": WsEventType.TOOL_USE,
+                "tool": tool_name,
+                "input": tool_input,
+                "tool_use_id": tool_use_id,
+                "timestamp": utc_now_iso(),
+            },
+        )
+        ts = utc_now()
+        if not session_manager.queue_message(
+            session_id=session_id,
+            role="assistant",
+            content="",
+            timestamp=ts,
+            message_type="tool_use",
+            tool_use_id=tool_use_id,
+            tool_name=tool_name,
+            tool_input=tool_input,
+        ):
+            await session_manager.add_message(
+                session_id=session_id,
+                role="assistant",
+                content="",
+                timestamp=ts,
+                message_type="tool_use",
+                tool_use_id=tool_use_id,
+                tool_name=tool_name,
+                tool_input=tool_input,
+            )
+
+        # 파일 변경 추적
+        await self._handle_file_change_from_tool(
+            tool_name, tool_input, session_id, ws_manager, session_manager, turn_state
+        )
+        return False
+
+    async def _handle_file_change_from_tool(
+        self,
+        tool_name: str,
+        tool_input: dict,
+        session_id: str,
+        ws_manager: WebSocketManager,
+        session_manager: "SessionManager",
+        turn_state: TurnState,
+    ) -> None:
+        """Write/Edit/MultiEdit 도구 사용 시 파일 변경을 기록+브로드캐스트."""
+        if tool_name not in self.FILE_WRITE_TOOLS:
+            return
+
+        raw_path = tool_input.get("file_path", tool_input.get("path", "unknown"))
+        work_dir = turn_state.work_dir
+        wt_name = turn_state.worktree_name
+        file_path = (
+            self._normalize_file_path(raw_path, work_dir, wt_name)
+            if work_dir
+            else raw_path
+        )
+        normalized = file_path.replace("\\", "/")
+        if normalized.startswith(".claude/plans/") or "/.claude/plans/" in normalized:
+            return
+
+        ts_dt = utc_now()
+        await session_manager.add_file_change(session_id, tool_name, file_path, ts_dt)
+        await ws_manager.broadcast_event(
+            session_id,
+            {
+                "type": WsEventType.FILE_CHANGE,
+                "change": {
+                    "tool": tool_name,
+                    "file": file_path,
+                    "timestamp": ts_dt.isoformat(),
+                },
+            },
+        )
+
     async def _handle_assistant_event(
         self,
         event: dict,
         session_id: str,
         ws_manager: WebSocketManager,
-        session_manager: SessionManager,
-        turn_state: dict,
+        session_manager: "SessionManager",
+        turn_state: TurnState,
     ) -> None:
         """assistant 타입 이벤트 처리."""
         msg = event.get("message", {})
         content_blocks = msg.get("content", [])
 
-        # 모델명 추출 (assistant 메시지에 포함됨)
         model = msg.get("model")
         if model:
-            turn_state["model"] = model
+            turn_state.model = model
 
         has_new_text = False
         for block in content_blocks:
-            if block.get("type") == "thinking":
-                # thinking 블록 (extended thinking 모드)
-                thinking_text = block.get("thinking", "")
-                if thinking_text:
-                    await ws_manager.broadcast_event(
-                        session_id,
-                        {
-                            "type": WsEventType.THINKING,
-                            "text": thinking_text,
-                            "timestamp": utc_now_iso(),
-                        },
-                    )
-            elif block.get("type") == "text":
-                turn_state["text"] = block.get("text", "")
+            block_type = block.get("type")
+            if block_type == "thinking":
+                await self._handle_thinking_block(block, session_id, ws_manager)
+            elif block_type == "text":
+                turn_state.text = block.get("text", "")
                 has_new_text = True
-            elif block.get("type") == "tool_use":
-                tool_name = block.get("name", "unknown")
-                tool_input = block.get("input", {})
-                tool_use_id = block.get("id", "")
-
-                # AskUserQuestion 감지: 인터랙티브 질문 이벤트로 변환
-                # 사용자 응답을 기다리기 위해 subprocess 종료를 요청
-                if tool_name == "AskUserQuestion":
-                    turn_state["ask_user_question_tool_id"] = tool_use_id
-                    turn_state["should_terminate"] = True
-                    question_timestamp = utc_now_iso()
-                    question_list = tool_input.get("questions", [])
-                    await ws_manager.broadcast_event(
-                        session_id,
-                        {
-                            "type": WsEventType.ASK_USER_QUESTION,
-                            "questions": question_list,
-                            "tool_use_id": tool_use_id,
-                            "timestamp": question_timestamp,
-                        },
-                    )
-                    # 세션 전환/새로고침 시 복원을 위해 인메모리 저장
-                    from app.services.pending_questions import (
-                        set_pending_question,
-                    )
-
-                    set_pending_question(
-                        session_id=session_id,
-                        questions=question_list,
-                        tool_use_id=tool_use_id,
-                        timestamp=question_timestamp,
-                    )
-                    continue
-
-                # ExitPlanMode 감지: 상세 플랜을 turn_state에 캡처하고
-                # 일반 tool_use 브로드캐스트를 건너뜀 (Plan 완료 시 아티팩트에 사용)
-                if tool_name == "ExitPlanMode":
-                    plan_content = tool_input.get("plan", "")
-                    allowed_prompts = tool_input.get("allowedPrompts", [])
-                    if plan_content:
-                        turn_state["exit_plan_content"] = plan_content
-                        turn_state["exit_plan_allowed_prompts"] = allowed_prompts
-                    turn_state["exit_plan_tool_id"] = tool_use_id
-                    continue
-
-                tool_event = {
-                    "type": WsEventType.TOOL_USE,
-                    "tool": tool_name,
-                    "input": tool_input,
-                    "tool_use_id": tool_use_id,
-                    "timestamp": utc_now_iso(),
-                }
-                await ws_manager.broadcast_event(session_id, tool_event)
-
-                # tool_use를 messages 테이블에 저장 (히스토리 복원용)
-                await session_manager.add_message(
-                    session_id=session_id,
-                    role="assistant",
-                    content="",
-                    timestamp=utc_now(),
-                    message_type="tool_use",
-                    tool_use_id=tool_use_id,
-                    tool_name=tool_name,
-                    tool_input=tool_input,
+            elif block_type == "tool_use":
+                should_skip = await self._handle_tool_use_block(
+                    block, session_id, ws_manager, session_manager, turn_state
                 )
+                if should_skip:
+                    continue
 
-                if tool_name in ("Write", "Edit", "MultiEdit"):
-                    raw_path = tool_input.get(
-                        "file_path", tool_input.get("path", "unknown")
-                    )
-                    work_dir = turn_state.get("work_dir", "")
-                    wt_name = turn_state.get("worktree_name")
-                    file_path = (
-                        self._normalize_file_path(raw_path, work_dir, wt_name)
-                        if work_dir
-                        else raw_path
-                    )
-                    normalized = file_path.replace("\\", "/")
-                    if (
-                        normalized.startswith(".claude/plans/")
-                        or "/.claude/plans/" in normalized
-                    ):
-                        pass
-                    else:
-                        ts_dt = utc_now()
-                        await session_manager.add_file_change(
-                            session_id, tool_name, file_path, ts_dt
-                        )
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {
-                                "type": WsEventType.FILE_CHANGE,
-                                "change": {
-                                    "tool": tool_name,
-                                    "file": file_path,
-                                    "timestamp": ts_dt.isoformat(),
-                                },
-                            },
-                        )
-
-        if has_new_text and turn_state["text"]:
+        if has_new_text and turn_state.text:
             await ws_manager.broadcast_event(
                 session_id,
                 {
                     "type": WsEventType.ASSISTANT_TEXT,
-                    "text": turn_state["text"],
+                    "text": turn_state.text,
                     "timestamp": utc_now_iso(),
                 },
             )
+            await self._try_handle_delegate_commands(session_id, turn_state.text)
 
-            # 리드 세션 @delegate 패턴 자동 위임
-            try:
-                from app.api.dependencies import get_team_coordinator
+    @staticmethod
+    async def _try_handle_delegate_commands(session_id: str, text: str) -> None:
+        """리드 세션의 @delegate 패턴 자동 위임 (TeamCoordinator에 위임)."""
+        try:
+            from app.api.dependencies import get_team_coordinator
 
-                coordinator = get_team_coordinator()
-                commands = coordinator.parse_delegate_commands(turn_state["text"])
-                if commands:
-                    # session_id → 태스크 역조회 → 리드 여부 확인
-                    from app.repositories.team_repo import TeamRepository
-                    from app.repositories.team_task_repo import TeamTaskRepository
-
-                    async with coordinator._db.session() as db_sess:
-                        task_repo = TeamTaskRepository(db_sess)
-                        tasks = await task_repo.get_tasks_by_session_id(session_id)
-                        team_repo = TeamRepository(db_sess)
-                        for task in tasks:
-                            team = await team_repo.get_by_id(task.team_id)
-                            if team and team.lead_member_id == task.assigned_member_id:
-                                for nickname, desc in commands:
-                                    asyncio.create_task(
-                                        coordinator.auto_delegate(
-                                            team.id, nickname, desc
-                                        )
-                                    )
-            except Exception:
-                logger.debug(
-                    "세션 %s: TeamCoordinator @delegate 처리 실패 (미초기화)",
-                    session_id,
-                )
+            coordinator = get_team_coordinator()
+            await coordinator.try_handle_delegate_commands(session_id, text)
+        except Exception:
+            logger.debug(
+                "세션 %s: TeamCoordinator @delegate 처리 실패 (미초기화)",
+                session_id,
+            )
 
     async def _handle_user_event(
         self,
@@ -571,7 +673,7 @@ class ClaudeRunner:
         session_id: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
-        turn_state: dict,
+        turn_state: TurnState,
     ) -> None:
         """user 타입 이벤트 (tool_result) 처리."""
         msg = event.get("message", {})
@@ -581,13 +683,13 @@ class ClaudeRunner:
                 tool_use_id = block.get("tool_use_id", "")
 
                 # AskUserQuestion의 tool_result는 프론트엔드에 전송하지 않음
-                if tool_use_id == turn_state.get("ask_user_question_tool_id"):
-                    turn_state.pop("ask_user_question_tool_id", None)
+                if tool_use_id == turn_state.ask_user_question_tool_id:
+                    turn_state.ask_user_question_tool_id = None
                     continue
 
                 # ExitPlanMode의 tool_result도 프론트엔드에 전송하지 않음
-                if tool_use_id == turn_state.get("exit_plan_tool_id"):
-                    turn_state.pop("exit_plan_tool_id", None)
+                if tool_use_id == turn_state.exit_plan_tool_id:
+                    turn_state.exit_plan_tool_id = None
                     continue
 
                 result_info = extract_tool_result_output(
@@ -604,15 +706,25 @@ class ClaudeRunner:
                 )
 
                 # tool_result를 messages 테이블에 저장 (히스토리 복원용)
-                await session_manager.add_message(
+                ts = utc_now()
+                if not session_manager.queue_message(
                     session_id=session_id,
                     role="tool",
                     content=result_info["output"],
-                    timestamp=utc_now(),
+                    timestamp=ts,
                     is_error=result_info["is_error"],
                     message_type="tool_result",
                     tool_use_id=tool_use_id,
-                )
+                ):
+                    await session_manager.add_message(
+                        session_id=session_id,
+                        role="tool",
+                        content=result_info["output"],
+                        timestamp=ts,
+                        is_error=result_info["is_error"],
+                        message_type="tool_result",
+                        tool_use_id=tool_use_id,
+                    )
 
     async def _handle_result_event(
         self,
@@ -620,7 +732,7 @@ class ClaudeRunner:
         session_id: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
-        turn_state: dict,
+        turn_state: TurnState,
     ) -> None:
         """result 타입 이벤트 처리."""
         data = extract_result_data(event, turn_state)
@@ -640,9 +752,9 @@ class ClaudeRunner:
                 session_id, session_id_from_result
             )
 
-        turn_state["result_received"] = True
-        turn_state["result_text"] = result_text  # finally 블록에서 사용
-        turn_state["is_error"] = is_error  # 워크플로우 체이닝 방지용
+        turn_state.result_received = True
+        turn_state.result_text = result_text
+        turn_state.is_error = is_error
 
         result_event = {
             "type": WsEventType.RESULT,
@@ -651,7 +763,7 @@ class ClaudeRunner:
             "cost": cost_info,
             "duration_ms": duration,
             "session_id": session_id_from_result,
-            "workflow_phase": turn_state.get("workflow_phase"),
+            "workflow_phase": turn_state.workflow_phase,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cache_creation_tokens": cache_creation_tokens,
@@ -687,9 +799,9 @@ class ClaudeRunner:
         try:
             await session_manager.add_token_snapshot(
                 session_id=session_id,
-                work_dir=turn_state.get("work_dir", ""),
+                work_dir=turn_state.work_dir,
                 timestamp=utc_now(),
-                workflow_phase=turn_state.get("workflow_phase"),
+                workflow_phase=turn_state.workflow_phase,
                 model=model,
                 input_tokens=input_tokens or 0,
                 output_tokens=output_tokens or 0,
@@ -706,26 +818,13 @@ class ClaudeRunner:
         work_dir: str = "",
         worktree_name: str | None = None,
         workflow_phase: str | None = None,
-    ) -> dict:
-        """turn_state 딕셔너리를 생성.
-
-        turn_state는 현재 턴의 공유 상태로, 아래 키를 포함합니다:
-          text (str): 누적 응답 텍스트
-          model (str|None): 응답 모델명
-          work_dir (str): 작업 디렉토리 (파일 경로 정규화용)
-          worktree_name (str|None): 워크트리 이름 (claude -w 세션용)
-          workflow_phase (str|None): 워크플로우 phase ("research"|"plan"|"implement"|None)
-          result_received (bool): result 이벤트 수신 여부 (비정상 종료 감지용)
-          should_terminate (bool, 동적): AskUserQuestion 감지 시 True, 스트림 파싱 중단
-        """
-        return {
-            "text": "",
-            "model": None,
-            "work_dir": work_dir,
-            "worktree_name": worktree_name,
-            "workflow_phase": workflow_phase,
-            "result_received": False,
-        }
+    ) -> TurnState:
+        """TurnState 인스턴스를 생성."""
+        return TurnState(
+            work_dir=work_dir,
+            worktree_name=worktree_name,
+            workflow_phase=workflow_phase,
+        )
 
     async def _parse_stream(
         self,
@@ -733,7 +832,7 @@ class ClaudeRunner:
         session_id: str,
         ws_manager: WebSocketManager,
         session_manager: SessionManager,
-        turn_state: dict,
+        turn_state: TurnState,
     ) -> None:
         """subprocess stdout에서 JSON 스트림을 읽고 이벤트별로 처리.
 
@@ -767,7 +866,7 @@ class ClaudeRunner:
             )
 
             # AskUserQuestion 감지 시 스트림 파싱 중단 (caller에서 프로세스 종료)
-            if turn_state.get("should_terminate"):
+            if turn_state.should_terminate:
                 break
 
     @staticmethod
@@ -779,6 +878,248 @@ class ClaudeRunner:
             except OSError:
                 logger.debug("MCP config 정리 실패: %s", mcp_config_path, exc_info=True)
 
+    @asynccontextmanager
+    async def _mcp_config_scope(self, session, session_id, cmd, mcp_service=None):
+        """MCP config 파일 생성 → yield → 정리를 보장하는 컨텍스트 매니저."""
+        mcp_config_path = await self._setup_mcp_config(
+            session, session_id, cmd, mcp_service
+        )
+        try:
+            yield mcp_config_path
+        finally:
+            self._cleanup_mcp_config(mcp_config_path)
+
+    async def _run_process_lifecycle(
+        self,
+        cmd: list[str],
+        session: dict,
+        session_id: str,
+        ws_manager: WebSocketManager,
+        session_manager: "SessionManager",
+        turn_state: TurnState,
+    ) -> None:
+        """프로세스 시작 → 스트림 파싱 → 종료 처리."""
+        timeout_seconds = session.get("timeout_seconds")
+        process = await self._start_process(cmd, session["work_dir"])
+        session_manager.set_process(session_id, process)
+
+        # 타임아웃 적용
+        if timeout_seconds and timeout_seconds > 0:
+            try:
+                await asyncio.wait_for(
+                    self._parse_stream(
+                        process, session_id, ws_manager, session_manager,
+                        turn_state=turn_state,
+                    ),
+                    timeout=timeout_seconds,
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "세션 %s: 타임아웃 (%d초) 초과", session_id, timeout_seconds
+                )
+                await self._terminate_process(
+                    process, self._GRACEFUL_TERMINATE_TIMEOUT, session_id
+                )
+                await ws_manager.broadcast_event(
+                    session_id,
+                    {
+                        "type": WsEventType.ERROR,
+                        "message": f"프로세스 타임아웃 ({timeout_seconds}초) 초과로 종료되었습니다.",
+                    },
+                )
+        else:
+            await self._parse_stream(
+                process, session_id, ws_manager, session_manager,
+                turn_state=turn_state,
+            )
+
+        # AskUserQuestion으로 인한 조기 중단
+        if turn_state.should_terminate:
+            logger.info(
+                "세션 %s: AskUserQuestion 감지 — 사용자 응답 대기를 위해 프로세스 종료",
+                session_id,
+            )
+            await self._terminate_process(
+                process, self._GRACEFUL_TERMINATE_TIMEOUT, session_id
+            )
+        else:
+            # 정상 흐름: stderr 읽기와 프로세스 대기를 병렬 실행
+            async def _read_stderr():
+                try:
+                    stderr = await asyncio.wait_for(
+                        process.stderr.read(), timeout=self._STDERR_READ_TIMEOUT
+                    )
+                    if stderr:
+                        stderr_text = stderr.decode("utf-8").strip()
+                        if stderr_text:
+                            await ws_manager.broadcast_event(
+                                session_id,
+                                {"type": WsEventType.STDERR, "text": stderr_text},
+                            )
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "세션 %s: stderr 읽기 타임아웃 (%d초)",
+                        session_id,
+                        self._STDERR_READ_TIMEOUT,
+                    )
+
+            async def _wait_process():
+                try:
+                    await asyncio.wait_for(
+                        process.wait(), timeout=self._PROCESS_WAIT_TIMEOUT
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "세션 %s: 프로세스 종료 대기 타임아웃 — 강제 종료",
+                        session_id,
+                    )
+                    process.kill()
+
+            await asyncio.gather(_read_stderr(), _wait_process())
+
+    async def _handle_workflow_completion(
+        self,
+        session_id: str,
+        turn_state: TurnState,
+        prompt: str,
+        allowed_tools: str,
+        ws_manager: WebSocketManager,
+        session_manager: "SessionManager",
+        workflow_phase: str,
+        workflow_service,
+        workflow_step_config: dict | None,
+        original_prompt: str | None,
+        mcp_service=None,
+    ) -> None:
+        """워크플로우 완료 처리: 아티팩트 저장 + 다음 phase 결정."""
+        result_text = (
+            turn_state.exit_plan_content
+            or turn_state.result_text
+            or turn_state.text
+        )
+        if result_text:
+            try:
+                await workflow_service.create_artifact(
+                    session_id=session_id,
+                    phase=workflow_phase,
+                    content=result_text,
+                )
+            except Exception:
+                logger.warning(
+                    "세션 %s: %s 아티팩트 저장 실패",
+                    session_id,
+                    workflow_phase,
+                    exc_info=True,
+                )
+
+        # step config로 후속 동작 결정
+        step = workflow_step_config or {}
+        review_required = step.get("review_required", False)
+        next_phase = await workflow_service.get_next_phase(
+            workflow_phase, session_id, session_manager
+        )
+
+        if not next_phase:
+            # 마지막 단계 완료 → 워크플로우 종료
+            try:
+                await session_manager.update_settings(
+                    session_id,
+                    workflow_phase=workflow_phase,
+                    workflow_phase_status="completed",
+                )
+                await ws_manager.broadcast_event(
+                    session_id, {"type": WsEventType.WORKFLOW_COMPLETED},
+                )
+                logger.info("워크플로우 완료: session=%s", session_id)
+            except Exception:
+                logger.warning(
+                    "세션 %s: 워크플로우 완료 처리 실패", session_id, exc_info=True,
+                )
+
+        elif not review_required:
+            # 승인 불필요 → 자동 승인 + 다음 phase 자동 실행
+            try:
+                await workflow_service.approve_phase(
+                    session_id, session_manager=session_manager
+                )
+                await ws_manager.broadcast_event(
+                    session_id,
+                    {
+                        "type": WsEventType.WORKFLOW_PHASE_APPROVED,
+                        "phase": workflow_phase,
+                        "next_phase": next_phase,
+                    },
+                )
+                await ws_manager.broadcast_event(
+                    session_id,
+                    {
+                        "type": WsEventType.WORKFLOW_AUTO_CHAIN,
+                        "from_phase": workflow_phase,
+                        "to_phase": next_phase,
+                    },
+                )
+                raw_prompt = original_prompt or prompt
+                next_context = await workflow_service.build_phase_context(
+                    session_id, next_phase, raw_prompt,
+                    session_manager=session_manager,
+                )
+                next_steps = await workflow_service._get_steps(
+                    session_id, session_manager
+                )
+                next_step_config = next(
+                    (s for s in next_steps if s.name == next_phase), None
+                )
+                updated = await session_manager.get(session_id)
+                chain_task = asyncio.create_task(
+                    self.run(
+                        updated,
+                        next_context,
+                        allowed_tools,
+                        session_id,
+                        ws_manager,
+                        session_manager,
+                        mcp_service=mcp_service,
+                        workflow_phase=next_phase,
+                        workflow_service=workflow_service,
+                        original_prompt=raw_prompt,
+                        workflow_step_config=(
+                            next_step_config.model_dump()
+                            if next_step_config
+                            else None
+                        ),
+                    )
+                )
+                chain_task.add_done_callback(
+                    lambda t: _auto_chain_done(t, session_id, session_manager)
+                )
+                session_manager.set_runner_task(session_id, chain_task)
+            except Exception:
+                logger.warning(
+                    "세션 %s: %s→%s 자동 체이닝 실패",
+                    session_id, workflow_phase, next_phase,
+                    exc_info=True,
+                )
+
+        else:
+            # 승인 필요 → 사용자 승인 대기
+            try:
+                await session_manager.update_settings(
+                    session_id, workflow_phase_status="awaiting_approval",
+                )
+                await ws_manager.broadcast_event(
+                    session_id,
+                    {
+                        "type": WsEventType.WORKFLOW_PHASE_COMPLETED,
+                        "phase": workflow_phase,
+                    },
+                )
+            except Exception:
+                logger.warning(
+                    "세션 %s: %s phase 완료 처리 실패",
+                    session_id, workflow_phase,
+                    exc_info=True,
+                )
+
     async def run(
         self,
         session: dict,
@@ -786,7 +1127,7 @@ class ClaudeRunner:
         allowed_tools: str,
         session_id: str,
         ws_manager: WebSocketManager,
-        session_manager: SessionManager,
+        session_manager: "SessionManager",
         images: list[str] | None = None,
         mcp_service=None,
         workflow_phase: str | None = None,
@@ -795,29 +1136,56 @@ class ClaudeRunner:
         workflow_step_config: dict | None = None,
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
-        await session_manager.update_status(session_id, SessionStatus.RUNNING)
-        await ws_manager.broadcast_event(
-            session_id, {"type": WsEventType.STATUS, "status": SessionStatus.RUNNING}
+        # 세마포어 대기 (동시 세션 제한)
+        if self._semaphore.locked():
+            logger.info(
+                "세션 %s: 동시 실행 한도 도달 — 대기 중 (%d/%d)",
+                session_id,
+                self._settings.max_concurrent_sessions - self._semaphore._value,
+                self._settings.max_concurrent_sessions,
+            )
+            await ws_manager.broadcast_event(
+                session_id,
+                {
+                    "type": WsEventType.STATUS,
+                    "status": "queued",
+                    "message": "동시 실행 한도에 도달하여 대기 중입니다.",
+                },
+            )
+
+        async with self._semaphore:
+            await self._run_inner(
+                session, prompt, allowed_tools, session_id,
+                ws_manager, session_manager, images, mcp_service,
+                workflow_phase, workflow_service, original_prompt,
+                workflow_step_config,
+            )
+
+    async def _run_inner(
+        self,
+        session: dict,
+        prompt: str,
+        allowed_tools: str,
+        session_id: str,
+        ws_manager: WebSocketManager,
+        session_manager: "SessionManager",
+        images: list[str] | None = None,
+        mcp_service=None,
+        workflow_phase: str | None = None,
+        workflow_service=None,
+        original_prompt: str | None = None,
+        workflow_step_config: dict | None = None,
+    ):
+        """세마포어 내부에서 실행되는 실제 CLI 실행 로직."""
+        await self._update_and_broadcast_status(
+            session_id, SessionStatus.RUNNING, session_manager, ws_manager
         )
 
-        # _build_command는 동기 메서드 (내부에서 _copy_images_to_workdir의 shutil.copy2 등
-        # 블로킹 I/O를 수행하므로 이벤트 루프 보호를 위해 스레드에서 실행)
-        cmd, _, mcp_config_path = await asyncio.to_thread(
+        cmd, _, _ = await asyncio.to_thread(
             self._build_command,
-            session,
-            prompt,
-            allowed_tools,
-            session_id,
-            images,
-            workflow_phase,
-            workflow_step_config,
+            session, prompt, allowed_tools, session_id,
+            images, workflow_phase, workflow_step_config,
         )
-
-        # MCP config 통합: 사용자 MCP 서버 + Permission MCP 병합
-        mcp_config_path = await self._setup_mcp_config(
-            session, session_id, cmd, mcp_service
-        )
-        timeout_seconds = session.get("timeout_seconds")
 
         work_dir = session.get("work_dir", "")
         worktree_name = session.get("worktree_name")
@@ -827,297 +1195,88 @@ class ClaudeRunner:
             workflow_phase=workflow_phase,
         )
 
-        try:
-            process = await self._start_process(cmd, session["work_dir"])
-            session_manager.set_process(session_id, process)
-
-            # 타임아웃 적용
-            if timeout_seconds and timeout_seconds > 0:
-                try:
-                    await asyncio.wait_for(
-                        self._parse_stream(
-                            process,
-                            session_id,
-                            ws_manager,
-                            session_manager,
-                            turn_state=turn_state,
-                        ),
-                        timeout=timeout_seconds,
-                    )
-                except asyncio.TimeoutError:
-                    logger.warning(
-                        "세션 %s: 타임아웃 (%d초) 초과", session_id, timeout_seconds
-                    )
-                    process.terminate()
-                    try:
-                        await asyncio.wait_for(process.wait(), timeout=5)
-                    except asyncio.TimeoutError:
-                        process.kill()
-                    await ws_manager.broadcast_event(
-                        session_id,
-                        {
-                            "type": WsEventType.ERROR,
-                            "message": f"프로세스 타임아웃 ({timeout_seconds}초) 초과로 종료되었습니다.",
-                        },
-                    )
-            else:
-                await self._parse_stream(
-                    process,
-                    session_id,
-                    ws_manager,
-                    session_manager,
-                    turn_state=turn_state,
-                )
-
-            # AskUserQuestion으로 인한 조기 중단: subprocess 종료
-            if turn_state and turn_state.get("should_terminate"):
-                logger.info(
-                    "세션 %s: AskUserQuestion 감지 — 사용자 응답 대기를 위해 프로세스 종료",
-                    session_id,
-                )
-                process.terminate()
-                try:
-                    await asyncio.wait_for(process.wait(), timeout=5)
-                except asyncio.TimeoutError:
-                    process.kill()
-            else:
-                # 정상 흐름: stderr 읽기와 프로세스 대기를 병렬 실행
-                async def _read_stderr():
-                    try:
-                        stderr = await asyncio.wait_for(
-                            process.stderr.read(), timeout=10
-                        )
-                        if stderr:
-                            stderr_text = stderr.decode("utf-8").strip()
-                            if stderr_text:
-                                await ws_manager.broadcast_event(
-                                    session_id,
-                                    {"type": WsEventType.STDERR, "text": stderr_text},
-                                )
-                    except asyncio.TimeoutError:
-                        logger.warning(
-                            "세션 %s: stderr 읽기 타임아웃 (10초)", session_id
-                        )
-
-                async def _wait_process():
-                    try:
-                        await asyncio.wait_for(process.wait(), timeout=10)
-                    except asyncio.TimeoutError:
-                        logger.warning(
-                            "세션 %s: 프로세스 종료 대기 타임아웃 — 강제 종료",
-                            session_id,
-                        )
-                        process.kill()
-
-                await asyncio.gather(_read_stderr(), _wait_process())
-
-        except Exception as e:
-            error_msg = str(e) or f"{type(e).__name__}: (no message)"
-            logger.error("세션 %s 실행 오류: %s", session_id, error_msg, exc_info=True)
-            await session_manager.update_status(session_id, SessionStatus.ERROR)
-            await ws_manager.broadcast_event(
-                session_id, {"type": WsEventType.ERROR, "message": error_msg}
-            )
-
-        finally:
-            # 비정상 종료 시 스트리밍 중이던 텍스트를 DB에 저장 (데이터 유실 방지)
-            # result 이벤트가 수신되지 않았고, 누적된 텍스트가 있는 경우에만
-            if (
-                turn_state.get("text")
-                and not turn_state.get("result_received")
-                and not turn_state.get("should_terminate")
-            ):
-                logger.info(
-                    "세션 %s: result 미수신 상태에서 종료 — partial text 저장 (%d자)",
-                    session_id,
-                    len(turn_state["text"]),
-                )
-                try:
-                    await session_manager.add_message(
-                        session_id=session_id,
-                        role="assistant",
-                        content=turn_state["text"],
-                        timestamp=utc_now(),
-                        is_error=False,
-                        model=turn_state.get("model"),
-                    )
-                except Exception:
-                    logger.warning(
-                        "세션 %s: partial text DB 저장 실패", session_id, exc_info=True
-                    )
-
-            # ERROR 상태인 경우 보존, 그 외에는 IDLE로 전환
-            current_session = await session_manager.get(session_id)
-            current_status = current_session.get("status") if current_session else None
-            if current_status != SessionStatus.ERROR:
-                await session_manager.update_status(session_id, SessionStatus.IDLE)
-            final_status = (
-                current_status
-                if current_status == SessionStatus.ERROR
-                else SessionStatus.IDLE
-            )
-            session_manager.clear_process(session_id)
-            await ws_manager.broadcast_event(
-                session_id, {"type": WsEventType.STATUS, "status": final_status}
-            )
-            # 턴 완료 후: DB flush 보장 → 인메모리 이벤트 버퍼 정리
-            await ws_manager.flush_events()
-            ws_manager.clear_buffer(session_id)
-            self._cleanup_mcp_config(mcp_config_path)
-
-            # 워크플로우 완료 처리 (모든 phase 공통 — definition 기반)
-            if (
-                workflow_phase
-                and workflow_service
-                and turn_state.get("result_received")
-                and not turn_state.get("is_error")
-            ):
-                result_text = (
-                    turn_state.get("exit_plan_content")
-                    or turn_state.get("result_text")
-                    or turn_state.get("text", "")
-                )
-                if result_text:
-                    try:
-                        await workflow_service.create_artifact(
-                            session_id=session_id,
-                            phase=workflow_phase,
-                            content=result_text,
-                        )
-                    except Exception:
-                        logger.warning(
-                            "세션 %s: %s 아티팩트 저장 실패",
-                            session_id,
-                            workflow_phase,
-                            exc_info=True,
-                        )
-
-                # step config로 후속 동작 결정
-                step = workflow_step_config or {}
-                review_required = step.get("review_required", False)
-                next_phase = await workflow_service.get_next_phase(
-                    workflow_phase, session_id, session_manager
-                )
-
-                if not next_phase:
-                    # 마지막 단계 완료 → 워크플로우 종료
-                    try:
-                        await session_manager.update_settings(
-                            session_id,
-                            workflow_phase=workflow_phase,
-                            workflow_phase_status="completed",
-                        )
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {"type": WsEventType.WORKFLOW_COMPLETED},
-                        )
-                        logger.info("워크플로우 완료: session=%s", session_id)
-                    except Exception:
-                        logger.warning(
-                            "세션 %s: 워크플로우 완료 처리 실패",
-                            session_id,
-                            exc_info=True,
-                        )
-
-                elif not review_required:
-                    # 승인 불필요 → 자동 승인 + 다음 phase 자동 실행
-                    try:
-                        await workflow_service.approve_phase(
-                            session_id, session_manager=session_manager
-                        )
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {
-                                "type": WsEventType.WORKFLOW_PHASE_APPROVED,
-                                "phase": workflow_phase,
-                                "next_phase": next_phase,
-                            },
-                        )
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {
-                                "type": WsEventType.WORKFLOW_AUTO_CHAIN,
-                                "from_phase": workflow_phase,
-                                "to_phase": next_phase,
-                            },
-                        )
-                        raw_prompt = original_prompt or prompt
-                        next_context = await workflow_service.build_phase_context(
-                            session_id,
-                            next_phase,
-                            raw_prompt,
-                            session_manager=session_manager,
-                        )
-                        # 다음 step config 로드
-                        next_steps = await workflow_service._get_steps(
-                            session_id, session_manager
-                        )
-                        next_step_config = next(
-                            (s for s in next_steps if s.name == next_phase), None
-                        )
-                        updated = await session_manager.get(session_id)
-                        chain_task = asyncio.create_task(
-                            self.run(
-                                updated,
-                                next_context,
-                                allowed_tools,
-                                session_id,
-                                ws_manager,
-                                session_manager,
-                                mcp_service=mcp_service,
-                                workflow_phase=next_phase,
-                                workflow_service=workflow_service,
-                                original_prompt=raw_prompt,
-                                workflow_step_config=(
-                                    next_step_config.model_dump()
-                                    if next_step_config
-                                    else None
-                                ),
-                            )
-                        )
-                        chain_task.add_done_callback(
-                            lambda t: _auto_chain_done(t, session_id, session_manager)
-                        )
-                        session_manager.set_runner_task(session_id, chain_task)
-                    except Exception:
-                        logger.warning(
-                            "세션 %s: %s→%s 자동 체이닝 실패",
-                            session_id,
-                            workflow_phase,
-                            next_phase,
-                            exc_info=True,
-                        )
-
-                else:
-                    # 승인 필요 → 사용자 승인 대기
-                    try:
-                        await session_manager.update_settings(
-                            session_id,
-                            workflow_phase_status="awaiting_approval",
-                        )
-                        await ws_manager.broadcast_event(
-                            session_id,
-                            {
-                                "type": WsEventType.WORKFLOW_PHASE_COMPLETED,
-                                "phase": workflow_phase,
-                            },
-                        )
-                    except Exception:
-                        logger.warning(
-                            "세션 %s: %s phase 완료 처리 실패",
-                            session_id,
-                            workflow_phase,
-                            exc_info=True,
-                        )
-
-            # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
+        async with self._mcp_config_scope(session, session_id, cmd, mcp_service):
             try:
-                from app.api.dependencies import get_team_coordinator
-
-                coordinator = get_team_coordinator()
-                last_text = turn_state.get("text") if turn_state else None
-                await coordinator.on_session_completed(session_id, last_text)
+                await self._run_process_lifecycle(
+                    cmd, session, session_id,
+                    ws_manager, session_manager, turn_state,
+                )
             except Exception as e:
-                # TeamCoordinator 미초기화 또는 오류 시 무시
-                if "초기화되지 않았습니다" not in str(e):
-                    logger.warning("세션 %s: 팀 콜백 실패: %s", session_id, e)
+                error_msg = str(e) or f"{type(e).__name__}: (no message)"
+                logger.error("세션 %s 실행 오류: %s", session_id, error_msg, exc_info=True)
+                await self._update_and_broadcast_status(
+                    session_id, SessionStatus.ERROR, session_manager, ws_manager
+                )
+                await ws_manager.broadcast_event(
+                    session_id, {"type": WsEventType.ERROR, "message": error_msg}
+                )
+
+            finally:
+                # 비정상 종료 시 스트리밍 중이던 텍스트를 DB에 저장 (데이터 유실 방지)
+                if (
+                    turn_state.text
+                    and not turn_state.result_received
+                    and not turn_state.should_terminate
+                ):
+                    logger.info(
+                        "세션 %s: result 미수신 상태에서 종료 — partial text 저장 (%d자)",
+                        session_id, len(turn_state.text),
+                    )
+                    try:
+                        await session_manager.add_message(
+                            session_id=session_id,
+                            role="assistant",
+                            content=turn_state.text,
+                            timestamp=utc_now(),
+                            is_error=False,
+                            model=turn_state.model,
+                        )
+                    except Exception:
+                        logger.warning(
+                            "세션 %s: partial text DB 저장 실패", session_id, exc_info=True
+                        )
+
+                # 턴 종료 시 잔여 배치 메시지 flush
+                await session_manager.flush_messages()
+
+                # ERROR 상태인 경우 보존, 그 외에는 IDLE로 전환
+                current_session = await session_manager.get(session_id)
+                current_status = current_session.get("status") if current_session else None
+                if current_status != SessionStatus.ERROR:
+                    await session_manager.update_status(session_id, SessionStatus.IDLE)
+                final_status = (
+                    current_status
+                    if current_status == SessionStatus.ERROR
+                    else SessionStatus.IDLE
+                )
+                session_manager.clear_process(session_id)
+                await ws_manager.broadcast_event(
+                    session_id, {"type": WsEventType.STATUS, "status": final_status}
+                )
+                await ws_manager.flush_events()
+                ws_manager.clear_buffer(session_id)
+
+                # 워크플로우 완료 처리
+                if (
+                    workflow_phase
+                    and workflow_service
+                    and turn_state.result_received
+                    and not turn_state.is_error
+                ):
+                    await self._handle_workflow_completion(
+                        session_id, turn_state, prompt, allowed_tools,
+                        ws_manager, session_manager,
+                        workflow_phase, workflow_service, workflow_step_config,
+                        original_prompt, mcp_service,
+                    )
+
+                # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
+                try:
+                    from app.api.dependencies import get_team_coordinator
+
+                    coordinator = get_team_coordinator()
+                    last_text = turn_state.text if turn_state else None
+                    await coordinator.on_session_completed(session_id, last_text)
+                except Exception as e:
+                    if "초기화되지 않았습니다" not in str(e):
+                        logger.warning("세션 %s: 팀 콜백 실패: %s", session_id, e)
