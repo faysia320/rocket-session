@@ -12,6 +12,7 @@ import {
   Bell,
   BellOff,
   Settings,
+  StickyNote,
   MoreHorizontal,
   Users,
   Workflow,
@@ -27,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useSessionStore, useCommandPaletteStore } from "@/store";
+import { useSessionStore, useCommandPaletteStore, useMemoStore } from "@/store";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
 
@@ -211,6 +212,9 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
           </Suspense>
         ) : null}
 
+        {/* 메모 토글 */}
+        <MemoToggle />
+
         {/* 테마 토글 */}
         <ThemeToggle />
 
@@ -251,12 +255,46 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
               )}
               {notificationSettings.enabled ? "알림 끄기" : "알림 켜기"}
             </DropdownMenuItem>
+            <MemoDropdownItem />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>
   );
 });
+
+function MemoToggle() {
+  const isOpen = useMemoStore((s) => s.isOpen);
+  const toggleMemo = useMemoStore((s) => s.toggleMemo);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("h-8 w-8 hidden sm:inline-flex", isOpen && "text-primary")}
+          onClick={toggleMemo}
+          aria-label="메모 (Ctrl+M)"
+        >
+          <StickyNote className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">메모 ⌘M</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function MemoDropdownItem() {
+  const toggleMemo = useMemoStore((s) => s.toggleMemo);
+
+  return (
+    <DropdownMenuItem className="gap-2 sm:hidden" onClick={toggleMemo}>
+      <StickyNote className="h-4 w-4" />
+      메모
+    </DropdownMenuItem>
+  );
+}
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();

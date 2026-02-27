@@ -80,6 +80,8 @@ export const componentZIndex = {
   alertDialog: zIndex.modal,
   /** 커맨드 팔레트 */
   commandPalette: zIndex.modal,
+  /** 메모 패널 (overlay와 modal 사이) */
+  memoPanel: 55,
   /** 팝오버 */
   popover: zIndex.popover,
   /** 호버 카드 */

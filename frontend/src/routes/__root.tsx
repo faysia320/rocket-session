@@ -14,6 +14,11 @@ const TeamSidebar = lazy(() =>
     default: m.TeamSidebar,
   })),
 );
+const MemoPanel = lazy(() =>
+  import("@/features/memo/components/MemoPanel").then((m) => ({
+    default: m.MemoPanel,
+  })),
+);
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { useTeams } from "@/features/team/hooks/useTeams";
 import { useSessionStore } from "@/store";
@@ -49,6 +54,9 @@ function RootComponent() {
         {isSessionArea ? <SessionLayout /> : isTeamArea ? <TeamLayout /> : <Outlet />}
       </div>
       <CommandPaletteProvider />
+      <Suspense fallback={null}>
+        <MemoPanel />
+      </Suspense>
     </div>
   );
 }
