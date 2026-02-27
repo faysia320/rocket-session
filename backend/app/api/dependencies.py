@@ -13,6 +13,7 @@ from app.core.config import WORKSPACES_ROOT, Settings
 from app.core.database import Database
 from app.services.analytics_service import AnalyticsService
 from app.services.claude_runner import ClaudeRunner
+from app.services.claude_memory_service import ClaudeMemoryService
 from app.services.context_builder_service import ContextBuilderService
 from app.services.filesystem_service import FilesystemService
 from app.services.git_service import GitService
@@ -77,6 +78,7 @@ class ServiceRegistry:
         self.workflow_service: WorkflowService | None = None
         self.workspace_service: WorkspaceService | None = None
         self.insight_service: InsightService | None = None
+        self.claude_memory_service: ClaudeMemoryService | None = None
         self.context_builder_service: ContextBuilderService | None = None
 
     def _require(self, name: str) -> Any:
@@ -152,8 +154,9 @@ class ServiceRegistry:
             self.database, self.git_service, workspaces_root=WORKSPACES_ROOT
         )
         self.insight_service = InsightService(self.database)
+        self.claude_memory_service = ClaudeMemoryService()
         self.context_builder_service = ContextBuilderService(
-            self.database, self.insight_service
+            self.database, self.claude_memory_service
         )
         self.jsonl_watcher = JsonlWatcher(self.session_manager, self.ws_manager)
 
@@ -332,6 +335,10 @@ def get_workspace_service() -> WorkspaceService:
 
 def get_insight_service() -> InsightService:
     return _registry._require("insight_service")
+
+
+def get_claude_memory_service() -> ClaudeMemoryService:
+    return _registry._require("claude_memory_service")
 
 
 def get_context_builder_service() -> ContextBuilderService:

@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     local_sessions,
     mcp,
     memo,
+    memory,
     permissions,
     sessions,
     settings,
@@ -42,4 +43,5 @@ api_router.include_router(workflow.router)
 api_router.include_router(workflow_definitions.router)
 api_router.include_router(workspaces.router)
 api_router.include_router(insights.router)
+api_router.include_router(memory.router)
 api_router.include_router(context.router)

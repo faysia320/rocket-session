@@ -1,4 +1,4 @@
-"""컨텍스트 자동 빌딩 서비스 — 세션 생성 시 관련 지식 + 최근 세션 + 파일 제안."""
+"""컨텍스트 자동 빌딩 서비스 — 세션 생성 시 Memory + 최근 세션 + 파일 제안."""
 
 import logging
 import re
@@ -9,8 +9,9 @@ from app.core.database import Database
 from app.models.file_change import FileChange
 from app.models.message import Message
 from app.models.session import Session
+from app.models.workspace import Workspace
 from app.services.base import DBService
-from app.services.insight_service import InsightService
+from app.services.claude_memory_service import ClaudeMemoryService
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +76,9 @@ STOP_WORDS = frozenset(
 class ContextBuilderService(DBService):
     """워크스페이스 컨텍스트를 자동으로 구성하는 서비스."""
 
-    def __init__(self, db: Database, insight_service: InsightService) -> None:
+    def __init__(self, db: Database, memory_service: ClaudeMemoryService) -> None:
         super().__init__(db)
-        self._insight_service = insight_service
+        self._memory_service = memory_service
 
     async def get_recent_sessions(
         self, workspace_id: str, limit: int = 5
@@ -204,10 +205,13 @@ class ContextBuilderService(DBService):
     async def build_full_context(
         self, workspace_id: str, prompt: str | None = None
     ) -> dict:
-        """인사이트 + 최근 세션 + 파일 제안을 종합한 컨텍스트."""
-        # 인사이트 컨텍스트
-        insight_response = await self._insight_service.build_context_for_session(
-            workspace_id, prompt or "", limit=5
+        """Memory + 최근 세션 + 파일 제안을 종합한 컨텍스트."""
+        # workspace_id → local_path
+        local_path = await self._get_local_path(workspace_id)
+
+        # Claude Code Memory 컨텍스트
+        memory_response = await self._memory_service.build_memory_context(
+            local_path, limit=5
         )
 
         # 최근 세션
@@ -218,8 +222,8 @@ class ContextBuilderService(DBService):
 
         # 통합 컨텍스트 텍스트 생성
         parts = []
-        if insight_response.context_text:
-            parts.append(insight_response.context_text)
+        if memory_response.context_text:
+            parts.append(memory_response.context_text)
         if recent_sessions:
             lines = ["## Recent Sessions"]
             for s in recent_sessions[:3]:
@@ -236,14 +240,23 @@ class ContextBuilderService(DBService):
         context_text = "\n\n".join(parts) if parts else ""
 
         return {
-            "insights": [
-                i.model_dump() if hasattr(i, "model_dump") else i
-                for i in insight_response.insights
+            "memory_files": [
+                mf.model_dump() for mf in memory_response.memory_files
             ],
             "recent_sessions": recent_sessions,
             "suggested_files": suggested_files,
             "context_text": context_text,
         }
+
+    async def _get_local_path(self, workspace_id: str) -> str:
+        """workspace_id → local_path 조회."""
+        async with self._db.session() as db_session:
+            stmt = select(Workspace.local_path).where(Workspace.id == workspace_id)
+            result = await db_session.execute(stmt)
+            local_path = result.scalar()
+            if not local_path:
+                return ""
+            return local_path
 
     @staticmethod
     def _extract_keywords(text: str) -> list[str]:

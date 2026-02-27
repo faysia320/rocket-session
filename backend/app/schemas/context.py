@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-from app.schemas.workspace_insight import WorkspaceInsightInfo
+from app.schemas.claude_memory import MemoryFileInfo
 
 
 class FileSuggestion(BaseModel):
@@ -21,7 +21,7 @@ class SessionSummary(BaseModel):
 
 
 class SessionContextSuggestion(BaseModel):
-    insights: list[WorkspaceInsightInfo]
+    memory_files: list[MemoryFileInfo]
     recent_sessions: list[SessionSummary]
     suggested_files: list[FileSuggestion]
     context_text: str
