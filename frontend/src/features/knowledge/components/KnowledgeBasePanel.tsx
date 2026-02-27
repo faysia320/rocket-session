@@ -1,8 +1,5 @@
-import { memo, useState, useMemo, useCallback } from "react";
-import { Plus, Brain, FileText, BookOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState, useCallback } from "react";
+import { BookOpen, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -10,309 +7,92 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
-import {
-  useInsights,
-  useCreateInsight,
-  useDeleteInsight,
-  useArchiveInsights,
-} from "../hooks/useInsights";
-import { useMemoryFiles, useMemoryFileContent } from "../hooks/useMemory";
-import { InsightCard } from "./InsightCard";
-import { InsightCreateDialog } from "./InsightCreateDialog";
-import type { InsightCategory, CreateInsightRequest } from "@/types/knowledge";
-import type { MemoryFileInfo } from "@/types/claude-memory";
+import { useIsMobile } from "@/hooks/useMediaQuery";
+import { KnowledgeWorkspaceList } from "./KnowledgeWorkspaceList";
+import { KnowledgeContent } from "./KnowledgeContent";
 
-type MainTab = "memory" | "insights";
-
-const CATEGORY_TABS: { value: InsightCategory | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "pattern", label: "Pattern" },
-  { value: "gotcha", label: "Gotcha" },
-  { value: "decision", label: "Decision" },
-  { value: "file_map", label: "File Map" },
-  { value: "dependency", label: "Dependency" },
-];
-
-const SOURCE_LABELS: Record<string, string> = {
-  auto_memory: "Auto Memory",
-  claude_md: "Project Guide",
-  rules: "Rules",
-};
-
-const SOURCE_ICONS: Record<string, typeof Brain> = {
-  auto_memory: Brain,
-  claude_md: BookOpen,
-  rules: FileText,
-};
-
-export const KnowledgeBasePanel = memo(function KnowledgeBasePanel() {
+export function KnowledgeBasePanel() {
+  const { data: workspaces, isLoading } = useWorkspaces();
+  const isMobile = useIsMobile();
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
-  const [mainTab, setMainTab] = useState<MainTab>("memory");
-  const [categoryFilter, setCategoryFilter] = useState<InsightCategory | "all">("all");
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [selectedMemoryFile, setSelectedMemoryFile] = useState<string | null>(null);
 
-  const { data: workspaces } = useWorkspaces();
-  const effectiveWorkspaceId = selectedWorkspaceId ?? workspaces?.[0]?.id ?? null;
+  const readyWorkspaces = workspaces ?? [];
 
-  // Insights hooks
-  const { data: insights, isLoading: insightsLoading } = useInsights(
-    mainTab === "insights" ? effectiveWorkspaceId : null,
-    categoryFilter === "all" ? undefined : categoryFilter,
-  );
-  const createMutation = useCreateInsight(effectiveWorkspaceId ?? "");
-  const deleteMutation = useDeleteInsight(effectiveWorkspaceId ?? "");
-  const archiveMutation = useArchiveInsights(effectiveWorkspaceId ?? "");
+  const selectedWorkspace =
+    readyWorkspaces.find((ws) => ws.id === selectedWorkspaceId) ?? readyWorkspaces[0] ?? null;
+  const effectiveId = selectedWorkspace?.id ?? null;
 
-  // Memory hooks
-  const { data: memoryFiles, isLoading: memoryLoading } = useMemoryFiles(
-    mainTab === "memory" ? effectiveWorkspaceId : null,
-  );
-  const { data: memoryContent, isLoading: contentLoading } = useMemoryFileContent(
-    effectiveWorkspaceId,
-    selectedMemoryFile,
-  );
-
-  const filteredInsights = useMemo(() => {
-    if (!insights) return [];
-    return insights;
-  }, [insights]);
-
-  const handleCreate = useCallback(
-    (data: CreateInsightRequest) => {
-      if (!effectiveWorkspaceId) return;
-      createMutation.mutate(data);
-    },
-    [effectiveWorkspaceId, createMutation],
-  );
-
-  const handleDelete = useCallback(
-    (id: number) => {
-      deleteMutation.mutate(id);
-    },
-    [deleteMutation],
-  );
-
-  const handleArchive = useCallback(
-    (id: number) => {
-      archiveMutation.mutate([id]);
-    },
-    [archiveMutation],
-  );
+  const handleSelect = useCallback((id: string) => setSelectedWorkspaceId(id), []);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-border">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="font-mono text-lg font-bold">Knowledge Base</h1>
-          {mainTab === "insights" && (
-            <Button
-              variant="default"
-              size="sm"
-              className="font-mono text-xs gap-1.5"
-              onClick={() => setCreateDialogOpen(true)}
-              disabled={!effectiveWorkspaceId}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              New Insight
-            </Button>
-          )}
-        </div>
-
-        {/* Workspace selector */}
-        <div className="flex items-center gap-3">
-          <Select
-            value={effectiveWorkspaceId ?? ""}
-            onValueChange={(v) => {
-              setSelectedWorkspaceId(v);
-              setSelectedMemoryFile(null);
-            }}
-          >
-            <SelectTrigger className="w-[240px] font-mono text-xs">
-              <SelectValue placeholder="Select workspace" />
-            </SelectTrigger>
-            <SelectContent>
-              {workspaces?.map((ws) => (
-                <SelectItem key={ws.id} value={ws.id} className="font-mono text-xs">
-                  {ws.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {mainTab === "memory" && memoryFiles && (
-            <Badge variant="secondary" className="font-mono text-2xs">
-              {memoryFiles.length} files
-            </Badge>
-          )}
-          {mainTab === "insights" && insights && (
-            <Badge variant="secondary" className="font-mono text-2xs">
-              {filteredInsights.length} insights
-            </Badge>
-          )}
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* 헤더 */}
+      <div className="shrink-0 border-b border-border px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-mono text-lg font-semibold text-foreground">Knowledge Base</h1>
+            <p className="font-mono text-xs text-muted-foreground">
+              {isLoading
+                ? "로딩 중…"
+                : readyWorkspaces.length > 0
+                  ? `${readyWorkspaces.length}개 워크스페이스`
+                  : "워크스페이스가 없습니다"}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Main tabs: Memory | Insights */}
-      <div className="px-6 py-2 border-b border-border">
-        <div className="flex gap-1">
-          <button
-            type="button"
-            className={cn(
-              "font-mono text-xs px-4 py-1.5 rounded-sm border transition-colors flex items-center gap-1.5",
-              mainTab === "memory"
-                ? "bg-primary/15 text-primary border-primary/30"
-                : "text-muted-foreground border-transparent hover:bg-muted",
-            )}
-            onClick={() => { setMainTab("memory"); setSelectedMemoryFile(null); }}
-          >
-            <Brain className="h-3 w-3" />
-            Memory
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "font-mono text-xs px-4 py-1.5 rounded-sm border transition-colors flex items-center gap-1.5",
-              mainTab === "insights"
-                ? "bg-primary/15 text-primary border-primary/30"
-                : "text-muted-foreground border-transparent hover:bg-muted",
-            )}
-            onClick={() => setMainTab("insights")}
-          >
-            <BookOpen className="h-3 w-3" />
-            Insights
-          </button>
+      {/* 메인 콘텐츠 */}
+      {isLoading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          {/* 데스크톱: 좌측 사이드바 */}
+          {!isMobile ? (
+            <KnowledgeWorkspaceList
+              workspaces={readyWorkspaces}
+              selectedId={effectiveId}
+              onSelect={handleSelect}
+            />
+          ) : null}
 
-      {/* Category filter (insights only) */}
-      {mainTab === "insights" && (
-        <div className="px-6 py-2 border-b border-border">
-          <div className="flex gap-1">
-            {CATEGORY_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                className={cn(
-                  "font-mono text-2xs px-3 py-1 rounded-sm border transition-colors",
-                  categoryFilter === tab.value
-                    ? "bg-primary/15 text-primary border-primary/30"
-                    : "text-muted-foreground border-transparent hover:bg-muted",
-                )}
-                onClick={() => setCategoryFilter(tab.value)}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* 메인 영역 */}
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            {/* 모바일: 워크스페이스 셀렉트 */}
+            {isMobile ? (
+              <div className="px-4 py-2 border-b border-border shrink-0">
+                <Select value={effectiveId ?? ""} onValueChange={handleSelect}>
+                  <SelectTrigger className="h-8 font-mono text-xs">
+                    <SelectValue placeholder="워크스페이스 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {readyWorkspaces.map((ws) => (
+                      <SelectItem key={ws.id} value={ws.id} className="font-mono text-xs">
+                        {ws.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            {/* 선택된 워크스페이스 콘텐츠 */}
+            {selectedWorkspace ? (
+              <KnowledgeContent workspaceId={selectedWorkspace.id} />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center gap-2">
+                <BookOpen className="h-10 w-10 text-muted-foreground/20" />
+                <span className="font-mono text-sm text-muted-foreground">
+                  좌측에서 워크스페이스를 선택하세요
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
-
-      {/* Content */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-6 space-y-3">
-          {!effectiveWorkspaceId ? (
-            <div className="py-12 text-center font-mono text-xs text-muted-foreground">
-              Select a workspace to view knowledge
-            </div>
-          ) : mainTab === "memory" ? (
-            /* Memory tab content */
-            memoryLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 bg-muted rounded-md animate-pulse" />
-                ))}
-              </div>
-            ) : !memoryFiles || memoryFiles.length === 0 ? (
-              <div className="py-12 text-center font-mono text-xs text-muted-foreground">
-                No Claude Code Memory files found for this workspace.
-              </div>
-            ) : selectedMemoryFile && memoryContent ? (
-              /* Memory file content view */
-              <div>
-                <button
-                  type="button"
-                  className="font-mono text-2xs text-primary hover:underline mb-3 block"
-                  onClick={() => setSelectedMemoryFile(null)}
-                >
-                  &larr; Back to file list
-                </button>
-                <div className="rounded-md border border-border">
-                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/30">
-                    <Badge variant="secondary" className="font-mono text-2xs">
-                      {SOURCE_LABELS[memoryContent.source] ?? memoryContent.source}
-                    </Badge>
-                    <span className="font-mono text-xs font-medium">{memoryContent.name}</span>
-                  </div>
-                  <div className="p-4">
-                    <pre className="font-mono text-xs whitespace-pre-wrap text-foreground/90 leading-relaxed">
-                      {memoryContent.content}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            ) : contentLoading ? (
-              <div className="h-48 bg-muted rounded-md animate-pulse" />
-            ) : (
-              /* Memory file list */
-              memoryFiles.map((mf: MemoryFileInfo) => {
-                const Icon = SOURCE_ICONS[mf.source] ?? FileText;
-                return (
-                  <button
-                    key={mf.relative_path}
-                    type="button"
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-md border border-border hover:bg-muted/30 transition-colors text-left"
-                    onClick={() => setSelectedMemoryFile(mf.relative_path)}
-                  >
-                    <Icon className="h-4 w-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="font-mono text-xs font-medium text-foreground block">
-                        {mf.name}
-                      </span>
-                      <span className="font-mono text-2xs text-muted-foreground">
-                        {SOURCE_LABELS[mf.source] ?? mf.source} &middot; {(mf.size_bytes / 1024).toFixed(1)} KB
-                      </span>
-                    </div>
-                    <Badge variant="outline" className="font-mono text-2xs shrink-0">
-                      {mf.source === "auto_memory" ? "Auto" : mf.source === "claude_md" ? "Project" : "Rules"}
-                    </Badge>
-                  </button>
-                );
-              })
-            )
-          ) : /* Insights tab content */
-          insightsLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-24 bg-muted rounded-md animate-pulse" />
-              ))}
-            </div>
-          ) : filteredInsights.length === 0 ? (
-            <div className="py-12 text-center font-mono text-xs text-muted-foreground">
-              No insights found. Create one manually.
-            </div>
-          ) : (
-            filteredInsights.map((insight) => (
-              <InsightCard
-                key={insight.id}
-                insight={insight}
-                onArchive={handleArchive}
-                onDelete={handleDelete}
-              />
-            ))
-          )}
-        </div>
-      </ScrollArea>
-
-      {/* Create dialog */}
-      <InsightCreateDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSubmit={handleCreate}
-        isPending={createMutation.isPending}
-      />
     </div>
   );
-});
+}

@@ -2,7 +2,7 @@
  * Claude Code Memory 타입 정의.
  */
 
-export type MemorySource = "auto_memory" | "claude_md" | "rules";
+export type MemorySource = "auto_memory" | "claude_md" | "rules" | "serena_memory";
 
 export interface MemoryFileInfo {
   name: string;
