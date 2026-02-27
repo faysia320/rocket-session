@@ -427,13 +427,13 @@ function WorkspaceContent({
               aria-label="Fetch"
             >
               <RefreshCw className={`h-3 w-3 ${fetchMutation.isPending ? "animate-spin" : ""}`} />
-              Fetch
+              <span className="hidden sm:inline">Fetch</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent className="font-mono text-xs">git fetch --prune</TooltipContent>
         </Tooltip>
         {lastFetchedAt ? (
-          <span className="font-mono text-2xs text-muted-foreground shrink-0">
+          <span className="hidden sm:inline font-mono text-2xs text-muted-foreground shrink-0">
             {formatRelativeTime(lastFetchedAt)}
           </span>
         ) : null}
@@ -454,7 +454,7 @@ function WorkspaceContent({
               ) : (
                 <ArrowDownToLine className="h-3 w-3" />
               )}
-              Pull
+              <span className="hidden sm:inline">Pull</span>
               {workspace.behind ? (
                 <span className="text-destructive">({workspace.behind})</span>
               ) : null}
@@ -477,7 +477,7 @@ function WorkspaceContent({
               ) : (
                 <ArrowUpFromLine className="h-3 w-3" />
               )}
-              Push
+              <span className="hidden sm:inline">Push</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent className="font-mono text-xs">git push</TooltipContent>
@@ -493,7 +493,7 @@ function WorkspaceContent({
                 aria-label="Commit"
               >
                 <GitCommitHorizontal className="h-3 w-3" />
-                Commit
+                <span className="hidden sm:inline">Commit</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent className="font-mono text-xs">변경사항 커밋</TooltipContent>
