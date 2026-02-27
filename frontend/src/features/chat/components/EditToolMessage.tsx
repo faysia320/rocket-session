@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
 import { getToolIcon, getToolColor } from "./toolMessageUtils";
@@ -47,7 +48,8 @@ function InlineDiff({ oldString, newString }: EditPair) {
   const newLines = newString.split("\n");
 
   return (
-    <div className="font-mono text-xs leading-relaxed overflow-auto max-h-[300px] select-text">
+    <ScrollArea className="max-h-[300px]">
+    <div className="font-mono text-xs leading-relaxed select-text">
       {oldLines.map((line, i) => (
         <div key={`old-${i}`} className="flex bg-destructive/8">
           <span className="w-6 shrink-0 text-center text-destructive/50 select-none font-semibold">
@@ -69,6 +71,7 @@ function InlineDiff({ oldString, newString }: EditPair) {
         </div>
       ))}
     </div>
+    </ScrollArea>
   );
 }
 
@@ -115,11 +118,13 @@ export const EditToolMessage = memo(function EditToolMessage({ message }: EditTo
         {isWrite && input.content ? (
           <div>
             <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">Content</div>
-            <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
-              {String(input.content).length > 2000
-                ? `${String(input.content).slice(0, 2000)}\u2026`
-                : String(input.content)}
-            </pre>
+            <ScrollArea className="max-h-[200px] bg-input/80 rounded-md">
+              <pre className="font-mono text-xs text-muted-foreground p-2.5 whitespace-pre-wrap select-text">
+                {String(input.content).length > 2000
+                  ? `${String(input.content).slice(0, 2000)}\u2026`
+                  : String(input.content)}
+              </pre>
+            </ScrollArea>
           </div>
         ) : null}
 
@@ -135,14 +140,16 @@ export const EditToolMessage = memo(function EditToolMessage({ message }: EditTo
                 </span>
               ) : null}
             </div>
-            <pre
-              className={cn(
-                "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text",
-                message.is_error ? "text-destructive" : "text-muted-foreground",
-              )}
-            >
-              {message.output}
-            </pre>
+            <ScrollArea className="max-h-[200px] bg-input/80 rounded-md">
+              <pre
+                className={cn(
+                  "font-mono text-xs p-2.5 whitespace-pre-wrap select-text",
+                  message.is_error ? "text-destructive" : "text-muted-foreground",
+                )}
+              >
+                {message.output}
+              </pre>
+            </ScrollArea>
           </div>
         ) : null}
       </div>

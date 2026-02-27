@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from "../hooks/useTags";
 import type { TagInfo } from "@/types";
@@ -65,7 +66,8 @@ function TagManagerContent() {
   return (
     <div className="space-y-3">
       <CreateTagRow />
-      <div className="max-h-64 space-y-1 overflow-y-auto">
+      <ScrollArea className="max-h-64">
+        <div className="space-y-1">
         {tags.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
             태그가 없습니다. 위에서 새 태그를 만들어보세요.
@@ -78,7 +80,8 @@ function TagManagerContent() {
             <TagRow key={tag.id} tag={tag} onEdit={() => setEditingId(tag.id)} />
           ),
         )}
-      </div>
+        </div>
+      </ScrollArea>
     </div>
   );
 }

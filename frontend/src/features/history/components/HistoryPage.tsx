@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn, formatWorkDir } from "@/lib/utils";
 import { useSessionSearch } from "../hooks/useSessionSearch";
 import { useTags } from "@/features/tags/hooks/useTags";
@@ -418,7 +419,7 @@ export function HistoryPage({ className }: { className?: string }) {
       </div>
 
       {/* 결과 목록 */}
-      <div className="flex-1 overflow-auto">
+      <ScrollArea className="flex-1">
         {isLoading ? (
           <div className="p-6 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -462,7 +463,7 @@ export function HistoryPage({ className }: { className?: string }) {
             ))}
           </div>
         )}
-      </div>
+      </ScrollArea>
 
       {/* 페이징 */}
       {totalPages > 1 ? (

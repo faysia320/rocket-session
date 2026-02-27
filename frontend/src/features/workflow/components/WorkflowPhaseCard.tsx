@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ResultMsg } from "@/types/message";
 import type { ResolvedWorkflowStep } from "@/types/workflow";
 
@@ -103,9 +104,11 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
       {/* Content preview or full */}
       <div className="px-4 py-3">
         {expanded ? (
-          <div className="prose prose-sm prose-invert max-w-none max-h-[400px] overflow-y-auto">
-            <MarkdownRenderer content={message.text ?? ""} />
-          </div>
+          <ScrollArea className="max-h-[400px]">
+            <div className="prose prose-sm prose-invert max-w-none">
+              <MarkdownRenderer content={message.text ?? ""} />
+            </div>
+          </ScrollArea>
         ) : previewText ? (
           <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">
             {previewText}

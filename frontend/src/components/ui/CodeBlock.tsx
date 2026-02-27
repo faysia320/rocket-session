@@ -1,5 +1,6 @@
 import { memo, useState, useRef, useCallback, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface CodeBlockProps {
@@ -51,9 +52,12 @@ export const CodeBlock = memo(function CodeBlock({
           {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         </button>
       </div>
-      <pre className="font-mono text-xs bg-input border border-t-0 border-border rounded-b-sm px-3 py-2.5 overflow-auto whitespace-pre leading-relaxed max-h-[500px]">
-        <code ref={codeRef}>{children}</code>
-      </pre>
+      <ScrollArea className="max-h-[500px] bg-input border border-t-0 border-border rounded-b-sm">
+        <pre className="font-mono text-xs px-3 py-2.5 whitespace-pre leading-relaxed">
+          <code ref={codeRef}>{children}</code>
+        </pre>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </div>
   );
 });

@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Globe } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ToolUseMsg } from "@/types";
 import { ToolMessageShell } from "./ToolMessageShell";
 
@@ -49,9 +50,11 @@ export const WebToolMessage = memo(function WebToolMessage({ message }: WebToolM
 
         {/* 결과 — Markdown 렌더링 (웹 콘텐츠는 마크다운 형식일 가능성 높음) */}
         {message.output ? (
-          <div className="bg-input/80 rounded-md p-2.5 overflow-auto max-h-[400px] select-text">
-            <MarkdownRenderer content={message.output} />
-          </div>
+          <ScrollArea className="max-h-[400px] bg-input/80 rounded-md">
+            <div className="p-2.5 select-text">
+              <MarkdownRenderer content={message.output} />
+            </div>
+          </ScrollArea>
         ) : toolStatus === "running" ? (
           <div className="font-mono text-2xs text-muted-foreground/50 italic py-2">
             {isSearch ? "검색 중" : "가져오는 중"}

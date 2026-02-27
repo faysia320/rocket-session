@@ -1,5 +1,6 @@
 import { useState, memo, useRef, useCallback } from "react";
 import { Terminal, Copy, Check } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
 import { ToolMessageShell } from "./ToolMessageShell";
@@ -53,12 +54,14 @@ export const BashToolMessage = memo(function BashToolMessage({ message }: BashTo
       <div className="mt-1.5 space-y-0">
         {/* Command 영역 */}
         <div className="flex items-start gap-0 rounded-t-md border border-border/50 bg-input/60">
-          <div className="flex-1 p-2.5 overflow-auto max-h-[150px]">
-            <pre className="font-mono text-xs text-foreground whitespace-pre-wrap select-text">
-              <span className="text-success select-none">$ </span>
-              {command}
-            </pre>
-          </div>
+          <ScrollArea className="flex-1 max-h-[150px]">
+            <div className="p-2.5">
+              <pre className="font-mono text-xs text-foreground whitespace-pre-wrap select-text">
+                <span className="text-success select-none">$ </span>
+                {command}
+              </pre>
+            </div>
+          </ScrollArea>
           <button
             type="button"
             onClick={handleCopy}
@@ -84,14 +87,16 @@ export const BashToolMessage = memo(function BashToolMessage({ message }: BashTo
                 </span>
               ) : null}
             </div>
-            <pre
-              className={cn(
-                "font-mono text-xs p-2.5 overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
-                message.is_error ? "text-destructive" : "text-muted-foreground",
-              )}
-            >
-              {message.output}
-            </pre>
+            <ScrollArea className="max-h-[300px]">
+              <pre
+                className={cn(
+                  "font-mono text-xs p-2.5 whitespace-pre-wrap select-text",
+                  message.is_error ? "text-destructive" : "text-muted-foreground",
+                )}
+              >
+                {message.output}
+              </pre>
+            </ScrollArea>
           </div>
         ) : (
           <div className="h-0" />

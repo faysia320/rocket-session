@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { PermissionRequestData } from "@/types";
 
 const DANGEROUS_TOOLS = new Set(["Bash", "Write", "Edit", "MultiEdit"]);
@@ -87,9 +88,11 @@ export function PermissionDialog({ request, onAllow, onDeny }: PermissionDialogP
             <div className="font-mono text-2xs text-muted-foreground/70 uppercase tracking-wider mb-1">
               Input
             </div>
-            <pre className="font-mono text-xs text-muted-foreground bg-input p-3 rounded-sm overflow-auto max-h-[200px] whitespace-pre-wrap border border-border">
-              {inputJson}
-            </pre>
+            <ScrollArea className="max-h-[200px] bg-input rounded-sm border border-border">
+              <pre className="font-mono text-xs text-muted-foreground p-3 whitespace-pre-wrap">
+                {inputJson}
+              </pre>
+            </ScrollArea>
           </div>
 
           <div className="flex items-center gap-2">

@@ -17,6 +17,7 @@ import { sessionsApi } from "@/lib/api/sessions.api";
 import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { AVAILABLE_TOOLS, PERMISSION_TOOLS } from "../constants/tools";
 
 interface SessionSettingsProps {
@@ -134,7 +135,8 @@ export function SessionSettings({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <ScrollArea className="flex-1">
+          <div className="px-6 py-5">
           <div className="space-y-5">
             {/* 모델 선택 */}
             <div className="space-y-2">
@@ -304,7 +306,8 @@ export function SessionSettings({
             {/* MCP Servers */}
             <McpServerSelector selectedIds={mcpServerIds} onChange={setMcpServerIds} />
           </div>
-        </div>
+          </div>
+        </ScrollArea>
 
         <SheetFooter className="px-6 py-4 border-t border-border shrink-0 flex-col gap-2">
           <Button

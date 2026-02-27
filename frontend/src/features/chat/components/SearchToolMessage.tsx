@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { Search } from "lucide-react";
 import type { ToolUseMsg } from "@/types";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToolMessageShell } from "./ToolMessageShell";
 
 interface SearchToolMessageProps {
@@ -100,9 +101,11 @@ export const SearchToolMessage = memo(function SearchToolMessage({
                     {group.file}
                   </div>
                 ) : null}
-                <pre className="font-mono text-xs text-muted-foreground bg-input/80 px-2.5 py-1.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
-                  {group.lines.join("\n")}
-                </pre>
+                <ScrollArea className="max-h-[200px] bg-input/80 rounded-md">
+                  <pre className="font-mono text-xs text-muted-foreground px-2.5 py-1.5 whitespace-pre-wrap select-text">
+                    {group.lines.join("\n")}
+                  </pre>
+                </ScrollArea>
               </div>
             ))}
           </div>
@@ -110,20 +113,24 @@ export const SearchToolMessage = memo(function SearchToolMessage({
 
         {/* Glob: 파일 목록 */}
         {!isGrep && globFiles && globFiles.length > 0 ? (
-          <div className="bg-input/80 rounded-md p-2.5 overflow-auto max-h-[300px]">
-            {globFiles.map((file, i) => (
-              <div key={i} className="font-mono text-xs text-muted-foreground py-0.5 select-text">
-                {file}
-              </div>
-            ))}
-          </div>
+          <ScrollArea className="max-h-[300px] bg-input/80 rounded-md">
+            <div className="p-2.5">
+              {globFiles.map((file, i) => (
+                <div key={i} className="font-mono text-xs text-muted-foreground py-0.5 select-text">
+                  {file}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         ) : null}
 
         {/* 파싱 실패 시 raw output */}
         {message.output && !parsedOutput?.length && !globFiles?.length ? (
-          <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text">
-            {message.output}
-          </pre>
+          <ScrollArea className="max-h-[300px] bg-input/80 rounded-md">
+            <pre className="font-mono text-xs text-muted-foreground p-2.5 whitespace-pre-wrap select-text">
+              {message.output}
+            </pre>
+          </ScrollArea>
         ) : null}
 
         {!message.output && toolStatus === "running" ? (

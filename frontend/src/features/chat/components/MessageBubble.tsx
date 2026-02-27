@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn, highlightText } from "@/lib/utils";
 import type {
   Message,
@@ -252,9 +253,11 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
         {/* Input JSON */}
         <div>
           <div className="font-mono text-2xs text-muted-foreground/70 mb-0.5">Input</div>
-          <pre className="font-mono text-xs text-muted-foreground bg-input/80 p-2.5 rounded-md overflow-auto max-h-[200px] whitespace-pre-wrap select-text">
-            {JSON.stringify(input, null, 2)}
-          </pre>
+          <ScrollArea className="max-h-[200px] bg-input/80 rounded-md">
+            <pre className="font-mono text-xs text-muted-foreground p-2.5 whitespace-pre-wrap select-text">
+              {JSON.stringify(input, null, 2)}
+            </pre>
+          </ScrollArea>
         </div>
         {message.output ? (
           <div>
@@ -267,14 +270,16 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
                 </span>
               ) : null}
             </div>
-            <pre
-              className={cn(
-                "font-mono text-xs bg-input/80 p-2.5 rounded-md overflow-auto max-h-[300px] whitespace-pre-wrap select-text",
-                message.is_error ? "text-destructive" : "text-muted-foreground",
-              )}
-            >
-              {message.output}
-            </pre>
+            <ScrollArea className="max-h-[300px] bg-input/80 rounded-md">
+              <pre
+                className={cn(
+                  "font-mono text-xs p-2.5 whitespace-pre-wrap select-text",
+                  message.is_error ? "text-destructive" : "text-muted-foreground",
+                )}
+              >
+                {message.output}
+              </pre>
+            </ScrollArea>
           </div>
         ) : null}
       </div>
@@ -477,9 +482,11 @@ function EventMessage({ message, animate = false }: { message: EventMsg; animate
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <pre className="font-mono text-2xs text-muted-foreground bg-input/50 p-1.5 rounded-md mt-1 max-h-[120px] overflow-auto whitespace-pre-wrap">
-          {JSON.stringify(message.event, null, 2)}
-        </pre>
+        <ScrollArea className="max-h-[120px] bg-input/50 rounded-md mt-1">
+          <pre className="font-mono text-2xs text-muted-foreground p-1.5 whitespace-pre-wrap">
+            {JSON.stringify(message.event, null, 2)}
+          </pre>
+        </ScrollArea>
       </CollapsibleContent>
     </Collapsible>
   );

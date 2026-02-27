@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { DiffViewer } from "@/features/files/components/DiffViewer";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useGitHubPRDetail } from "../hooks/useGitHubPRDetail";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 
@@ -174,7 +175,7 @@ export function GitHubPRDetailView({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl overflow-auto p-0"
+        className="w-full sm:max-w-2xl overflow-hidden p-0"
         aria-describedby={undefined}
       >
         {isLoading ? (
@@ -255,8 +256,10 @@ export function GitHubPRDetailView({
 
               <TabsContent
                 value="overview"
-                className="flex-1 overflow-auto px-4 py-3 m-0 space-y-4"
+                className="flex-1 overflow-hidden m-0"
               >
+                <ScrollArea className="h-full">
+                <div className="px-4 py-3 space-y-4">
                 {/* 본문 */}
                 {pr.body ? (
                   <div className="border border-border rounded-md p-3">
@@ -318,9 +321,12 @@ export function GitHubPRDetailView({
                     </div>
                   </div>
                 ) : null}
+                </div>
+                </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="diff" className="flex-1 overflow-auto m-0">
+              <TabsContent value="diff" className="flex-1 overflow-hidden m-0">
+                <ScrollArea className="h-full">
                 {diffLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -340,13 +346,16 @@ export function GitHubPRDetailView({
                     Diff 없음
                   </div>
                 )}
+                </ScrollArea>
               </TabsContent>
 
               {/* AI Review 탭 */}
               <TabsContent
                 value="ai-review"
-                className="flex-1 overflow-auto px-4 py-3 m-0 space-y-4"
+                className="flex-1 overflow-hidden m-0"
               >
+                <ScrollArea className="h-full">
+                <div className="px-4 py-3 space-y-4">
                 {/* 리뷰 생성 버튼 */}
                 <div className="flex items-center gap-2">
                   <Button
@@ -460,6 +469,8 @@ export function GitHubPRDetailView({
                     </div>
                   </div>
                 ) : null}
+                </div>
+                </ScrollArea>
               </TabsContent>
             </Tabs>
           </div>

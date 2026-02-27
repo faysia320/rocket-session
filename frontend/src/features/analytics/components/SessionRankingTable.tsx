@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { formatTokens, formatWorkDir } from "@/lib/utils";
 import type { SessionTokenRanking } from "@/types";
 import { ChartCard } from "./ChartCard";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SessionRankingTableProps {
   data: SessionTokenRanking[];
@@ -31,7 +32,7 @@ export const SessionRankingTable = memo(function SessionRankingTable({
 
   return (
     <ChartCard title="세션별 토큰 랭킹" isEmpty={data.length === 0}>
-      <div className="overflow-auto max-h-[320px]">
+      <ScrollArea className="max-h-[320px]">
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-border text-2xs text-muted-foreground font-mono">
@@ -72,7 +73,7 @@ export const SessionRankingTable = memo(function SessionRankingTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollArea>
     </ChartCard>
   );
 });

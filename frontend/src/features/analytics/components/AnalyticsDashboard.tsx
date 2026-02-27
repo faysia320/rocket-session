@@ -8,6 +8,7 @@ import { ProjectBreakdown } from "./ProjectBreakdown";
 import { PhaseTokenBreakdown } from "./PhaseTokenBreakdown";
 import { SessionPhaseChart } from "./SessionPhaseChart";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AnalyticsPeriod } from "@/types";
 
 const PERIOD_OPTIONS: { value: AnalyticsPeriod; label: string }[] = [
@@ -23,7 +24,8 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-auto p-6">
+      <ScrollArea className="flex-1">
+      <div className="p-6">
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -81,6 +83,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard() {
           </div>
         )}
       </div>
+      </ScrollArea>
     </div>
   );
 });

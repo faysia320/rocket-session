@@ -2,6 +2,7 @@ import { memo, useMemo, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { sortSessionsByStatus } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const SessionDashboardCard = lazy(() =>
   import("@/features/session/components/SessionDashboardCard").then((m) => ({
@@ -30,7 +31,8 @@ export const DashboardGrid = memo(function DashboardGrid({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-auto p-6">
+      <ScrollArea className="flex-1 min-h-0">
+      <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="font-mono text-lg font-semibold text-foreground">Dashboard</h1>
@@ -64,6 +66,7 @@ export const DashboardGrid = memo(function DashboardGrid({
           </div>
         </Suspense>
       </div>
+      </ScrollArea>
     </div>
   );
 });

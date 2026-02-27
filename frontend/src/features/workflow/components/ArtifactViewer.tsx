@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { PhaseApprovalBar } from "./PhaseApprovalBar";
 import type { SessionArtifactInfo, ArtifactAnnotationInfo, AnnotationType } from "@/types/workflow";
 
@@ -188,7 +189,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
         {/* Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left: Content viewer */}
-          <div className="flex-1 overflow-y-auto">
+          <ScrollArea className="flex-1">
             {viewMode === "edit" ? (
               <Textarea
                 value={editContent}
@@ -287,7 +288,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
                 })}
               </div>
             )}
-          </div>
+          </ScrollArea>
         </div>
 
         {/* Bottom: Approval bar */}

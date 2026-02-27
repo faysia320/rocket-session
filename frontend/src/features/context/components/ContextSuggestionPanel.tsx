@@ -1,6 +1,7 @@
 import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { ChevronDown, ChevronUp, FileText, Clock, Brain } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useContextSuggestion } from "../hooks/useContextSuggestion";
 import type { MemoryFileInfo } from "@/types/claude-memory";
@@ -132,7 +133,8 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
       </button>
 
       {expanded && (
-        <div className="p-3 space-y-4 max-h-[300px] overflow-y-auto">
+        <ScrollArea className="max-h-[300px]">
+        <div className="p-3 space-y-4">
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2].map((i) => (
@@ -250,6 +252,7 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
             </>
           )}
         </div>
+        </ScrollArea>
       )}
     </div>
   );

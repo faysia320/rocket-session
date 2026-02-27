@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
 import { WorkflowDefinitionSelector } from "@/features/workflow/components/WorkflowDefinitionSelector";
@@ -97,7 +98,8 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-8 overflow-auto">
+    <ScrollArea className="flex-1">
+    <div className="flex items-center justify-center p-8">
       <Card className="w-full max-w-2xl p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -310,5 +312,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         </div>
       </Card>
     </div>
+    </ScrollArea>
   );
 }

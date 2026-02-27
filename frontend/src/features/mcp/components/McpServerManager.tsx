@@ -14,6 +14,7 @@ import {
   useSystemMcpServers,
   useImportSystemMcpServers,
 } from "../hooks/useMcpServers";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { McpServerInfo, CreateMcpServerRequest } from "@/types";
 
 export function McpServerManager() {
@@ -169,7 +170,8 @@ export function McpServerManager() {
             ~/.claude/settings.json에서 MCP 서버를 가져옵니다.
           </p>
           {systemServers ? (
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <ScrollArea className="max-h-60">
+              <div className="space-y-2">
               {systemServers.length === 0 ? (
                 <p className="font-mono text-xs text-muted-foreground/60 text-center py-4">
                   시스템에 등록된 MCP 서버가 없습니다.
@@ -196,7 +198,8 @@ export function McpServerManager() {
                   </div>
                 ))
               )}
-            </div>
+              </div>
+            </ScrollArea>
           ) : (
             <p className="font-mono text-xs text-muted-foreground/60 text-center py-4">로딩 중…</p>
           )}

@@ -11,6 +11,7 @@ import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSele
 import { McpServerManager } from "@/features/mcp/components/McpServerManager";
 import { NotificationSettingsPanel } from "@/features/notification/components/NotificationSettingsPanel";
 import { useGlobalSettings, useUpdateGlobalSettings } from "../hooks/useGlobalSettings";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { AVAILABLE_TOOLS } from "@/features/session/constants/tools";
 
 /** Permission 승인 대상 도구 목록 */
@@ -101,7 +102,8 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
           </p>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto -mx-6 px-6">
+        <ScrollArea className="flex-1 -mx-6">
+          <div className="px-6">
           <div className="space-y-5 pt-2 pb-1">
             {/* Default Workspace */}
             <div className="space-y-2">
@@ -404,7 +406,8 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
               {updateMutation.isPending ? "Saving\u2026" : "Save Settings"}
             </Button>
           </div>
-        </div>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

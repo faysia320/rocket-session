@@ -5,6 +5,7 @@ import { useTeams } from "../hooks/useTeams";
 import { TeamCard } from "./TeamCard";
 import { TeamCreateDialog } from "./TeamCreateDialog";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const TeamListPage = memo(function TeamListPage() {
   const { teams, isLoading } = useTeams();
@@ -25,7 +26,8 @@ export const TeamListPage = memo(function TeamListPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-auto p-6">
+      <ScrollArea className="flex-1 min-h-0">
+      <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="font-mono text-lg font-semibold text-foreground">Agent Teams</h1>
@@ -63,6 +65,7 @@ export const TeamListPage = memo(function TeamListPage() {
           </div>
         )}
       </div>
+      </ScrollArea>
     </div>
   );
 });

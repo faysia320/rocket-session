@@ -19,6 +19,7 @@ import { useGitStatus } from "../hooks/useGitStatus";
 import { useCreateSession } from "@/features/session/hooks/useSessions";
 import { useSessionStore } from "@/store";
 import { GitInfoCard } from "@/features/directory/components/GitInfoCard";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { GitStatusFileList } from "./GitStatusFileList";
 
 interface GitMonitorRepoSectionProps {
@@ -158,7 +159,8 @@ export function GitMonitorRepoSection({ path, onRemove }: GitMonitorRepoSectionP
       </div>
 
       {/* 저장소 콘텐츠 (항상 표시) */}
-      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 space-y-1">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="px-3 py-2 space-y-1">
         {isGitRepo && gitInfo ? (
           <>
             <GitInfoCard gitInfo={gitInfo} />
@@ -175,7 +177,8 @@ export function GitMonitorRepoSection({ path, onRemove }: GitMonitorRepoSectionP
             이 디렉토리는 Git 저장소가 아닙니다
           </div>
         ) : null}
-      </div>
+        </div>
+      </ScrollArea>
     </div>
   );
 }
