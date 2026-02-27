@@ -1,6 +1,7 @@
 import { memo, useDeferredValue, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import rehypeHighlightLite from "@/lib/rehypeHighlightLite";
 import { CodeBlock } from "./CodeBlock";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  enableBreaks?: boolean;
 }
 
 function extractLanguage(className?: string): string | undefined {
@@ -129,12 +131,14 @@ const components: Record<string, React.ComponentType<ComponentPropsWithoutRef<an
 
 // remarkPlugins/rehypePlugins 배열을 모듈 레벨에서 고정 (매 렌더마다 재생성 방지)
 const remarkPlugins = [remarkGfm];
+const remarkPluginsWithBreaks = [remarkGfm, remarkBreaks];
 // 커스텀 경량 플러그인 (17개 언어 서브셋만 번들)
 const rehypePlugins = [rehypeHighlightLite];
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   className,
+  enableBreaks = false,
 }: MarkdownRendererProps) {
   // 스트리밍 중 빈번한 content 업데이트 시 React가 마크다운 파싱을 지연하여 프레임 드롭 방지
   const deferredContent = useDeferredValue(content);
@@ -144,7 +148,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   return (
     <div className={cn("prose-chat", className)}>
       <ReactMarkdown
-        remarkPlugins={remarkPlugins}
+        remarkPlugins={enableBreaks ? remarkPluginsWithBreaks : remarkPlugins}
         rehypePlugins={rehypePlugins}
         components={components}
       >
