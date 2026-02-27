@@ -8,12 +8,17 @@ import {
   liveMarkdownPreview,
   liveMarkdownTheme,
 } from "../extensions/liveMarkdownPreview";
+import type { MemoEditorRegistry } from "../hooks/useMemoEditorRegistry";
+import { useMemoUndoStack } from "../hooks/useMemoUndoStack";
 
 interface MemoBlockEditorProps {
+  blockId: string;
+  editorRegistry: MemoEditorRegistry;
   initialContent: string;
   onChange: (content: string) => void;
   onCtrlEnter: () => void;
   onBackspaceEmpty: () => void;
+  onBackspaceAtStart: () => void;
   autoFocus?: boolean;
   onBlur?: () => void;
 }
@@ -58,10 +63,13 @@ const memoTheme = EditorView.theme(
 );
 
 export const MemoBlockEditor = memo(function MemoBlockEditor({
+  blockId,
+  editorRegistry,
   initialContent,
   onChange,
   onCtrlEnter,
   onBackspaceEmpty,
+  onBackspaceAtStart,
   autoFocus = false,
   onBlur,
 }: MemoBlockEditorProps) {
@@ -70,12 +78,18 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
   const onChangeRef = useRef(onChange);
   const onCtrlEnterRef = useRef(onCtrlEnter);
   const onBackspaceEmptyRef = useRef(onBackspaceEmpty);
+  const onBackspaceAtStartRef = useRef(onBackspaceAtStart);
   const onBlurRef = useRef(onBlur);
+  const blockIdRef = useRef(blockId);
+  const editorRegistryRef = useRef(editorRegistry);
 
   onChangeRef.current = onChange;
   onCtrlEnterRef.current = onCtrlEnter;
   onBackspaceEmptyRef.current = onBackspaceEmpty;
+  onBackspaceAtStartRef.current = onBackspaceAtStart;
   onBlurRef.current = onBlur;
+  blockIdRef.current = blockId;
+  editorRegistryRef.current = editorRegistry;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -92,8 +106,15 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
       {
         key: "Backspace",
         run: (view) => {
+          // 빈 블록 → 삭제 후 이전 블록 포커스
           if (view.state.doc.length === 0) {
             onBackspaceEmptyRef.current();
+            return true;
+          }
+          // 커서가 맨 앞(pos 0)이고 선택 없음 → 이전 블록과 병합
+          const sel = view.state.selection.main;
+          if (sel.empty && sel.anchor === 0) {
+            onBackspaceAtStartRef.current();
             return true;
           }
           return false;
@@ -128,6 +149,8 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString());
+            // 텍스트 입력 시 구조적 undo 플래그 해제
+            useMemoUndoStack.getState().setLastActionWasStructural(false);
           }
         }),
         memoTheme,
@@ -144,12 +167,14 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
     });
 
     viewRef.current = view;
+    editorRegistryRef.current.register(blockIdRef.current, view);
 
     if (autoFocus) {
       requestAnimationFrame(() => view.focus());
     }
 
     return () => {
+      editorRegistryRef.current.unregister(blockIdRef.current);
       view.destroy();
       viewRef.current = null;
     };

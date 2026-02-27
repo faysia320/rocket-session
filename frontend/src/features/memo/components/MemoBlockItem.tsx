@@ -2,12 +2,15 @@ import { memo, useCallback, useEffect, useRef } from "react";
 import { MemoBlockEditor } from "./MemoBlockEditor";
 import { useUpdateMemoBlock } from "../hooks/useMemo";
 import type { MemoBlockInfo } from "@/types";
+import type { MemoEditorRegistry } from "../hooks/useMemoEditorRegistry";
 
 interface MemoBlockItemProps {
   block: MemoBlockInfo;
   index: number;
+  editorRegistry: MemoEditorRegistry;
   onCreateAfter: () => void;
-  onDelete: () => void;
+  onDeleteAndFocusPrevious: (blockId: string) => void;
+  onMergeWithPrevious: (blockId: string, currentContent: string) => void;
   autoFocus?: boolean;
 }
 
@@ -16,8 +19,10 @@ const AUTO_SAVE_DELAY = 500;
 export const MemoBlockItem = memo(function MemoBlockItem({
   block,
   index,
+  editorRegistry,
   onCreateAfter,
-  onDelete,
+  onDeleteAndFocusPrevious,
+  onMergeWithPrevious,
   autoFocus = false,
 }: MemoBlockItemProps) {
   const updateBlock = useUpdateMemoBlock();
@@ -68,15 +73,22 @@ export const MemoBlockItem = memo(function MemoBlockItem({
     flushSave();
   }, [flushSave]);
 
-  const handleDelete = useCallback(() => {
+  // 빈 블록 Backspace → 삭제 후 이전 블록 포커스
+  const handleBackspaceEmpty = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = undefined;
     }
     pendingContentRef.current = null;
     deletedRef.current = true;
-    onDelete();
-  }, [onDelete]);
+    onDeleteAndFocusPrevious(block.id);
+  }, [block.id, onDeleteAndFocusPrevious]);
+
+  // 커서가 맨 앞에서 Backspace → 이전 블록과 병합
+  const handleBackspaceAtStart = useCallback(() => {
+    flushSave();
+    onMergeWithPrevious(block.id, contentRef.current);
+  }, [block.id, flushSave, onMergeWithPrevious]);
 
   const isEven = index % 2 === 0;
 
@@ -86,10 +98,13 @@ export const MemoBlockItem = memo(function MemoBlockItem({
     >
       <div className="min-w-0">
         <MemoBlockEditor
+          blockId={block.id}
+          editorRegistry={editorRegistry}
           initialContent={contentRef.current}
           onChange={handleContentChange}
           onCtrlEnter={onCreateAfter}
-          onBackspaceEmpty={handleDelete}
+          onBackspaceEmpty={handleBackspaceEmpty}
+          onBackspaceAtStart={handleBackspaceAtStart}
           autoFocus={autoFocus}
           onBlur={handleBlur}
         />
