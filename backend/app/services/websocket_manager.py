@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from fastapi import WebSocket
 
 from app.core.utils import utc_now
+from app.repositories.event_repo import EventRepository
 from app.services.base import DBService
 from starlette.websockets import WebSocketState
 
@@ -60,6 +61,9 @@ class WebSocketManager(DBService):
         self._retry_batch: list[dict] = []
         self._retry_count: int = 0
         self._max_retries: int = 3
+        # 관측성 카운터
+        self._events_dropped: int = 0
+        self._broadcast_failures: int = 0
 
     def set_database(self, db: Database):
         """DB 참조 설정 (의존성 주입)."""
@@ -120,20 +124,17 @@ class WebSocketManager(DBService):
             dropped = len(batch) - max_retry_size
             batch = batch[-max_retry_size:]  # 최신 이벤트 유지
             logger.warning("재시도 배치 크기 초과 — %d건 드롭", dropped)
+            self._events_dropped += dropped
 
         try:
             # asyncpg COPY 프로토콜 시도 (5~50배 빠름)
             try:
-                from app.repositories.event_repo import EventRepository
-
                 async with self._db.raw_connection() as raw_conn:
                     await EventRepository.add_batch_copy(raw_conn, batch)
                 self._retry_count = 0
                 return  # COPY 성공 시 즉시 반환 — INSERT fallback 도달 방지
             except Exception:
                 # COPY 실패 시 기존 INSERT fallback
-                from app.repositories.event_repo import EventRepository
-
                 async with self._session_scope(EventRepository) as (session, repo):
                     await repo.add_batch(batch)
                     await session.commit()
@@ -156,6 +157,7 @@ class WebSocketManager(DBService):
                     self._max_retries,
                     e,
                 )
+                self._events_dropped += len(batch)
                 self._retry_count = 0
 
     async def flush_events(self):
@@ -265,11 +267,21 @@ class WebSocketManager(DBService):
                         session_id,
                         seq,
                     )
+                    self._events_dropped += 1
 
         # fire-and-forget: 느린 WS 클라이언트가 stdout 파이프라인을 블로킹하지 않도록
         task = asyncio.create_task(self.broadcast(session_id, message_with_seq))
         self._pending_broadcasts.add(task)
-        task.add_done_callback(self._pending_broadcasts.discard)
+
+        def _on_broadcast_done(t: asyncio.Task) -> None:
+            self._pending_broadcasts.discard(t)
+            if not t.cancelled():
+                exc = t.exception()
+                if exc:
+                    logger.warning("Broadcast 실패 (세션 %s): %s", session_id, exc)
+                    self._broadcast_failures += 1
+
+        task.add_done_callback(_on_broadcast_done)
         return seq
 
     async def broadcast(self, session_id: str, message: dict):
@@ -308,8 +320,6 @@ class WebSocketManager(DBService):
         # DB fallback
         if self._db:
             try:
-                from app.repositories.event_repo import EventRepository
-
                 async with self._session_scope(EventRepository) as (session, repo):
                     rows = await repo.get_after(session_id, after_seq)
                     # JSONB payload는 이미 dict
@@ -332,8 +342,6 @@ class WebSocketManager(DBService):
 
         if self._db:
             try:
-                from app.repositories.event_repo import EventRepository
-
                 async with self._session_scope(EventRepository) as (session, repo):
                     rows = await repo.get_current_turn_events(session_id)
                     return [row["payload"] for row in rows]
@@ -380,8 +388,6 @@ class WebSocketManager(DBService):
     async def restore_seq_counters(self, db: "Database"):
         """서버 재시작 시 DB에서 세션별 최대 seq를 복원."""
         try:
-            from app.repositories.event_repo import EventRepository
-
             async with db.session() as session:
                 repo = EventRepository(session)
                 seq_map = await repo.get_max_seq_per_session()
@@ -403,6 +409,8 @@ class WebSocketManager(DBService):
             "pending_broadcasts": len(self._pending_broadcasts),
             "retry_batch_size": len(self._retry_batch),
             "retry_count": self._retry_count,
+            "events_dropped": self._events_dropped,
+            "broadcast_failures": self._broadcast_failures,
         }
 
     def reset_session(self, session_id: str):

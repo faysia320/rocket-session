@@ -3,7 +3,9 @@
 import json
 import logging
 
-from sqlalchemy import delete, func, insert, select, text
+from datetime import timedelta
+
+from sqlalchemy import delete, func, insert, select
 
 from app.models.event import Event
 from app.repositories.base import BaseRepository
@@ -112,8 +114,7 @@ class EventRepository(BaseRepository[Event]):
 
     async def cleanup_old_events(self, max_age_hours: int = 24) -> int:
         """지정 시간 이전의 오래된 이벤트 삭제. 삭제된 행 수 반환."""
-        stmt = delete(Event).where(
-            Event.timestamp < text(f"NOW() - INTERVAL '{max_age_hours} hours'")
-        )
+        cutoff = func.now() - timedelta(hours=max_age_hours)
+        stmt = delete(Event).where(Event.timestamp < cutoff)
         result = await self._session.execute(stmt)
         return result.rowcount

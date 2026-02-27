@@ -13,7 +13,6 @@ from app.api.dependencies import (
     get_session_manager,
     get_settings,
     get_settings_service,
-    get_workflow_definition_service,
     get_workflow_service,
     get_ws_manager,
 )
@@ -111,73 +110,40 @@ async def _handle_prompt(
             or settings.claude_allowed_tools
         )
 
-        # 워크플로우 phase 감지
+        # 워크플로우 처리
         workflow_phase = None
         workflow_service = None
         workflow_step_config = None
         claude_prompt = prompt
         if current_session:
-            workflow_phase = current_session.get("workflow_phase")
-            workflow_phase_status = current_session.get("workflow_phase_status")
+            wf_phase = current_session.get("workflow_phase")
+            wf_status = current_session.get("workflow_phase_status")
 
-            # 워크플로우 완료 상태: 일반 메시지로 처리 (게이트 + 컨텍스트 스킵)
-            if workflow_phase_status == "completed":
-                workflow_phase = None
-            else:
-                # definition에서 steps 로드
-                def_service = get_workflow_definition_service()
-                def_id = current_session.get("workflow_definition_id")
-                definition = await def_service.get_or_default(def_id)
-                steps = sorted(definition.steps, key=lambda s: s.order_index)
-
-                # 게이트 1: 워크플로우 미시작 상태 → 자동 복구 (첫 번째 step으로)
-                if not workflow_phase:
-                    first_name = steps[0].name if steps else "research"
-                    logger.warning(
-                        "워크플로우 자동 복구: session=%s (enabled=True, phase=None → %s)",
-                        session_id,
-                        first_name,
+            # 워크플로우 활성화 상태인 경우에만 게이트 로직 실행
+            if wf_phase or (wf_status and wf_status != "completed"):
+                workflow_service = get_workflow_service()
+                workflow_phase, workflow_step_config, gate_error = (
+                    await workflow_service.resolve_workflow_state(
+                        session_id, current_session, manager, ws_manager,
                     )
-                    await manager.update_settings(
-                        session_id,
-                        workflow_phase=first_name,
-                        workflow_phase_status="in_progress",
-                    )
-                    workflow_phase = first_name
-                    current_session = await manager.get(session_id)
-                    await ws_manager.broadcast_event(
-                        session_id,
-                        {"type": WsEventType.WORKFLOW_STARTED, "phase": first_name},
-                    )
-
-                # 현재 step config 로드
-                workflow_step_config = next(
-                    (s for s in steps if s.name == workflow_phase), None
                 )
+                # 세션 정보 재로드 (resolve_workflow_state가 업데이트할 수 있음)
+                if workflow_phase:
+                    current_session = await manager.get(session_id)
 
-                # 게이트 2: 승인 대기 중 → 프롬프트 차단
-                if workflow_phase_status == "awaiting_approval":
+                if gate_error:
                     await ws.send_json(
-                        {
-                            "type": WsEventType.ERROR,
-                            "message": (
-                                "현재 단계의 검토가 완료되지 않았습니다. "
-                                "아티팩트를 승인하거나 수정 요청해주세요."
-                            ),
-                        }
+                        {"type": WsEventType.ERROR, "message": gate_error}
                     )
                     return
 
-                workflow_service = get_workflow_service()
-
                 # 워크플로우 최초 프롬프트 저장 (자동 체이닝에서 사용)
-                if not current_session.get("workflow_original_prompt"):
+                if workflow_phase and not current_session.get("workflow_original_prompt"):
                     await manager.update_settings(
                         session_id, workflow_original_prompt=prompt
                     )
 
-                # Phase별 컨텍스트 프롬프트 구성 (Claude 전달용만 별도 변수)
-                claude_prompt = prompt
+                # Phase별 컨텍스트 프롬프트 구성
                 if workflow_phase and workflow_service:
                     phase_context = await workflow_service.build_phase_context(
                         session_id,
@@ -217,23 +183,10 @@ async def _handle_prompt(
         # 대기 중인 AskUserQuestion 클리어 (사용자가 답변 또는 새 프롬프트 전송)
         await clear_pending_question(session_id)
 
-        # 글로벌 기본값으로 세션 설정 병합 (세션에 값이 없는 필드만)
-        merged_session = dict(current_session) if current_session else {}
-        for key in [
-            "system_prompt",
-            "timeout_seconds",
-            "permission_mode",
-            "permission_required_tools",
-            "model",
-            "max_turns",
-            "max_budget_usd",
-            "system_prompt_mode",
-            "disallowed_tools",
-            "mcp_server_ids",
-            "fallback_model",
-        ]:
-            if not merged_session.get(key) and global_settings.get(key):
-                merged_session[key] = global_settings[key]
+        # 글로벌 기본값으로 세션 설정 병합
+        merged_session = settings_service.merge_session_with_globals(
+            current_session, global_settings
+        )
 
         # 팀 리드 세션인 경우 시스템 프롬프트에 팀 컨텍스트 자동 주입
         try:
@@ -268,9 +221,7 @@ async def _handle_prompt(
                 workflow_phase=workflow_phase,
                 workflow_service=workflow_service,
                 original_prompt=prompt,
-                workflow_step_config=(
-                    workflow_step_config.model_dump() if workflow_step_config else None
-                ),
+                workflow_step_config=workflow_step_config,
             )
         )
         task.add_done_callback(lambda t: _on_runner_task_done(t, session_id, manager))

@@ -364,7 +364,15 @@ class GitHubService:
         self._cleanup_old_review_jobs()
         job_id = str(uuid.uuid4())
         self._review_jobs[job_id] = _ReviewJob()
-        asyncio.create_task(self._run_pr_review(job_id, path, pr_number))
+        task = asyncio.create_task(self._run_pr_review(job_id, path, pr_number))
+
+        def _on_review_done(t: asyncio.Task) -> None:
+            if not t.cancelled():
+                exc = t.exception()
+                if exc:
+                    logger.error("PR 리뷰 백그라운드 실패 (job %s): %s", job_id, exc)
+
+        task.add_done_callback(_on_review_done)
         return PRReviewJobResponse(job_id=job_id, status="pending")
 
     def get_pr_review_status(self, job_id: str) -> PRReviewStatusResponse:
