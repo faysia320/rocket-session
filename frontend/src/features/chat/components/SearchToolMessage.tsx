@@ -90,7 +90,7 @@ export const SearchToolMessage = memo(function SearchToolMessage({
         ) : undefined
       }
     >
-      <div className="mt-1.5 min-w-0 overflow-hidden">
+      <div className="mt-1.5 min-w-0">
         {/* Grep: 파일별 그룹화 출력 */}
         {isGrep && parsedOutput && parsedOutput.length > 0 ? (
           <div className="space-y-1">

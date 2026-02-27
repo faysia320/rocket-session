@@ -73,7 +73,7 @@ export const ReadToolMessage = memo(function ReadToolMessage({ message }: ReadTo
         ) : undefined
       }
     >
-      <div className="mt-1.5 min-w-0 overflow-hidden">
+      <div className="mt-1.5 min-w-0">
         {message.output ? (
           <CodeBlock language={language} raw={message.output} className="my-0">
             {message.output}

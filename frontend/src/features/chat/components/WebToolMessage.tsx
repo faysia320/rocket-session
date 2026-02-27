@@ -33,7 +33,7 @@ export const WebToolMessage = memo(function WebToolMessage({ message }: WebToolM
         </>
       }
     >
-      <div className="mt-1.5 min-w-0 overflow-hidden space-y-1.5">
+      <div className="mt-1.5 min-w-0 space-y-1.5">
         {/* URL 링크 */}
         {url ? (
           <div className="font-mono text-2xs">
