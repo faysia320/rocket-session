@@ -688,6 +688,17 @@ const SessionItem = memo(function SessionItem({
 		setTimeout(() => inputRef.current?.select(), 0);
 	}, [s.name, s.id]);
 
+	useEffect(() => {
+		const handler = (e: Event) => {
+			if ((e as CustomEvent).detail === s.id) {
+				startEditing();
+			}
+		};
+		window.addEventListener("command-palette:rename-session", handler);
+		return () =>
+			window.removeEventListener("command-palette:rename-session", handler);
+	}, [s.id, startEditing]);
+
 	const commitEdit = useCallback(() => {
 		setEditing(false);
 		const trimmed = editValue.trim();

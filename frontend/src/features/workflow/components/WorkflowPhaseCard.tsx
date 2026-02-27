@@ -125,7 +125,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                 placeholder="수정이 필요한 내용을 설명해주세요…"
                 value={revisionFeedback}
                 onChange={(e) => setRevisionFeedback(e.target.value)}
-                className="min-h-[60px] text-sm"
+                className="min-h-[60px]"
               />
               <div className="flex items-center gap-2 justify-end">
                 <Button

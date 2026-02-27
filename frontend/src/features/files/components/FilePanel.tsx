@@ -42,7 +42,7 @@ export const FilePanel = memo(function FilePanel({
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:bg-muted/50",
             )}
-            onClick={() => setViewMode("tree")}
+            onClick={() => { setOpenHoverFile(null); setViewMode("tree"); }}
             aria-label="트리 보기"
           >
             <FolderTree className="h-3.5 w-3.5" />
@@ -55,7 +55,7 @@ export const FilePanel = memo(function FilePanel({
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:bg-muted/50",
             )}
-            onClick={() => setViewMode("list")}
+            onClick={() => { setOpenHoverFile(null); setViewMode("list"); }}
             aria-label="목록 보기"
           >
             <List className="h-3.5 w-3.5" />

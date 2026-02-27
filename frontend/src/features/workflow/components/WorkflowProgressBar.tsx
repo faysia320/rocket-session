@@ -54,7 +54,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
     <div
       role="navigation"
       aria-label="워크플로우 진행 상태"
-      className="flex items-center justify-center gap-1 px-4 py-2 border-b border-border bg-card/50"
+      className="flex items-center justify-center gap-1 px-2 sm:px-4 py-2 border-b border-border bg-card/50"
     >
       {sortedSteps.map((step, idx) => {
         const state = getPhaseState(step.name, currentPhase, currentStatus, orderedNames);
@@ -62,10 +62,10 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
         const StepIcon = state === "done" ? Check : resolveWorkflowIcon(step.icon);
 
         return (
-          <div key={step.name} className="flex items-center">
+          <div key={step.name} className="flex items-center min-w-0">
             {idx > 0 ? (
               <div
-                className={cn("w-8 h-px mx-1", state === "waiting" ? "bg-muted" : "bg-primary/50")}
+                className={cn("w-4 sm:w-8 h-px mx-0.5 sm:mx-1 shrink-0", state === "waiting" ? "bg-muted" : "bg-primary/50")}
               />
             ) : null}
             <button
@@ -74,7 +74,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
               disabled={state === "waiting"}
               aria-current={isActive ? "step" : undefined}
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+                "flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-md text-xs font-medium transition-colors min-w-0",
                 state === "done" && "bg-success/10 text-success hover:bg-success/20",
                 state === "active" &&
                   currentStatus === "awaiting_approval" &&
@@ -91,7 +91,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
                   state === "active" && currentStatus === "in_progress" && "animate-pulse",
                 )}
               />
-              <span>{step.label}</span>
+              <span className="truncate max-w-[4rem] sm:max-w-none">{step.label}</span>
             </button>
           </div>
         );

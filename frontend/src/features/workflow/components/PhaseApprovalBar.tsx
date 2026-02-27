@@ -59,7 +59,7 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
           }
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
-          className="min-h-[60px] text-sm"
+          className="min-h-[60px]"
           autoFocus
         />
         <div className="flex items-center gap-2 justify-end">
