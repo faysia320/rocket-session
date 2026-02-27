@@ -81,6 +81,12 @@ export function handleWorkflow(
               workflow_phase_status: "completed",
             }
           : state.sessionInfo,
+        // 워크플로우 완전 종료 시 잔여 todo 전체 completed 처리
+        pinnedTodos: state.pinnedTodos.some((t) => t.status !== "completed")
+          ? state.pinnedTodos.map((t) =>
+              t.status !== "completed" ? { ...t, status: "completed" as const } : t
+            )
+          : state.pinnedTodos,
       };
   }
 }

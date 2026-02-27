@@ -169,14 +169,20 @@ export function handleWsMessage(
             runningIndices.push(i);
           }
         }
+        // in_progress 상태의 todo를 completed로 자동 전환 (idle/error 시 작업 중인 항목 없음)
+        const todosUpdated = state.pinnedTodos.some((t) => t.status === "in_progress")
+          ? state.pinnedTodos.map((t) =>
+              t.status === "in_progress" ? { ...t, status: "completed" as const } : t
+            )
+          : state.pinnedTodos;
         if (runningIndices.length === 0) {
-          return { ...state, status: action.status, activeTools: [] };
+          return { ...state, status: action.status, activeTools: [], pinnedTodos: todosUpdated };
         }
         const updated = [...state.messages];
         for (const idx of runningIndices) {
           updated[idx] = { ...updated[idx], status: "done" as const } as Message;
         }
-        return { ...state, status: action.status, activeTools: [], messages: updated };
+        return { ...state, status: action.status, activeTools: [], messages: updated, pinnedTodos: todosUpdated };
       }
       return { ...state, status: action.status };
     }
