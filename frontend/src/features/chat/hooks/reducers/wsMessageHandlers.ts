@@ -223,15 +223,16 @@ export function handleWsMessage(
         if (existing.text === action.data.text) return state;
         const newMsg = { ...action.data, id: prev[lastIdx].id };
         if (lastIdx === prev.length - 1) {
-          return { ...state, messages: [...prev.slice(0, -1), newMsg] };
+          return { ...state, messages: [...prev.slice(0, -1), newMsg], _pendingAssistantTextIdx: lastIdx };
         }
         const updated = [...prev];
         updated[lastIdx] = newMsg;
-        return { ...state, messages: updated };
+        return { ...state, messages: updated, _pendingAssistantTextIdx: lastIdx };
       }
       return {
         ...state,
         messages: [...prev, { ...action.data, id: generateMessageId() } as Message],
+        _pendingAssistantTextIdx: prev.length,
       };
     }
 
@@ -246,13 +247,32 @@ export function handleWsMessage(
           activeTools: [...state.activeTools, action.data],
         };
       }
+      // orphaned buffer에서 대응하는 tool_result 확인
+      const toolUseId = action.data.tool_use_id;
+      const orphaned = toolUseId ? state._orphanedToolResults[toolUseId] : undefined;
+      const newOrphans = orphaned
+        ? (({ [toolUseId]: _, ...rest }) => rest)(state._orphanedToolResults)
+        : state._orphanedToolResults;
+
       return {
         ...state,
         messages: [
           ...state.messages,
-          { ...action.data, id: generateMessageId(), status: "running" as const },
+          {
+            ...action.data,
+            id: generateMessageId(),
+            status: orphaned ? (orphaned.isError ? ("error" as const) : ("done" as const)) : ("running" as const),
+            ...(orphaned && {
+              output: orphaned.output,
+              is_error: orphaned.isError,
+              is_truncated: orphaned.isTruncated,
+              full_length: orphaned.fullLength,
+              completed_at: orphaned.timestamp,
+            }),
+          },
         ],
-        activeTools: [...state.activeTools, action.data],
+        activeTools: orphaned ? state.activeTools : [...state.activeTools, action.data],
+        _orphanedToolResults: newOrphans,
       };
     }
 
@@ -266,11 +286,27 @@ export function handleWsMessage(
           break;
         }
       }
-      if (targetIdx < 0)
+      if (targetIdx < 0) {
+        // orphaned tool_result: tool_use보다 먼저 도착 → 버퍼에 저장
+        const buffer = { ...state._orphanedToolResults };
+        buffer[action.toolUseId] = {
+          output: action.output,
+          isError: action.isError,
+          isTruncated: action.isTruncated,
+          fullLength: action.fullLength,
+          timestamp: action.timestamp,
+        };
+        // FIFO: 20개 초과 시 가장 오래된 항목 제거
+        const keys = Object.keys(buffer);
+        if (keys.length > 20) {
+          delete buffer[keys[0]];
+        }
         return {
           ...state,
+          _orphanedToolResults: buffer,
           activeTools: state.activeTools.filter((t) => t.tool_use_id !== action.toolUseId),
         };
+      }
       const updatedMsgs = [...msgs];
       updatedMsgs[targetIdx] = {
         ...msgs[targetIdx],
@@ -320,17 +356,18 @@ export function handleWsMessage(
         return {
           ...state,
           messages: [...prev.slice(0, -1), upgraded],
+          _pendingAssistantTextIdx: null,
         };
       }
 
-      let lastAssistantIdx = -1;
-      for (let i = prev.length - 1; i >= 0; i--) {
-        if (prev[i].type === "user_message" || prev[i].type === "result") break;
-        if (prev[i].type === "assistant_text") {
-          lastAssistantIdx = i;
-          break;
-        }
-      }
+      // _pendingAssistantTextIdx를 사용하여 정확한 assistant_text 참조 (레이스 컨디션 방지)
+      const pendingIdx = state._pendingAssistantTextIdx;
+      const lastAssistantIdx =
+        pendingIdx !== null &&
+        pendingIdx < prev.length &&
+        prev[pendingIdx].type === "assistant_text"
+          ? pendingIdx
+          : -1;
       const assistantText =
         lastAssistantIdx >= 0 ? (prev[lastAssistantIdx] as AssistantTextMsg).text : undefined;
       const cleaned =
@@ -362,6 +399,7 @@ export function handleWsMessage(
           } as Message,
         ],
         tokenUsage: newTokenUsage,
+        _pendingAssistantTextIdx: null,
       };
     }
 

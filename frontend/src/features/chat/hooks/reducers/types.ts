@@ -68,6 +68,19 @@ export interface ClaudeSocketState {
   pendingAnswerCount: number;
   /** PinnedTodoBar에 표시할 최신 TodoWrite 상태 */
   pinnedTodos: TodoItem[];
+  /** WS_ASSISTANT_TEXT가 기록, WS_RESULT가 소비하는 pending assistant_text 인덱스 */
+  _pendingAssistantTextIdx: number | null;
+  /** 대응하는 tool_use보다 먼저 도착한 orphaned tool_result 버퍼 */
+  _orphanedToolResults: Record<
+    string,
+    {
+      output: string;
+      isError: boolean;
+      isTruncated?: boolean;
+      fullLength?: number;
+      timestamp: string;
+    }
+  >;
 }
 
 // ---------------------------------------------------------------------------

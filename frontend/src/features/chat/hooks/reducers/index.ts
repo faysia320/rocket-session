@@ -39,6 +39,8 @@ export const initialState: ClaudeSocketState = {
   },
   pendingAnswerCount: 0,
   pinnedTodos: [],
+  _pendingAssistantTextIdx: null,
+  _orphanedToolResults: {},
 };
 
 // Connection action types

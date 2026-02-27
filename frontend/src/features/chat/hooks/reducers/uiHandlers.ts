@@ -85,6 +85,8 @@ export function handleUi(state: ClaudeSocketState, action: UiAction): ClaudeSock
         },
         pendingAnswerCount: 0,
         pinnedTodos: [],
+        _pendingAssistantTextIdx: null,
+        _orphanedToolResults: {},
         sessionInfo: state.sessionInfo
           ? {
               ...state.sessionInfo,
@@ -146,7 +148,11 @@ export function handleUi(state: ClaudeSocketState, action: UiAction): ClaudeSock
         }
         return m;
       });
-      return changed ? { ...state, messages: updated } : state;
+      if (!changed) return state;
+      // truncate 후 _pendingAssistantTextIdx가 잘린 범위에 해당하면 무효화
+      const pendingIdx = state._pendingAssistantTextIdx;
+      const safeIdx = pendingIdx !== null && pendingIdx < cutoff ? null : pendingIdx;
+      return { ...state, messages: updated, _pendingAssistantTextIdx: safeIdx };
     }
   }
 }
