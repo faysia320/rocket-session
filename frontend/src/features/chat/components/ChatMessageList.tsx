@@ -79,7 +79,7 @@ export const ChatMessageList = memo(function ChatMessageList({
         </div>
       ) : messages.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50 animate-[fadeIn_0.3s_ease]">
-          <div className="font-mono text-[32px] text-primary animate-[blink_1.2s_ease-in-out_infinite]">
+          <div className="font-mono text-4xl text-primary animate-[blink_1.2s_ease-in-out_infinite]">
             {">"}_
           </div>
           <div className="font-mono text-md text-muted-foreground">
