@@ -1,23 +1,73 @@
-import { memo } from "react";
-import { X } from "lucide-react";
+import { memo, useCallback, useRef } from "react";
+import { GripHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMemoStore } from "@/store";
 import { MemoBlockList } from "./MemoBlockList";
 
+const PANEL_W = 400;
+const PANEL_H = 600;
+
+// position이 null이면 기본 위치 (우하단)
+const DEFAULT_STYLE = { bottom: 48, right: 16 };
+
 export const MemoPanel = memo(function MemoPanel() {
   const isOpen = useMemoStore((s) => s.isOpen);
+  const position = useMemoStore((s) => s.position);
   const setMemoOpen = useMemoStore((s) => s.setMemoOpen);
+  const setPosition = useMemoStore((s) => s.setPosition);
+  const dragging = useRef(false);
+  const offset = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // X 버튼 클릭은 드래그 시작하지 않음
+      if ((e.target as HTMLElement).closest("button")) return;
+
+      dragging.current = true;
+      const panelEl = (e.currentTarget as HTMLElement).parentElement!;
+      const rect = panelEl.getBoundingClientRect();
+      offset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragging.current) return;
+      const x = Math.max(0, Math.min(e.clientX - offset.current.x, window.innerWidth - PANEL_W));
+      const y = Math.max(0, Math.min(e.clientY - offset.current.y, window.innerHeight - PANEL_H));
+      setPosition({ x, y });
+    },
+    [setPosition],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    dragging.current = false;
+  }, []);
 
   if (!isOpen) return null;
 
+  const posStyle = position
+    ? { left: position.x, top: position.y }
+    : DEFAULT_STYLE;
+
   return (
     <div
-      className="fixed bottom-12 right-4 w-[400px] h-[600px] hidden sm:flex flex-col rounded-lg border border-border bg-background shadow-lg"
-      style={{ zIndex: 55 }}
+      className="fixed w-[400px] h-[600px] hidden sm:flex flex-col rounded-lg border border-border bg-background shadow-lg"
+      style={{ zIndex: 55, ...posStyle }}
     >
-      {/* 헤더 */}
-      <div className="flex items-center justify-between px-3 h-9 shrink-0 border-b border-border">
-        <span className="text-xs font-medium font-mono">Memo</span>
+      {/* 헤더 - 드래그 핸들 */}
+      <div
+        className="flex items-center justify-between px-3 h-9 shrink-0 border-b border-border cursor-grab active:cursor-grabbing select-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <div className="flex items-center gap-1.5">
+          <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium font-mono">Memo</span>
+        </div>
         <Button
           variant="ghost"
           size="icon"

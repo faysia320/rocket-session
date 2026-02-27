@@ -1,5 +1,9 @@
 import { memo, useEffect, useRef } from "react";
-import { EditorView, keymap, placeholder as placeholderExt } from "@codemirror/view";
+import {
+  EditorView,
+  keymap,
+  placeholder as placeholderExt,
+} from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
@@ -9,6 +13,7 @@ interface MemoBlockEditorProps {
   initialContent: string;
   onChange: (content: string) => void;
   onCtrlEnter: () => void;
+  onBackspaceEmpty: () => void;
   autoFocus?: boolean;
 }
 
@@ -42,26 +47,39 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
   initialContent,
   onChange,
   onCtrlEnter,
+  onBackspaceEmpty,
   autoFocus = false,
 }: MemoBlockEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const onCtrlEnterRef = useRef(onCtrlEnter);
+  const onBackspaceEmptyRef = useRef(onBackspaceEmpty);
 
   onChangeRef.current = onChange;
   onCtrlEnterRef.current = onCtrlEnter;
+  onBackspaceEmptyRef.current = onBackspaceEmpty;
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const ctrlEnterKeymap = keymap.of([
+    const customKeymap = keymap.of([
       {
         key: "Ctrl-Enter",
         mac: "Cmd-Enter",
         run: () => {
           onCtrlEnterRef.current();
           return true;
+        },
+      },
+      {
+        key: "Backspace",
+        run: (view) => {
+          if (view.state.doc.length === 0) {
+            onBackspaceEmptyRef.current();
+            return true;
+          }
+          return false;
         },
       },
     ]);
@@ -78,7 +96,7 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
     const state = EditorState.create({
       doc: initialContent,
       extensions: [
-        ctrlEnterKeymap,
+        customKeymap,
         keymap.of(defaultKeymap),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         EditorView.updateListener.of((update) => {

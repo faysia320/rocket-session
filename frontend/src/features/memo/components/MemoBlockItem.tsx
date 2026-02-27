@@ -1,6 +1,4 @@
 import { memo, useCallback, useEffect, useRef } from "react";
-import { Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { MemoBlockEditor } from "./MemoBlockEditor";
 import { useUpdateMemoBlock } from "../hooks/useMemo";
 import type { MemoBlockInfo } from "@/types";
@@ -62,21 +60,12 @@ export const MemoBlockItem = memo(function MemoBlockItem({
   );
 
   return (
-    <div className="group relative border-b border-border/50">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-        onClick={onDelete}
-        aria-label="블록 삭제"
-      >
-        <Trash2 className="h-3 w-3 text-muted-foreground" />
-      </Button>
-
+    <div className="border-b border-border/50">
       <MemoBlockEditor
         initialContent={block.content}
         onChange={handleContentChange}
         onCtrlEnter={onCreateAfter}
+        onBackspaceEmpty={onDelete}
         autoFocus={autoFocus}
       />
     </div>
