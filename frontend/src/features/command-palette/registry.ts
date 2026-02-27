@@ -16,6 +16,7 @@ export function resolveRouteZone(pathname: string): RouteZone {
   if (pathname.startsWith("/team/")) return "team-detail";
   if (pathname === "/analytics") return "analytics";
   if (pathname === "/workflows") return "workflows";
+  if (pathname === "/knowledge-base") return "knowledge-base";
   return "home";
 }
 

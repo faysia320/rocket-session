@@ -1,4 +1,4 @@
-import { LayoutGrid, Plus, Monitor, BarChart3, GitBranch, Workflow } from "lucide-react";
+import { LayoutGrid, Plus, Monitor, BarChart3, GitBranch, Workflow, BookOpen } from "lucide-react";
 import type { PaletteCommand } from "../types";
 import type { SessionInfo } from "@/types";
 
@@ -45,6 +45,15 @@ export function createNavigationCommands(deps: {
       icon: Workflow,
       action: () => navigate({ to: "/workflows" }),
       keywords: ["workflow", "워크플로우", "정의", "definition", "node", "노드"],
+    },
+    {
+      id: "nav:knowledge-base",
+      label: "Knowledge Base",
+      description: "Claude Memory 및 프로젝트 지식 관리",
+      category: "navigation",
+      icon: BookOpen,
+      action: () => navigate({ to: "/knowledge-base" }),
+      keywords: ["knowledge", "지식", "memory", "메모리", "claude", "규칙", "rules"],
     },
     {
       id: "nav:new-session",

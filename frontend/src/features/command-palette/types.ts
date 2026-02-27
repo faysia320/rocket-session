@@ -11,7 +11,8 @@ export type RouteZone =
   | "analytics"
   | "team-home"
   | "team-detail"
-  | "workflows";
+  | "workflows"
+  | "knowledge-base";
 
 export interface CommandContext {
   requiresActiveSession?: boolean;
