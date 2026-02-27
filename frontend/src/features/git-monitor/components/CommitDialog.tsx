@@ -79,7 +79,7 @@ export function CommitDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-4" aria-describedby={undefined}>
+      <DialogContent className="max-w-md gap-4 overflow-hidden" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="font-mono text-sm font-semibold">Commit</DialogTitle>
         </DialogHeader>

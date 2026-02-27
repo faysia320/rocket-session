@@ -43,10 +43,12 @@ export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefiniti
 
   return (
     <Select onValueChange={handleChange} value={value ?? ""}>
-      <SelectTrigger className="font-mono text-xs bg-input border-border">
+      <SelectTrigger className="font-mono text-xs bg-input border-border min-w-0">
         <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <SelectValue placeholder="워크플로우 선택…" />
+          <span className="truncate">
+            <SelectValue placeholder="워크플로우 선택…" />
+          </span>
         </div>
       </SelectTrigger>
       <SelectContent>
