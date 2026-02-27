@@ -67,6 +67,8 @@ class WebSocketManager(DBService):
 
     async def start_background_tasks(self):
         """배치 writer + heartbeat 백그라운드 태스크 시작."""
+        if self._flush_task and not self._flush_task.done():
+            return  # 이미 실행 중
         self._flush_task = asyncio.create_task(self._batch_writer_loop())
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
@@ -109,36 +111,47 @@ class WebSocketManager(DBService):
                 batch.append(self._event_queue.get_nowait())
             except asyncio.QueueEmpty:
                 break
-        if batch and self._db:
+        if not batch or not self._db:
+            return
+
+        # 재시도 배치 크기 상한: 무한 증가 방지
+        max_retry_size = self._event_batch_max_size * 2
+        if len(batch) > max_retry_size:
+            dropped = len(batch) - max_retry_size
+            batch = batch[-max_retry_size:]  # 최신 이벤트 유지
+            logger.warning("재시도 배치 크기 초과 — %d건 드롭", dropped)
+
+        try:
+            # asyncpg COPY 프로토콜 시도 (5~50배 빠름)
             try:
-                # asyncpg COPY 프로토콜 시도 (5~50배 빠름)
-                try:
-                    from app.repositories.event_repo import EventRepository
+                from app.repositories.event_repo import EventRepository
 
-                    async with self._db.raw_connection() as raw_conn:
-                        await EventRepository.add_batch_copy(raw_conn, batch)
-                except Exception:
-                    # COPY 실패 시 기존 INSERT fallback
-                    from app.repositories.event_repo import EventRepository
-
-                    async with self._session_scope(EventRepository) as (session, repo):
-                        await repo.add_batch(batch)
-                        await session.commit()
+                async with self._db.raw_connection() as raw_conn:
+                    await EventRepository.add_batch_copy(raw_conn, batch)
                 self._retry_count = 0
-            except Exception as e:
-                self._retry_count += 1
-                if self._retry_count <= self._max_retries:
-                    logger.warning(
-                        "이벤트 배치 DB 저장 실패 (%d건, 재시도 %d/%d): %s",
-                        len(batch), self._retry_count, self._max_retries, e,
-                    )
-                    self._retry_batch = batch
-                else:
-                    logger.error(
-                        "이벤트 배치 DB 저장 최종 실패 — %d건 드롭 (재시도 %d회 초과): %s",
-                        len(batch), self._max_retries, e,
-                    )
-                    self._retry_count = 0
+                return  # COPY 성공 시 즉시 반환 — INSERT fallback 도달 방지
+            except Exception:
+                # COPY 실패 시 기존 INSERT fallback
+                from app.repositories.event_repo import EventRepository
+
+                async with self._session_scope(EventRepository) as (session, repo):
+                    await repo.add_batch(batch)
+                    await session.commit()
+            self._retry_count = 0
+        except Exception as e:
+            self._retry_count += 1
+            if self._retry_count <= self._max_retries:
+                logger.warning(
+                    "이벤트 배치 DB 저장 실패 (%d건, 재시도 %d/%d): %s",
+                    len(batch), self._retry_count, self._max_retries, e,
+                )
+                self._retry_batch = batch
+            else:
+                logger.error(
+                    "이벤트 배치 DB 저장 최종 실패 — %d건 드롭 (재시도 %d회 초과): %s",
+                    len(batch), self._max_retries, e,
+                )
+                self._retry_count = 0
 
     async def flush_events(self):
         """외부에서 호출 가능한 이벤트 flush."""

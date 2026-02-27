@@ -43,6 +43,10 @@ class SessionManager(DBService):
         # 메시지 배치 큐 + 배치 라이터
         self._message_queue: asyncio.Queue | None = None
         self._message_flush_task: asyncio.Task | None = None
+        # 메시지 배치 재시도
+        self._message_retry_batch: list[dict] = []
+        self._message_retry_count: int = 0
+        self._message_max_retries: int = 3
 
     def start_message_batch_writer(
         self, maxsize: int = 50000, flush_interval: float = 0.3
@@ -69,10 +73,14 @@ class SessionManager(DBService):
             await self._flush_messages()
 
     async def _flush_messages(self) -> None:
-        """큐에 쌓인 메시지를 한번에 배치 저장."""
+        """큐에 쌓인 메시지를 한번에 배치 저장 (재시도 포함)."""
         if not self._message_queue:
             return
         batch: list[dict] = []
+        # 재시도 대기 메시지 먼저 소비
+        if self._message_retry_batch:
+            batch.extend(self._message_retry_batch)
+            self._message_retry_batch = []
         while not self._message_queue.empty():
             try:
                 batch.append(self._message_queue.get_nowait())
@@ -84,8 +92,22 @@ class SessionManager(DBService):
             async with self._session_scope(MessageRepository) as (session, repo):
                 await repo.add_batch(batch)
                 await session.commit()
+            self._message_retry_count = 0
         except Exception:
-            logger.warning("메시지 배치 저장 실패 (%d건)", len(batch), exc_info=True)
+            self._message_retry_count += 1
+            if self._message_retry_count <= self._message_max_retries:
+                logger.warning(
+                    "메시지 배치 저장 실패 (%d건, 재시도 %d/%d)",
+                    len(batch), self._message_retry_count, self._message_max_retries,
+                    exc_info=True,
+                )
+                self._message_retry_batch = batch
+            else:
+                logger.error(
+                    "메시지 배치 저장 최종 실패 — %d건 드롭 (재시도 %d회 초과)",
+                    len(batch), self._message_max_retries,
+                )
+                self._message_retry_count = 0
 
     def queue_message(self, **kwargs) -> bool:
         """메시지를 배치 큐에 추가. 큐가 없거나 가득 차면 False 반환."""
@@ -95,7 +117,7 @@ class SessionManager(DBService):
             self._message_queue.put_nowait(kwargs)
             return True
         except asyncio.QueueFull:
-            logger.warning("메시지 배치 큐 가득 참 — 드롭")
+            logger.debug("메시지 배치 큐 가득 참 — 동기 저장으로 폴백")
             return False
 
     async def flush_messages(self) -> None:

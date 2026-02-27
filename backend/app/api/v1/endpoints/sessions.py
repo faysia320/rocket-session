@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
 from app.api.dependencies import (
+    get_claude_runner,
     get_git_service,
     get_mcp_service,
     get_search_service,
@@ -36,6 +37,7 @@ from app.services.search_service import SearchService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
 from app.services.tag_service import TagService
+from app.services.claude_runner import ClaudeRunner
 from app.services.websocket_manager import WebSocketManager
 from app.services.workspace_service import WorkspaceService
 
@@ -50,6 +52,7 @@ async def create_session(
     mcp_service: McpService = Depends(get_mcp_service),
     git: GitService = Depends(get_git_service),
     workspace_service: WorkspaceService = Depends(get_workspace_service),
+    def_service=Depends(get_workflow_definition_service),
 ):
     global_settings = await settings_service.get()
 
@@ -89,7 +92,6 @@ async def create_session(
             raise HTTPException(status_code=400, detail=str(e))
 
     # 워크플로우 정의 로드 (선택된 정의 or builtin default)
-    def_service = get_workflow_definition_service()
     definition = await def_service.get_or_default(req.workflow_definition_id)
     sorted_steps = sorted(definition.steps, key=lambda s: s.order_index)
     first_phase = sorted_steps[0].name if sorted_steps else "research"
@@ -386,12 +388,14 @@ async def delete_session(
     session_id: str,
     manager: SessionManager = Depends(get_session_manager),
     ws_manager: WebSocketManager = Depends(get_ws_manager),
+    claude_runner: ClaudeRunner = Depends(get_claude_runner),
 ):
     await manager.delete(session_id)
-    # 인메모리 자원 정리 (seq 카운터, 이벤트 버퍼, 세션 신뢰 도구, 대기 질문)
+    # 인메모리 자원 정리 (seq 카운터, 이벤트 버퍼, 세션 신뢰 도구, 대기 질문, 레이트 리미터)
     ws_manager.reset_session(session_id)
     clear_session_trusted(session_id)
     clear_pending_question(session_id)
+    claude_runner.cleanup_session_limiter(session_id)
     return StatusResponse(status="deleted")
 
 

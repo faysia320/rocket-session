@@ -1212,6 +1212,10 @@ class ClaudeRunner:
                 workflow_step_config,
             )
 
+    def cleanup_session_limiter(self, session_id: str) -> None:
+        """세션 삭제 시 해당 세션의 레이트 리미터를 정리."""
+        self._session_limiters.pop(session_id, None)
+
     async def _run_inner(
         self,
         session: dict,

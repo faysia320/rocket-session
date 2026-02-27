@@ -50,6 +50,9 @@ async def _run_background_tasks(shutdown_event: asyncio.Event) -> None:
     하나의 태스크가 예외로 종료되면 나머지도 자동 정리됩니다.
     shutdown_event가 set되면 모든 태스크를 종료합니다.
     """
+    from app.repositories.event_repo import EventRepository
+    from app.repositories.analytics_repo import AnalyticsRepository
+
     ws_mgr = get_ws_manager()
     await ws_mgr.start_background_tasks()
 
@@ -65,7 +68,6 @@ async def _run_background_tasks(shutdown_event: asyncio.Event) -> None:
             try:
                 db = get_database()
                 async with db.session() as session:
-                    from app.repositories.event_repo import EventRepository
                     repo = EventRepository(session)
                     deleted = await repo.cleanup_old_events(24)
                     await session.commit()
@@ -88,7 +90,6 @@ async def _run_background_tasks(shutdown_event: asyncio.Event) -> None:
             try:
                 db = get_database()
                 async with db.session() as session:
-                    from app.repositories.analytics_repo import AnalyticsRepository
                     await AnalyticsRepository.refresh_materialized_view(session)
             except Exception as e:
                 logging.getLogger(__name__).warning("MV 갱신 실패: %s", e)
