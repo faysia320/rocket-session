@@ -2,6 +2,7 @@ import { memo, useCallback, useRef } from "react";
 import { GripHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMemoStore } from "@/store";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import { MemoBlockList } from "./MemoBlockList";
 
 const PANEL_W = 400;
@@ -15,6 +16,7 @@ export const MemoPanel = memo(function MemoPanel() {
   const position = useMemoStore((s) => s.position);
   const setMemoOpen = useMemoStore((s) => s.setMemoOpen);
   const setPosition = useMemoStore((s) => s.setPosition);
+  const isMobile = useIsMobile();
   const dragging = useRef(false);
   const offset = useRef({ x: 0, y: 0 });
 
@@ -45,22 +47,26 @@ export const MemoPanel = memo(function MemoPanel() {
 
   if (!isOpen) return null;
 
-  const posStyle = position ? { left: position.x, top: position.y } : DEFAULT_STYLE;
+  const posStyle = isMobile
+    ? {}
+    : position
+      ? { left: position.x, top: position.y }
+      : DEFAULT_STYLE;
 
   return (
     <div
-      className="fixed w-[400px] h-[600px] hidden sm:flex flex-col rounded-lg border border-border bg-background shadow-lg"
+      className="fixed flex flex-col inset-0 md:inset-auto md:w-[400px] md:h-[600px] md:rounded-lg border-border bg-background md:border md:shadow-lg"
       style={{ zIndex: 55, ...posStyle }}
     >
-      {/* 헤더 - 드래그 핸들 */}
+      {/* 헤더 - 드래그 핸들 (데스크톱만) */}
       <div
-        className="flex items-center justify-between px-3 h-9 shrink-0 border-b border-border cursor-grab active:cursor-grabbing select-none"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        className="flex items-center justify-between px-3 h-9 shrink-0 border-b border-border select-none md:cursor-grab md:active:cursor-grabbing"
+        onPointerDown={isMobile ? undefined : handlePointerDown}
+        onPointerMove={isMobile ? undefined : handlePointerMove}
+        onPointerUp={isMobile ? undefined : handlePointerUp}
       >
         <div className="flex items-center gap-1.5">
-          <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+          <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground hidden md:block" />
           <span className="text-xs font-medium font-mono">Memo</span>
         </div>
         <Button
