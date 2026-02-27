@@ -1,5 +1,5 @@
 import { memo, useState, useRef, useCallback, useEffect } from "react";
-import { Send, Square, Image, X } from "lucide-react";
+import { Send, Square, Image, X, Upload } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,7 @@ export const ChatInput = memo(function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingImagesRef = useRef<PendingImage[]>([]);
+  const dragCounterRef = useRef(0);
 
   // pendingImages 변경 시 ref 동기화
   useEffect(() => {
@@ -218,21 +219,55 @@ export const ChatInput = memo(function ChatInput({
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
+      dragCounterRef.current = 0;
       setIsDragOver(false);
+
       const files = Array.from(e.dataTransfer.files);
-      addImages(files);
+      if (files.length === 0) return;
+
+      const imageFiles = files.filter((f) => ACCEPTED_IMAGE_TYPES.has(f.type));
+      const nonImageFiles = files.filter((f) => !ACCEPTED_IMAGE_TYPES.has(f.type));
+
+      if (imageFiles.length > 0) {
+        addImages(imageFiles);
+      }
+
+      if (nonImageFiles.length > 0) {
+        const fileNames = nonImageFiles.map((f) => f.name).join(" ");
+        setInput((prev) => {
+          const separator = prev.length > 0 && !prev.endsWith(" ") ? " " : "";
+          return prev + separator + fileNames;
+        });
+        requestAnimationFrame(() => {
+          if (textareaRef.current) {
+            textareaRef.current.style.height = "36px";
+            textareaRef.current.style.height =
+              Math.min(textareaRef.current.scrollHeight, 200) + "px";
+          }
+        });
+      }
     },
     [addImages],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(true);
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    if (dragCounterRef.current === 1) {
+      setIsDragOver(true);
+    }
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current === 0) {
+      setIsDragOver(false);
+    }
   }, []);
 
   return (
@@ -240,6 +275,7 @@ export const ChatInput = memo(function ChatInput({
       className="px-2 py-1.5 border-t border-border bg-secondary"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
     >
       <div className="relative">
@@ -256,8 +292,8 @@ export const ChatInput = memo(function ChatInput({
         {isDragOver ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-[var(--radius-md)]">
             <div className="flex items-center gap-2 font-mono text-sm text-primary font-semibold">
-              <Image className="h-5 w-5" />
-              이미지를 여기에 놓으세요
+              <Upload className="h-5 w-5" />
+              파일을 여기에 놓으세요
             </div>
           </div>
         ) : null}
