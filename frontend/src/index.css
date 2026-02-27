@@ -540,3 +540,10 @@
 .hljs-tag {
   color: var(--hljs-keyword);
 }
+
+/* Memo Block Editor - contentEditable placeholder */
+.memo-block-editor:empty::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+}

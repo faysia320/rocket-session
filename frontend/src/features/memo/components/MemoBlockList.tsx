@@ -81,10 +81,7 @@ export const MemoBlockList = memo(function MemoBlockList() {
       if (blockIndex <= 0) return; // 첫 번째 블록이면 무시
 
       const prevBlock = blocks[blockIndex - 1];
-      const prevView = editorRegistry.getView(prevBlock.id);
-      if (!prevView) return;
-
-      const prevContent = prevView.state.doc.toString();
+      const prevContent = editorRegistry.getContent(prevBlock.id) ?? "";
       const joinPosition = prevContent.length;
 
       // undo 스택에 push (병합 전 상태 기록)
@@ -100,13 +97,7 @@ export const MemoBlockList = memo(function MemoBlockList() {
       }
 
       // 1. 이전 에디터에 현재 블록 내용 추가
-      prevView.dispatch({
-        changes: {
-          from: prevContent.length,
-          to: prevContent.length,
-          insert: currentContent,
-        },
-      });
+      editorRegistry.setContent(prevBlock.id, prevContent + currentContent);
 
       // 2. 현재 블록 삭제
       deleteBlock.mutate(blockId);
@@ -168,21 +159,11 @@ export const MemoBlockList = memo(function MemoBlockList() {
 
       case "merge_blocks": {
         // 1. 대상 블록 원본 내용 복원
-        const targetView = editorRegistry.getView(action.targetBlockId);
-        if (targetView) {
-          const currentLen = targetView.state.doc.length;
-          targetView.dispatch({
-            changes: {
-              from: 0,
-              to: currentLen,
-              insert: action.targetOriginalContent,
-            },
-          });
-          updateBlock.mutate({
-            id: action.targetBlockId,
-            data: { content: action.targetOriginalContent },
-          });
-        }
+        editorRegistry.setContent(action.targetBlockId, action.targetOriginalContent);
+        updateBlock.mutate({
+          id: action.targetBlockId,
+          data: { content: action.targetOriginalContent },
+        });
 
         // 2. 삭제된 블록 재생성
         createBlock.mutate(
@@ -216,7 +197,7 @@ export const MemoBlockList = memo(function MemoBlockList() {
           e.stopPropagation();
           handleUndo();
         }
-        // 아니면 CM6 기본 텍스트 undo가 처리
+        // 아니면 브라우저 기본 텍스트 undo가 처리
       }
     },
     [handleUndo],
@@ -257,7 +238,7 @@ export const MemoBlockList = memo(function MemoBlockList() {
   return (
     <div onKeyDown={handleKeyDown} className="flex-1 flex flex-col min-h-0">
       <ScrollArea className="flex-1" ref={scrollRef}>
-        <div className="flex flex-col">
+        <div className="flex flex-col select-text">
           {blocks.map((block, index) => (
             <MemoBlockItem
               key={block.id}

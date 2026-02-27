@@ -26,7 +26,7 @@ export const MemoBlockItem = memo(function MemoBlockItem({
   autoFocus = false,
 }: MemoBlockItemProps) {
   const updateBlock = useUpdateMemoBlock();
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const pendingContentRef = useRef<string | null>(null);
   const contentRef = useRef(block.content);
   const deletedRef = useRef(false);

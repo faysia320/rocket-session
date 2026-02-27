@@ -1,13 +1,4 @@
-import { memo, useEffect, useRef } from "react";
-import { EditorView, keymap, lineNumbers, placeholder as placeholderExt } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { languages } from "@codemirror/language-data";
-import { defaultKeymap } from "@codemirror/commands";
-import {
-  liveMarkdownPreview,
-  liveMarkdownTheme,
-} from "../extensions/liveMarkdownPreview";
+import { memo, useCallback, useLayoutEffect, useRef } from "react";
 import type { MemoEditorRegistry } from "../hooks/useMemoEditorRegistry";
 import { useMemoUndoStack } from "../hooks/useMemoUndoStack";
 
@@ -23,44 +14,18 @@ interface MemoBlockEditorProps {
   onBlur?: () => void;
 }
 
-const memoTheme = EditorView.theme(
-  {
-    "&": {
-      backgroundColor: "transparent",
-      fontSize: "13px",
-      fontFamily: "var(--font-mono, ui-monospace, monospace)",
-    },
-    ".cm-content": {
-      padding: "8px 12px",
-      caretColor: "hsl(var(--foreground))",
-      color: "hsl(var(--foreground))",
-      minHeight: "1.5em",
-    },
-    "&.cm-focused": { outline: "none" },
-    ".cm-line": { padding: "1px 0" },
-    ".cm-cursor": { borderLeftColor: "hsl(var(--primary))" },
-    ".cm-selectionBackground": {
-      backgroundColor: "hsl(var(--muted)) !important",
-    },
-    ".cm-placeholder": {
-      color: "hsl(var(--muted-foreground))",
-    },
-    ".cm-gutters": {
-      backgroundColor: "transparent",
-      borderRight: "none",
-      color: "hsl(var(--muted-foreground) / 0.5)",
-      fontSize: "11px",
-      fontFamily: "var(--font-mono, ui-monospace, monospace)",
-      minWidth: "2em",
-    },
-    ".cm-lineNumbers .cm-gutterElement": {
-      padding: "0 4px 0 4px",
-      minWidth: "1.5em",
-      textAlign: "right",
-    },
-  },
-  { dark: true },
-);
+function isCursorAtStart(el: HTMLDivElement): boolean {
+  const sel = window.getSelection();
+  if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  if (range.startOffset !== 0) return false;
+  // Cursor directly in the element at offset 0
+  if (range.startContainer === el) return true;
+  // Cursor in the first text node at offset 0
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const firstTextNode = walker.nextNode();
+  return range.startContainer === firstTextNode;
+}
 
 export const MemoBlockEditor = memo(function MemoBlockEditor({
   blockId,
@@ -73,8 +38,7 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
   autoFocus = false,
   onBlur,
 }: MemoBlockEditorProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<EditorView | null>(null);
+  const divRef = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
   const onCtrlEnterRef = useRef(onCtrlEnter);
   const onBackspaceEmptyRef = useRef(onBackspaceEmpty);
@@ -91,95 +55,101 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
   blockIdRef.current = blockId;
   editorRegistryRef.current = editorRegistry;
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const customKeymap = keymap.of([
-      {
-        key: "Ctrl-Enter",
-        mac: "Cmd-Enter",
-        run: () => {
-          onCtrlEnterRef.current();
-          return true;
-        },
-      },
-      {
-        key: "Backspace",
-        run: (view) => {
-          // 빈 블록 → 삭제 후 이전 블록 포커스
-          if (view.state.doc.length === 0) {
-            onBackspaceEmptyRef.current();
-            return true;
-          }
-          // 커서가 맨 앞(pos 0)이고 선택 없음 → 이전 블록과 병합
-          const sel = view.state.selection.main;
-          if (sel.empty && sel.anchor === 0) {
-            onBackspaceAtStartRef.current();
-            return true;
-          }
-          return false;
-        },
-      },
-    ]);
-
-    // Ctrl+B 충돌 방지: 에디터 내에서 stopPropagation
-    const preventGlobalShortcuts = EditorView.domEventHandlers({
-      keydown(event) {
-        if ((event.ctrlKey || event.metaKey) && event.key === "b") {
-          event.stopPropagation();
-        }
-      },
-    });
-
-    const blurHandler = EditorView.domEventHandlers({
-      blur() {
-        onBlurRef.current?.();
-      },
-    });
-
-    const state = EditorState.create({
-      doc: initialContent,
-      extensions: [
-        customKeymap,
-        keymap.of(defaultKeymap),
-        markdown({ base: markdownLanguage, codeLanguages: languages }),
-        lineNumbers(),
-        liveMarkdownPreview,
-        liveMarkdownTheme,
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            onChangeRef.current(update.state.doc.toString());
-            // 텍스트 입력 시 구조적 undo 플래그 해제
-            useMemoUndoStack.getState().setLastActionWasStructural(false);
-          }
-        }),
-        memoTheme,
-        placeholderExt("Type something..."),
-        EditorView.lineWrapping,
-        preventGlobalShortcuts,
-        blurHandler,
-      ],
-    });
-
-    const view = new EditorView({
-      state,
-      parent: containerRef.current,
-    });
-
-    viewRef.current = view;
-    editorRegistryRef.current.register(blockIdRef.current, view);
-
-    if (autoFocus) {
-      requestAnimationFrame(() => view.focus());
+  // Mount: set initial content & register
+  useLayoutEffect(() => {
+    const el = divRef.current;
+    if (!el) return;
+    if (initialContent) {
+      el.textContent = initialContent;
     }
-
+    editorRegistryRef.current.register(blockIdRef.current, el);
+    if (autoFocus) {
+      requestAnimationFrame(() => {
+        editorRegistryRef.current.focusEnd(blockIdRef.current);
+      });
+    }
     return () => {
       editorRegistryRef.current.unregister(blockIdRef.current);
-      view.destroy();
-      viewRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <div ref={containerRef} />;
+  const handleInput = useCallback(() => {
+    const el = divRef.current;
+    if (!el) return;
+    const content = el.innerText;
+    // Clear stale <br> so :empty placeholder works
+    if (!content || content === "\n") {
+      el.textContent = "";
+    }
+    onChangeRef.current(el.innerText);
+    useMemoUndoStack.getState().setLastActionWasStructural(false);
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Ctrl+Enter / Cmd+Enter → create new block
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      onCtrlEnterRef.current();
+      return;
+    }
+
+    // Enter → insert \n instead of <br>/<div>
+    if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      document.execCommand("insertText", false, "\n");
+      return;
+    }
+
+    // Backspace
+    if (e.key === "Backspace") {
+      const el = divRef.current;
+      if (!el) return;
+      const content = el.innerText;
+
+      // Empty block → delete
+      if (!content || content === "\n") {
+        e.preventDefault();
+        onBackspaceEmptyRef.current();
+        return;
+      }
+
+      // Cursor at start, no selection → merge with previous
+      if (isCursorAtStart(el)) {
+        e.preventDefault();
+        onBackspaceAtStartRef.current();
+        return;
+      }
+    }
+
+    // Prevent Ctrl+B from propagating
+    if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+      e.stopPropagation();
+    }
+  }, []);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text/plain");
+    document.execCommand("insertText", false, text);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    onBlurRef.current?.();
+  }, []);
+
+  return (
+    <div
+      ref={divRef}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={handleInput}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
+      onBlur={handleBlur}
+      data-block-id={blockId}
+      data-placeholder="Type something..."
+      className="memo-block-editor outline-none px-3 py-2 min-h-[1.5em] text-[13px] font-mono text-foreground whitespace-pre-wrap break-words caret-primary"
+    />
+  );
 });
