@@ -150,6 +150,7 @@ class SessionManager(DBService):
         workspace_id: str | None = None,
         workflow_definition_id: str | None = None,
         workflow_phase: str | None = None,
+        name: str | None = None,
     ) -> dict:
         sid = str(uuid.uuid4())[:16]
         created_at = utc_now()
@@ -177,6 +178,7 @@ class SessionManager(DBService):
                 fallback_model=fallback_model,
                 worktree_name=worktree_name,
                 workspace_id=workspace_id,
+                name=name,
             )
             await repo.add(entity)
             await session.commit()

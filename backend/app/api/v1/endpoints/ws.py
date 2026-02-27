@@ -115,6 +115,7 @@ async def _handle_prompt(
         workflow_phase = None
         workflow_service = None
         workflow_step_config = None
+        claude_prompt = prompt
         if current_session:
             workflow_phase = current_session.get("workflow_phase")
             workflow_phase_status = current_session.get("workflow_phase_status")

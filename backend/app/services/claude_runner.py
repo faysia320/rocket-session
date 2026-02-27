@@ -976,6 +976,8 @@ class ClaudeRunner:
             # 정상 흐름: stderr 읽기와 프로세스 대기를 병렬 실행
             async def _read_stderr():
                 try:
+                    if not process.stderr:
+                        return
                     stderr = await asyncio.wait_for(
                         process.stderr.read(), timeout=self._STDERR_READ_TIMEOUT
                     )

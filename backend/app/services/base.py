@@ -3,8 +3,6 @@
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.database import Database
 
 
@@ -17,7 +15,7 @@ class DBService:
     @asynccontextmanager
     async def _session_scope(
         self, *repo_classes: type
-    ) -> AsyncGenerator[tuple[AsyncSession, Any, ...], None]:
+    ) -> AsyncGenerator[tuple[Any, ...], None]:
         """DB 세션 + Repository 인스턴스를 한 번에 생성.
 
         Usage:

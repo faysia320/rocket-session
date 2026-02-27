@@ -272,6 +272,9 @@ class TeamCoordinator:
             task = await task_repo.complete_task(task.id, result_summary)
             await db_session.commit()
 
+            if not task:
+                return
+
             logger.info(
                 "팀 %s 태스크 %d 자동 완료 (세션 %s)",
                 task.team_id,

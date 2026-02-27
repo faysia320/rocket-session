@@ -148,11 +148,11 @@ class ContextBuilderService(DBService):
             # 파일별 변경 빈도 집계
             freq_stmt = (
                 select(
-                    FileChange.file_path,
+                    FileChange.file.label("file_path"),
                     func.count().label("change_count"),
                 )
                 .where(FileChange.session_id.in_(session_ids))
-                .group_by(FileChange.file_path)
+                .group_by(FileChange.file)
                 .order_by(func.count().desc())
                 .limit(limit * 3)  # 충분히 가져와서 필터링
             )
