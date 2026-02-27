@@ -28,7 +28,7 @@ export const SlashCommandPopup = memo(function SlashCommandPopup({
 
   return (
     <div className="absolute bottom-full left-0 right-0 mb-1 z-50">
-      <div className="bg-popover border border-border rounded-md shadow-lg overflow-hidden">
+      <div className="bg-popover border border-border rounded-md shadow-dropdown overflow-hidden">
         <ScrollArea className="max-h-[240px]" viewportClassName="max-h-[240px]">
           <div ref={listRef} role="listbox" className="p-1">
             {commands.map((cmd, idx) => {

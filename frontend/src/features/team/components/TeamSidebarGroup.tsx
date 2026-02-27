@@ -28,7 +28,7 @@ export const TeamSidebarGroup = memo(function TeamSidebarGroup({
             type="button"
             className={cn(
               "w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-colors border border-transparent",
-              isActive && "bg-muted border-[hsl(var(--border-bright))]",
+              isActive && "bg-muted border-border-bright",
             )}
             onClick={() => navigate({ to: "/team/$teamId", params: { teamId: team.id } })}
             aria-label={`팀 ${team.name}`}

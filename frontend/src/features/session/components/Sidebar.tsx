@@ -281,7 +281,7 @@ export const Sidebar = memo(function Sidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-[30px] w-[30px] shrink-0", ftsMode && "text-primary")}
+                  className={cn("size-7 shrink-0", ftsMode && "text-primary")}
                   onClick={() => setFtsMode(!ftsMode)}
                   aria-label={ftsMode ? "일반 검색으로 전환" : "전문 검색으로 전환"}
                 >
@@ -365,7 +365,7 @@ export const Sidebar = memo(function Sidebar({
                   <button
                     className={cn(
                       "w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-colors border border-transparent",
-                      s.id === activeSessionId && "bg-muted border-[hsl(var(--border-bright))]",
+                      s.id === activeSessionId && "bg-muted border-border-bright",
                     )}
                     onClick={() => onSelect(s.id)}
                     aria-label={`세션 ${s.id}`}
@@ -542,7 +542,7 @@ const SidebarWorkspaceGroup = memo(function SidebarWorkspaceGroup({
               <button
                 className={cn(
                   "w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-colors border border-transparent",
-                  s.id === activeSessionId && "bg-muted border-[hsl(var(--border-bright))]",
+                  s.id === activeSessionId && "bg-muted border-border-bright",
                 )}
                 onClick={() => onSelect(s.id)}
                 aria-label={`세션 ${s.id}`}
@@ -664,7 +664,7 @@ const SessionItem = memo(function SessionItem({
       type="button"
       className={cn(
         "w-full text-left px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-colors border border-transparent overflow-hidden min-w-0",
-        isActive && "bg-muted border-[hsl(var(--border-bright))]",
+        isActive && "bg-muted border-border-bright",
       )}
       onClick={() => onSelect(s.id)}
     >

@@ -51,7 +51,7 @@ export const TokenSummaryCards = memo(function TokenSummaryCards({
             key={card.label}
             className={cn(
               "rounded-lg border border-border bg-card p-3",
-              "shadow-sm hover:shadow-md transition-shadow",
+              "shadow-card hover:shadow-card-hover transition-shadow",
               "border-t-2",
               card.borderClass,
             )}

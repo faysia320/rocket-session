@@ -60,8 +60,8 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
   return (
     <Card
       className={cn(
-        "relative p-4 cursor-pointer transition-all duration-200 hover:border-primary/40 hover:shadow-md group",
-        isActive && "border-primary/60 shadow-md",
+        "relative p-4 cursor-pointer transition-all duration-200 hover:border-primary/40 hover:shadow-card-hover group",
+        isActive && "border-primary/60 shadow-card-hover",
         s.status === "running" &&
           !isStale &&
           "border-success/30 shadow-[0_0_12px_hsl(var(--success)/0.1)]",

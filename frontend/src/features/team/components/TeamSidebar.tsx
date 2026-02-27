@@ -185,7 +185,7 @@ export const TeamSidebar = memo(function TeamSidebar({
                     type="button"
                     className={cn(
                       "w-full flex items-center justify-center py-2.5 rounded-sm mb-1 transition-colors border border-transparent",
-                      t.id === activeTeamId && "bg-muted border-[hsl(var(--border-bright))]",
+                      t.id === activeTeamId && "bg-muted border-border-bright",
                     )}
                     onClick={() => onSelect(t.id)}
                     aria-label={`팀 ${t.name}`}
@@ -260,7 +260,7 @@ const TeamSidebarItem = memo(function TeamSidebarItem({
       type="button"
       className={cn(
         "w-full text-left px-3 py-2.5 rounded-sm cursor-pointer mb-1 transition-colors border border-transparent overflow-hidden min-w-0",
-        isActive && "bg-muted border-[hsl(var(--border-bright))]",
+        isActive && "bg-muted border-border-bright",
       )}
       onClick={() => onSelect(t.id)}
     >

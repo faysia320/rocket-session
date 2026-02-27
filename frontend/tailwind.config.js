@@ -50,7 +50,10 @@ export default {
           4: 'hsl(var(--chart-4))',
           5: 'hsl(var(--chart-5))',
         },
-        border: 'hsl(var(--border))',
+        border: {
+          DEFAULT: 'hsl(var(--border))',
+          bright: 'hsl(var(--border-bright))',
+        },
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         sidebar: {
@@ -75,6 +78,13 @@ export default {
       fontFamily: {
         sans: ['JetBrains Mono', 'Pretendard Variable', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono: ['JetBrains Mono', 'Pretendard Variable', 'Pretendard', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      },
+      boxShadow: {
+        card: 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-md)',
+        dropdown: 'var(--shadow-dropdown)',
+        modal: 'var(--shadow-modal)',
+        tooltip: 'var(--shadow-tooltip)',
       },
     },
   },
