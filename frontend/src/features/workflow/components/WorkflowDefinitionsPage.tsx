@@ -20,10 +20,7 @@ import {
 import { workflowDefinitionApi } from "@/lib/api/workflowDefinition.api";
 import { WorkflowDefinitionList } from "./WorkflowDefinitionList";
 import { WorkflowDefinitionDetail } from "./WorkflowDefinitionDetail";
-import type {
-  WorkflowDefinitionExport,
-  WorkflowStepConfig,
-} from "@/types/workflow";
+import type { WorkflowDefinitionExport, WorkflowStepConfig } from "@/types/workflow";
 
 export function WorkflowDefinitionsPage() {
   const { data: definitions, isLoading } = useWorkflowDefinitions();
@@ -49,7 +46,10 @@ export function WorkflowDefinitionsPage() {
   }, [definitions]);
 
   const selectedDefinition = useMemo(
-    () => (isCreating ? null : (readyDefinitions.find((d) => d.id === selectedId) ?? readyDefinitions[0] ?? null)),
+    () =>
+      isCreating
+        ? null
+        : (readyDefinitions.find((d) => d.id === selectedId) ?? readyDefinitions[0] ?? null),
     [readyDefinitions, selectedId, isCreating],
   );
   const effectiveId = selectedDefinition?.id ?? null;

@@ -1,8 +1,7 @@
-import { memo, useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { ChevronDown, ChevronUp, FileText, Clock, Lightbulb } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
 import { useContextSuggestion } from "../hooks/useContextSuggestion";
 import type { WorkspaceInsightInfo } from "@/types/knowledge";
 import type { FileSuggestion, SessionSummary } from "@/lib/api/context.api";
@@ -33,10 +32,7 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
     };
   }, [prompt]);
 
-  const { data, isLoading } = useContextSuggestion(
-    workspaceId,
-    debouncedPrompt || undefined,
-  );
+  const { data, isLoading } = useContextSuggestion(workspaceId, debouncedPrompt || undefined);
 
   // Auto-expand when workspace is selected
   useEffect(() => {
@@ -160,9 +156,7 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
                           className="mt-0.5"
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="font-mono text-xs text-foreground">
-                            {insight.title}
-                          </span>
+                          <span className="font-mono text-xs text-foreground">{insight.title}</span>
                           <p className="font-mono text-2xs text-muted-foreground line-clamp-1">
                             {insight.content}
                           </p>

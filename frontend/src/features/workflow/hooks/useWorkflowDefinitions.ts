@@ -33,8 +33,7 @@ export function useCreateWorkflowDefinition() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: CreateWorkflowDefinitionRequest) =>
-      workflowDefinitionApi.create(req),
+    mutationFn: (req: CreateWorkflowDefinitionRequest) => workflowDefinitionApi.create(req),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: workflowDefinitionKeys.all,
@@ -51,10 +50,7 @@ export function useUpdateWorkflowDefinition() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      id,
-      ...req
-    }: UpdateWorkflowDefinitionRequest & { id: string }) =>
+    mutationFn: ({ id, ...req }: UpdateWorkflowDefinitionRequest & { id: string }) =>
       workflowDefinitionApi.update(id, req),
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -106,8 +102,7 @@ export function useImportWorkflowDefinition() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: WorkflowDefinitionExport) =>
-      workflowDefinitionApi.import(data),
+    mutationFn: (data: WorkflowDefinitionExport) => workflowDefinitionApi.import(data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: workflowDefinitionKeys.all,

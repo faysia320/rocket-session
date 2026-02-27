@@ -35,9 +35,7 @@ export const insightsApi = {
 
   context: (workspaceId: string, prompt?: string) => {
     const qs = prompt ? `?prompt=${encodeURIComponent(prompt)}` : "";
-    return api.get<InsightContextResponse>(
-      `/api/workspaces/${workspaceId}/insights/context${qs}`,
-    );
+    return api.get<InsightContextResponse>(`/api/workspaces/${workspaceId}/insights/context${qs}`);
   },
 
   archive: (workspaceId: string, ids: number[]) =>

@@ -50,18 +50,20 @@ export const TeamMemberList = memo(function TeamMemberList({
             {/* 이름 + 페르소나 정보 */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-mono text-sm truncate">
-                  {m.nickname}
-                </span>
+                <span className="font-mono text-sm truncate">{m.nickname}</span>
                 {isLead ? (
-                  <Badge variant="outline" className="text-2xs px-1.5 py-0 text-primary border-primary/30">
+                  <Badge
+                    variant="outline"
+                    className="text-2xs px-1.5 py-0 text-primary border-primary/30"
+                  >
                     <Crown className="h-2.5 w-2.5 mr-0.5" />
                     Lead
                   </Badge>
                 ) : null}
               </div>
               <div className="font-mono text-2xs text-muted-foreground">
-                {m.model || "default"}{m.description ? ` · ${m.description}` : ""}
+                {m.model || "default"}
+                {m.description ? ` · ${m.description}` : ""}
               </div>
             </div>
 

@@ -2,20 +2,11 @@ import { memo, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Lightbulb, XCircle, Eye, Code2, Check, X } from "lucide-react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { PhaseApprovalBar } from "./PhaseApprovalBar";
 import type { SessionArtifactInfo, ArtifactAnnotationInfo, AnnotationType } from "@/types/workflow";
 
@@ -32,10 +23,7 @@ const ANNOTATION_ICONS: Record<string, typeof MessageSquare> = {
   rejection: XCircle,
 };
 
-const TYPE_CONFIG: Record<
-  string,
-  { icon: typeof MessageSquare; label: string; color: string }
-> = {
+const TYPE_CONFIG: Record<string, { icon: typeof MessageSquare; label: string; color: string }> = {
   comment: { icon: MessageSquare, label: "댓글", color: "text-info" },
   suggestion: { icon: Lightbulb, label: "제안", color: "text-warning" },
   rejection: { icon: XCircle, label: "반려", color: "text-destructive" },
@@ -47,7 +35,12 @@ interface ArtifactViewerProps {
   artifact: SessionArtifactInfo | null;
   onApprove?: (feedback?: string) => void;
   onRequestRevision?: (feedback?: string) => void;
-  onAddAnnotation?: (lineStart: number, lineEnd: number | null, content: string, type: AnnotationType) => void;
+  onAddAnnotation?: (
+    lineStart: number,
+    lineEnd: number | null,
+    content: string,
+    type: AnnotationType,
+  ) => void;
   onResolveAnnotation?: (annotationId: number) => void;
   onDismissAnnotation?: (annotationId: number) => void;
   onUpdateContent?: (content: string) => void;
@@ -83,10 +76,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
   const [newAnnotationType, setNewAnnotationType] = useState<AnnotationType>("comment");
   const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  const lines = useMemo(
-    () => (artifact?.content ?? "").split("\n"),
-    [artifact?.content],
-  );
+  const lines = useMemo(() => (artifact?.content ?? "").split("\n"), [artifact?.content]);
 
   const annotationsByLine = useMemo(() => {
     if (!artifact?.annotations) return new Map<number, ArtifactAnnotationInfo[]>();
@@ -133,12 +123,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
 
   const handleAddAnnotation = useCallback(() => {
     if (annotationPopover && newAnnotationContent.trim() && onAddAnnotation) {
-      onAddAnnotation(
-        annotationPopover.line,
-        null,
-        newAnnotationContent.trim(),
-        newAnnotationType,
-      );
+      onAddAnnotation(annotationPopover.line, null, newAnnotationContent.trim(), newAnnotationType);
       setAnnotationPopover(null);
       setNewAnnotationContent("");
     }
@@ -147,9 +132,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
   if (!artifact) return null;
 
   const isApproved = artifact.status === "approved";
-  const pendingAnnotations = artifact.annotations.filter(
-    (a) => a.status === "pending",
-  );
+  const pendingAnnotations = artifact.annotations.filter((a) => a.status === "pending");
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -160,16 +143,12 @@ export const ArtifactViewer = memo(function ArtifactViewer({
         {/* Header */}
         <SheetHeader className="px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
-            <SheetTitle className="text-sm font-medium">
-              {artifact.title}
-            </SheetTitle>
+            <SheetTitle className="text-sm font-medium">{artifact.title}</SheetTitle>
             <Badge variant="outline" className="text-[10px]">
               v{artifact.version}
             </Badge>
             <Badge
-              variant={
-                artifact.status === "approved" ? "default" : "secondary"
-              }
+              variant={artifact.status === "approved" ? "default" : "secondary"}
               className="text-[10px]"
             >
               {STATUS_LABELS[artifact.status] ?? artifact.status}
@@ -225,11 +204,8 @@ export const ArtifactViewer = memo(function ArtifactViewer({
                 {lines.map((line, idx) => {
                   const lineNum = idx + 1;
                   const lineAnnotations = annotationsByLine.get(lineNum);
-                  const hasAnnotations =
-                    lineAnnotations && lineAnnotations.length > 0;
-                  const hasPending = lineAnnotations?.some(
-                    (a) => a.status === "pending",
-                  );
+                  const hasAnnotations = lineAnnotations && lineAnnotations.length > 0;
+                  const hasPending = lineAnnotations?.some((a) => a.status === "pending");
 
                   return (
                     <div key={lineNum}>
@@ -251,10 +227,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
                         {/* Gutter: annotation icon (always with popover for adding) */}
                         <div className="w-6 shrink-0 flex items-center justify-center">
                           <Popover
-                            open={
-                              annotationPopover?.line === lineNum &&
-                              annotationPopover?.open
-                            }
+                            open={annotationPopover?.line === lineNum && annotationPopover?.open}
                             onOpenChange={(open) => {
                               if (!open) setAnnotationPopover(null);
                             }}
@@ -271,18 +244,13 @@ export const ArtifactViewer = memo(function ArtifactViewer({
                                 aria-label={`${lineNum}번 줄에 주석 추가`}
                               >
                                 {hasAnnotations ? (
-                                  <AnnotationGutterIcon
-                                    annotations={lineAnnotations}
-                                  />
+                                  <AnnotationGutterIcon annotations={lineAnnotations} />
                                 ) : (
                                   <MessageSquare className="w-3 h-3 text-muted-foreground" />
                                 )}
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent
-                              side="right"
-                              className="w-72 p-3"
-                            >
+                            <PopoverContent side="right" className="w-72 p-3">
                               <AddAnnotationForm
                                 content={newAnnotationContent}
                                 type={newAnnotationType}
@@ -320,7 +288,6 @@ export const ArtifactViewer = memo(function ArtifactViewer({
               </div>
             )}
           </div>
-
         </div>
 
         {/* Bottom: Approval bar */}
@@ -357,12 +324,7 @@ const AnnotationGutterIcon = memo(function AnnotationGutterIcon({
   const Icon = ANNOTATION_ICONS[primaryType] ?? MessageSquare;
 
   return (
-    <Icon
-      className={cn(
-        "w-3.5 h-3.5",
-        hasPending ? "text-warning" : "text-muted-foreground/50",
-      )}
-    />
+    <Icon className={cn("w-3.5 h-3.5", hasPending ? "text-warning" : "text-muted-foreground/50")} />
   );
 });
 
@@ -383,25 +345,19 @@ const InlineAnnotationCard = memo(function InlineAnnotationCard({
     <div
       className={cn(
         "rounded-md border p-2 text-xs",
-        isPending
-          ? "border-border bg-card"
-          : "border-border/50 bg-muted/30 opacity-60",
+        isPending ? "border-border bg-card" : "border-border/50 bg-muted/30 opacity-60",
       )}
     >
       <div className="flex items-center gap-1.5 mb-1">
         <Icon className={cn("w-3 h-3 shrink-0", config.color)} />
-        <span className={cn("font-medium text-[10px]", config.color)}>
-          {config.label}
-        </span>
+        <span className={cn("font-medium text-[10px]", config.color)}>{config.label}</span>
         {!isPending ? (
           <span className="text-[10px] text-muted-foreground ml-auto">
             {annotation.status === "resolved" ? "해결됨" : "무시됨"}
           </span>
         ) : null}
       </div>
-      <p className="text-foreground/80 whitespace-pre-wrap break-words">
-        {annotation.content}
-      </p>
+      <p className="text-foreground/80 whitespace-pre-wrap break-words">{annotation.content}</p>
       {isPending ? (
         <div className="flex items-center gap-1 mt-1.5 justify-end">
           <Button

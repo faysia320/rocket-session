@@ -12,11 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  useWorkspaces,
-  useDeleteWorkspace,
-  useSyncWorkspace,
-} from "../hooks/useWorkspaces";
+import { useWorkspaces, useDeleteWorkspace, useSyncWorkspace } from "../hooks/useWorkspaces";
 import { WorkspaceCreateDialog } from "./WorkspaceCreateDialog";
 import type { WorkspaceInfo } from "@/types/workspace";
 import { toast } from "sonner";
@@ -67,9 +63,7 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceInfo }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Globe className="h-4 w-4 text-primary shrink-0" />
-            <span className="font-mono text-sm font-semibold truncate">
-              {workspace.name}
-            </span>
+            <span className="font-mono text-sm font-semibold truncate">{workspace.name}</span>
             <Badge variant={statusCfg.variant} className="font-mono text-2xs shrink-0">
               {statusCfg.label}
             </Badge>
@@ -83,19 +77,11 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceInfo }) {
       {workspace.status === "ready" ? (
         <div className="flex items-center gap-3 text-2xs font-mono text-muted-foreground">
           {workspace.current_branch ? (
-            <span className="text-info">
-              {workspace.current_branch}
-            </span>
+            <span className="text-info">{workspace.current_branch}</span>
           ) : null}
-          {workspace.is_dirty ? (
-            <span className="text-warning">변경됨</span>
-          ) : null}
-          {workspace.ahead ? (
-            <span className="text-success">↑{workspace.ahead}</span>
-          ) : null}
-          {workspace.behind ? (
-            <span className="text-destructive">↓{workspace.behind}</span>
-          ) : null}
+          {workspace.is_dirty ? <span className="text-warning">변경됨</span> : null}
+          {workspace.ahead ? <span className="text-success">↑{workspace.ahead}</span> : null}
+          {workspace.behind ? <span className="text-destructive">↓{workspace.behind}</span> : null}
           {workspace.disk_usage_mb != null ? (
             <span className="flex items-center gap-1">
               <HardDrive className="h-3 w-3" />
@@ -117,9 +103,7 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceInfo }) {
       ) : null}
 
       {workspace.status === "error" && workspace.error_message ? (
-        <p className="font-mono text-2xs text-destructive truncate">
-          {workspace.error_message}
-        </p>
+        <p className="font-mono text-2xs text-destructive truncate">{workspace.error_message}</p>
       ) : null}
 
       <div className="flex items-center gap-2">
@@ -159,9 +143,7 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceInfo }) {
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "font-mono text-2xs h-7 text-muted-foreground hover:text-destructive",
-          )}
+          className={cn("font-mono text-2xs h-7 text-muted-foreground hover:text-destructive")}
           onClick={handleDelete}
           disabled={deleteMutation.isPending || workspace.status === "deleting"}
           aria-label="워크스페이스 삭제"
@@ -201,9 +183,7 @@ export function WorkspaceList() {
       ) : !workspaces?.length ? (
         <div className="text-center py-8">
           <Globe className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="font-mono text-xs text-muted-foreground">
-            워크스페이스가 없습니다
-          </p>
+          <p className="font-mono text-xs text-muted-foreground">워크스페이스가 없습니다</p>
           <p className="font-mono text-2xs text-muted-foreground/60 mt-1">
             Git 저장소를 클론하여 작업 환경을 만들어보세요
           </p>

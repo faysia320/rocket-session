@@ -34,13 +34,22 @@ export const PinnedTodoBar = memo(function PinnedTodoBar({ todos }: PinnedTodoBa
             {/* status dots */}
             <span className="flex items-center gap-0.5 ml-1">
               {completedCount > 0 ? (
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-success" title={`${completedCount} completed`} />
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full bg-success"
+                  title={`${completedCount} completed`}
+                />
               ) : null}
               {inProgressCount > 0 ? (
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-info animate-pulse" title={`${inProgressCount} in progress`} />
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full bg-info animate-pulse"
+                  title={`${inProgressCount} in progress`}
+                />
               ) : null}
               {totalCount - completedCount - inProgressCount > 0 ? (
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/40" title={`${totalCount - completedCount - inProgressCount} pending`} />
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/40"
+                  title={`${totalCount - completedCount - inProgressCount} pending`}
+                />
               ) : null}
             </span>
             <span className="ml-auto">
@@ -87,7 +96,9 @@ export const PinnedTodoBar = memo(function PinnedTodoBar({ todos }: PinnedTodoBa
 
 function TodoStatusIcon({ status }: { status: TodoItem["status"] }) {
   if (status === "completed") {
-    return <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" aria-label="completed" />;
+    return (
+      <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" aria-label="completed" />
+    );
   }
   if (status === "in_progress") {
     return (

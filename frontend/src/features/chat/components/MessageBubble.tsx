@@ -98,9 +98,7 @@ export const MessageBubble = memo(function MessageBubble({
     case "assistant_text":
       return <AssistantText message={message} isStreaming={isRunning} animate={animate} />;
     case "result": {
-      const currentStep = workflowSteps?.find(
-        (s) => s.name === message.workflow_phase,
-      );
+      const currentStep = workflowSteps?.find((s) => s.name === message.workflow_phase);
       if (currentStep?.review_required || (!workflowSteps && message.workflow_phase === "plan")) {
         return (
           <WorkflowPhaseCard
@@ -120,8 +118,7 @@ export const MessageBubble = memo(function MessageBubble({
     case "tool_use":
       if (message.tool === "TodoWrite") return null; // PinnedTodoBar에서 처리
       if (message.tool === "ExitPlanMode") return null; // WorkflowPhaseCard에서 처리
-      if (EDIT_TOOLS.has(message.tool))
-        return <EditToolMessage message={message} />;
+      if (EDIT_TOOLS.has(message.tool)) return <EditToolMessage message={message} />;
       if (message.tool === "Bash") return <BashToolMessage message={message} />;
       if (message.tool === "Read") return <ReadToolMessage message={message} />;
       if (message.tool === "Grep" || message.tool === "Glob")
@@ -170,7 +167,6 @@ export const MessageBubble = memo(function MessageBubble({
 /** fadeIn 애니메이션을 animate prop에 따라 조건부 적용하는 헬퍼 */
 const fadeIn = (animate: boolean) => (animate ? "animate-[fadeIn_0.2s_ease]" : "");
 
-
 // ─── Phase 1: Primary Messages ────────────────────────────────────────────────
 
 function UserMessage({
@@ -215,9 +211,7 @@ function UserMessage({
   );
 }
 
-
 // ─── Phase 2: Secondary Messages ──────────────────────────────────────────────
-
 
 function ToolUseMessage({ message }: { message: ToolUseMsg }) {
   const toolName = message.tool || "Tool";
@@ -268,8 +262,8 @@ function ToolUseMessage({ message }: { message: ToolUseMsg }) {
               <span className="font-mono text-2xs text-muted-foreground/70">Output</span>
               {message.is_truncated && message.full_length ? (
                 <span className="font-mono text-2xs text-warning">
-                  ({message.output.length.toLocaleString()}/
-                  {message.full_length.toLocaleString()}자 표시)
+                  ({message.output.length.toLocaleString()}/{message.full_length.toLocaleString()}자
+                  표시)
                 </span>
               ) : null}
             </div>
@@ -325,7 +319,6 @@ function ThinkingMessage({
 }
 
 // ─── Phase 3: Alert Messages ──────────────────────────────────────────────────
-
 
 function ErrorMessage({
   message,

@@ -1,10 +1,5 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -148,9 +143,15 @@ export function TeamTaskCreateDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="high" className="font-mono text-xs">High</SelectItem>
-                <SelectItem value="medium" className="font-mono text-xs">Medium</SelectItem>
-                <SelectItem value="low" className="font-mono text-xs">Low</SelectItem>
+                <SelectItem value="high" className="font-mono text-xs">
+                  High
+                </SelectItem>
+                <SelectItem value="medium" className="font-mono text-xs">
+                  Medium
+                </SelectItem>
+                <SelectItem value="low" className="font-mono text-xs">
+                  Low
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -166,10 +167,13 @@ export function TeamTaskCreateDialog({
                 <SelectValue placeholder="미지정" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="_none" className="font-mono text-xs">미지정</SelectItem>
+                <SelectItem value="_none" className="font-mono text-xs">
+                  미지정
+                </SelectItem>
                 {members.map((m) => (
                   <SelectItem key={m.id} value={String(m.id)} className="font-mono text-xs">
-                    {m.nickname}{m.description ? ` (${m.description})` : ""}
+                    {m.nickname}
+                    {m.description ? ` (${m.description})` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -182,13 +186,7 @@ export function TeamTaskCreateDialog({
             onClick={handleSubmit}
             disabled={!title.trim() || (!isEdit && !workspaceId) || isCreating}
           >
-            {isCreating
-              ? isEdit
-                ? "수정 중…"
-                : "생성 중…"
-              : isEdit
-                ? "수정"
-                : "태스크 생성"}
+            {isCreating ? (isEdit ? "수정 중…" : "생성 중…") : isEdit ? "수정" : "태스크 생성"}
           </Button>
         </div>
       </DialogContent>

@@ -48,7 +48,12 @@ describe("Type Routing", () => {
   });
 
   it("assistant_text renders MarkdownRenderer with streaming indicator", () => {
-    render(<MessageBubble message={makeMsg({ type: "assistant_text", text: "thinking..." })} isRunning={true} />);
+    render(
+      <MessageBubble
+        message={makeMsg({ type: "assistant_text", text: "thinking..." })}
+        isRunning={true}
+      />,
+    );
     expect(screen.getByTestId("markdown")).toHaveTextContent("thinking...");
     expect(screen.getByText(/streaming/)).toBeInTheDocument();
   });
@@ -78,7 +83,9 @@ describe("Type Routing", () => {
   });
 
   it("error renders error text with AlertTriangle icon", () => {
-    const { container } = render(<MessageBubble message={makeMsg({ type: "error", text: "something broke" })} />);
+    const { container } = render(
+      <MessageBubble message={makeMsg({ type: "error", text: "something broke" })} />,
+    );
     expect(screen.getByText("something broke")).toBeInTheDocument();
     // AlertTriangle renders as SVG, not text character
     expect(container.querySelector("svg")).toBeInTheDocument();
@@ -153,7 +160,9 @@ describe("AssistantText", () => {
   });
 
   it('shows "streaming..." indicator when streaming', () => {
-    render(<MessageBubble message={makeMsg({ type: "assistant_text", text: "" })} isRunning={true} />);
+    render(
+      <MessageBubble message={makeMsg({ type: "assistant_text", text: "" })} isRunning={true} />,
+    );
     expect(screen.getByText(/streaming/)).toBeInTheDocument();
   });
 });
@@ -163,7 +172,9 @@ describe("AssistantText", () => {
 // ---------------------------------------------------------------------------
 describe("ResultMessage", () => {
   it("shows model name when present", () => {
-    render(<MessageBubble message={makeMsg({ type: "result", model: "claude-sonnet-4-20250514" })} />);
+    render(
+      <MessageBubble message={makeMsg({ type: "result", model: "claude-sonnet-4-20250514" })} />,
+    );
     expect(screen.getByText("Sonnet")).toBeInTheDocument();
   });
 
@@ -176,7 +187,7 @@ describe("ResultMessage", () => {
     ).toBeInTheDocument();
   });
 
-  it('routes to WorkflowPhaseCard when workflow_phase is set', () => {
+  it("routes to WorkflowPhaseCard when workflow_phase is set", () => {
     render(
       <MessageBubble
         message={makeMsg({ type: "result", workflow_phase: "plan", id: "plan-1" })}

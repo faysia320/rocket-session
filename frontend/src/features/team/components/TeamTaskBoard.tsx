@@ -95,17 +95,14 @@ export function TeamTaskBoard({ teamId, members }: TeamTaskBoardProps) {
     <div className="space-y-3">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <span className="font-mono text-xs text-muted-foreground tracking-widest">
-          태스크 보드
-        </span>
+        <span className="font-mono text-xs text-muted-foreground tracking-widest">태스크 보드</span>
         <Button
           variant="outline"
           size="sm"
           className="font-mono text-2xs gap-1"
           onClick={() => setCreateOpen(true)}
         >
-          <Plus className="h-3 w-3" />
-          새 태스크
+          <Plus className="h-3 w-3" />새 태스크
         </Button>
       </div>
 

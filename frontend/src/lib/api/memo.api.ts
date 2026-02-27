@@ -12,8 +12,7 @@ import type {
 export const memoApi = {
   listBlocks: () => api.get<MemoBlockInfo[]>("/api/memo/blocks"),
 
-  createBlock: (data: CreateMemoBlockRequest) =>
-    api.post<MemoBlockInfo>("/api/memo/blocks", data),
+  createBlock: (data: CreateMemoBlockRequest) => api.post<MemoBlockInfo>("/api/memo/blocks", data),
 
   updateBlock: (id: string, data: UpdateMemoBlockRequest) =>
     api.patch<MemoBlockInfo>(`/api/memo/blocks/${id}`, data),

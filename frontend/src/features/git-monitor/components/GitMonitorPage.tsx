@@ -13,12 +13,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -44,7 +39,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/useMediaQuery";
-import { useWorkspaces, useDeleteWorkspace, useSyncWorkspace } from "@/features/workspace/hooks/useWorkspaces";
+import {
+  useWorkspaces,
+  useDeleteWorkspace,
+  useSyncWorkspace,
+} from "@/features/workspace/hooks/useWorkspaces";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { WorkspaceCreateDialog } from "@/features/workspace/components/WorkspaceCreateDialog";
 import { useFetchRemote } from "../hooks/useGitActions";
@@ -174,13 +173,18 @@ export function GitMonitorPage() {
 
       <WorkspaceCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>워크스페이스 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{deleteTarget?.name}</strong> 워크스페이스를 삭제하시겠습니까?
-              클론된 파일과 모든 데이터가 영구적으로 삭제됩니다.
+              <strong>{deleteTarget?.name}</strong> 워크스페이스를 삭제하시겠습니까? 클론된 파일과
+              모든 데이터가 영구적으로 삭제됩니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -202,9 +206,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4">
       <GitBranch className="h-16 w-16 text-muted-foreground/20" />
-      <p className="font-mono text-sm text-muted-foreground">
-        모니터링할 워크스페이스가 없습니다
-      </p>
+      <p className="font-mono text-sm text-muted-foreground">모니터링할 워크스페이스가 없습니다</p>
       <p className="font-mono text-xs text-muted-foreground/60">
         Git 저장소를 클론하여 워크스페이스를 추가하세요
       </p>
@@ -233,7 +235,13 @@ function formatRelativeTime(ts: number | null): string {
   return `${hours}시간 전`;
 }
 
-function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; onDelete: (ws: WorkspaceInfo) => void }) {
+function WorkspaceContent({
+  workspace,
+  onDelete,
+}: {
+  workspace: WorkspaceInfo;
+  onDelete: (ws: WorkspaceInfo) => void;
+}) {
   // 모든 hooks를 early return 전에 호출 (rules of hooks)
   const isReady = workspace.status === "ready";
   const { data: ghStatus } = useGhStatus(isReady ? workspace.local_path : "");
@@ -259,7 +267,9 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
     if (lastFetchedAt) {
       tickRef.current = setInterval(() => setTick((t) => t + 1), 30_000);
     }
-    return () => { if (tickRef.current) clearInterval(tickRef.current); };
+    return () => {
+      if (tickRef.current) clearInterval(tickRef.current);
+    };
   }, [lastFetchedAt]);
 
   // 워크스페이스 변경 시 fetch 시간 초기화
@@ -382,7 +392,10 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
           disabled={isSyncing}
         />
         {workspace.is_dirty ? (
-          <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 text-warning border-warning/30 shrink-0">
+          <Badge
+            variant="outline"
+            className="font-mono text-2xs px-1.5 py-0 text-warning border-warning/30 shrink-0"
+          >
             변경됨
           </Badge>
         ) : null}
@@ -489,7 +502,12 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label="워크스페이스 옵션">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              aria-label="워크스페이스 옵션"
+            >
               <MoreVertical className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
@@ -534,7 +552,10 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
 
       {/* PR Dialog */}
       <Dialog open={prDialogOpen} onOpenChange={setPrDialogOpen}>
-        <DialogContent className="max-w-4xl h-[85vh] flex flex-col overflow-hidden p-0 gap-0" aria-describedby={undefined}>
+        <DialogContent
+          className="max-w-4xl h-[85vh] flex flex-col overflow-hidden p-0 gap-0"
+          aria-describedby={undefined}
+        >
           <DialogHeader className="px-6 py-4 border-b border-border shrink-0">
             <DialogTitle className="font-mono text-sm font-semibold">Pull Requests</DialogTitle>
           </DialogHeader>
@@ -559,11 +580,11 @@ function WorkspaceContent({ workspace, onDelete }: { workspace: WorkspaceInfo; o
           <AlertDialogHeader>
             <AlertDialogTitle>Force Pull</AlertDialogTitle>
             <AlertDialogDescription>
-              Rebase에 실패했습니다. 로컬 커밋({workspace.ahead ?? 0}개)이
-              원격과 충돌합니다.
-              <br /><br />
-              <strong>Force Pull</strong>을 실행하면 로컬 커밋을 버리고
-              원격 브랜치 상태로 리셋합니다. 이 작업은 되돌릴 수 없습니다.
+              Rebase에 실패했습니다. 로컬 커밋({workspace.ahead ?? 0}개)이 원격과 충돌합니다.
+              <br />
+              <br />
+              <strong>Force Pull</strong>을 실행하면 로컬 커밋을 버리고 원격 브랜치 상태로
+              리셋합니다. 이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

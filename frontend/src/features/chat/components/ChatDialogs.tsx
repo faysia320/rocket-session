@@ -23,11 +23,7 @@ export const ChatDialogs = memo(function ChatDialogs({
 }: ChatDialogsProps) {
   return (
     <>
-      <PermissionDialog
-        request={permissionRequest}
-        onAllow={onAllow}
-        onDeny={onDeny}
-      />
+      <PermissionDialog request={permissionRequest} onAllow={onAllow} onDeny={onDeny} />
 
       {selectedFile ? (
         <FileViewer

@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { Send } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -42,9 +37,7 @@ export function TeamTaskDelegateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-mono text-sm">
-            태스크 위임
-          </DialogTitle>
+          <DialogTitle className="font-mono text-sm">태스크 위임</DialogTitle>
         </DialogHeader>
         {task ? (
           <div className="space-y-4 pt-2">
@@ -63,9 +56,7 @@ export function TeamTaskDelegateDialog({
 
             {/* 대상 멤버 선택 */}
             <div className="space-y-1.5">
-              <label className="font-mono text-xs text-muted-foreground">
-                위임 대상 멤버
-              </label>
+              <label className="font-mono text-xs text-muted-foreground">위임 대상 멤버</label>
               {members.length === 0 ? (
                 <div className="font-mono text-xs text-muted-foreground/70 py-2">
                   위임 가능한 멤버가 없습니다
@@ -79,14 +70,11 @@ export function TeamTaskDelegateDialog({
                         type="button"
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-sm font-mono text-xs border border-transparent hover:bg-muted/50 transition-colors",
-                          selectedMemberId === m.id &&
-                            "bg-muted border-primary/30",
+                          selectedMemberId === m.id && "bg-muted border-primary/30",
                         )}
                         onClick={() => setSelectedMemberId(m.id)}
                       >
-                        <div className="font-medium">
-                          {m.nickname}
-                        </div>
+                        <div className="font-medium">{m.nickname}</div>
                         <div className="text-2xs text-muted-foreground">
                           {m.role === "lead" ? "리드" : "멤버"} · {m.model || "default"}
                           {m.description ? ` · ${m.description}` : ""}

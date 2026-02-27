@@ -140,8 +140,7 @@ export function handleUi(state: ClaudeSocketState, action: UiAction): ClaudeSock
           return {
             ...m,
             text:
-              mText.slice(0, 200) +
-              "\n\n\u2026 (이전 메시지, 전체 내용은 내보내기를 사용하세요)",
+              mText.slice(0, 200) + "\n\n\u2026 (이전 메시지, 전체 내용은 내보내기를 사용하세요)",
             _truncated: true,
           } as Message;
         }

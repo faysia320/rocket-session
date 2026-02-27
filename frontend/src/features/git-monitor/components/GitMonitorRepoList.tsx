@@ -35,9 +35,7 @@ function RepoItem({ workspace, selected, onSelect }: RepoItemProps) {
         <FolderGit2 className="h-3 w-3 text-info shrink-0" />
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="font-mono text-xs text-foreground truncate">
-              {workspace.name}
-            </span>
+            <span className="font-mono text-xs text-foreground truncate">{workspace.name}</span>
           </TooltipTrigger>
           <TooltipContent className="font-mono text-xs">{workspace.repo_url}</TooltipContent>
         </Tooltip>
@@ -110,7 +108,9 @@ export function GitMonitorRepoList({
         {workspaces.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full px-4 text-center">
             <FolderGit2 className="h-6 w-6 text-muted-foreground/30 mb-2" />
-            <span className="font-mono text-2xs text-muted-foreground">워크스페이스를 추가하세요</span>
+            <span className="font-mono text-2xs text-muted-foreground">
+              워크스페이스를 추가하세요
+            </span>
           </div>
         ) : (
           workspaces.map((ws) => (

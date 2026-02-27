@@ -1,13 +1,6 @@
 import { memo, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import {
-  FileText,
-  Check,
-  RotateCcw,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { FileText, Check, RotateCcw, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -102,11 +95,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
             aria-label={expanded ? "접기" : "펼치기"}
             className="h-7 w-7 p-0"
           >
-            {expanded ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
         </div>
       </div>

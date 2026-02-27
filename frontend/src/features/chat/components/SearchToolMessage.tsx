@@ -112,10 +112,7 @@ export const SearchToolMessage = memo(function SearchToolMessage({
         {!isGrep && globFiles && globFiles.length > 0 ? (
           <div className="bg-input/80 rounded-md p-2.5 overflow-auto max-h-[300px]">
             {globFiles.map((file, i) => (
-              <div
-                key={i}
-                className="font-mono text-xs text-muted-foreground py-0.5 select-text"
-              >
+              <div key={i} className="font-mono text-xs text-muted-foreground py-0.5 select-text">
                 {file}
               </div>
             ))}

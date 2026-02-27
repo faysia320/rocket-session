@@ -2,11 +2,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  useMemoBlocks,
-  useCreateMemoBlock,
-  useDeleteMemoBlock,
-} from "../hooks/useMemo";
+import { useMemoBlocks, useCreateMemoBlock, useDeleteMemoBlock } from "../hooks/useMemo";
 import { MemoBlockItem } from "./MemoBlockItem";
 
 export const MemoBlockList = memo(function MemoBlockList() {
@@ -41,9 +37,7 @@ export const MemoBlockList = memo(function MemoBlockList() {
   // 새 블록 생성 시 스크롤
   useEffect(() => {
     if (blocks.length > prevBlockCount.current && scrollRef.current) {
-      const scrollContainer = scrollRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]",
-      );
+      const scrollContainer = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
       if (scrollContainer) {
         requestAnimationFrame(() => {
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -81,8 +75,7 @@ export const MemoBlockList = memo(function MemoBlockList() {
               className="text-xs text-muted-foreground"
               onClick={() => handleCreateBlock()}
             >
-              <Plus className="h-4 w-4 mr-1" />
-              첫 메모 블록 만들기
+              <Plus className="h-4 w-4 mr-1" />첫 메모 블록 만들기
             </Button>
           </div>
         ) : (

@@ -83,8 +83,7 @@ export function getBaseLegend(overrides?: Record<string, unknown>) {
 
 export const CHART_LABEL = {
   fontSize: 11,
-  fontFamily:
-    "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   fontWeight: 500 as const,
 } as const;
 

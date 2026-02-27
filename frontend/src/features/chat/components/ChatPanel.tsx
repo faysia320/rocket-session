@@ -237,10 +237,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   }, [virtualizer, queryClient, isSplitView, focusedSessionId, sessionId]);
 
   // 워크플로우 정의 steps 로드
-  const { data: workflowStatusData } = useWorkflowStatus(
-    sessionId,
-    true,
-  );
+  const { data: workflowStatusData } = useWorkflowStatus(sessionId, true);
   const workflowSteps = workflowStatusData?.steps ?? [];
 
   // 워크플로우 액션

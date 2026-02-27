@@ -32,8 +32,7 @@ export const PhaseTokenBreakdown = memo(function PhaseTokenBreakdown({
   const chartData = useMemo(
     () =>
       data.map((d) => ({
-        name:
-          PHASE_LABELS[d.workflow_phase ?? ""] ?? d.workflow_phase ?? "N/A",
+        name: PHASE_LABELS[d.workflow_phase ?? ""] ?? d.workflow_phase ?? "N/A",
         Input: d.input_tokens,
         Output: d.output_tokens,
       })),
@@ -124,10 +123,7 @@ export const PhaseTokenBreakdown = memo(function PhaseTokenBreakdown({
         ref={containerRef}
         style={{
           width: "100%",
-          height: Math.max(
-            chartData.length * 48,
-            CHART_DIMENSIONS.minChartHeight,
-          ),
+          height: Math.max(chartData.length * 48, CHART_DIMENSIONS.minChartHeight),
         }}
       />
     </ChartCard>

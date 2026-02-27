@@ -13,10 +13,8 @@ import type {
 
 export const workflowKeys = {
   all: ["workflow"] as const,
-  status: (sessionId: string) =>
-    [...workflowKeys.all, "status", sessionId] as const,
-  artifacts: (sessionId: string) =>
-    [...workflowKeys.all, "artifacts", sessionId] as const,
+  status: (sessionId: string) => [...workflowKeys.all, "status", sessionId] as const,
+  artifacts: (sessionId: string) => [...workflowKeys.all, "artifacts", sessionId] as const,
   artifact: (sessionId: string, artifactId: number) =>
     [...workflowKeys.all, "artifact", sessionId, artifactId] as const,
 };
@@ -39,11 +37,7 @@ export function useWorkflowArtifacts(sessionId: string, enabled = true) {
   });
 }
 
-export function useWorkflowArtifact(
-  sessionId: string,
-  artifactId: number,
-  enabled = true,
-) {
+export function useWorkflowArtifact(sessionId: string, artifactId: number, enabled = true) {
   return useQuery({
     queryKey: workflowKeys.artifact(sessionId, artifactId),
     queryFn: () => workflowApi.getArtifact(sessionId, artifactId),
@@ -56,8 +50,7 @@ export function useStartWorkflow(sessionId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: StartWorkflowRequest = {}) =>
-      workflowApi.startWorkflow(sessionId, req),
+    mutationFn: (req: StartWorkflowRequest = {}) => workflowApi.startWorkflow(sessionId, req),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: workflowKeys.status(sessionId),
@@ -77,8 +70,7 @@ export function useApprovePhase(sessionId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: ApprovePhaseRequest = {}) =>
-      workflowApi.approvePhase(sessionId, req),
+    mutationFn: (req: ApprovePhaseRequest = {}) => workflowApi.approvePhase(sessionId, req),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: workflowKeys.status(sessionId),
@@ -101,8 +93,7 @@ export function useRequestRevision(sessionId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (req: RequestRevisionRequest) =>
-      workflowApi.requestRevision(sessionId, req),
+    mutationFn: (req: RequestRevisionRequest) => workflowApi.requestRevision(sessionId, req),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: workflowKeys.status(sessionId),
@@ -157,10 +148,7 @@ export function useAddAnnotation(sessionId: string, artifactId: number) {
   });
 }
 
-export function useUpdateAnnotation(
-  sessionId: string,
-  artifactId: number,
-) {
+export function useUpdateAnnotation(sessionId: string, artifactId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({

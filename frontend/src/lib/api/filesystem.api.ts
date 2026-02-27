@@ -115,9 +115,7 @@ export const filesystemApi = {
   // --- Git Branch / Stage / Commit ---
 
   listGitBranches: (path: string) =>
-    api.get<GitBranchListResponse>(
-      `/api/fs/git-branches?path=${encodeURIComponent(path)}`,
-    ),
+    api.get<GitBranchListResponse>(`/api/fs/git-branches?path=${encodeURIComponent(path)}`),
 
   checkoutGitBranch: (path: string, branch: string) =>
     api.post<GitCheckoutResponse>("/api/fs/git-checkout", { path, branch }),
@@ -137,6 +135,5 @@ export const filesystemApi = {
   commitGit: (path: string, message: string) =>
     api.post<GitCommitResponse>("/api/fs/git-commit", { path, message }),
 
-  fetchRemote: (path: string) =>
-    api.post<GitFetchResponse>("/api/fs/git-fetch", { path }),
+  fetchRemote: (path: string) => api.post<GitFetchResponse>("/api/fs/git-fetch", { path }),
 };

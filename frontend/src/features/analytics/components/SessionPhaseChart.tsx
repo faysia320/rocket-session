@@ -27,9 +27,7 @@ const PHASE_LABELS: Record<string, string> = {
   test: "Test",
 };
 
-export const SessionPhaseChart = memo(function SessionPhaseChart({
-  data,
-}: SessionPhaseChartProps) {
+export const SessionPhaseChart = memo(function SessionPhaseChart({ data }: SessionPhaseChartProps) {
   const { chartData, phases, sessionNames } = useMemo(() => {
     const phaseSet = new Set<string>();
     for (const row of data) {
@@ -105,9 +103,7 @@ export const SessionPhaseChart = memo(function SessionPhaseChart({
         name: phase,
         type: "bar" as const,
         stack: "session",
-        data: chartData.map(
-          (d) => (d[phase] as number | undefined) ?? 0,
-        ),
+        data: chartData.map((d) => (d[phase] as number | undefined) ?? 0),
         itemStyle: { borderRadius: [0, 3, 3, 0] },
         barCategoryGap: CHART_DIMENSIONS.barCategoryGap,
         animationDelay: i * CHART_ANIMATION.delayPerSeries,
@@ -120,11 +116,7 @@ export const SessionPhaseChart = memo(function SessionPhaseChart({
   // y축 라벨 호버 시 전체 세션명을 native tooltip으로 표시
   const showLabelTooltip = useCallback(
     (params: { componentType: string; targetType?: string; value?: string }) => {
-      if (
-        params.componentType === "yAxis" &&
-        params.targetType === "axisLabel" &&
-        params.value
-      ) {
+      if (params.componentType === "yAxis" && params.targetType === "axisLabel" && params.value) {
         const el = containerRef.current;
         if (el) el.title = params.value;
       }

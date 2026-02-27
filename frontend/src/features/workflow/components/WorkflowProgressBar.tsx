@@ -46,10 +46,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
     () => [...steps].sort((a, b) => a.order_index - b.order_index),
     [steps],
   );
-  const orderedNames = useMemo(
-    () => sortedSteps.map((s) => s.name),
-    [sortedSteps],
-  );
+  const orderedNames = useMemo(() => sortedSteps.map((s) => s.name), [sortedSteps]);
 
   if (steps.length === 0) return null;
 
@@ -68,10 +65,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
           <div key={step.name} className="flex items-center">
             {idx > 0 ? (
               <div
-                className={cn(
-                  "w-8 h-px mx-1",
-                  state === "waiting" ? "bg-muted" : "bg-primary/50",
-                )}
+                className={cn("w-8 h-px mx-1", state === "waiting" ? "bg-muted" : "bg-primary/50")}
               />
             ) : null}
             <button
@@ -81,24 +75,20 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
               aria-current={isActive ? "step" : undefined}
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
-                state === "done" &&
-                  "bg-success/10 text-success hover:bg-success/20",
+                state === "done" && "bg-success/10 text-success hover:bg-success/20",
                 state === "active" &&
                   currentStatus === "awaiting_approval" &&
                   "bg-warning/10 text-warning hover:bg-warning/20",
                 state === "active" &&
                   currentStatus !== "awaiting_approval" &&
                   "bg-info/10 text-info hover:bg-info/20",
-                state === "waiting" &&
-                  "bg-muted/30 text-muted-foreground cursor-not-allowed",
+                state === "waiting" && "bg-muted/30 text-muted-foreground cursor-not-allowed",
               )}
             >
               <StepIcon
                 className={cn(
                   "w-3.5 h-3.5 shrink-0",
-                  state === "active" &&
-                    currentStatus === "in_progress" &&
-                    "animate-pulse",
+                  state === "active" && currentStatus === "in_progress" && "animate-pulse",
                 )}
               />
               <span>{step.label}</span>

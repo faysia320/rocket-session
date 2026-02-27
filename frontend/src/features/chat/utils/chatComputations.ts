@@ -11,7 +11,8 @@ export function computeEstimateSize(msg: Message | undefined): number {
   if (!msg) return 60;
   switch (msg.type) {
     case "result":
-      if ((msg as ResultMsg).workflow_phase && (msg as ResultMsg).workflow_phase !== "implement") return 500;
+      if ((msg as ResultMsg).workflow_phase && (msg as ResultMsg).workflow_phase !== "implement")
+        return 500;
       return 200;
     case "assistant_text":
       return 150;

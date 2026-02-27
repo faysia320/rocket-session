@@ -1,5 +1,14 @@
 import { memo, useState } from "react";
-import { GripVertical, Trash2, User, AlertCircle, CheckCircle2, Clock, ArrowRight, Send } from "lucide-react";
+import {
+  GripVertical,
+  Trash2,
+  User,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  Send,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,9 +62,8 @@ export const TeamTaskCard = memo(function TeamTaskCard({
 
   const priority = priorityConfig[task.priority];
   const StatusIcon = statusIcons[task.status];
-  const assignedMember = task.assigned_member_id != null
-    ? members.find((m) => m.id === task.assigned_member_id)
-    : null;
+  const assignedMember =
+    task.assigned_member_id != null ? members.find((m) => m.id === task.assigned_member_id) : null;
 
   return (
     <div
@@ -88,9 +96,7 @@ export const TeamTaskCard = memo(function TeamTaskCard({
             </Badge>
             <StatusIcon className="h-3 w-3 text-muted-foreground/60" />
           </div>
-          <p className="font-mono text-xs font-medium leading-snug line-clamp-2">
-            {task.title}
-          </p>
+          <p className="font-mono text-xs font-medium leading-snug line-clamp-2">{task.title}</p>
           {task.description ? (
             <p className="font-mono text-2xs text-muted-foreground mt-1 line-clamp-2">
               {task.description}
@@ -140,10 +146,7 @@ export const TeamTaskCard = memo(function TeamTaskCard({
             {members.length > 0 ? (
               <>
                 {members.map((m) => (
-                  <DropdownMenuItem
-                    key={m.id}
-                    onClick={() => onAssign(task.id, m.id)}
-                  >
+                  <DropdownMenuItem key={m.id} onClick={() => onAssign(task.id, m.id)}>
                     <User className="h-3 w-3 mr-2" />
                     {m.nickname}에 할당
                   </DropdownMenuItem>
@@ -151,10 +154,7 @@ export const TeamTaskCard = memo(function TeamTaskCard({
                 <DropdownMenuSeparator />
               </>
             ) : null}
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => onDelete(task.id)}
-            >
+            <DropdownMenuItem className="text-destructive" onClick={() => onDelete(task.id)}>
               <Trash2 className="h-3 w-3 mr-2" />
               삭제
             </DropdownMenuItem>
@@ -180,9 +180,7 @@ export const TeamTaskCard = memo(function TeamTaskCard({
       {/* 결과 요약 (완료된 태스크) */}
       {task.result_summary ? (
         <div className="mt-2 pt-2 border-t border-border/50">
-          <p className="font-mono text-2xs text-success/80 line-clamp-2">
-            {task.result_summary}
-          </p>
+          <p className="font-mono text-2xs text-success/80 line-clamp-2">{task.result_summary}</p>
         </div>
       ) : null}
     </div>

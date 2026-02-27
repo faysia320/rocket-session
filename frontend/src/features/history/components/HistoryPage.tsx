@@ -448,7 +448,7 @@ export function HistoryPage({ className }: { className?: string }) {
             {groupedSessions.map(([wsId, sessions]) => (
               <WorkspaceGroup
                 key={wsId ?? "__none__"}
-                workspaceName={wsId ? workspaceMap.get(wsId) ?? wsId : null}
+                workspaceName={wsId ? (workspaceMap.get(wsId) ?? wsId) : null}
                 sessions={sessions}
                 onSessionClick={handleSessionClick}
               />

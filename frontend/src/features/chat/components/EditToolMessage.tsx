@@ -130,8 +130,8 @@ export const EditToolMessage = memo(function EditToolMessage({ message }: EditTo
               <span className="font-mono text-2xs text-muted-foreground/70">Output</span>
               {message.is_truncated && message.full_length ? (
                 <span className="font-mono text-2xs text-warning">
-                  ({message.output.length.toLocaleString()}/
-                  {message.full_length.toLocaleString()}자 표시)
+                  ({message.output.length.toLocaleString()}/{message.full_length.toLocaleString()}자
+                  표시)
                 </span>
               ) : null}
             </div>

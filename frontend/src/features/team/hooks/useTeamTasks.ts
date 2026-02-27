@@ -119,7 +119,9 @@ export function useTeamTasks(teamId: string, status?: string) {
   const tasksByStatus = {
     pending: tasks.filter((t) => t.status === "pending"),
     in_progress: tasks.filter((t) => t.status === "in_progress"),
-    completed: tasks.filter((t) => t.status === "completed" || t.status === "failed" || t.status === "cancelled"),
+    completed: tasks.filter(
+      (t) => t.status === "completed" || t.status === "failed" || t.status === "cancelled",
+    ),
   };
 
   return {

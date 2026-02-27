@@ -124,12 +124,18 @@ export function WorkflowDefinitionDetail({
           {isCreating ? "새 정의" : definition?.name}
         </span>
         {definition?.is_builtin ? (
-          <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 shrink-0 text-blue-500 border-blue-500/30">
+          <Badge
+            variant="outline"
+            className="font-mono text-2xs px-1.5 py-0 shrink-0 text-blue-500 border-blue-500/30"
+          >
             System
           </Badge>
         ) : null}
         {definition?.is_default ? (
-          <Badge variant="outline" className="font-mono text-2xs px-1.5 py-0 shrink-0 text-primary border-primary/30">
+          <Badge
+            variant="outline"
+            className="font-mono text-2xs px-1.5 py-0 shrink-0 text-primary border-primary/30"
+          >
             Default
           </Badge>
         ) : null}
@@ -360,7 +366,6 @@ export function WorkflowDefinitionDetail({
                   })}
                 </div>
               </div>
-
             </>
           ) : null}
         </div>

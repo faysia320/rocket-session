@@ -16,8 +16,7 @@ export function useGitBranches(repoPath: string) {
 export function useCheckoutBranch(repoPath: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (branch: string) =>
-      filesystemApi.checkoutGitBranch(repoPath, branch),
+    mutationFn: (branch: string) => filesystemApi.checkoutGitBranch(repoPath, branch),
     onSuccess: (data) => {
       toast.success(data.message);
       queryClient.invalidateQueries({ queryKey: ["git-branches", repoPath] });
@@ -57,8 +56,7 @@ export function useStageAndCommit(repoPath: string) {
 export function useStageFiles(repoPath: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (files?: string[]) =>
-      filesystemApi.stageGitFiles(repoPath, files),
+    mutationFn: (files?: string[]) => filesystemApi.stageGitFiles(repoPath, files),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["git-status", repoPath] });
       queryClient.invalidateQueries({ queryKey: ["git-info"] });
@@ -74,8 +72,7 @@ export function useStageFiles(repoPath: string) {
 export function useUnstageFiles(repoPath: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (files?: string[]) =>
-      filesystemApi.unstageGitFiles(repoPath, files),
+    mutationFn: (files?: string[]) => filesystemApi.unstageGitFiles(repoPath, files),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["git-status", repoPath] });
       queryClient.invalidateQueries({ queryKey: ["git-info"] });

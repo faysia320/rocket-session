@@ -13,12 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -59,12 +54,13 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
     );
   }
 
-  const statusColor = {
-    active: "bg-success",
-    completed: "bg-info",
-    paused: "bg-warning",
-    archived: "bg-muted-foreground/40",
-  }[team.status] ?? "bg-muted-foreground";
+  const statusColor =
+    {
+      active: "bg-success",
+      completed: "bg-info",
+      paused: "bg-warning",
+      archived: "bg-muted-foreground/40",
+    }[team.status] ?? "bg-muted-foreground";
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -82,9 +78,7 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
                 </Badge>
               </div>
               {team.description ? (
-                <p className="font-mono text-xs text-muted-foreground mt-0.5">
-                  {team.description}
-                </p>
+                <p className="font-mono text-xs text-muted-foreground mt-0.5">{team.description}</p>
               ) : null}
             </div>
           </div>
@@ -150,7 +144,9 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-mono text-sm">팀을 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogTitle className="font-mono text-sm">
+              팀을 삭제하시겠습니까?
+            </AlertDialogTitle>
             <AlertDialogDescription className="font-mono text-xs">
               "{team.name}" 팀이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
@@ -189,7 +185,13 @@ function AddMemberDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (data: { nickname: string; description?: string; system_prompt?: string; model?: string; role?: "lead" | "member" }) => void;
+  onAdd: (data: {
+    nickname: string;
+    description?: string;
+    system_prompt?: string;
+    model?: string;
+    role?: "lead" | "member";
+  }) => void;
   isAdding: boolean;
 }) {
   const [nickname, setNickname] = useState("");

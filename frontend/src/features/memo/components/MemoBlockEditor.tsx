@@ -1,9 +1,5 @@
 import { memo, useEffect, useRef } from "react";
-import {
-  EditorView,
-  keymap,
-  placeholder as placeholderExt,
-} from "@codemirror/view";
+import { EditorView, keymap, placeholder as placeholderExt } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";

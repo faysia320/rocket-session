@@ -69,12 +69,7 @@ export const TeamSidebar = memo(function TeamSidebar({
           <TeamCreateDialog>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="default"
-                  size="icon"
-                  className="w-full h-9"
-                  aria-label="새 팀"
-                >
+                <Button variant="default" size="icon" className="w-full h-9" aria-label="새 팀">
                   <Plus className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -143,7 +138,15 @@ export const TeamSidebar = memo(function TeamSidebar({
                 )}
                 onClick={() => setStatusFilter(f)}
               >
-                {{ all: "All", active: "Active", paused: "Paused", completed: "Done", archived: "Archived" }[f]}
+                {
+                  {
+                    all: "All",
+                    active: "Active",
+                    paused: "Paused",
+                    completed: "Done",
+                    archived: "Archived",
+                  }[f]
+                }
               </button>
             ))}
           </div>

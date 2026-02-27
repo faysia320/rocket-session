@@ -18,16 +18,14 @@ export function useTeamMessages(teamId: string) {
   });
 
   const sendMutation = useMutation({
-    mutationFn: (data: SendMessageRequest) =>
-      teamsApi.sendMessage(teamId, data),
+    mutationFn: (data: SendMessageRequest) => teamsApi.sendMessage(teamId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teamKeys.messages(teamId) });
     },
   });
 
   const markReadMutation = useMutation({
-    mutationFn: (messageIds: number[]) =>
-      teamsApi.markMessagesRead(teamId, messageIds),
+    mutationFn: (messageIds: number[]) => teamsApi.markMessagesRead(teamId, messageIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teamKeys.messages(teamId) });
     },

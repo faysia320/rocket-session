@@ -67,8 +67,7 @@ export function useReorderMemoBlocks() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (blockIds: string[]) =>
-      memoApi.reorderBlocks({ block_ids: blockIds }),
+    mutationFn: (blockIds: string[]) => memoApi.reorderBlocks({ block_ids: blockIds }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: memoKeys.all });
     },

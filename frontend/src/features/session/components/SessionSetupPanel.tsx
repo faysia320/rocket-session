@@ -48,9 +48,8 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
 
   // 선택된 워크스페이스의 local_path로 브랜치 목록 조회
-  const selectedWorkspaceLocalPath = readyWorkspaces.find(
-    (ws) => ws.id === selectedWorkspaceId,
-  )?.local_path ?? "";
+  const selectedWorkspaceLocalPath =
+    readyWorkspaces.find((ws) => ws.id === selectedWorkspaceId)?.local_path ?? "";
   const { data: branchData } = useGitBranches(selectedWorkspaceLocalPath);
 
   // 워크스페이스 변경 시 브랜치 선택 초기화
@@ -91,10 +90,7 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       if (selectedBranch) {
         options.branch = selectedBranch;
       }
-      onCreate(
-        undefined,
-        Object.keys(options).length > 0 ? options : undefined,
-      );
+      onCreate(undefined, Object.keys(options).length > 0 ? options : undefined);
     } catch {
       setCreating(false);
     }
@@ -154,7 +150,13 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
               onValueChange={(val) => setSelectedBranch(val || null)}
             >
               <SelectTrigger className="font-mono text-xs bg-input border-border">
-                <SelectValue placeholder={branchData.current_branch ? `현재: ${branchData.current_branch}` : "브랜치 선택…"} />
+                <SelectValue
+                  placeholder={
+                    branchData.current_branch
+                      ? `현재: ${branchData.current_branch}`
+                      : "브랜치 선택…"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {branchData.branches.map((branch) => (
@@ -231,7 +233,9 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                onClick={() => setAdditionalWorkspaceIds(additionalWorkspaceIds.filter((_, i) => i !== idx))}
+                onClick={() =>
+                  setAdditionalWorkspaceIds(additionalWorkspaceIds.filter((_, i) => i !== idx))
+                }
                 aria-label="워크스페이스 제거"
               >
                 <X className="h-3.5 w-3.5" />
@@ -290,7 +294,9 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           >
             <Rocket className="h-4 w-4 mr-2" />
             {creating
-              ? (useWorktree && worktreeName.trim() ? "워크트리 생성 중…" : "Creating…")
+              ? useWorktree && worktreeName.trim()
+                ? "워크트리 생성 중…"
+                : "Creating…"
               : "Create Session"}
           </Button>
           <Button
@@ -303,7 +309,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
           </Button>
         </div>
       </Card>
-
     </div>
   );
 }

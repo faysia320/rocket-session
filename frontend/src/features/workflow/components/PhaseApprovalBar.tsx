@@ -52,9 +52,10 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
           </p>
         )}
         <Textarea
-          placeholder={hasPendingAnnotations
-            ? "추가 피드백이 있으면 입력하세요… (선택사항)"
-            : "수정이 필요한 내용을 설명해주세요…"
+          placeholder={
+            hasPendingAnnotations
+              ? "추가 피드백이 있으면 입력하세요… (선택사항)"
+              : "수정이 필요한 내용을 설명해주세요…"
           }
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
@@ -62,11 +63,7 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
           autoFocus
         />
         <div className="flex items-center gap-2 justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowRevisionInput(false)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => setShowRevisionInput(false)}>
             취소
           </Button>
           <Button
@@ -112,11 +109,7 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
         disabled={disabled || isApproving}
       >
         <Check className="w-3.5 h-3.5 mr-1.5" />
-        {isApproving
-          ? "승인 중…"
-          : phase === "plan"
-            ? "승인 → 구현 시작"
-            : "승인 → 다음 단계"}
+        {isApproving ? "승인 중…" : phase === "plan" ? "승인 → 구현 시작" : "승인 → 다음 단계"}
       </Button>
     </div>
   );

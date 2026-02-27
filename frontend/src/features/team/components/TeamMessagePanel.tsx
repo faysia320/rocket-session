@@ -20,13 +20,7 @@ const typeColors: Record<string, string> = {
   delegate: "border-l-primary/50",
 };
 
-function MessageBubble({
-  msg,
-  members,
-}: {
-  msg: TeamMessageInfo;
-  members: TeamMemberInfo[];
-}) {
+function MessageBubble({ msg, members }: { msg: TeamMessageInfo; members: TeamMemberInfo[] }) {
   const member = members.find((m) => m.id === msg.from_member_id);
   const name = msg.from_nickname || member?.nickname || `멤버#${msg.from_member_id}`;
   const isLead = member?.role === "lead";
@@ -39,12 +33,8 @@ function MessageBubble({
       )}
     >
       <div className="flex items-center gap-2">
-        <span className="font-mono text-2xs font-medium text-foreground/80">
-          {name}
-        </span>
-        {isLead ? (
-          <span className="font-mono text-2xs text-primary/70">리드</span>
-        ) : null}
+        <span className="font-mono text-2xs font-medium text-foreground/80">{name}</span>
+        {isLead ? <span className="font-mono text-2xs text-primary/70">리드</span> : null}
         <span className="font-mono text-2xs text-muted-foreground/50 ml-auto">
           {new Date(msg.created_at).toLocaleTimeString("ko-KR", {
             hour: "2-digit",
@@ -59,13 +49,8 @@ function MessageBubble({
   );
 }
 
-export function TeamMessagePanel({
-  teamId,
-  members,
-  leadMemberId,
-}: TeamMessagePanelProps) {
-  const { messages, isLoading, sendMessage, isSending } =
-    useTeamMessages(teamId);
+export function TeamMessagePanel({ teamId, members, leadMemberId }: TeamMessagePanelProps) {
+  const { messages, isLoading, sendMessage, isSending } = useTeamMessages(teamId);
   const [input, setInput] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -101,9 +86,7 @@ export function TeamMessagePanel({
       >
         <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="font-mono text-xs font-medium">팀 메시지</span>
-        <span className="font-mono text-2xs text-muted-foreground ml-auto">
-          {messages.length}
-        </span>
+        <span className="font-mono text-2xs text-muted-foreground ml-auto">{messages.length}</span>
       </button>
 
       {collapsed ? null : (
@@ -124,9 +107,7 @@ export function TeamMessagePanel({
                   </span>
                 </div>
               ) : (
-                messages.map((msg) => (
-                  <MessageBubble key={msg.id} msg={msg} members={members} />
-                ))
+                messages.map((msg) => <MessageBubble key={msg.id} msg={msg} members={members} />)
               )}
             </div>
           </ScrollArea>

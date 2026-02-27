@@ -121,7 +121,13 @@ function GitStatusFileItem({
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : diff !== null ? (
-            <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
+            <ErrorBoundary
+              fallback={
+                <div className="font-mono text-xs text-destructive px-3 py-2">
+                  Diff를 표시할 수 없습니다
+                </div>
+              }
+            >
               <DiffViewer diff={diff} hideHeaders />
             </ErrorBoundary>
           ) : null}
@@ -145,7 +151,13 @@ interface FileSectionProps {
   children: ReactNode;
 }
 
-function FileSection({ title, count, defaultOpen = true, headerAction, children }: FileSectionProps) {
+function FileSection({
+  title,
+  count,
+  defaultOpen = true,
+  headerAction,
+  children,
+}: FileSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   if (count === 0) return null;
@@ -164,12 +176,8 @@ function FileSection({ title, count, defaultOpen = true, headerAction, children 
                 open && "rotate-90",
               )}
             />
-            <span className="font-mono text-xs font-semibold text-muted-foreground">
-              {title}
-            </span>
-            <span className="font-mono text-2xs text-muted-foreground/60">
-              ({count})
-            </span>
+            <span className="font-mono text-xs font-semibold text-muted-foreground">{title}</span>
+            <span className="font-mono text-2xs text-muted-foreground/60">({count})</span>
           </button>
         </CollapsibleTrigger>
         {headerAction ? (
@@ -191,9 +199,7 @@ function FileSection({ title, count, defaultOpen = true, headerAction, children 
         ) : null}
       </div>
       <CollapsibleContent>
-        <div className="space-y-0.5">
-          {children}
-        </div>
+        <div className="space-y-0.5">{children}</div>
       </CollapsibleContent>
     </Collapsible>
   );

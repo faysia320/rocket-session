@@ -82,10 +82,7 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
       className="font-mono text-xs gap-2"
     >
       <Check
-        className={cn(
-          "h-3 w-3 shrink-0",
-          branch === currentBranch ? "opacity-100" : "opacity-0",
-        )}
+        className={cn("h-3 w-3 shrink-0", branch === currentBranch ? "opacity-100" : "opacity-0")}
       />
       {branch}
       {branch === defaultBranch ? (
@@ -126,24 +123,18 @@ export function BranchSelect({ repoPath, currentBranch, disabled }: BranchSelect
               )}
             </CommandEmpty>
             {defaultGroup.length > 0 ? (
-              <CommandGroup heading="Default Branch">
-                {defaultGroup.map(renderItem)}
-              </CommandGroup>
+              <CommandGroup heading="Default Branch">{defaultGroup.map(renderItem)}</CommandGroup>
             ) : null}
             {recentGroup.length > 0 ? (
               <>
                 {defaultGroup.length > 0 ? <CommandSeparator /> : null}
-                <CommandGroup heading="Recent Branches">
-                  {recentGroup.map(renderItem)}
-                </CommandGroup>
+                <CommandGroup heading="Recent Branches">{recentGroup.map(renderItem)}</CommandGroup>
               </>
             ) : null}
             {otherGroup.length > 0 ? (
               <>
                 <CommandSeparator />
-                <CommandGroup heading="Other Branches">
-                  {otherGroup.map(renderItem)}
-                </CommandGroup>
+                <CommandGroup heading="Other Branches">{otherGroup.map(renderItem)}</CommandGroup>
               </>
             ) : null}
           </CommandList>

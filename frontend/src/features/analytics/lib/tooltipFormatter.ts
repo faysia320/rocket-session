@@ -9,9 +9,7 @@ interface TooltipParam {
   name?: string;
 }
 
-export function tokenTooltipFormatter(
-  params: TooltipParam | TooltipParam[],
-): string {
+export function tokenTooltipFormatter(params: TooltipParam | TooltipParam[]): string {
   const list = Array.isArray(params) ? params : [params];
   if (list.length === 0) return "";
 

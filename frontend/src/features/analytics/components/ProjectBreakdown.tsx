@@ -20,9 +20,7 @@ interface ProjectBreakdownProps {
   data: ProjectTokenUsage[];
 }
 
-export const ProjectBreakdown = memo(function ProjectBreakdown({
-  data,
-}: ProjectBreakdownProps) {
+export const ProjectBreakdown = memo(function ProjectBreakdown({ data }: ProjectBreakdownProps) {
   const chartData = useMemo(
     () =>
       data.slice(0, 10).map((d) => ({

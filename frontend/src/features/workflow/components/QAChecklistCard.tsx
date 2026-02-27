@@ -46,10 +46,7 @@ export const QAChecklistCard = memo(function QAChecklistCard({ result }: QACheck
           const config = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.warn;
           const Icon = config.icon;
           return (
-            <div
-              key={idx}
-              className="flex items-start gap-2 px-2 py-1.5 rounded-sm bg-muted/30"
-            >
+            <div key={idx} className="flex items-start gap-2 px-2 py-1.5 rounded-sm bg-muted/30">
               <Icon className={cn("w-3.5 h-3.5 shrink-0 mt-0.5", config.color)} />
               <div className="flex-1 min-w-0">
                 <span className="font-mono text-xs text-foreground">{item.item}</span>

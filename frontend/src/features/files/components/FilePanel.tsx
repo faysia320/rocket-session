@@ -1,5 +1,14 @@
 import { memo, useState, useCallback, useMemo, useRef } from "react";
-import { ChevronRight, Maximize2, Loader2, List, FolderTree, FolderOpen, Folder, FileCode } from "lucide-react";
+import {
+  ChevronRight,
+  Maximize2,
+  Loader2,
+  List,
+  FolderTree,
+  FolderOpen,
+  Folder,
+  FileCode,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -179,7 +188,9 @@ export const FilePanel = memo(function FilePanel({
             type="button"
             className={cn(
               "p-1 rounded transition-colors",
-              viewMode === "tree" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50",
+              viewMode === "tree"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted/50",
             )}
             onClick={() => setViewMode("tree")}
             aria-label="트리 보기"
@@ -190,7 +201,9 @@ export const FilePanel = memo(function FilePanel({
             type="button"
             className={cn(
               "p-1 rounded transition-colors",
-              viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50",
+              viewMode === "list"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted/50",
             )}
             onClick={() => setViewMode("list")}
             aria-label="목록 보기"
@@ -231,7 +244,14 @@ export const FilePanel = memo(function FilePanel({
                 />
               ))
             ) : (
-              <FileTreeView tree={tree} sessionId={sessionId} onFullView={onFileClick} openHoverFile={openHoverFile} onHoverOpenChange={setOpenHoverFile} isMobile={isMobile} />
+              <FileTreeView
+                tree={tree}
+                sessionId={sessionId}
+                onFullView={onFileClick}
+                openHoverFile={openHoverFile}
+                onHoverOpenChange={setOpenHoverFile}
+                isMobile={isMobile}
+              />
             )}
           </div>
         </ScrollArea>
@@ -254,9 +274,7 @@ function DiffHoverContent({ diff, loading, fileName, onFullView }: DiffHoverCont
     <>
       {/* 헤더바: 파일명 + 전체보기 버튼 */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-secondary/30 shrink-0">
-        <span className="font-mono text-2xs text-muted-foreground truncate">
-          {fileName || ""}
-        </span>
+        <span className="font-mono text-2xs text-muted-foreground truncate">{fileName || ""}</span>
         {onFullView ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -288,7 +306,11 @@ function DiffHoverContent({ diff, loading, fileName, onFullView }: DiffHoverCont
       ) : (
         <div className="flex-1 min-h-0 overflow-auto">
           <ErrorBoundary
-            fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}
+            fallback={
+              <div className="font-mono text-xs text-destructive px-3 py-2">
+                Diff를 표시할 수 없습니다
+              </div>
+            }
           >
             <DiffViewer diff={diff} hideHeaders />
           </ErrorBoundary>
@@ -317,7 +339,14 @@ interface MergedFileChangeItemProps {
   isMobile: boolean;
 }
 
-function MergedFileChangeItem({ sessionId, item, onFullView, isHoverOpen, onHoverOpenChange, isMobile }: MergedFileChangeItemProps) {
+function MergedFileChangeItem({
+  sessionId,
+  item,
+  onFullView,
+  isHoverOpen,
+  onHoverOpenChange,
+  isMobile,
+}: MergedFileChangeItemProps) {
   const { diff, loading, fetchIfNeeded } = useDiffFetch(sessionId, item.file);
   const openSourceRef = useRef<"hover" | "click" | null>(null);
 
@@ -426,11 +455,27 @@ interface FileTreeViewProps {
   isMobile: boolean;
 }
 
-function FileTreeView({ tree, sessionId, onFullView, openHoverFile, onHoverOpenChange, isMobile }: FileTreeViewProps) {
+function FileTreeView({
+  tree,
+  sessionId,
+  onFullView,
+  openHoverFile,
+  onHoverOpenChange,
+  isMobile,
+}: FileTreeViewProps) {
   return (
     <div className="space-y-0.5">
       {tree.map((node) => (
-        <FileTreeNodeComponent key={node.path} node={node} depth={0} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} isMobile={isMobile} />
+        <FileTreeNodeComponent
+          key={node.path}
+          node={node}
+          depth={0}
+          sessionId={sessionId}
+          onFullView={onFullView}
+          openHoverFile={openHoverFile}
+          onHoverOpenChange={onHoverOpenChange}
+          isMobile={isMobile}
+        />
       ))}
     </div>
   );
@@ -446,14 +491,50 @@ interface FileTreeNodeComponentProps {
   isMobile: boolean;
 }
 
-function FileTreeNodeComponent({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange, isMobile }: FileTreeNodeComponentProps) {
+function FileTreeNodeComponent({
+  node,
+  depth,
+  sessionId,
+  onFullView,
+  openHoverFile,
+  onHoverOpenChange,
+  isMobile,
+}: FileTreeNodeComponentProps) {
   if (node.isDirectory) {
-    return <FileTreeFolderNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} isMobile={isMobile} />;
+    return (
+      <FileTreeFolderNode
+        node={node}
+        depth={depth}
+        sessionId={sessionId}
+        onFullView={onFullView}
+        openHoverFile={openHoverFile}
+        onHoverOpenChange={onHoverOpenChange}
+        isMobile={isMobile}
+      />
+    );
   }
-  return <FileTreeFileNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} isMobile={isMobile} />;
+  return (
+    <FileTreeFileNode
+      node={node}
+      depth={depth}
+      sessionId={sessionId}
+      onFullView={onFullView}
+      openHoverFile={openHoverFile}
+      onHoverOpenChange={onHoverOpenChange}
+      isMobile={isMobile}
+    />
+  );
 }
 
-function FileTreeFolderNode({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange, isMobile }: FileTreeNodeComponentProps) {
+function FileTreeFolderNode({
+  node,
+  depth,
+  sessionId,
+  onFullView,
+  openHoverFile,
+  onHoverOpenChange,
+  isMobile,
+}: FileTreeNodeComponentProps) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -477,7 +558,9 @@ function FileTreeFolderNode({ node, depth, sessionId, onFullView, openHoverFile,
             <Folder className="h-3.5 w-3.5 shrink-0 text-primary/70" />
           )}
           <span className="font-mono text-xs text-foreground truncate">{node.name}</span>
-          <span className="font-mono text-2xs text-muted-foreground ml-auto shrink-0">({node.fileCount})</span>
+          <span className="font-mono text-2xs text-muted-foreground ml-auto shrink-0">
+            ({node.fileCount})
+          </span>
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
@@ -498,7 +581,15 @@ function FileTreeFolderNode({ node, depth, sessionId, onFullView, openHoverFile,
   );
 }
 
-function FileTreeFileNode({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange, isMobile }: FileTreeNodeComponentProps) {
+function FileTreeFileNode({
+  node,
+  depth,
+  sessionId,
+  onFullView,
+  openHoverFile,
+  onHoverOpenChange,
+  isMobile,
+}: FileTreeNodeComponentProps) {
   const item = node.fileChange!;
   const { diff, loading, fetchIfNeeded } = useDiffFetch(sessionId, item.file);
   const isHoverOpen = openHoverFile === item.file;
@@ -550,12 +641,20 @@ function FileTreeFileNode({ node, depth, sessionId, onFullView, openHoverFile, o
           <FileCode className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <span className="font-mono text-xs text-primary truncate">{node.name}</span>
           {item.tools.map((tool) => (
-            <Badge key={tool} variant="outline" className="font-mono text-2xs shrink-0" style={getToolBadgeStyle(tool)}>
+            <Badge
+              key={tool}
+              variant="outline"
+              className="font-mono text-2xs shrink-0"
+              style={getToolBadgeStyle(tool)}
+            >
               {tool}
             </Badge>
           ))}
           {item.count > 1 ? (
-            <Badge variant="secondary" className="font-mono text-2xs shrink-0">{`\u00D7${item.count}`}</Badge>
+            <Badge
+              variant="secondary"
+              className="font-mono text-2xs shrink-0"
+            >{`\u00D7${item.count}`}</Badge>
           ) : null}
           <span className="font-mono text-2xs text-muted-foreground/70 ml-auto shrink-0">
             {item.lastTimestamp ? formatTime(item.lastTimestamp) : null}

@@ -17,7 +17,9 @@ function KnowledgeBasePage() {
       <Suspense
         fallback={
           <div className="flex-1 flex items-center justify-center">
-            <span className="font-mono text-sm text-muted-foreground animate-pulse">Loading...</span>
+            <span className="font-mono text-sm text-muted-foreground animate-pulse">
+              Loading...
+            </span>
           </div>
         }
       >

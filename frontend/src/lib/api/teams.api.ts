@@ -35,8 +35,7 @@ export const teamsApi = {
 
   // ── 멤버 관리 ──
 
-  getMembers: (teamId: string) =>
-    api.get<TeamMemberInfo[]>(`/api/teams/${teamId}/members`),
+  getMembers: (teamId: string) => api.get<TeamMemberInfo[]>(`/api/teams/${teamId}/members`),
 
   addMember: (teamId: string, data: AddTeamMemberRequest) =>
     api.post<TeamMemberInfo>(`/api/teams/${teamId}/members`, data),
@@ -57,15 +56,19 @@ export const teamsApi = {
       team_id: string;
       status: string;
       members: TeamMemberInfo[];
-      task_summary: { total: number; pending: number; in_progress: number; completed: number; failed: number };
+      task_summary: {
+        total: number;
+        pending: number;
+        in_progress: number;
+        completed: number;
+        failed: number;
+      };
     }>(`/api/teams/${teamId}/status`),
 
   // ── 태스크 관리 ──
 
   listTasks: (teamId: string, status?: string) =>
-    api.get<TeamTaskInfo[]>(
-      `/api/teams/${teamId}/tasks${status ? `?status=${status}` : ""}`,
-    ),
+    api.get<TeamTaskInfo[]>(`/api/teams/${teamId}/tasks${status ? `?status=${status}` : ""}`),
 
   getTask: (teamId: string, taskId: number) =>
     api.get<TeamTaskInfo>(`/api/teams/${teamId}/tasks/${taskId}`),
@@ -80,15 +83,10 @@ export const teamsApi = {
     api.delete<void>(`/api/teams/${teamId}/tasks/${taskId}`),
 
   claimTask: (teamId: string, taskId: number, memberId: number) =>
-    api.post<TeamTaskInfo>(
-      `/api/teams/${teamId}/tasks/${taskId}/claim?member_id=${memberId}`,
-    ),
+    api.post<TeamTaskInfo>(`/api/teams/${teamId}/tasks/${taskId}/claim?member_id=${memberId}`),
 
   completeTask: (teamId: string, taskId: number, data?: CompleteTaskRequest) =>
-    api.post<TeamTaskInfo>(
-      `/api/teams/${teamId}/tasks/${taskId}/complete`,
-      data ?? {},
-    ),
+    api.post<TeamTaskInfo>(`/api/teams/${teamId}/tasks/${taskId}/complete`, data ?? {}),
 
   reorderTasks: (teamId: string, taskIds: number[]) =>
     api.post<void>(`/api/teams/${teamId}/tasks/reorder`, {
@@ -97,12 +95,7 @@ export const teamsApi = {
 
   // ── 태스크 위임 ──
 
-  delegateTask: (
-    teamId: string,
-    taskId: number,
-    memberId?: number,
-    prompt?: string,
-  ) =>
+  delegateTask: (teamId: string, taskId: number, memberId?: number, prompt?: string) =>
     api.post<{ task_id: number; session_id: string; status: string }>(
       `/api/teams/${teamId}/tasks/${taskId}/delegate`,
       { member_id: memberId, prompt },
@@ -115,16 +108,11 @@ export const teamsApi = {
     if (afterId) params.set("after_id", String(afterId));
     if (limit) params.set("limit", String(limit));
     const qs = params.toString();
-    return api.get<TeamMessageInfo[]>(
-      `/api/teams/${teamId}/messages${qs ? `?${qs}` : ""}`,
-    );
+    return api.get<TeamMessageInfo[]>(`/api/teams/${teamId}/messages${qs ? `?${qs}` : ""}`);
   },
 
   sendMessage: (teamId: string, data: SendMessageRequest) =>
-    api.post<TeamMessageInfo>(
-      `/api/teams/${teamId}/messages`,
-      data,
-    ),
+    api.post<TeamMessageInfo>(`/api/teams/${teamId}/messages`, data),
 
   markMessagesRead: (teamId: string, messageIds: number[]) =>
     api.post<{ marked: number }>(`/api/teams/${teamId}/messages/read`, {

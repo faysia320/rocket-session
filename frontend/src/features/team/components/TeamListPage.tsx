@@ -29,9 +29,7 @@ export const TeamListPage = memo(function TeamListPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="font-mono text-lg font-semibold text-foreground">Agent Teams</h1>
-            <p className="font-mono text-xs text-muted-foreground">
-              {teams.length}개 팀
-            </p>
+            <p className="font-mono text-xs text-muted-foreground">{teams.length}개 팀</p>
           </div>
           <TeamCreateDialog>
             <Button variant="default" size="sm" className="font-mono text-xs">

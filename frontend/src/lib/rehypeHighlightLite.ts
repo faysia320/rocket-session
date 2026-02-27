@@ -79,11 +79,7 @@ function extractLang(classNames: string[]): string | null {
 export default function rehypeHighlightLite() {
   return (tree: Root) => {
     visit(tree, "element", (node: Element, _index, parent) => {
-      if (
-        node.tagName !== "code" ||
-        !parent ||
-        (parent as Element).tagName !== "pre"
-      ) {
+      if (node.tagName !== "code" || !parent || (parent as Element).tagName !== "pre") {
         return;
       }
 

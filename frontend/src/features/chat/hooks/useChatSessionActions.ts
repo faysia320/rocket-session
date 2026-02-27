@@ -29,10 +29,7 @@ export function useChatSessionActions({
   const { deleteSession, archiveSession, unarchiveSession } = useSessionMutations();
 
   const handleDelete = useCallback(() => deleteSession(sessionId), [deleteSession, sessionId]);
-  const handleArchive = useCallback(
-    () => archiveSession(sessionId),
-    [archiveSession, sessionId],
-  );
+  const handleArchive = useCallback(() => archiveSession(sessionId), [archiveSession, sessionId]);
   const handleUnarchive = useCallback(
     () => unarchiveSession(sessionId),
     [unarchiveSession, sessionId],

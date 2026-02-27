@@ -5,13 +5,7 @@
  * WS_THINKING, WS_EVENT, WS_ASK_USER_QUESTION, WS_PERMISSION_REQUEST,
  * WS_PERMISSION_RESPONSE, WS_RAW
  */
-import type {
-  Message,
-  ToolUseMsg,
-  AssistantTextMsg,
-  ResultMsg,
-  AskUserQuestionMsg,
-} from "@/types";
+import type { Message, ToolUseMsg, AssistantTextMsg, ResultMsg, AskUserQuestionMsg } from "@/types";
 import { generateMessageId } from "../useClaudeSocket.utils";
 import type { ClaudeSocketState, ClaudeSocketAction, TodoItem } from "./types";
 import { recomputePendingAnswerCount } from "./types";
@@ -51,10 +45,7 @@ export function handleWsMessage(
 
       if (!action.isReconnect && action.history) {
         // tool_result를 tool_use_id로 인덱싱 (tool_use 메시지에 병합용)
-        const toolResultMap = new Map<
-          string,
-          (typeof action.history)[number]
-        >();
+        const toolResultMap = new Map<string, (typeof action.history)[number]>();
         for (const h of action.history) {
           if (h.message_type === "tool_result" && h.tool_use_id) {
             toolResultMap.set(h.tool_use_id, h);

@@ -56,9 +56,7 @@ function hexOrNameToRgb(color: string): string {
   return "128,128,128";
 }
 
-export const DailyTokenChart = memo(function DailyTokenChart({
-  data,
-}: DailyTokenChartProps) {
+export const DailyTokenChart = memo(function DailyTokenChart({ data }: DailyTokenChartProps) {
   const option = useMemo(() => {
     const dates = data.map((d) => formatDate(d.date));
     const values = {
@@ -123,10 +121,7 @@ export const DailyTokenChart = memo(function DailyTokenChart({
 
   return (
     <ChartCard title="일별 토큰 사용량" isEmpty={data.length === 0}>
-      <div
-        ref={containerRef}
-        style={{ width: "100%", height: CHART_DIMENSIONS.areaChartHeight }}
-      />
+      <div ref={containerRef} style={{ width: "100%", height: CHART_DIMENSIONS.areaChartHeight }} />
     </ChartCard>
   );
 });

@@ -46,10 +46,14 @@ export const sessionsApi = {
       workflow_definition_id?: string;
     },
   ) =>
-    api.post<SessionInfo>("/api/sessions/", {
-      work_dir: workDir || null,
-      ...options,
-    }, options?.worktree_name ? 150_000 : undefined),
+    api.post<SessionInfo>(
+      "/api/sessions/",
+      {
+        work_dir: workDir || null,
+        ...options,
+      },
+      options?.worktree_name ? 150_000 : undefined,
+    ),
 
   list: () => api.get<SessionInfo[]>("/api/sessions/"),
 

@@ -153,7 +153,13 @@ export function FileViewer({
               </div>
             ) : activeTab === "diff" ? (
               diff ? (
-                <ErrorBoundary fallback={<div className="font-mono text-xs text-destructive px-3 py-2">Diff를 표시할 수 없습니다</div>}>
+                <ErrorBoundary
+                  fallback={
+                    <div className="font-mono text-xs text-destructive px-3 py-2">
+                      Diff를 표시할 수 없습니다
+                    </div>
+                  }
+                >
                   <DiffViewer diff={diff} />
                 </ErrorBoundary>
               ) : (

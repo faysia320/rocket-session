@@ -19,10 +19,7 @@ interface WorkspaceCreateDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function WorkspaceCreateDialog({
-  open,
-  onOpenChange,
-}: WorkspaceCreateDialogProps) {
+export function WorkspaceCreateDialog({ open, onOpenChange }: WorkspaceCreateDialogProps) {
   const [repoUrl, setRepoUrl] = useState("");
   const [branch, setBranch] = useState("");
   const [name, setName] = useState("");
@@ -100,7 +97,6 @@ export function WorkspaceCreateDialog({
               onChange={(e) => setName(e.target.value)}
             />
           </div>
-
         </div>
 
         <DialogFooter>

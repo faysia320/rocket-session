@@ -34,7 +34,12 @@ export const TeamCard = memo(function TeamCard({ team, isActive }: TeamCardProps
         <Users className="h-4 w-4 text-primary/70 shrink-0" />
         <span className="font-mono text-sm font-semibold truncate flex-1">{team.name}</span>
         <Badge variant="outline" className="font-mono text-2xs shrink-0">
-          <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5", STATUS_COLOR[team.status] ?? "bg-muted-foreground")} />
+          <span
+            className={cn(
+              "w-1.5 h-1.5 rounded-full mr-1.5",
+              STATUS_COLOR[team.status] ?? "bg-muted-foreground",
+            )}
+          />
           {team.status}
         </Badge>
       </div>
@@ -46,9 +51,7 @@ export const TeamCard = memo(function TeamCard({ team, isActive }: TeamCardProps
       ) : null}
 
       <div className="flex items-center gap-3 mb-3">
-        <span className="font-mono text-2xs text-muted-foreground">
-          {team.member_count}명 멤버
-        </span>
+        <span className="font-mono text-2xs text-muted-foreground">{team.member_count}명 멤버</span>
         <span className="font-mono text-2xs text-muted-foreground/70">{"·"}</span>
         <span className="font-mono text-2xs text-muted-foreground">
           {team.task_summary.total}개 태스크

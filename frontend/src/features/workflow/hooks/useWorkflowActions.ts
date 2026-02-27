@@ -31,11 +31,7 @@ export function useWorkflowActions({
   // 새로고침 후 awaiting_approval 상태면 아티팩트 뷰어 자동 열기
   const autoOpenedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (
-      workflowPhaseStatus === "awaiting_approval" &&
-      workflowPhase &&
-      !artifactViewerOpen
-    ) {
+    if (workflowPhaseStatus === "awaiting_approval" && workflowPhase && !artifactViewerOpen) {
       const key = `${sessionId}-${workflowPhase}-${workflowPhaseStatus}`;
       if (autoOpenedKeyRef.current === key) return;
       autoOpenedKeyRef.current = key;
@@ -111,22 +107,25 @@ export function useWorkflowActions({
     [revisionMutation, sessionId, queryClient],
   );
 
-  const handleOpenArtifact = useCallback(async (phase: string) => {
-    try {
-      const artifacts = await workflowApi.listArtifacts(sessionId);
-      const latest = artifacts
-        .filter((a) => a.phase === phase)
-        .sort((a, b) => b.version - a.version)[0];
-      if (latest) {
-        setViewingArtifactId(latest.id);
-        setArtifactViewerOpen(true);
-      } else {
-        toast.info("해당 단계의 아티팩트가 아직 없습니다");
+  const handleOpenArtifact = useCallback(
+    async (phase: string) => {
+      try {
+        const artifacts = await workflowApi.listArtifacts(sessionId);
+        const latest = artifacts
+          .filter((a) => a.phase === phase)
+          .sort((a, b) => b.version - a.version)[0];
+        if (latest) {
+          setViewingArtifactId(latest.id);
+          setArtifactViewerOpen(true);
+        } else {
+          toast.info("해당 단계의 아티팩트가 아직 없습니다");
+        }
+      } catch {
+        toast.error("아티팩트를 불러오지 못했습니다");
       }
-    } catch {
-      toast.error("아티팩트를 불러오지 못했습니다");
-    }
-  }, [sessionId]);
+    },
+    [sessionId],
+  );
 
   const handleCloseArtifact = useCallback(() => {
     setArtifactViewerOpen(false);

@@ -68,10 +68,7 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
     setLoading(true);
     setError(null);
     setWorkspaceOverrides({});
-    Promise.all([
-      localSessionsApi.scan({ since: getYesterdayISO() }),
-      workspacesApi.list(),
-    ])
+    Promise.all([localSessionsApi.scan({ since: getYesterdayISO() }), workspacesApi.list()])
       .then(([scanned, wsList]) => {
         setSessions(scanned);
         setWorkspaces(wsList.filter((ws) => ws.status === "ready"));
@@ -84,9 +81,7 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
     setImporting(meta.session_id);
     try {
       const workspaceId =
-        workspaceOverrides[meta.cwd] ??
-        meta.matched_workspace?.workspace_id ??
-        undefined;
+        workspaceOverrides[meta.cwd] ?? meta.matched_workspace?.workspace_id ?? undefined;
 
       const result = await localSessionsApi.import({
         session_id: meta.session_id,
@@ -143,7 +138,12 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
     for (const [cwd, items] of Object.entries(filtered)) {
       // 그룹 내 첫 세션의 matched_workspace에서 워크스페이스 ID 추출
       const matchedWsId = items[0]?.matched_workspace?.workspace_id ?? null;
-      result.push({ type: "group-header", cwd, count: items.length, matchedWorkspaceId: matchedWsId });
+      result.push({
+        type: "group-header",
+        cwd,
+        count: items.length,
+        matchedWorkspaceId: matchedWsId,
+      });
       if (!collapsedGroups.has(cwd)) {
         for (const s of items) {
           result.push({ type: "session", meta: s });
@@ -247,7 +247,10 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
                                 {item.cwd}
                               </TooltipContent>
                             </Tooltip>
-                            <Badge variant="secondary" className="font-mono text-[9px] ml-auto shrink-0">
+                            <Badge
+                              variant="secondary"
+                              className="font-mono text-[9px] ml-auto shrink-0"
+                            >
                               {item.count}
                             </Badge>
                           </button>
@@ -370,9 +373,7 @@ function WorkspaceBadge({
   if (workspaces.length === 0) return null;
 
   const effectiveId = overrideId ?? matchedWorkspaceId;
-  const matched = effectiveId
-    ? workspaces.find((ws) => ws.id === effectiveId)
-    : null;
+  const matched = effectiveId ? workspaces.find((ws) => ws.id === effectiveId) : null;
 
   // 자동 매칭 성공 + 수동 변경 없음: Badge 표시
   if (matched && !overrideId) {
@@ -387,9 +388,7 @@ function WorkspaceBadge({
             {matched.name}
           </Badge>
         </TooltipTrigger>
-        <TooltipContent className="font-mono text-xs">
-          {matched.local_path}
-        </TooltipContent>
+        <TooltipContent className="font-mono text-xs">{matched.local_path}</TooltipContent>
       </Tooltip>
     );
   }

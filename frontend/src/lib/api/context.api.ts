@@ -28,16 +28,12 @@ export interface SessionContextSuggestion {
 export const contextApi = {
   suggest: (workspaceId: string, prompt?: string) => {
     const qs = prompt ? `?prompt=${encodeURIComponent(prompt)}` : "";
-    return api.get<SessionContextSuggestion>(
-      `/api/workspaces/${workspaceId}/context/suggest${qs}`,
-    );
+    return api.get<SessionContextSuggestion>(`/api/workspaces/${workspaceId}/context/suggest${qs}`);
   },
 
   recentSessions: (workspaceId: string, limit?: number) => {
     const qs = limit ? `?limit=${limit}` : "";
-    return api.get<SessionSummary[]>(
-      `/api/workspaces/${workspaceId}/context/recent-sessions${qs}`,
-    );
+    return api.get<SessionSummary[]>(`/api/workspaces/${workspaceId}/context/recent-sessions${qs}`);
   },
 
   suggestFiles: (workspaceId: string, prompt?: string, limit?: number) => {

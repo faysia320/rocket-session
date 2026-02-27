@@ -418,7 +418,12 @@ describe("handleMessage: assistant_text", () => {
     });
 
     act(() => {
-      MockWebSocket.latest.simulateMessage({ type: "tool_use", tool: "Read", tool_use_id: "tu-1", seq: 2 });
+      MockWebSocket.latest.simulateMessage({
+        type: "tool_use",
+        tool: "Read",
+        tool_use_id: "tu-1",
+        seq: 2,
+      });
     });
 
     act(() => {
@@ -450,11 +455,21 @@ describe("handleMessage: assistant_text", () => {
     act(() => {
       const ws = MockWebSocket.latest;
       ws.simulateMessage({ type: "tool_use", tool: "Read", tool_use_id: "tu-1", seq: 2 });
-      ws.simulateMessage({ type: "tool_result", tool_use_id: "tu-1", output: "ok", is_error: false, seq: 3 });
+      ws.simulateMessage({
+        type: "tool_result",
+        tool_use_id: "tu-1",
+        output: "ok",
+        is_error: false,
+        seq: 3,
+      });
     });
 
     act(() => {
-      MockWebSocket.latest.simulateMessage({ type: "assistant_text", text: "After result", seq: 4 });
+      MockWebSocket.latest.simulateMessage({
+        type: "assistant_text",
+        text: "After result",
+        seq: 4,
+      });
       flushRAF();
     });
 

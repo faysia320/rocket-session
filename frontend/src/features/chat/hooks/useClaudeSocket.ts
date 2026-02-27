@@ -79,9 +79,7 @@ export function useClaudeSocket(sessionId: string) {
                   };
                 })
               : null,
-          fileChanges: data.file_changes
-            ? (data.file_changes as FileChange[])
-            : null,
+          fileChanges: data.file_changes ? (data.file_changes as FileChange[]) : null,
         };
         dispatch(action);
 
@@ -91,8 +89,7 @@ export function useClaudeSocket(sessionId: string) {
           data.pending_interactions &&
           (data.pending_interactions as Record<string, unknown>).ask_user_question
         ) {
-          const aq = (data.pending_interactions as Record<string, unknown>)
-            .ask_user_question as {
+          const aq = (data.pending_interactions as Record<string, unknown>).ask_user_question as {
             questions: AskUserQuestionItem[];
             tool_use_id: string;
             timestamp: string;
@@ -209,7 +206,8 @@ export function useClaudeSocket(sessionId: string) {
       }
 
       case "error": {
-        const isNotFound = data.code === "SESSION_NOT_FOUND" || data.message === "세션을 찾을 수 없습니다";
+        const isNotFound =
+          data.code === "SESSION_NOT_FOUND" || data.message === "세션을 찾을 수 없습니다";
         dispatch({
           type: "WS_ERROR",
           data,
@@ -471,7 +469,11 @@ export function useClaudeSocket(sessionId: string) {
 
       // 모바일: iOS가 WS를 공격적으로 kill하므로 항상 full reconnect
       if (isMobile) {
-        console.log("[Visibility] Mobile return after", hiddenDuration, "ms, forcing full reconnect");
+        console.log(
+          "[Visibility] Mobile return after",
+          hiddenDuration,
+          "ms, forcing full reconnect",
+        );
         forceFullReconnect();
         return;
       }

@@ -83,30 +83,46 @@ class ApiClient {
   }
 
   async post<T>(endpoint: string, data?: unknown, timeoutMs?: number): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
-    }, timeoutMs);
+    return this.request<T>(
+      endpoint,
+      {
+        method: "POST",
+        body: data ? JSON.stringify(data) : undefined,
+      },
+      timeoutMs,
+    );
   }
 
   async put<T>(endpoint: string, data?: unknown, timeoutMs?: number): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "PUT",
-      body: data ? JSON.stringify(data) : undefined,
-    }, timeoutMs);
+    return this.request<T>(
+      endpoint,
+      {
+        method: "PUT",
+        body: data ? JSON.stringify(data) : undefined,
+      },
+      timeoutMs,
+    );
   }
 
   async patch<T>(endpoint: string, data?: unknown, timeoutMs?: number): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "PATCH",
-      body: data ? JSON.stringify(data) : undefined,
-    }, timeoutMs);
+    return this.request<T>(
+      endpoint,
+      {
+        method: "PATCH",
+        body: data ? JSON.stringify(data) : undefined,
+      },
+      timeoutMs,
+    );
   }
 
   async delete<T>(endpoint: string, timeoutMs?: number): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "DELETE",
-    }, timeoutMs);
+    return this.request<T>(
+      endpoint,
+      {
+        method: "DELETE",
+      },
+      timeoutMs,
+    );
   }
 }
 

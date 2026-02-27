@@ -34,13 +34,9 @@ export const ChartCard = memo(function ChartCard({
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="font-mono text-sm font-semibold text-foreground/90">
-            {title}
-          </h3>
+          <h3 className="font-mono text-sm font-semibold text-foreground/90">{title}</h3>
           {subtitle && (
-            <p className="font-mono text-2xs text-muted-foreground mt-0.5">
-              {subtitle}
-            </p>
+            <p className="font-mono text-2xs text-muted-foreground mt-0.5">{subtitle}</p>
           )}
         </div>
         {action && <div>{action}</div>}
