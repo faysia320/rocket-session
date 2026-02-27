@@ -57,7 +57,15 @@ export function CommitDialog({
     } catch {
       setIsCreatingSession(false);
     }
-  }, [createSession, workspacePath, workspaceId, selectedWorkflow, setPendingPrompt, onOpenChange, isCreatingSession]);
+  }, [
+    createSession,
+    workspacePath,
+    workspaceId,
+    selectedWorkflow,
+    setPendingPrompt,
+    onOpenChange,
+    isCreatingSession,
+  ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

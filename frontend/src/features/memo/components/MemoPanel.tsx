@@ -18,19 +18,16 @@ export const MemoPanel = memo(function MemoPanel() {
   const dragging = useRef(false);
   const offset = useRef({ x: 0, y: 0 });
 
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      // X 버튼 클릭은 드래그 시작하지 않음
-      if ((e.target as HTMLElement).closest("button")) return;
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // X 버튼 클릭은 드래그 시작하지 않음
+    if ((e.target as HTMLElement).closest("button")) return;
 
-      dragging.current = true;
-      const panelEl = (e.currentTarget as HTMLElement).parentElement!;
-      const rect = panelEl.getBoundingClientRect();
-      offset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      e.currentTarget.setPointerCapture(e.pointerId);
-    },
-    [],
-  );
+    dragging.current = true;
+    const panelEl = (e.currentTarget as HTMLElement).parentElement!;
+    const rect = panelEl.getBoundingClientRect();
+    offset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -48,9 +45,7 @@ export const MemoPanel = memo(function MemoPanel() {
 
   if (!isOpen) return null;
 
-  const posStyle = position
-    ? { left: position.x, top: position.y }
-    : DEFAULT_STYLE;
+  const posStyle = position ? { left: position.x, top: position.y } : DEFAULT_STYLE;
 
   return (
     <div

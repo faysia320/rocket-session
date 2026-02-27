@@ -1,10 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  useMemoBlocks,
-  useCreateMemoBlock,
-  useDeleteMemoBlock,
-} from "../hooks/useMemo";
+import { useMemoBlocks, useCreateMemoBlock, useDeleteMemoBlock } from "../hooks/useMemo";
 import { MemoBlockItem } from "./MemoBlockItem";
 
 export const MemoBlockList = memo(function MemoBlockList() {
@@ -51,9 +47,7 @@ export const MemoBlockList = memo(function MemoBlockList() {
   // 새 블록 생성 시 스크롤
   useEffect(() => {
     if (blocks.length > prevBlockCount.current && scrollRef.current) {
-      const scrollContainer = scrollRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]",
-      );
+      const scrollContainer = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]");
       if (scrollContainer) {
         requestAnimationFrame(() => {
           scrollContainer.scrollTop = scrollContainer.scrollHeight;
