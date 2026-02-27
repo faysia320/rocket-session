@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-MemorySource = Literal["auto_memory", "claude_md", "rules"]
+MemorySource = Literal["auto_memory", "claude_md", "rules", "serena_memory"]
 
 
 class MemoryFileInfo(BaseModel):

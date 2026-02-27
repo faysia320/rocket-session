@@ -7,6 +7,7 @@ Memory 파일 위치:
 - Auto Memory: ~/.claude/projects/<encoded-path>/memory/*.md
 - CLAUDE.md: <project_root>/claude.md 또는 <project_root>/.claude/CLAUDE.md
 - Rules: <project_root>/.claude/rules/*.md
+- Serena Memory: <project_root>/.serena/memories/*.md
 """
 
 import logging
@@ -96,6 +97,20 @@ class ClaudeMemoryService:
                         )
                     )
 
+        # 4. Serena Memory: <project_root>/.serena/memories/*.md
+        serena_dir = project_root / ".serena" / "memories"
+        if serena_dir.is_dir():
+            for serena_file in sorted(serena_dir.glob("*.md")):
+                if serena_file.is_file():
+                    files.append(
+                        MemoryFileInfo(
+                            name=serena_file.name,
+                            relative_path=f"serena-memory/{serena_file.name}",
+                            source="serena_memory",
+                            size_bytes=serena_file.stat().st_size,
+                        )
+                    )
+
         return files
 
     async def read_memory_file(
@@ -121,6 +136,7 @@ class ClaudeMemoryService:
                 "auto-memory": "auto_memory",
                 "project": "claude_md",
                 "rules": "rules",
+                "serena-memory": "serena_memory",
             }
             return MemoryFileContent(
                 name=abs_path.name,
@@ -198,6 +214,13 @@ class ClaudeMemoryService:
             return None
         elif prefix == "rules":
             boundary = project_root / ".claude" / "rules"
+            resolved = (boundary / filename).resolve()
+            if not self._is_within(resolved, boundary):
+                logger.warning("Path Traversal 시도 차단: %s", relative_path)
+                return None
+            return resolved
+        elif prefix == "serena-memory":
+            boundary = project_root / ".serena" / "memories"
             resolved = (boundary / filename).resolve()
             if not self._is_within(resolved, boundary):
                 logger.warning("Path Traversal 시도 차단: %s", relative_path)
