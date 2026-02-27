@@ -1,9 +1,9 @@
 import { memo, useState, useCallback, useRef, useEffect } from "react";
-import { ChevronDown, ChevronUp, FileText, Clock, Lightbulb } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, Clock, Brain } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useContextSuggestion } from "../hooks/useContextSuggestion";
-import type { WorkspaceInsightInfo } from "@/types/knowledge";
+import type { MemoryFileInfo } from "@/types/claude-memory";
 import type { FileSuggestion, SessionSummary } from "@/lib/api/context.api";
 
 interface ContextSuggestionPanelProps {
@@ -18,7 +18,7 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
   onContextChange,
 }: ContextSuggestionPanelProps) {
   const [expanded, setExpanded] = useState(false);
-  const [selectedInsightIds, setSelectedInsightIds] = useState<Set<number>>(new Set());
+  const [selectedMemoryPaths, setSelectedMemoryPaths] = useState<Set<string>>(new Set());
   const [selectedFilePaths, setSelectedFilePaths] = useState<Set<string>>(new Set());
   const [debouncedPrompt, setDebouncedPrompt] = useState(prompt);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -44,14 +44,15 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
     if (!data) return "";
     const parts: string[] = [];
 
-    if (selectedInsightIds.size > 0) {
-      const selected = data.insights.filter((i: WorkspaceInsightInfo) =>
-        selectedInsightIds.has(i.id),
+    if (selectedMemoryPaths.size > 0) {
+      const selected = data.memory_files.filter((m: MemoryFileInfo) =>
+        selectedMemoryPaths.has(m.relative_path),
       );
       if (selected.length > 0) {
-        parts.push("## Workspace Knowledge");
-        for (const i of selected) {
-          parts.push(`- **${i.title}** (${i.category}): ${i.content}`);
+        parts.push("## Claude Code Memory");
+        for (const m of selected) {
+          const sourceLabel = m.source === "auto_memory" ? "Auto" : m.source === "claude_md" ? "Project" : "Rules";
+          parts.push(`- **${m.name}** (${sourceLabel})`);
         }
       }
     }
@@ -69,18 +70,18 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
     }
 
     return parts.join("\n");
-  }, [data, selectedInsightIds, selectedFilePaths]);
+  }, [data, selectedMemoryPaths, selectedFilePaths]);
 
   // Notify parent when selection changes
   useEffect(() => {
     onContextChange(buildContextText());
   }, [buildContextText, onContextChange]);
 
-  const toggleInsight = useCallback((id: number) => {
-    setSelectedInsightIds((prev) => {
+  const toggleMemory = useCallback((path: string) => {
+    setSelectedMemoryPaths((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
       return next;
     });
   }, []);
@@ -96,6 +97,15 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
 
   if (!workspaceId) return null;
 
+  const sourceLabel = (source: string) => {
+    switch (source) {
+      case "auto_memory": return "Auto";
+      case "claude_md": return "Project";
+      case "rules": return "Rules";
+      default: return source;
+    }
+  };
+
   return (
     <div className="border border-border rounded-md overflow-hidden">
       {/* Toggle header */}
@@ -110,7 +120,7 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
         <div className="flex items-center gap-2">
           {data && (
             <Badge variant="secondary" className="font-mono text-2xs">
-              {data.insights.length + data.suggested_files.length} items
+              {data.memory_files.length + data.suggested_files.length} items
             </Badge>
           )}
           {expanded ? (
@@ -135,34 +145,34 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
             </p>
           ) : (
             <>
-              {/* Insights section */}
-              {data.insights.length > 0 && (
+              {/* Memory files section */}
+              {data.memory_files.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
-                    <Lightbulb className="h-3 w-3 text-primary" />
+                    <Brain className="h-3 w-3 text-primary" />
                     <span className="font-mono text-2xs font-semibold text-muted-foreground">
-                      WORKSPACE KNOWLEDGE
+                      CLAUDE CODE MEMORY
                     </span>
                   </div>
                   <div className="space-y-1">
-                    {data.insights.map((insight: WorkspaceInsightInfo) => (
+                    {data.memory_files.map((mf: MemoryFileInfo) => (
                       <label
-                        key={insight.id}
+                        key={mf.relative_path}
                         className="flex items-start gap-2 px-2 py-1.5 rounded-sm hover:bg-muted/30 cursor-pointer"
                       >
                         <Checkbox
-                          checked={selectedInsightIds.has(insight.id)}
-                          onCheckedChange={() => toggleInsight(insight.id)}
+                          checked={selectedMemoryPaths.has(mf.relative_path)}
+                          onCheckedChange={() => toggleMemory(mf.relative_path)}
                           className="mt-0.5"
                         />
                         <div className="flex-1 min-w-0">
-                          <span className="font-mono text-xs text-foreground">{insight.title}</span>
-                          <p className="font-mono text-2xs text-muted-foreground line-clamp-1">
-                            {insight.content}
+                          <span className="font-mono text-xs text-foreground">{mf.name}</span>
+                          <p className="font-mono text-2xs text-muted-foreground">
+                            {(mf.size_bytes / 1024).toFixed(1)} KB
                           </p>
                         </div>
                         <Badge variant="secondary" className="font-mono text-2xs shrink-0">
-                          {insight.category}
+                          {sourceLabel(mf.source)}
                         </Badge>
                       </label>
                     ))}

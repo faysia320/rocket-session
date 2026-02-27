@@ -66,21 +66,6 @@ export function useDeleteInsight(workspaceId: string) {
   });
 }
 
-export function useExtractInsights(workspaceId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (sessionId: string) => insightsApi.extract(workspaceId, { session_id: sessionId }),
-    onSuccess: (insights) => {
-      queryClient.invalidateQueries({ queryKey: insightKeys.list(workspaceId) });
-      toast.success(`${insights.length}건의 인사이트가 추출되었습니다`);
-    },
-    onError: () => {
-      toast.error("인사이트 추출에 실패했습니다");
-    },
-  });
-}
-
 export function useArchiveInsights(workspaceId: string) {
   const queryClient = useQueryClient();
 
@@ -89,14 +74,5 @@ export function useArchiveInsights(workspaceId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: insightKeys.list(workspaceId) });
     },
-  });
-}
-
-export function useInsightContext(workspaceId: string | null, prompt?: string) {
-  return useQuery({
-    queryKey: insightKeys.context(workspaceId ?? "", prompt),
-    queryFn: () => insightsApi.context(workspaceId!, prompt),
-    enabled: !!workspaceId,
-    staleTime: 30_000,
   });
 }

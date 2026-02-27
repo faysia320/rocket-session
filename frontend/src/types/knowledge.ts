@@ -36,12 +36,3 @@ export interface UpdateInsightRequest {
   file_paths?: string[];
   relevance_score?: number;
 }
-
-export interface ExtractInsightsRequest {
-  session_id: string;
-}
-
-export interface InsightContextResponse {
-  insights: WorkspaceInsightInfo[];
-  context_text: string;
-}

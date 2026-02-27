@@ -19,7 +19,7 @@ export interface SessionSummary {
 }
 
 export interface SessionContextSuggestion {
-  insights: import("@/types/knowledge").WorkspaceInsightInfo[];
+  memory_files: import("@/types/claude-memory").MemoryFileInfo[];
   recent_sessions: SessionSummary[];
   suggested_files: FileSuggestion[];
   context_text: string;

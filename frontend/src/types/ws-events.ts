@@ -240,17 +240,6 @@ export interface WsWorkflowAnnotationAddedEvent extends WsBaseEvent {
   artifact_id: number;
 }
 
-// ---------------------------------------------------------------------------
-// Knowledge / Insight 이벤트
-// ---------------------------------------------------------------------------
-
-/** 세션 완료 후 인사이트 자동 추출 완료 */
-export interface WsInsightExtractedEvent extends WsBaseEvent {
-  type: "insight_extracted";
-  workspace_id: string;
-  count: number;
-}
-
 /** QA 검증 실패 (FAIL 항목 존재) */
 export interface WsWorkflowQAFailedEvent extends WsBaseEvent {
   type: "workflow_qa_failed";
@@ -295,7 +284,6 @@ export type WsEvent =
   | WsWorkflowPhaseRevisionEvent
   | WsWorkflowArtifactUpdatedEvent
   | WsWorkflowAnnotationAddedEvent
-  | WsInsightExtractedEvent
   | WsWorkflowQAFailedEvent;
 
 /** WS 이벤트 type 필드 값의 union (편의 타입) */

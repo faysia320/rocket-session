@@ -184,7 +184,6 @@ export type {
   WsWorkflowPhaseRevisionEvent,
   WsWorkflowArtifactUpdatedEvent,
   WsWorkflowAnnotationAddedEvent,
-  WsInsightExtractedEvent,
   WsWorkflowQAFailedEvent,
 } from "./ws-events";
 export type {
@@ -192,6 +191,10 @@ export type {
   WorkspaceInsightInfo,
   CreateInsightRequest,
   UpdateInsightRequest,
-  ExtractInsightsRequest,
-  InsightContextResponse,
 } from "./knowledge";
+export type {
+  MemoryFileInfo,
+  MemoryFileContent,
+  MemoryContextResponse,
+  MemorySource,
+} from "./claude-memory";
