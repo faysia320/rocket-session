@@ -932,7 +932,10 @@ class ClaudeRunner:
             try:
                 await asyncio.wait_for(
                     self._parse_stream(
-                        process, session_id, ws_manager, session_manager,
+                        process,
+                        session_id,
+                        ws_manager,
+                        session_manager,
                         turn_state=turn_state,
                     ),
                     timeout=timeout_seconds,
@@ -953,7 +956,10 @@ class ClaudeRunner:
                 )
         else:
             await self._parse_stream(
-                process, session_id, ws_manager, session_manager,
+                process,
+                session_id,
+                ws_manager,
+                session_manager,
                 turn_state=turn_state,
             )
 
@@ -1017,9 +1023,7 @@ class ClaudeRunner:
     ) -> None:
         """워크플로우 완료 처리: 아티팩트 저장 + 다음 phase 결정."""
         result_text = (
-            turn_state.exit_plan_content
-            or turn_state.result_text
-            or turn_state.text
+            turn_state.exit_plan_content or turn_state.result_text or turn_state.text
         )
         if result_text:
             try:
@@ -1052,12 +1056,15 @@ class ClaudeRunner:
                     workflow_phase_status="completed",
                 )
                 await ws_manager.broadcast_event(
-                    session_id, {"type": WsEventType.WORKFLOW_COMPLETED},
+                    session_id,
+                    {"type": WsEventType.WORKFLOW_COMPLETED},
                 )
                 logger.info("워크플로우 완료: session=%s", session_id)
             except Exception:
                 logger.warning(
-                    "세션 %s: 워크플로우 완료 처리 실패", session_id, exc_info=True,
+                    "세션 %s: 워크플로우 완료 처리 실패",
+                    session_id,
+                    exc_info=True,
                 )
 
         elif not review_required:
@@ -1084,7 +1091,9 @@ class ClaudeRunner:
                 )
                 raw_prompt = original_prompt or prompt
                 next_context = await workflow_service.build_phase_context(
-                    session_id, next_phase, raw_prompt,
+                    session_id,
+                    next_phase,
+                    raw_prompt,
                     session_manager=session_manager,
                 )
                 next_steps = await workflow_service._get_steps(
@@ -1107,9 +1116,7 @@ class ClaudeRunner:
                         workflow_service=workflow_service,
                         original_prompt=raw_prompt,
                         workflow_step_config=(
-                            next_step_config.model_dump()
-                            if next_step_config
-                            else None
+                            next_step_config.model_dump() if next_step_config else None
                         ),
                     )
                 )
@@ -1120,7 +1127,9 @@ class ClaudeRunner:
             except Exception:
                 logger.warning(
                     "세션 %s: %s→%s 자동 체이닝 실패",
-                    session_id, workflow_phase, next_phase,
+                    session_id,
+                    workflow_phase,
+                    next_phase,
                     exc_info=True,
                 )
 
@@ -1128,7 +1137,8 @@ class ClaudeRunner:
             # 승인 필요 → 사용자 승인 대기
             try:
                 await session_manager.update_settings(
-                    session_id, workflow_phase_status="awaiting_approval",
+                    session_id,
+                    workflow_phase_status="awaiting_approval",
                 )
                 await ws_manager.broadcast_event(
                     session_id,
@@ -1151,13 +1161,12 @@ class ClaudeRunner:
                                 },
                             )
                     except Exception:
-                        logger.debug(
-                            "세션 %s: QA 체크리스트 파싱 스킵", session_id
-                        )
+                        logger.debug("세션 %s: QA 체크리스트 파싱 스킵", session_id)
             except Exception:
                 logger.warning(
                     "세션 %s: %s phase 완료 처리 실패",
-                    session_id, workflow_phase,
+                    session_id,
+                    workflow_phase,
                     exc_info=True,
                 )
 
@@ -1206,9 +1215,17 @@ class ClaudeRunner:
 
         async with self._semaphore:
             await self._run_inner(
-                session, prompt, allowed_tools, session_id,
-                ws_manager, session_manager, images, mcp_service,
-                workflow_phase, workflow_service, original_prompt,
+                session,
+                prompt,
+                allowed_tools,
+                session_id,
+                ws_manager,
+                session_manager,
+                images,
+                mcp_service,
+                workflow_phase,
+                workflow_service,
+                original_prompt,
                 workflow_step_config,
             )
 
@@ -1238,8 +1255,13 @@ class ClaudeRunner:
 
         cmd, _, _ = await asyncio.to_thread(
             self._build_command,
-            session, prompt, allowed_tools, session_id,
-            images, workflow_phase, workflow_step_config,
+            session,
+            prompt,
+            allowed_tools,
+            session_id,
+            images,
+            workflow_phase,
+            workflow_step_config,
         )
 
         work_dir = session.get("work_dir", "")
@@ -1253,12 +1275,18 @@ class ClaudeRunner:
         async with self._mcp_config_scope(session, session_id, cmd, mcp_service):
             try:
                 await self._run_process_lifecycle(
-                    cmd, session, session_id,
-                    ws_manager, session_manager, turn_state,
+                    cmd,
+                    session,
+                    session_id,
+                    ws_manager,
+                    session_manager,
+                    turn_state,
                 )
             except Exception as e:
                 error_msg = str(e) or f"{type(e).__name__}: (no message)"
-                logger.error("세션 %s 실행 오류: %s", session_id, error_msg, exc_info=True)
+                logger.error(
+                    "세션 %s 실행 오류: %s", session_id, error_msg, exc_info=True
+                )
                 await self._update_and_broadcast_status(
                     session_id, SessionStatus.ERROR, session_manager, ws_manager
                 )
@@ -1275,7 +1303,8 @@ class ClaudeRunner:
                 ):
                     logger.info(
                         "세션 %s: result 미수신 상태에서 종료 — partial text 저장 (%d자)",
-                        session_id, len(turn_state.text),
+                        session_id,
+                        len(turn_state.text),
                     )
                     try:
                         await session_manager.add_message(
@@ -1288,7 +1317,9 @@ class ClaudeRunner:
                         )
                     except Exception:
                         logger.warning(
-                            "세션 %s: partial text DB 저장 실패", session_id, exc_info=True
+                            "세션 %s: partial text DB 저장 실패",
+                            session_id,
+                            exc_info=True,
                         )
 
                 # 턴 종료 시 잔여 배치 메시지 flush
@@ -1296,7 +1327,9 @@ class ClaudeRunner:
 
                 # ERROR 상태인 경우 보존, 그 외에는 IDLE로 전환
                 current_session = await session_manager.get(session_id)
-                current_status = current_session.get("status") if current_session else None
+                current_status = (
+                    current_session.get("status") if current_session else None
+                )
                 if current_status != SessionStatus.ERROR:
                     await session_manager.update_status(session_id, SessionStatus.IDLE)
                 final_status = (
@@ -1319,10 +1352,17 @@ class ClaudeRunner:
                     and not turn_state.is_error
                 ):
                     await self._handle_workflow_completion(
-                        session_id, turn_state, prompt, allowed_tools,
-                        ws_manager, session_manager,
-                        workflow_phase, workflow_service, workflow_step_config,
-                        original_prompt, mcp_service,
+                        session_id,
+                        turn_state,
+                        prompt,
+                        allowed_tools,
+                        ws_manager,
+                        session_manager,
+                        workflow_phase,
+                        workflow_service,
+                        workflow_step_config,
+                        original_prompt,
+                        mcp_service,
                     )
 
                 # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
@@ -1357,6 +1397,4 @@ class ClaudeRunner:
                                     },
                                 )
                     except Exception as e:
-                        logger.debug(
-                            "세션 %s: 인사이트 추출 스킵: %s", session_id, e
-                        )
+                        logger.debug("세션 %s: 인사이트 추출 스킵: %s", session_id, e)

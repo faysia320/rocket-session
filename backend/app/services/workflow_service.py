@@ -558,17 +558,17 @@ class WorkflowService:
         items: list[dict] = []
 
         # 마크다운 체크박스 형식 우선: - [x] ... / - [ ] ...
-        checkbox_pattern = re.compile(
-            r"-\s*\[(x|X| )\]\s*(.+?)$", re.MULTILINE
-        )
+        checkbox_pattern = re.compile(r"-\s*\[(x|X| )\]\s*(.+?)$", re.MULTILINE)
         for match in checkbox_pattern.finditer(artifact_content):
             checked = match.group(1).strip().lower() == "x"
             item_text = match.group(2).strip()
-            items.append({
-                "item": item_text,
-                "status": "pass" if checked else "fail",
-                "detail": "",
-            })
+            items.append(
+                {
+                    "item": item_text,
+                    "status": "pass" if checked else "fail",
+                    "detail": "",
+                }
+            )
 
         # [PASS], [FAIL], [WARN] 형식 매칭 (체크박스가 없을 때만)
         if not items:
@@ -584,11 +584,13 @@ class WorkflowService:
 
         # 파싱 실패 시 전체를 단일 항목으로 처리
         if not items:
-            items.append({
-                "item": "Manual review required",
-                "status": "warn",
-                "detail": artifact_content[:200] if artifact_content else "",
-            })
+            items.append(
+                {
+                    "item": "Manual review required",
+                    "status": "warn",
+                    "detail": artifact_content[:200] if artifact_content else "",
+                }
+            )
 
         summary = {
             "pass": sum(1 for i in items if i["status"] == "pass"),

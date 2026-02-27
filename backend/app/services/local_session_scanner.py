@@ -33,7 +33,6 @@ def _validate_safe_path(base: Path, *parts: str) -> Path:
 
 
 class LocalSessionScanner(DBService):
-
     async def scan(
         self, project_dir: str | None = None, since: str | None = None
     ) -> list[LocalSessionMeta]:

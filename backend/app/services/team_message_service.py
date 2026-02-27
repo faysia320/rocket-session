@@ -23,9 +23,11 @@ class TeamMessageService(DBService):
         metadata_json: str | None = None,
     ) -> TeamMessageInfo:
         """메시지 전송 (DB 저장)."""
-        async with self._session_scope(
-            TeamMessageRepository, TeamMemberRepository
-        ) as (session, repo, member_repo):
+        async with self._session_scope(TeamMessageRepository, TeamMemberRepository) as (
+            session,
+            repo,
+            member_repo,
+        ):
             msg = TeamMessage(
                 team_id=team_id,
                 from_member_id=from_member_id,
@@ -63,9 +65,11 @@ class TeamMessageService(DBService):
         limit: int = 50,
     ) -> list[TeamMessageInfo]:
         """팀 메시지 목록."""
-        async with self._session_scope(
-            TeamMessageRepository, TeamMemberRepository
-        ) as (session, repo, member_repo):
+        async with self._session_scope(TeamMessageRepository, TeamMemberRepository) as (
+            session,
+            repo,
+            member_repo,
+        ):
             messages = await repo.list_by_team(team_id, after_id=after_id, limit=limit)
 
             # 닉네임 맵 구성

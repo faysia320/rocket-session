@@ -1,7 +1,5 @@
 """컨텍스트 자동 빌딩 Pydantic 스키마."""
 
-from datetime import datetime
-
 from pydantic import BaseModel
 
 from app.schemas.workspace_insight import WorkspaceInsightInfo

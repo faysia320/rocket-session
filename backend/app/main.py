@@ -111,7 +111,9 @@ async def _run_background_tasks(shutdown_event: asyncio.Event) -> None:
     except* Exception as eg:
         for exc in eg.exceptions:
             logging.getLogger(__name__).error(
-                "배경 태스크 비정상 종료: %s", exc, exc_info=exc,
+                "배경 태스크 비정상 종료: %s",
+                exc,
+                exc_info=exc,
             )
     finally:
         await ws_mgr.stop_background_tasks()

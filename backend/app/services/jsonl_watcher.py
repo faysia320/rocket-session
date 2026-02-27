@@ -355,7 +355,9 @@ class JsonlWatcher:
 
                 # 파일 변경 추적
                 if tool_name in ("Write", "Edit", "MultiEdit"):
-                    raw_path = tool_input.get("file_path") or tool_input.get("path") or ""
+                    raw_path = (
+                        tool_input.get("file_path") or tool_input.get("path") or ""
+                    )
                     work_dir = turn_state.work_dir or ""
                     file_path = (
                         normalize_file_path(raw_path, work_dir)

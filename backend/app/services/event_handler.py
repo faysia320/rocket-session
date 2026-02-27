@@ -62,7 +62,9 @@ def extract_tool_use_info(block: dict) -> tuple[str, dict, str]:
     여러 대체 필드명을 시도하여 CLI 포맷 변경에 방어적으로 대응.
     """
     tool_name = block.get("name") or block.get("tool") or block.get("tool_name") or ""
-    tool_input = block.get("input") or block.get("arguments") or block.get("parameters") or {}
+    tool_input = (
+        block.get("input") or block.get("arguments") or block.get("parameters") or {}
+    )
     tool_use_id = block.get("id", "")
     return tool_name, tool_input, tool_use_id
 

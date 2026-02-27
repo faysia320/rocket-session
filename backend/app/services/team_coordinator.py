@@ -432,9 +432,7 @@ class TeamCoordinator:
             for nickname, desc in DELEGATE_PATTERN.findall(text)
         ]
 
-    async def try_handle_delegate_commands(
-        self, session_id: str, text: str
-    ) -> None:
+    async def try_handle_delegate_commands(self, session_id: str, text: str) -> None:
         """리드 세션의 @delegate 패턴을 감지하고 자동 위임을 실행.
 
         session_id로 태스크를 역조회하여 리드 세션인지 확인한 후,
@@ -452,6 +450,4 @@ class TeamCoordinator:
                 team = await team_repo.get_by_id(task.team_id)
                 if team and team.lead_member_id == task.assigned_member_id:
                     for nickname, desc in commands:
-                        asyncio.create_task(
-                            self.auto_delegate(team.id, nickname, desc)
-                        )
+                        asyncio.create_task(self.auto_delegate(team.id, nickname, desc))

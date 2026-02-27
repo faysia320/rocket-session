@@ -131,7 +131,9 @@ class TeamTaskService(DBService):
         self, team_id: str, status: str | None = None
     ) -> list[TeamTaskInfo]:
         async with self._session_scope(TeamTaskRepository, TeamMemberRepository) as (
-            session, repo, member_repo
+            session,
+            repo,
+            member_repo,
         ):
             tasks = await repo.list_by_team(team_id, status=status)
             members = await member_repo.get_members(team_id)

@@ -54,7 +54,9 @@ class SessionManager(DBService):
         """메시지 배치 라이터 백그라운드 태스크 시작."""
         self._message_queue = asyncio.Queue(maxsize=maxsize)
         self._message_flush_interval = flush_interval
-        self._message_flush_task = asyncio.create_task(self._message_batch_writer_loop())
+        self._message_flush_task = asyncio.create_task(
+            self._message_batch_writer_loop()
+        )
 
     async def stop_message_batch_writer(self) -> None:
         """메시지 배치 라이터 종료 + 잔여 메시지 flush."""
@@ -98,14 +100,17 @@ class SessionManager(DBService):
             if self._message_retry_count <= self._message_max_retries:
                 logger.warning(
                     "메시지 배치 저장 실패 (%d건, 재시도 %d/%d)",
-                    len(batch), self._message_retry_count, self._message_max_retries,
+                    len(batch),
+                    self._message_retry_count,
+                    self._message_max_retries,
                     exc_info=True,
                 )
                 self._message_retry_batch = batch
             else:
                 logger.error(
                     "메시지 배치 저장 최종 실패 — %d건 드롭 (재시도 %d회 초과)",
-                    len(batch), self._message_max_retries,
+                    len(batch),
+                    self._message_max_retries,
                 )
                 self._message_retry_count = 0
 
@@ -218,9 +223,7 @@ class SessionManager(DBService):
                     await asyncio.to_thread(shutil.rmtree, upload_path)
                     logger.info("업로드 디렉토리 삭제: %s", upload_path)
                 except OSError as e:
-                    logger.warning(
-                        "업로드 디렉토리 삭제 실패: %s - %s", upload_path, e
-                    )
+                    logger.warning("업로드 디렉토리 삭제 실패: %s - %s", upload_path, e)
         logger.info("세션 삭제: %s", session_id)
         return True
 
@@ -450,9 +453,7 @@ class SessionManager(DBService):
     def to_info(session: dict) -> SessionInfo:
         return SessionInfo.model_validate(session)
 
-    async def fork(
-        self, source_session_id: str, message_id: int | None = None
-    ) -> dict:
+    async def fork(self, source_session_id: str, message_id: int | None = None) -> dict:
         """세션 포크: 설정 복사 + 메시지 복사 + 메타데이터 설정 (단일 트랜잭션)."""
         source = await self.get(source_session_id)
 
@@ -461,7 +462,9 @@ class SessionManager(DBService):
         source_name = source.get("name") or source["id"]
 
         async with self._session_scope(SessionRepository, MessageRepository) as (
-            session, sess_repo, msg_repo
+            session,
+            sess_repo,
+            msg_repo,
         ):
             # 1. 새 세션 생성 (설정 복사, claude_session_id 제외)
             entity = Session(

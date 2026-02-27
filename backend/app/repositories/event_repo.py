@@ -89,13 +89,15 @@ class EventRepository(BaseRepository[Event]):
             return
         records = []
         for evt in events:
-            records.append((
-                evt["session_id"],
-                evt["seq"],
-                evt["event_type"],
-                json.dumps(evt["payload"], ensure_ascii=False),
-                evt["timestamp"],
-            ))
+            records.append(
+                (
+                    evt["session_id"],
+                    evt["seq"],
+                    evt["event_type"],
+                    json.dumps(evt["payload"], ensure_ascii=False),
+                    evt["timestamp"],
+                )
+            )
         try:
             await raw_conn.copy_records_to_table(
                 "events",

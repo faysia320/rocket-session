@@ -81,15 +81,33 @@ async def test_client():
             is_default=True,
             sort_order=0,
             steps=[
-                {"name": "research", "label": "Research", "icon": "Search",
-                 "prompt_template": "", "constraints": "readonly",
-                 "review_required": False, "order_index": 0},
-                {"name": "plan", "label": "Plan", "icon": "FileText",
-                 "prompt_template": "", "constraints": "readonly",
-                 "review_required": True, "order_index": 1},
-                {"name": "implement", "label": "Implement", "icon": "Code",
-                 "prompt_template": "", "constraints": "full",
-                 "review_required": False, "order_index": 2},
+                {
+                    "name": "research",
+                    "label": "Research",
+                    "icon": "Search",
+                    "prompt_template": "",
+                    "constraints": "readonly",
+                    "review_required": False,
+                    "order_index": 0,
+                },
+                {
+                    "name": "plan",
+                    "label": "Plan",
+                    "icon": "FileText",
+                    "prompt_template": "",
+                    "constraints": "readonly",
+                    "review_required": True,
+                    "order_index": 1,
+                },
+                {
+                    "name": "implement",
+                    "label": "Implement",
+                    "icon": "Code",
+                    "prompt_template": "",
+                    "constraints": "full",
+                    "review_required": False,
+                    "order_index": 2,
+                },
             ],
             created_at=now,
             updated_at=now,
@@ -406,9 +424,7 @@ class TestSessionWorkflow:
         assert data["permission_mode"] is True
         assert data["permission_required_tools"] == ["Write", "Edit", "Bash"]
 
-    async def test_update_session_permission(
-        self, test_client: AsyncClient
-    ):
+    async def test_update_session_permission(self, test_client: AsyncClient):
         """Should update session permission settings."""
         created = await create_test_session(test_client)
         session_id = created["id"]

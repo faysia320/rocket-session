@@ -87,8 +87,13 @@ class TestWorkflowGate1:
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
-            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
-            patch("app.api.v1.endpoints.ws.get_workflow_service", return_value=mock_workflow_svc),
+            patch(
+                "app.api.v1.endpoints.ws.get_workflow_definition_service"
+            ) as mock_def_svc,
+            patch(
+                "app.api.v1.endpoints.ws.get_workflow_service",
+                return_value=mock_workflow_svc,
+            ),
             patch("asyncio.create_task") as mock_create_task,
         ):
             mock_svc = AsyncMock()
@@ -134,8 +139,13 @@ class TestWorkflowGate1:
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
-            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
-            patch("app.api.v1.endpoints.ws.get_workflow_service", return_value=mock_workflow_svc),
+            patch(
+                "app.api.v1.endpoints.ws.get_workflow_definition_service"
+            ) as mock_def_svc,
+            patch(
+                "app.api.v1.endpoints.ws.get_workflow_service",
+                return_value=mock_workflow_svc,
+            ),
             patch("asyncio.create_task") as mock_create_task,
         ):
             mock_svc = AsyncMock()
@@ -181,7 +191,9 @@ class TestWorkflowGate2:
 
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
-            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
+            patch(
+                "app.api.v1.endpoints.ws.get_workflow_definition_service"
+            ) as mock_def_svc,
         ):
             mock_svc = AsyncMock()
             mock_svc.get = AsyncMock(return_value={})
@@ -216,8 +228,12 @@ class TestWorkflowGate2:
             manager = _make_mock_manager(session_data)
 
             with (
-                patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
-                patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
+                patch(
+                    "app.api.v1.endpoints.ws.get_settings_service"
+                ) as mock_settings_svc,
+                patch(
+                    "app.api.v1.endpoints.ws.get_workflow_definition_service"
+                ) as mock_def_svc,
             ):
                 mock_svc = AsyncMock()
                 mock_svc.get = AsyncMock(return_value={})
@@ -274,8 +290,13 @@ class TestWorkflowAllowed:
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
-            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
-            patch("app.api.v1.endpoints.ws.get_workflow_service", return_value=mock_workflow_svc),
+            patch(
+                "app.api.v1.endpoints.ws.get_workflow_definition_service"
+            ) as mock_def_svc,
+            patch(
+                "app.api.v1.endpoints.ws.get_workflow_service",
+                return_value=mock_workflow_svc,
+            ),
             patch("asyncio.create_task") as mock_create_task,
         ):
             mock_svc = AsyncMock()
@@ -332,7 +353,9 @@ class TestWorkflowAllowed:
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
-            patch("app.api.v1.endpoints.ws.get_workflow_definition_service") as mock_def_svc,
+            patch(
+                "app.api.v1.endpoints.ws.get_workflow_definition_service"
+            ) as mock_def_svc,
             patch(
                 "app.api.v1.endpoints.ws.get_workflow_service",
                 return_value=mock_workflow_svc,

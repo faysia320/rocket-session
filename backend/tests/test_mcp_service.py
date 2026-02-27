@@ -337,9 +337,7 @@ class TestBuildMcpConfig:
         server = await mcp_service.create_server(
             name="perm-test", transport_type="stdio", command="echo"
         )
-        permission_mcp = {
-            "permission": {"command": "perm-tool", "args": ["--check"]}
-        }
+        permission_mcp = {"permission": {"command": "perm-tool", "args": ["--check"]}}
 
         config = await mcp_service.build_mcp_config(
             [server.id], permission_mcp_dict=permission_mcp
@@ -351,9 +349,7 @@ class TestBuildMcpConfig:
 
     async def test_build_config_permission_mcp_only(self, mcp_service):
         """server_ids가 비어있어도 permission_mcp_dict는 포함된다."""
-        permission_mcp = {
-            "permission": {"command": "perm-tool"}
-        }
+        permission_mcp = {"permission": {"command": "perm-tool"}}
 
         config = await mcp_service.build_mcp_config(
             [], permission_mcp_dict=permission_mcp

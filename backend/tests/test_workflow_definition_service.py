@@ -77,15 +77,9 @@ class TestCreateDefinition:
     async def test_create_steps_order(self, workflow_definition_service):
         """스텝이 order_index 순으로 정렬되어 반환된다."""
         steps = [
-            WorkflowStepConfig(
-                name="implement", label="Implement", order_index=2
-            ),
-            WorkflowStepConfig(
-                name="research", label="Research", order_index=0
-            ),
-            WorkflowStepConfig(
-                name="plan", label="Plan", order_index=1
-            ),
+            WorkflowStepConfig(name="implement", label="Implement", order_index=2),
+            WorkflowStepConfig(name="research", label="Research", order_index=0),
+            WorkflowStepConfig(name="plan", label="Plan", order_index=1),
         ]
         result = await workflow_definition_service.create_definition(
             name="Ordered Workflow", steps=steps
@@ -286,12 +280,12 @@ class TestDeleteDefinition:
             await repo.add(entity)
             await session.commit()
 
-        with pytest.raises(ValidationError, match="시스템 워크플로우는 삭제할 수 없습니다"):
+        with pytest.raises(
+            ValidationError, match="시스템 워크플로우는 삭제할 수 없습니다"
+        ):
             await workflow_definition_service.delete_definition("builtin-test-001")
 
-    async def test_delete_default_reassigns_default(
-        self, workflow_definition_service
-    ):
+    async def test_delete_default_reassigns_default(self, workflow_definition_service):
         """기본(default) 정의를 삭제하면 남은 정의 중 하나가 새 default가 된다."""
         steps = _make_steps(1)
         wf_a = await workflow_definition_service.create_definition(
@@ -363,9 +357,7 @@ class TestSetDefault:
         assert b_info is not None
         assert b_info.is_default is True
 
-    async def test_set_default_nonexistent_raises(
-        self, workflow_definition_service
-    ):
+    async def test_set_default_nonexistent_raises(self, workflow_definition_service):
         """존재하지 않는 정의를 기본으로 설정하면 NotFoundError가 발생한다."""
         with pytest.raises(NotFoundError, match="워크플로우 정의를 찾을 수 없습니다"):
             await workflow_definition_service.set_default("nonexistent-id")
@@ -477,7 +469,15 @@ class TestExportDefinition:
 
         assert result is not None
         definition = result["definition"]
-        for key in ("id", "name", "is_builtin", "is_default", "steps", "created_at", "updated_at"):
+        for key in (
+            "id",
+            "name",
+            "is_builtin",
+            "is_default",
+            "steps",
+            "created_at",
+            "updated_at",
+        ):
             assert key in definition
 
 
@@ -608,7 +608,9 @@ class TestUpdateBuiltinProtection:
             await repo.add(entity)
             await session.commit()
 
-        with pytest.raises(ValidationError, match="시스템 워크플로우의 이름은 변경할 수 없습니다"):
+        with pytest.raises(
+            ValidationError, match="시스템 워크플로우의 이름은 변경할 수 없습니다"
+        ):
             await workflow_definition_service.update_definition(
                 "builtin-upd-001", name="New Name"
             )

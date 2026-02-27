@@ -253,13 +253,13 @@ class GitService:
                 continue
 
             if line.startswith("worktree "):
-                current["worktree"] = line[len("worktree "):]
+                current["worktree"] = line[len("worktree ") :]
             elif line.startswith("HEAD "):
                 current["HEAD"] = line[5:]
             elif line.startswith("branch "):
                 branch_ref = line[7:]
                 if branch_ref.startswith("refs/heads/"):
-                    current["branch"] = branch_ref[len("refs/heads/"):]
+                    current["branch"] = branch_ref[len("refs/heads/") :]
                 else:
                     current["branch"] = branch_ref
 

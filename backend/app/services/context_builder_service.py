@@ -2,7 +2,6 @@
 
 import logging
 import re
-from datetime import datetime
 
 from sqlalchemy import func, select
 
@@ -18,11 +17,57 @@ logger = logging.getLogger(__name__)
 # 불용어 (한국어 + 영어)
 STOP_WORDS = frozenset(
     {
-        "the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to",
-        "for", "of", "and", "or", "not", "this", "that", "it", "be", "have",
-        "do", "will", "can", "with", "from", "by", "as", "but", "if",
-        "는", "은", "이", "가", "를", "을", "의", "에", "에서", "로", "으로",
-        "와", "과", "도", "만", "부터", "까지", "한", "하는", "된", "있는",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "and",
+        "or",
+        "not",
+        "this",
+        "that",
+        "it",
+        "be",
+        "have",
+        "do",
+        "will",
+        "can",
+        "with",
+        "from",
+        "by",
+        "as",
+        "but",
+        "if",
+        "는",
+        "은",
+        "이",
+        "가",
+        "를",
+        "을",
+        "의",
+        "에",
+        "에서",
+        "로",
+        "으로",
+        "와",
+        "과",
+        "도",
+        "만",
+        "부터",
+        "까지",
+        "한",
+        "하는",
+        "된",
+        "있는",
     }
 )
 
@@ -59,7 +104,7 @@ class ContextBuilderService(DBService):
                 )
                 msg_result = await db_session.execute(msg_stmt)
                 first_msg = msg_result.scalar()
-                prompt_preview = (first_msg[:200] if first_msg else "")
+                prompt_preview = first_msg[:200] if first_msg else ""
 
                 # 파일 변경 수
                 file_count_stmt = (
@@ -70,14 +115,18 @@ class ContextBuilderService(DBService):
                 file_count_result = await db_session.execute(file_count_stmt)
                 file_count = file_count_result.scalar() or 0
 
-                summaries.append({
-                    "id": sess.id,
-                    "name": sess.name,
-                    "status": sess.status,
-                    "created_at": sess.created_at.isoformat() if sess.created_at else None,
-                    "prompt_preview": prompt_preview,
-                    "file_count": file_count,
-                })
+                summaries.append(
+                    {
+                        "id": sess.id,
+                        "name": sess.name,
+                        "status": sess.status,
+                        "created_at": sess.created_at.isoformat()
+                        if sess.created_at
+                        else None,
+                        "prompt_preview": prompt_preview,
+                        "file_count": file_count,
+                    }
+                )
             return summaries
 
     async def suggest_files(
@@ -86,8 +135,8 @@ class ContextBuilderService(DBService):
         """프롬프트 키워드 + file_changes 빈도 기반 파일 제안."""
         async with self._db.session() as db_session:
             # 해당 워크스페이스의 세션 ID 목록
-            session_ids_stmt = (
-                select(Session.id).where(Session.workspace_id == workspace_id)
+            session_ids_stmt = select(Session.id).where(
+                Session.workspace_id == workspace_id
             )
             session_ids_result = await db_session.execute(session_ids_stmt)
             session_ids = [r[0] for r in session_ids_result.all()]
@@ -130,23 +179,23 @@ class ContextBuilderService(DBService):
                     matched = [kw for kw in keywords if kw in path_lower]
                     if matched:
                         keyword_score = len(matched) / len(keywords)
-                        reason_parts.append(
-                            f"키워드 매칭: {', '.join(matched)}"
-                        )
+                        reason_parts.append(f"키워드 매칭: {', '.join(matched)}")
 
                 if f["count"] >= 3:
-                    reason_parts.append(
-                        f"최근 {f['count']}회 변경됨"
-                    )
+                    reason_parts.append(f"최근 {f['count']}회 변경됨")
                 elif f["count"] >= 1:
                     reason_parts.append(f"{f['count']}회 변경됨")
 
                 score = freq_score * 0.6 + keyword_score * 0.4
-                suggestions.append({
-                    "file_path": f["file_path"],
-                    "reason": " / ".join(reason_parts) if reason_parts else "자주 수정되는 파일",
-                    "score": round(score, 3),
-                })
+                suggestions.append(
+                    {
+                        "file_path": f["file_path"],
+                        "reason": " / ".join(reason_parts)
+                        if reason_parts
+                        else "자주 수정되는 파일",
+                        "score": round(score, 3),
+                    }
+                )
 
             # 점수순 정렬 후 제한
             suggestions.sort(key=lambda x: x["score"], reverse=True)

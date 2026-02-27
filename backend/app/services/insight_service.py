@@ -19,16 +19,45 @@ logger = logging.getLogger(__name__)
 
 # 카테고리별 키워드 패턴 (한국어 + 영어)
 _PATTERN_KEYWORDS = [
-    "패턴", "컨벤션", "규칙", "convention", "pattern", "rule", "best practice",
-    "코딩 스타일", "네이밍", "naming",
+    "패턴",
+    "컨벤션",
+    "규칙",
+    "convention",
+    "pattern",
+    "rule",
+    "best practice",
+    "코딩 스타일",
+    "네이밍",
+    "naming",
 ]
 _GOTCHA_KEYWORDS = [
-    "주의", "엣지", "edge case", "gotcha", "함정", "pitfall", "caveat",
-    "조심", "caution", "warning", "주의사항", "제약", "limitation",
+    "주의",
+    "엣지",
+    "edge case",
+    "gotcha",
+    "함정",
+    "pitfall",
+    "caveat",
+    "조심",
+    "caution",
+    "warning",
+    "주의사항",
+    "제약",
+    "limitation",
 ]
 _DECISION_KEYWORDS = [
-    "결정", "선택", "접근법", "이유", "decision", "chose", "approach",
-    "왜", "why", "trade-off", "트레이드오프", "architecture",
+    "결정",
+    "선택",
+    "접근법",
+    "이유",
+    "decision",
+    "chose",
+    "approach",
+    "왜",
+    "why",
+    "trade-off",
+    "트레이드오프",
+    "architecture",
 ]
 
 
@@ -80,9 +109,7 @@ class InsightService(DBService):
             file_changes = list(fc_result.scalars().all())
 
             # 기존 인사이트 타이틀 (중복 방지용)
-            existing = await insight_repo.list_by_workspace(
-                workspace_id, limit=200
-            )
+            existing = await insight_repo.list_by_workspace(workspace_id, limit=200)
             existing_titles = {i.title.lower().strip() for i in existing}
 
             new_insights: list[WorkspaceInsight] = []
@@ -122,7 +149,9 @@ class InsightService(DBService):
                                 session_id=session_id,
                                 category="file_map",
                                 title=title,
-                                content="\n".join(f"- `{fp}`" for fp in file_paths[:20]),
+                                content="\n".join(
+                                    f"- `{fp}`" for fp in file_paths[:20]
+                                ),
                                 file_paths=file_paths[:20],
                                 relevance_score=0.6,
                                 is_auto_generated=True,
@@ -226,9 +255,7 @@ class InsightService(DBService):
 
             insights = [WorkspaceInsightInfo.model_validate(i) for i in items]
             context_text = _format_context_markdown(insights)
-            return InsightContextResponse(
-                insights=insights, context_text=context_text
-            )
+            return InsightContextResponse(insights=insights, context_text=context_text)
 
 
 # ── 내부 헬퍼 ────────────────────────────────────────────────
@@ -293,14 +320,79 @@ def _classify_category(text: str) -> str | None:
 def _extract_keywords(prompt: str) -> list[str]:
     """프롬프트에서 검색 키워드 추출 (간단한 토큰화 + stop word 제거)."""
     stop_words = {
-        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did", "will", "would", "could",
-        "should", "may", "might", "shall", "can", "to", "of", "in", "for",
-        "on", "with", "at", "by", "from", "as", "into", "through", "during",
-        "before", "after", "above", "below", "between", "and", "but", "or",
-        "not", "no", "this", "that", "these", "those", "it", "its",
-        "이", "그", "저", "의", "을", "를", "에", "에서", "로", "으로",
-        "와", "과", "도", "는", "은", "가", "이", "하다", "있다", "되다",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "shall",
+        "can",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "and",
+        "but",
+        "or",
+        "not",
+        "no",
+        "this",
+        "that",
+        "these",
+        "those",
+        "it",
+        "its",
+        "이",
+        "그",
+        "저",
+        "의",
+        "을",
+        "를",
+        "에",
+        "에서",
+        "로",
+        "으로",
+        "와",
+        "과",
+        "도",
+        "는",
+        "은",
+        "가",
+        "이",
+        "하다",
+        "있다",
+        "되다",
     }
     words = re.findall(r"[a-zA-Z가-힣_]{2,}", prompt)
     return [w for w in words if w.lower() not in stop_words][:10]

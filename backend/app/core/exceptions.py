@@ -7,7 +7,9 @@
 class AppError(Exception):
     """도메인 예외 베이스. HTTP 상태 코드를 포함."""
 
-    def __init__(self, message: str = "서버 내부 오류가 발생했습니다", status_code: int = 500):
+    def __init__(
+        self, message: str = "서버 내부 오류가 발생했습니다", status_code: int = 500
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.message = message

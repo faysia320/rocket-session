@@ -36,7 +36,9 @@ async def health_detailed():
             "checked_in": pool.checkedin(),
             "checked_out": pool.checkedout(),
             "overflow": pool.overflow(),
-            "invalid": pool._invalidate_time if hasattr(pool, "_invalidate_time") else 0,
+            "invalid": pool._invalidate_time
+            if hasattr(pool, "_invalidate_time")
+            else 0,
         }
     except Exception as e:
         result["db_pool"] = {"error": str(e)}

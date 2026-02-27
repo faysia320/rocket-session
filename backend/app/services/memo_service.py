@@ -64,8 +64,7 @@ class MemoService(DBService):
     async def reorder_blocks(self, block_ids: list[str]) -> list[MemoBlockInfo]:
         async with self._session_scope(MemoBlockRepository) as (session, repo):
             updates = [
-                (bid, (i + 1) * SORT_ORDER_GAP)
-                for i, bid in enumerate(block_ids)
+                (bid, (i + 1) * SORT_ORDER_GAP) for i, bid in enumerate(block_ids)
             ]
             await repo.bulk_update_sort_orders(updates)
             await session.commit()
@@ -106,7 +105,5 @@ class MemoService(DBService):
     async def _normalize_sort_orders(self, repo: MemoBlockRepository) -> None:
         """모든 블록의 sort_order를 SORT_ORDER_GAP 간격으로 재정렬."""
         blocks = await repo.get_all_ordered()
-        updates = [
-            (b.id, (i + 1) * SORT_ORDER_GAP) for i, b in enumerate(blocks)
-        ]
+        updates = [(b.id, (i + 1) * SORT_ORDER_GAP) for i, b in enumerate(blocks)]
         await repo.bulk_update_sort_orders(updates)

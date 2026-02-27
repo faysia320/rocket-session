@@ -48,8 +48,6 @@ class WorkspaceInsight(Base):
     __table_args__ = (
         Index("idx_workspace_insights_workspace_id", "workspace_id"),
         Index("idx_workspace_insights_category", "category"),
-        Index(
-            "idx_workspace_insights_workspace_category", "workspace_id", "category"
-        ),
+        Index("idx_workspace_insights_workspace_category", "workspace_id", "category"),
         Index("idx_workspace_insights_session_id", "session_id"),
     )

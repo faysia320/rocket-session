@@ -22,17 +22,11 @@ def upgrade() -> None:
         sa.Column("id", sa.String(), nullable=False),
         sa.Column("content", sa.Text(), nullable=False, server_default=""),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False
-        ),
-        sa.Column(
-            "updated_at", sa.DateTime(timezone=True), nullable=False
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_memo_blocks_sort_order", "memo_blocks", ["sort_order"]
-    )
+    op.create_index("ix_memo_blocks_sort_order", "memo_blocks", ["sort_order"])
 
 
 def downgrade() -> None:

@@ -33,10 +33,16 @@ def upgrade() -> None:
         sa.Column("is_auto_generated", sa.Boolean(), server_default="true"),
         sa.Column("is_archived", sa.Boolean(), server_default="false"),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
         ),
     )
 

@@ -143,13 +143,18 @@ class WebSocketManager(DBService):
             if self._retry_count <= self._max_retries:
                 logger.warning(
                     "이벤트 배치 DB 저장 실패 (%d건, 재시도 %d/%d): %s",
-                    len(batch), self._retry_count, self._max_retries, e,
+                    len(batch),
+                    self._retry_count,
+                    self._max_retries,
+                    e,
                 )
                 self._retry_batch = batch
             else:
                 logger.error(
                     "이벤트 배치 DB 저장 최종 실패 — %d건 드롭 (재시도 %d회 초과): %s",
-                    len(batch), self._max_retries, e,
+                    len(batch),
+                    self._max_retries,
+                    e,
                 )
                 self._retry_count = 0
 
@@ -240,7 +245,8 @@ class WebSocketManager(DBService):
                 # 긴급 flush 후 재시도
                 logger.warning(
                     "이벤트 큐 가득 참 — 긴급 flush 시도 (세션 %s, seq %d)",
-                    session_id, seq,
+                    session_id,
+                    seq,
                 )
                 await self._flush_events()
                 try:
@@ -256,7 +262,8 @@ class WebSocketManager(DBService):
                 except asyncio.QueueFull:
                     logger.error(
                         "이벤트 큐 긴급 flush 후에도 가득 참 — 이벤트 드롭 (세션 %s, seq %d)",
-                        session_id, seq,
+                        session_id,
+                        seq,
                     )
 
         # fire-and-forget: 느린 WS 클라이언트가 stdout 파이프라인을 블로킹하지 않도록

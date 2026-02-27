@@ -10,7 +10,6 @@ GitService의 실제 git 명령은 mock 처리하고, DB 연동은 실제 Postgr
 import os
 import tempfile
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -249,9 +248,7 @@ class TestCleanupStale:
 
     async def test_cleanup_mixed_statuses(self, workspace_service, db):
         """여러 상태가 혼합된 경우 각각 올바르게 처리된다."""
-        await _insert_workspace(
-            db, wid="ws-mix-001", name="mix-ready", status="ready"
-        )
+        await _insert_workspace(db, wid="ws-mix-001", name="mix-ready", status="ready")
         await _insert_workspace(
             db, wid="ws-mix-002", name="mix-cloning", status="cloning"
         )

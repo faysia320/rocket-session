@@ -198,9 +198,7 @@ class TestRemoveTagFromSession:
         tag = await tag_service.create_tag("remove-tag")
         await tag_service.add_tags_to_session(test_session["id"], [tag.id])
 
-        removed = await tag_service.remove_tag_from_session(
-            test_session["id"], tag.id
-        )
+        removed = await tag_service.remove_tag_from_session(test_session["id"], tag.id)
         assert removed is True
 
         # 제거 후 세션 태그가 비어 있는지 확인
@@ -208,9 +206,7 @@ class TestRemoveTagFromSession:
         tag_ids = {t.id for t in tags}
         assert tag.id not in tag_ids
 
-    async def test_remove_nonexistent_tag_from_session(
-        self, tag_service, test_session
-    ):
+    async def test_remove_nonexistent_tag_from_session(self, tag_service, test_session):
         """연결되지 않은 태그를 제거하면 False를 반환한다."""
         removed = await tag_service.remove_tag_from_session(
             test_session["id"], "nonexistent-tag-id"
@@ -231,9 +227,7 @@ class TestGetSessionTags:
         """태그가 있는 세션은 연결된 태그 목록을 반환한다."""
         tag_a = await tag_service.create_tag("sess-tag-a")
         tag_b = await tag_service.create_tag("sess-tag-b")
-        await tag_service.add_tags_to_session(
-            test_session["id"], [tag_a.id, tag_b.id]
-        )
+        await tag_service.add_tags_to_session(test_session["id"], [tag_a.id, tag_b.id])
 
         tags = await tag_service.get_session_tags(test_session["id"])
 
@@ -248,9 +242,7 @@ class TestGetSessionTags:
 class TestGetTagsForSessions:
     """get_tags_for_sessions: 여러 세션의 태그를 일괄 조회."""
 
-    async def test_get_tags_for_multiple_sessions(
-        self, tag_service, session_manager
-    ):
+    async def test_get_tags_for_multiple_sessions(self, tag_service, session_manager):
         """여러 세션에 대해 각 세션별 태그 목록을 dict로 반환한다."""
         s1 = await session_manager.create(work_dir=tempfile.gettempdir())
         s2 = await session_manager.create(work_dir=tempfile.gettempdir())

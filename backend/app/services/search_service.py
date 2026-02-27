@@ -28,7 +28,9 @@ class SearchService(DBService):
         include_tags: bool = False,
     ) -> dict:
         async with self._session_scope(SearchRepository, TagRepository) as (
-            session, search_repo, tag_repo,
+            session,
+            search_repo,
+            tag_repo,
         ):
             items_raw, total = await search_repo.search_sessions(
                 q=q,

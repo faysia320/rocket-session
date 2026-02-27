@@ -40,9 +40,7 @@ class MemoBlockRepository(BaseRepository[MemoBlock]):
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def bulk_update_sort_orders(
-        self, updates: list[tuple[str, int]]
-    ) -> None:
+    async def bulk_update_sort_orders(self, updates: list[tuple[str, int]]) -> None:
         """배치로 sort_order 업데이트. updates: [(id, new_sort_order), ...]"""
         for block_id, new_order in updates:
             block = await self.get_by_id(block_id)

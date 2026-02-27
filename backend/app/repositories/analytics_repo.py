@@ -56,9 +56,7 @@ class AnalyticsRepository:
             logger.info("Materialized View '%s' 확인/생성 완료", _MV_NAME)
         except Exception:
             await session.rollback()
-            logger.warning(
-                "Materialized View '%s' 생성 실패", _MV_NAME, exc_info=True
-            )
+            logger.warning("Materialized View '%s' 생성 실패", _MV_NAME, exc_info=True)
 
     @staticmethod
     async def refresh_materialized_view(session: AsyncSession) -> None:

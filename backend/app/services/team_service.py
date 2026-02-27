@@ -103,7 +103,9 @@ class TeamService(DBService):
 
     async def get_team(self, team_id: str) -> TeamInfo:
         async with self._session_scope(TeamRepository, TeamMemberRepository) as (
-            session, repo, member_repo
+            session,
+            repo,
+            member_repo,
         ):
             team = await repo.get_by_id(team_id)
             if not team:
@@ -156,7 +158,9 @@ class TeamService(DBService):
     ) -> TeamMemberInfo:
         now = utc_now()
         async with self._session_scope(TeamRepository, TeamMemberRepository) as (
-            session, team_repo, member_repo
+            session,
+            team_repo,
+            member_repo,
         ):
             team = await team_repo.get_by_id(team_id)
             if not team:
@@ -202,7 +206,9 @@ class TeamService(DBService):
 
     async def remove_member(self, team_id: str, member_id: int) -> bool:
         async with self._session_scope(TeamMemberRepository, TeamRepository) as (
-            session, member_repo, team_repo
+            session,
+            member_repo,
+            team_repo,
         ):
             # 리드가 제거되면 lead_member_id 초기화
             team = await team_repo.get_by_id(team_id)
@@ -223,7 +229,9 @@ class TeamService(DBService):
     async def set_lead(self, team_id: str, member_id: int) -> TeamInfo:
         now = utc_now()
         async with self._session_scope(TeamRepository, TeamMemberRepository) as (
-            session, team_repo, member_repo
+            session,
+            team_repo,
+            member_repo,
         ):
             member = await member_repo.get_member_by_id(member_id)
             if not member or member.team_id != team_id:

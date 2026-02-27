@@ -48,9 +48,7 @@ class TestCreateTeam:
     async def test_create_team_with_config(self, team_service):
         """config dict를 포함하여 팀을 생성한다."""
         config = {"max_parallel": 3, "timeout": 120}
-        team = await team_service.create_team(
-            "Config Team", config=config
-        )
+        team = await team_service.create_team("Config Team", config=config)
 
         assert team.name == "Config Team"
         assert team.config == config

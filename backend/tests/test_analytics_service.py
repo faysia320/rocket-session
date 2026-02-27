@@ -6,7 +6,6 @@ AnalyticsService의 get_analytics 메서드를 PostgreSQL DB를 사용하여 검
 - 기간별(period) 필터링 검증
 """
 
-import tempfile
 from datetime import datetime, timedelta, timezone
 
 import pytest

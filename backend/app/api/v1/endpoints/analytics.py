@@ -23,4 +23,6 @@ async def get_analytics(
         return await analytics.get_analytics(period)
     except Exception as e:
         logger.exception("분석 데이터 조회 실패 (period=%s)", period.value)
-        raise HTTPException(status_code=500, detail=f"분석 데이터 조회 실패: {e}") from e
+        raise HTTPException(
+            status_code=500, detail=f"분석 데이터 조회 실패: {e}"
+        ) from e
