@@ -118,3 +118,19 @@ export interface WorkflowDefinitionExport {
   version: number;
   definition: WorkflowDefinitionInfo;
 }
+
+// ── QA Checklist Types ──────────────────────────────────
+
+export type QAStatus = "pass" | "fail" | "warn";
+
+export interface QAChecklistItem {
+  item: string;
+  status: QAStatus;
+  detail: string;
+}
+
+export interface QAChecklistResult {
+  all_passed: boolean;
+  items: QAChecklistItem[];
+  summary: { pass: number; fail: number; warn: number };
+}

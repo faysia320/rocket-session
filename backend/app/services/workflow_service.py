@@ -556,30 +556,31 @@ class WorkflowService:
         import re
 
         items: list[dict] = []
-        # [PASS], [FAIL], [WARN] 형식 매칭
-        pattern = re.compile(
-            r"\[?(PASS|FAIL|WARN)\]?\s*[:\-–]?\s*(.+?)(?:\s*[:\-–]\s*(.+))?$",
-            re.IGNORECASE | re.MULTILINE,
-        )
-        for match in pattern.finditer(artifact_content):
-            status = match.group(1).lower()
-            item_text = match.group(2).strip()
-            detail = (match.group(3) or "").strip()
-            items.append({"item": item_text, "status": status, "detail": detail})
 
-        # 마크다운 체크박스 형식도 지원: - [x] ... / - [ ] ...
+        # 마크다운 체크박스 형식 우선: - [x] ... / - [ ] ...
         checkbox_pattern = re.compile(
             r"-\s*\[(x|X| )\]\s*(.+?)$", re.MULTILINE
         )
+        for match in checkbox_pattern.finditer(artifact_content):
+            checked = match.group(1).strip().lower() == "x"
+            item_text = match.group(2).strip()
+            items.append({
+                "item": item_text,
+                "status": "pass" if checked else "fail",
+                "detail": "",
+            })
+
+        # [PASS], [FAIL], [WARN] 형식 매칭 (체크박스가 없을 때만)
         if not items:
-            for match in checkbox_pattern.finditer(artifact_content):
-                checked = match.group(1).strip().lower() == "x"
+            pattern = re.compile(
+                r"\[(PASS|FAIL|WARN)\]\s*[:\-\u2013]?\s*(.+?)(?:\s*[:\-\u2013]\s*(.+))?$",
+                re.IGNORECASE | re.MULTILINE,
+            )
+            for match in pattern.finditer(artifact_content):
+                status = match.group(1).lower()
                 item_text = match.group(2).strip()
-                items.append({
-                    "item": item_text,
-                    "status": "pass" if checked else "fail",
-                    "detail": "",
-                })
+                detail = (match.group(3) or "").strip()
+                items.append({"item": item_text, "status": status, "detail": detail})
 
         # 파싱 실패 시 전체를 단일 항목으로 처리
         if not items:

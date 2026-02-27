@@ -48,6 +48,7 @@ class WsEventType:
     WORKFLOW_COMPLETED = "workflow_completed"
     WORKFLOW_COMMIT_COMPLETED = "workflow_commit_completed"
     WORKFLOW_AUTO_CHAIN = "workflow_auto_chain"
+    WORKFLOW_QA_FAILED = "workflow_qa_failed"
 
     # Interactive
     ASK_USER_QUESTION = "ask_user_question"

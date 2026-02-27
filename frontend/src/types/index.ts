@@ -143,6 +143,9 @@ export type {
   UpdateAnnotationRequest,
   ApprovePhaseRequest,
   RequestRevisionRequest,
+  QAStatus,
+  QAChecklistItem,
+  QAChecklistResult,
 } from "./workflow";
 export type {
   WsEvent,

@@ -1137,6 +1137,23 @@ class ClaudeRunner:
                         "phase": workflow_phase,
                     },
                 )
+                # QA phase인 경우 체크리스트 파싱 후 결과 이벤트 추가 전송
+                if workflow_phase == "qa" and result_text:
+                    try:
+                        qa_result = workflow_service.parse_qa_checklist(result_text)
+                        if not qa_result["all_passed"]:
+                            await ws_manager.broadcast_event(
+                                session_id,
+                                {
+                                    "type": WsEventType.WORKFLOW_QA_FAILED,
+                                    "phase": workflow_phase,
+                                    "qa_result": qa_result,
+                                },
+                            )
+                    except Exception:
+                        logger.debug(
+                            "세션 %s: QA 체크리스트 파싱 스킵", session_id
+                        )
             except Exception:
                 logger.warning(
                     "세션 %s: %s phase 완료 처리 실패",
