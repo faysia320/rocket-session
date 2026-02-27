@@ -24,6 +24,7 @@ from app.models.session import SessionStatus
 from app.services.event_handler import (
     extract_result_data,
     extract_tool_result_output,
+    extract_tool_use_info,
 )
 from app.services.websocket_manager import WebSocketManager
 
@@ -63,6 +64,7 @@ class TurnState:
     exit_plan_tool_id: str | None = None
     exit_plan_content: str | None = None
     exit_plan_allowed_prompts: list = field(default_factory=list)
+    seen_tool_use_ids: set = field(default_factory=set)
 
 
 class _AsyncStreamReader:
@@ -503,9 +505,22 @@ class ClaudeRunner:
         turn_state: TurnState,
     ) -> bool:
         """tool_use 블록 처리. should_continue=True이면 다음 블록 건너뜀."""
-        tool_name = block.get("name", "unknown")
-        tool_input = block.get("input", {})
-        tool_use_id = block.get("id", "")
+        tool_name, tool_input, tool_use_id = extract_tool_use_info(block)
+
+        # 진단 로깅: name이 비어있으면 전체 블록 덤프
+        if not tool_name:
+            logger.warning(
+                "tool_use 블록에 name 누락 (tool_use_id=%s): %s",
+                tool_use_id,
+                json.dumps(block, ensure_ascii=False, default=str)[:500],
+            )
+            return False  # 불완전한 블록 스킵, 후속 완전한 블록 대기
+
+        # 중복 방지: 동일 tool_use_id가 이미 처리됨
+        if tool_use_id and tool_use_id in turn_state.seen_tool_use_ids:
+            return False
+        if tool_use_id:
+            turn_state.seen_tool_use_ids.add(tool_use_id)
 
         # AskUserQuestion 감지: 인터랙티브 질문 이벤트로 변환
         if tool_name == self.TOOL_ASK_USER_QUESTION:
@@ -594,7 +609,7 @@ class ClaudeRunner:
         if tool_name not in self.FILE_WRITE_TOOLS:
             return
 
-        raw_path = tool_input.get("file_path", tool_input.get("path", "unknown"))
+        raw_path = tool_input.get("file_path") or tool_input.get("path") or ""
         work_dir = turn_state.work_dir
         wt_name = turn_state.worktree_name
         file_path = (

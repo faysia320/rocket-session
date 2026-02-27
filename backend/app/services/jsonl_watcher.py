@@ -16,6 +16,7 @@ from app.services.claude_runner import TurnState
 from app.services.event_handler import (
     extract_result_data,
     extract_tool_result_output,
+    extract_tool_use_info,
     normalize_file_path,
 )
 from app.services.session_manager import SessionManager
@@ -306,9 +307,15 @@ class JsonlWatcher:
                 has_new_text = True
 
             elif block_type == "tool_use":
-                tool_name = block.get("name", "unknown")
-                tool_input = block.get("input", {})
-                tool_use_id = block.get("id", "")
+                tool_name, tool_input, tool_use_id = extract_tool_use_info(block)
+
+                if not tool_name:
+                    logger.warning(
+                        "JSONL tool_use 블록에 name 누락 (tool_use_id=%s): %s",
+                        tool_use_id,
+                        json.dumps(block, ensure_ascii=False, default=str)[:500],
+                    )
+                    continue
 
                 # AskUserQuestion 감지: 인터랙티브 질문 이벤트로 변환
                 if tool_name == "AskUserQuestion":
@@ -348,9 +355,7 @@ class JsonlWatcher:
 
                 # 파일 변경 추적
                 if tool_name in ("Write", "Edit", "MultiEdit"):
-                    raw_path = tool_input.get(
-                        "file_path", tool_input.get("path", "unknown")
-                    )
+                    raw_path = tool_input.get("file_path") or tool_input.get("path") or ""
                     work_dir = turn_state.work_dir or ""
                     file_path = (
                         normalize_file_path(raw_path, work_dir)

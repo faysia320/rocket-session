@@ -56,6 +56,17 @@ def extract_tool_result_output(block: dict, max_length: int = 5000) -> dict:
     }
 
 
+def extract_tool_use_info(block: dict) -> tuple[str, dict, str]:
+    """tool_use 블록에서 (tool_name, tool_input, tool_use_id) 추출.
+
+    여러 대체 필드명을 시도하여 CLI 포맷 변경에 방어적으로 대응.
+    """
+    tool_name = block.get("name") or block.get("tool") or block.get("tool_name") or ""
+    tool_input = block.get("input") or block.get("arguments") or block.get("parameters") or {}
+    tool_use_id = block.get("id", "")
+    return tool_name, tool_input, tool_use_id
+
+
 def extract_result_data(event: dict, turn_state: "TurnState") -> dict:
     """result 이벤트에서 공통 데이터를 추출.
 

@@ -69,7 +69,7 @@ export function handleWsMessage(
               return {
                 id: `hist-${index}`,
                 type: "tool_use" as const,
-                tool: h.tool_name || "unknown",
+                tool: h.tool_name || "Tool",
                 input: h.tool_input || {},
                 tool_use_id: h.tool_use_id || "",
                 status: "done" as const,

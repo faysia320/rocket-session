@@ -474,7 +474,7 @@ function EventMessage({ message, animate = false }: { message: EventMsg; animate
         <div className="flex items-center gap-1.5">
           <Zap className="h-2.5 w-2.5 text-muted-foreground/40 shrink-0" />
           <span className="font-mono text-2xs text-muted-foreground/50">
-            {String(message.event?.type || "unknown")}
+            {String(message.event?.type || "event")}
           </span>
           {expanded ? (
             <ChevronDown className="h-2.5 w-2.5 text-muted-foreground/40" />
