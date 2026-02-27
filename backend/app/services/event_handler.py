@@ -8,6 +8,12 @@ from pathlib import Path
 
 from app.core.utils import utc_now, utc_now_iso  # noqa: F401 (re-export)
 
+# TYPE_CHECKING으로 순환 import 방지
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.services.claude_runner import TurnState
+
 
 def normalize_file_path(file_path: str, work_dir: str) -> str:
     """파일 경로를 work_dir 기준 상대 경로로 정규화.
@@ -50,7 +56,7 @@ def extract_tool_result_output(block: dict, max_length: int = 5000) -> dict:
     }
 
 
-def extract_result_data(event: dict, turn_state: dict) -> dict:
+def extract_result_data(event: dict, turn_state: "TurnState") -> dict:
     """result 이벤트에서 공통 데이터를 추출.
 
     ClaudeRunner와 JsonlWatcher 모두에서 result 이벤트 처리 시
@@ -66,8 +72,8 @@ def extract_result_data(event: dict, turn_state: dict) -> dict:
         cache_read_tokens, model 키를 포함하는 dict.
     """
     result_text = event.get("result") or ""
-    if not result_text and turn_state.get("text"):
-        result_text = turn_state["text"]
+    if not result_text and turn_state.text:
+        result_text = turn_state.text
 
     usage = event.get("usage", {})
     return {
@@ -80,5 +86,5 @@ def extract_result_data(event: dict, turn_state: dict) -> dict:
         "output_tokens": usage.get("output_tokens"),
         "cache_creation_tokens": usage.get("cache_creation_input_tokens"),
         "cache_read_tokens": usage.get("cache_read_input_tokens"),
-        "model": turn_state.get("model"),
+        "model": turn_state.model,
     }

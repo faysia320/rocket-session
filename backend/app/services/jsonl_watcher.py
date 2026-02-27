@@ -12,6 +12,7 @@ from pathlib import Path
 from app.core.utils import utc_now, utc_now_iso
 from app.models.event_types import WsEventType
 from app.models.session import SessionStatus
+from app.services.claude_runner import TurnState
 from app.services.event_handler import (
     extract_result_data,
     extract_tool_result_output,
@@ -137,12 +138,12 @@ class JsonlWatcher:
         # 현재 파일 끝에서 시작 (기존 내용은 이미 import됨)
         file_size = path.stat().st_size
         last_activity = asyncio.get_event_loop().time()
-        turn_state: dict = {"text": "", "model": None, "work_dir": ""}
+        turn_state = TurnState()
 
         # work_dir 초기화
         session = await self._session_manager.get(session_id)
         if session:
-            turn_state["work_dir"] = session.get("work_dir", "")
+            turn_state.work_dir = session.get("work_dir", "")
 
         activated_running = False
 
@@ -230,7 +231,7 @@ class JsonlWatcher:
         self,
         line: str,
         session_id: str,
-        turn_state: dict,
+        turn_state: TurnState,
     ) -> None:
         """JSONL 한 줄을 파싱하고 이벤트 타입에 따라 처리."""
         try:
@@ -274,7 +275,7 @@ class JsonlWatcher:
             )
 
     async def _handle_assistant_event(
-        self, event: dict, session_id: str, turn_state: dict
+        self, event: dict, session_id: str, turn_state: TurnState
     ) -> None:
         """assistant 이벤트 처리 (text, thinking, tool_use, file_change)."""
         msg = event.get("message", {})
@@ -282,7 +283,7 @@ class JsonlWatcher:
 
         model = msg.get("model")
         if model:
-            turn_state["model"] = model
+            turn_state.model = model
 
         has_new_text = False
         for block in content_blocks:
@@ -301,7 +302,7 @@ class JsonlWatcher:
                     )
 
             elif block_type == "text":
-                turn_state["text"] = block.get("text", "")
+                turn_state.text = block.get("text", "")
                 has_new_text = True
 
             elif block_type == "tool_use":
@@ -350,7 +351,7 @@ class JsonlWatcher:
                     raw_path = tool_input.get(
                         "file_path", tool_input.get("path", "unknown")
                     )
-                    work_dir = turn_state.get("work_dir", "")
+                    work_dir = turn_state.work_dir or ""
                     file_path = (
                         normalize_file_path(raw_path, work_dir)
                         if work_dir
@@ -379,12 +380,12 @@ class JsonlWatcher:
                             },
                         )
 
-        if has_new_text and turn_state["text"]:
+        if has_new_text and turn_state.text:
             await self._ws_manager.broadcast_event(
                 session_id,
                 {
                     "type": WsEventType.ASSISTANT_TEXT,
-                    "text": turn_state["text"],
+                    "text": turn_state.text,
                     "timestamp": utc_now_iso(),
                 },
             )
@@ -419,7 +420,7 @@ class JsonlWatcher:
                 )
 
     async def _handle_result_event(
-        self, event: dict, session_id: str, turn_state: dict
+        self, event: dict, session_id: str, turn_state: TurnState
     ) -> None:
         """result 이벤트 처리 (최종 응답)."""
         data = extract_result_data(event, turn_state)
@@ -477,7 +478,7 @@ class JsonlWatcher:
         try:
             await self._session_manager.add_token_snapshot(
                 session_id=session_id,
-                work_dir=turn_state.get("work_dir", ""),
+                work_dir=turn_state.work_dir or "",
                 timestamp=utc_now(),
                 workflow_phase=None,
                 model=model,
@@ -492,5 +493,5 @@ class JsonlWatcher:
             )
 
         # turn_state 리셋 (다음 턴 준비)
-        turn_state["text"] = ""
-        turn_state["model"] = None
+        turn_state.text = ""
+        turn_state.model = None
