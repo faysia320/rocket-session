@@ -1,5 +1,5 @@
 # ── Stage 1: Python 의존성 빌드 ──
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev gcc && \
@@ -13,7 +13,7 @@ RUN uv sync --frozen --no-dev
 
 
 # ── Stage 2: 런타임 ──
-FROM python:3.11-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # Claude Code CLI 버전 고정 (업데이트 시 이 값만 변경)
 ARG CLAUDE_CODE_VERSION=2.1.51
