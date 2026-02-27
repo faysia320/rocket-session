@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { RouteErrorFallback } from "@/components/ui/RouteErrorFallback";
 
 const WorkflowPage = lazy(() =>
   import("@/features/workflow/components/WorkflowPage").then((m) => ({
@@ -9,6 +10,7 @@ const WorkflowPage = lazy(() =>
 
 export const Route = createFileRoute("/workflows")({
   component: WorkflowsPageWrapper,
+  errorComponent: RouteErrorFallback,
 });
 
 function WorkflowsPageWrapper() {

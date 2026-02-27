@@ -1,4 +1,5 @@
 import { useEffect, useRef, useReducer, useCallback } from "react";
+import { toast } from "sonner";
 import { isMobileDevice } from "@/lib/platform";
 import type {
   Message,
@@ -404,6 +405,9 @@ export function useClaudeSocket(sessionId: string) {
 
     ws.onerror = (err) => {
       console.error("[WS] Error:", err);
+      if (reconnectAttempt.current === 0) {
+        toast.warning("서버 연결이 불안정합니다. 재연결 중...");
+      }
     };
   }, [sessionId, handleMessage]);
 

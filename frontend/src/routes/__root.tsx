@@ -21,6 +21,7 @@ const MemoPanel = lazy(() =>
 );
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { useTeams } from "@/features/team/hooks/useTeams";
+import { useShallow } from "zustand/react/shallow";
 import { useSessionStore } from "@/store";
 import { UsageFooter } from "@/features/usage/components/UsageFooter";
 import { CommandPaletteProvider } from "@/features/command-palette/components/CommandPaletteProvider";
@@ -80,11 +81,16 @@ function SessionLayout() {
     refreshSessions,
     archiveSession,
   } = useSessions();
-  const viewMode = useSessionStore((s) => s.viewMode);
-  const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
-  const setFocusedSessionId = useSessionStore((s) => s.setFocusedSessionId);
-  const sidebarMobileOpen = useSessionStore((s) => s.sidebarMobileOpen);
-  const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
+  const { viewMode, focusedSessionId, setFocusedSessionId, sidebarMobileOpen, setSidebarMobileOpen } =
+    useSessionStore(
+      useShallow((s) => ({
+        viewMode: s.viewMode,
+        focusedSessionId: s.focusedSessionId,
+        setFocusedSessionId: s.setFocusedSessionId,
+        sidebarMobileOpen: s.sidebarMobileOpen,
+        setSidebarMobileOpen: s.setSidebarMobileOpen,
+      })),
+    );
   const isMobile = useIsMobile();
 
   const activeSessions = useMemo(() => sessions.filter((s) => s.status !== "archived"), [sessions]);
@@ -236,8 +242,12 @@ function TeamLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { teams, isLoading, isError } = useTeams();
-  const sidebarMobileOpen = useSessionStore((s) => s.sidebarMobileOpen);
-  const setSidebarMobileOpen = useSessionStore((s) => s.setSidebarMobileOpen);
+  const { sidebarMobileOpen, setSidebarMobileOpen } = useSessionStore(
+    useShallow((s) => ({
+      sidebarMobileOpen: s.sidebarMobileOpen,
+      setSidebarMobileOpen: s.setSidebarMobileOpen,
+    })),
+  );
   const isMobile = useIsMobile();
 
   const activeTeamId = useMemo(() => {

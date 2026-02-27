@@ -3,6 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { config } from "@/config/env";
 import { teamKeys } from "./teamKeys";
+import {
+  getBackoffDelay,
+  RECONNECT_MAX_ATTEMPTS,
+} from "@/features/chat/hooks/useClaudeSocket.utils";
 
 /** 팀 WebSocket 이벤트 타입. */
 export type TeamWsEvent =
@@ -53,6 +57,7 @@ export function useTeamSocket(teamId: string | undefined) {
   const wsRef = useRef<WebSocket | null>(null);
   const shouldReconnect = useRef(true);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttempt = useRef(0);
 
   const invalidateTeam = useCallback(() => {
     if (!teamId) return;
@@ -106,7 +111,7 @@ export function useTeamSocket(teamId: string | undefined) {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      // 연결 성공
+      reconnectAttempt.current = 0;
     };
 
     ws.onmessage = (e) => {
@@ -121,7 +126,10 @@ export function useTeamSocket(teamId: string | undefined) {
     ws.onclose = () => {
       wsRef.current = null;
       if (shouldReconnect.current) {
-        reconnectTimer.current = setTimeout(connect, 3000);
+        const attempt = reconnectAttempt.current;
+        if (attempt >= RECONNECT_MAX_ATTEMPTS) return;
+        reconnectAttempt.current = attempt + 1;
+        reconnectTimer.current = setTimeout(connect, getBackoffDelay(attempt));
       }
     };
 

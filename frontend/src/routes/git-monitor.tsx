@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { RouteErrorFallback } from "@/components/ui/RouteErrorFallback";
 
 const GitMonitorPage = lazy(() =>
   import("@/features/git-monitor/components/GitMonitorPage").then((m) => ({
@@ -9,6 +10,7 @@ const GitMonitorPage = lazy(() =>
 
 export const Route = createFileRoute("/git-monitor")({
   component: GitMonitorPageWrapper,
+  errorComponent: RouteErrorFallback,
 });
 
 function GitMonitorPageWrapper() {

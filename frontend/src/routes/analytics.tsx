@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { RouteErrorFallback } from "@/components/ui/RouteErrorFallback";
 
 const AnalyticsDashboard = lazy(() =>
   import("@/features/analytics/components/AnalyticsDashboard").then((m) => ({
@@ -9,6 +10,7 @@ const AnalyticsDashboard = lazy(() =>
 
 export const Route = createFileRoute("/analytics")({
   component: AnalyticsPage,
+  errorComponent: RouteErrorFallback,
 });
 
 function AnalyticsPage() {

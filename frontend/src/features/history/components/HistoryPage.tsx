@@ -142,7 +142,7 @@ export function HistoryPage({ className }: { className?: string }) {
     });
   }, [groupByWorkspace, data?.items, workspaceMap]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setQuery("");
     setDebouncedQuery("");
     setFtsMode(false);
@@ -151,24 +151,26 @@ export function HistoryPage({ className }: { className?: string }) {
     setDateFrom("");
     setDateTo("");
     setPage(0);
-  };
+  }, []);
 
-  const toggleSort = (col: string) => {
-    if (sort === col) {
-      setOrder((o) => (o === "desc" ? "asc" : "desc"));
-    } else {
-      setSort(col);
+  const toggleSort = useCallback((col: string) => {
+    setSort((prev) => {
+      if (prev === col) {
+        setOrder((o) => (o === "desc" ? "asc" : "desc"));
+        return prev;
+      }
       setOrder("desc");
-    }
+      return col;
+    });
     setPage(0);
-  };
+  }, []);
 
-  const toggleTag = (tagId: string) => {
+  const toggleTag = useCallback((tagId: string) => {
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
     setPage(0);
-  };
+  }, []);
 
   const handleSessionClick = useCallback(
     (sessionId: string) => {

@@ -42,6 +42,7 @@ import {
 import { useSessionSearch } from "@/features/history/hooks/useSessionSearch";
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import { cn } from "@/lib/utils";
+import { useShallow } from "zustand/react/shallow";
 import { useSessionStore } from "@/store";
 import type { SessionInfo } from "@/types";
 import { ImportLocalDialog } from "./ImportLocalDialog";
@@ -74,11 +75,15 @@ export const Sidebar = memo(function Sidebar({
 	isError,
 }: SidebarProps) {
 	const navigate = useNavigate();
-	const viewMode = useSessionStore((s) => s.viewMode);
-	const setViewMode = useSessionStore((s) => s.setViewMode);
-	const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
+	const { viewMode, setViewMode, sidebarCollapsed, toggleSidebar } = useSessionStore(
+		useShallow((s) => ({
+			viewMode: s.viewMode,
+			setViewMode: s.setViewMode,
+			sidebarCollapsed: s.sidebarCollapsed,
+			toggleSidebar: s.toggleSidebar,
+		})),
+	);
 	const collapsed = isMobileOverlay ? false : sidebarCollapsed;
-	const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
 	const [importOpen, setImportOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [debouncedQuery, setDebouncedQuery] = useState("");

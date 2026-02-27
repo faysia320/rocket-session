@@ -20,6 +20,7 @@ import { PinnedTodoBar } from "./PinnedTodoBar";
 import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { FileChange, UserMsg } from "@/types";
+import { useShallow } from "zustand/react/shallow";
 import { useSessionStore } from "@/store";
 import { useSlashCommands } from "../hooks/useSlashCommands";
 import type { SlashCommand } from "../constants/slashCommands";
@@ -75,10 +76,15 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
 
   const isSplitView = useSessionStore((s) => s.viewMode === "split");
-  const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
-  const pendingPrompt = useSessionStore((s) => s.pendingPrompt);
-  const pendingPromptSessionId = useSessionStore((s) => s.pendingPromptSessionId);
-  const clearPendingPrompt = useSessionStore((s) => s.clearPendingPrompt);
+  const { focusedSessionId, pendingPrompt, pendingPromptSessionId, clearPendingPrompt } =
+    useSessionStore(
+      useShallow((s) => ({
+        focusedSessionId: s.focusedSessionId,
+        pendingPrompt: s.pendingPrompt,
+        pendingPromptSessionId: s.pendingPromptSessionId,
+        clearPendingPrompt: s.clearPendingPrompt,
+      })),
+    );
   const queryClient = useQueryClient();
 
   // P0: PermissionDialog 콜백 안정화 (타이머 리셋 방지)

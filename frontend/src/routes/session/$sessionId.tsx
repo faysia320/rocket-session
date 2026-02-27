@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect } from "react";
 import { useSessionStore } from "@/store";
+import { RouteErrorFallback } from "@/components/ui/RouteErrorFallback";
 
 const ChatPanel = lazy(() =>
   import("@/features/chat/components/ChatPanel").then((m) => ({
@@ -10,6 +11,7 @@ const ChatPanel = lazy(() =>
 
 export const Route = createFileRoute("/session/$sessionId")({
   component: SessionPage,
+  errorComponent: RouteErrorFallback,
 });
 
 function SessionPage() {

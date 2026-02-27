@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { RouteErrorFallback } from "@/components/ui/RouteErrorFallback";
 
 const KnowledgeBasePanel = lazy(() =>
   import("@/features/knowledge/components/KnowledgeBasePanel").then((m) => ({
@@ -9,6 +10,7 @@ const KnowledgeBasePanel = lazy(() =>
 
 export const Route = createFileRoute("/knowledge-base")({
   component: KnowledgeBasePage,
+  errorComponent: RouteErrorFallback,
 });
 
 function KnowledgeBasePage() {

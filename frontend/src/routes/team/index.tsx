@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
+import { RouteErrorFallback } from "@/components/ui/RouteErrorFallback";
 
 const TeamListPage = lazy(() =>
   import("@/features/team/components/TeamListPage").then((m) => ({
@@ -9,6 +10,7 @@ const TeamListPage = lazy(() =>
 
 export const Route = createFileRoute("/team/")({
   component: TeamIndexPage,
+  errorComponent: RouteErrorFallback,
 });
 
 function TeamIndexPage() {

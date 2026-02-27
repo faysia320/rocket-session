@@ -51,13 +51,13 @@ export function SessionContextMenu({ session, children }: SessionContextMenuProp
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-        <ContextMenuContent className="w-48">
+        <ContextMenuContent>
           <ContextMenuSub>
             <ContextMenuSubTrigger className="gap-2">
               <Tag className="h-3.5 w-3.5" />
               태그
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="w-48">
+            <ContextMenuSubContent>
               {allTags.length === 0 ? (
                 <div className="px-2 py-1.5 text-xs text-muted-foreground">
                   태그가 없습니다

@@ -116,7 +116,7 @@ export function CommitDialog({
 
         {/* 커밋 모드 콘텐츠 */}
         {mode === "ai" ? (
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-0">
             <p className="font-mono text-xs text-muted-foreground">
               선택한 워크플로우로 새 세션을 열고{" "}
               <code className="bg-muted px-1 py-0.5 rounded">/git-commit</code> 스킬을 실행합니다.

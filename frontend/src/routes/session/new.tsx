@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { useCreateSession } from "@/features/session/hooks/useSessions";
+import { RouteErrorFallback } from "@/components/ui/RouteErrorFallback";
 
 const SessionSetupPanel = lazy(() =>
   import("@/features/session/components/SessionSetupPanel").then((m) => ({
@@ -10,6 +11,7 @@ const SessionSetupPanel = lazy(() =>
 
 export const Route = createFileRoute("/session/new")({
   component: NewSessionPage,
+  errorComponent: RouteErrorFallback,
 });
 
 function NewSessionPage() {

@@ -7,6 +7,7 @@ import { tagsApi } from "@/lib/api/tags.api";
 import { useOptimisticMutation } from "@/lib/hooks/useOptimisticMutation";
 import { tagKeys } from "./tagKeys";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
+import { historyKeys } from "@/features/history/hooks/useSessionSearch";
 import type { TagInfo, CreateTagRequest, UpdateTagRequest } from "@/types";
 
 /** 전체 태그 목록 조회 */
@@ -57,6 +58,7 @@ export function useDeleteTag() {
     // 세션 목록도 갱신 (세션에 표시되는 태그가 변경될 수 있음)
     onSettledExtra: () => {
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: historyKeys.all });
     },
   });
 }
@@ -73,6 +75,7 @@ export function useAddTagsToSession() {
         queryKey: tagKeys.forSession(sessionId),
       });
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: historyKeys.all });
     },
     onError: () => {
       toast.error("태그 추가에 실패했습니다");
@@ -92,6 +95,7 @@ export function useRemoveTagFromSession() {
         queryKey: tagKeys.forSession(sessionId),
       });
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      queryClient.invalidateQueries({ queryKey: historyKeys.all });
     },
     onError: () => {
       toast.error("태그 제거에 실패했습니다");

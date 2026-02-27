@@ -4,6 +4,7 @@ import { useTheme } from "next-themes";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { useShallow } from "zustand/react/shallow";
 import { useSessionStore, useCommandPaletteStore } from "@/store";
 import { sessionsApi } from "@/lib/api/sessions.api";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
@@ -34,11 +35,16 @@ export function useCommandPalette() {
   const location = useLocation();
   const { resolvedTheme, setTheme } = useTheme();
 
-  const sidebarCollapsed = useSessionStore((s) => s.sidebarCollapsed);
-  const toggleSidebar = useSessionStore((s) => s.toggleSidebar);
-  const viewMode = useSessionStore((s) => s.viewMode);
-  const setViewMode = useSessionStore((s) => s.setViewMode);
-  const focusedSessionId = useSessionStore((s) => s.focusedSessionId);
+  const { sidebarCollapsed, toggleSidebar, viewMode, setViewMode, focusedSessionId } =
+    useSessionStore(
+      useShallow((s) => ({
+        sidebarCollapsed: s.sidebarCollapsed,
+        toggleSidebar: s.toggleSidebar,
+        viewMode: s.viewMode,
+        setViewMode: s.setViewMode,
+        focusedSessionId: s.focusedSessionId,
+      })),
+    );
 
   const recentCommandIds = useCommandPaletteStore((s) => s.recentCommandIds);
 
