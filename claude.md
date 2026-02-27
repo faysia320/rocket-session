@@ -140,225 +140,29 @@
 
 ## 3. 프로젝트 구조
 
-```
-rocket-session/
-├── backend/                          # FastAPI 백엔드
-│   ├── app/
-│   │   ├── main.py                   # FastAPI 앱 팩토리 + CORS + 라이프사이클
-│   │   ├── core/
-│   │   │   ├── config.py             # Pydantic BaseSettings (환경 설정)
-│   │   │   └── database.py           # PostgreSQL + SQLAlchemy 엔진 + Alembic 마이그레이션
-│   │   ├── api/
-│   │   │   ├── dependencies.py       # DI 프로바이더 (싱글턴)
-│   │   │   └── v1/
-│   │   │       ├── api.py            # 라우터 통합
-│   │   │       └── endpoints/
-│   │   │           ├── health.py     # 헬스체크
-│   │   │           ├── sessions.py   # 세션 CRUD + 내보내기
-│   │   │           ├── files.py      # 파일 조회 + diff + 업로드
-│   │   │           ├── filesystem.py # 디렉토리 탐색 + Git + 워크트리 + Skills
-│   │   │           ├── local_sessions.py # 로컬 세션 스캔/import
-│   │   │           ├── permissions.py    # Permission 요청/응답 (MCP 연계)
-│   │   │           ├── usage.py      # 사용량 조회 (ccusage)
-│   │   │           ├── ws.py         # WebSocket 엔드포인트
-│   │   │           ├── settings.py   # 글로벌 설정
-│   │   │           ├── mcp.py        # MCP 서버 관리
+> 상세 디렉토리 트리는 Serena 메모리 `project_structure` 참조
 
-│   │   │           ├── tags.py       # 세션 태그
-│   │   │           ├── analytics.py  # 분석 데이터
-│   │   │           ├── workflow.py   # 워크플로우 관리
-│   │   │           ├── workflow_definitions.py  # 워크플로우 정의
-│   │   │           ├── workspaces.py  # 워크스페이스 CRUD + 동기화
-│   │   │           └── teams.py       # 팀 채팅
-│   │   ├── models/
-│   │   │   ├── base.py               # SQLAlchemy DeclarativeBase
-│   │   │   ├── session.py            # Session ORM 모델
-│   │   │   ├── session_artifact.py   # SessionArtifact + ArtifactAnnotation ORM 모델
-│   │   │   ├── message.py            # Message ORM 모델
-│   │   │   ├── file_change.py        # FileChange ORM 모델
-│   │   │   ├── event.py              # Event ORM 모델
-│   │   │   ├── event_types.py        # WebSocket 이벤트 타입 (워크플로우 이벤트 포함)
-│   │   │   ├── global_settings.py    # GlobalSettings ORM 모델
-│   │   │   ├── mcp_server.py         # McpServer ORM 모델
-│   │   │   ├── tag.py                # Tag + SessionTag ORM 모델
-│   │   │   ├── token_snapshot.py    # TokenSnapshot ORM 모델
-│   │   │   ├── workflow_definition.py # WorkflowDefinition ORM 모델
-│   │   │   ├── workspace.py         # Workspace ORM 모델
-│   │   │   ├── team.py              # Team ORM 모델
-│   │   │   ├── team_message.py      # TeamMessage ORM 모델
-│   │   │   └── team_task.py         # TeamTask ORM 모델
-│   │   ├── repositories/
-│   │   │   ├── base.py               # BaseRepository
-│   │   │   ├── session_repo.py       # SessionRepository
-│   │   │   ├── message_repo.py       # MessageRepository
-│   │   │   ├── file_change_repo.py   # FileChangeRepository
-│   │   │   ├── event_repo.py         # EventRepository
-│   │   │   ├── settings_repo.py      # SettingsRepository
-│   │   │   ├── mcp_server_repo.py    # McpServerRepository
-│   │   │   ├── tag_repo.py           # TagRepository
-│   │   │   ├── token_snapshot_repo.py # TokenSnapshotRepository
-│   │   │   ├── search_repo.py        # SearchRepository
-│   │   │   ├── analytics_repo.py     # AnalyticsRepository
-│   │   │   ├── artifact_repo.py      # ArtifactRepository
-│   │   │   ├── workflow_definition_repo.py # WorkflowDefinitionRepository
-│   │   │   ├── workspace_repo.py    # WorkspaceRepository
-│   │   │   ├── team_repo.py         # TeamRepository
-│   │   │   ├── team_task_repo.py    # TeamTaskRepository
-│   │   │   └── team_message_repo.py # TeamMessageRepository
-│   │   ├── schemas/
-│   │   │   ├── session.py            # 세션 Request/Response 스키마
-│   │   │   ├── workflow.py           # 워크플로우 스키마
-│   │   │   ├── usage.py              # 사용량 스키마
-│   │   │   ├── filesystem.py         # 파일시스템 + Git 스키마
-│   │   │   ├── local_session.py      # 로컬 세션 스키마
-│   │   │   ├── settings.py           # 글로벌 설정 스키마
-│   │   │   ├── mcp.py               # MCP 서버 스키마
+### 최상위 구조
 
-│   │   │   ├── tag.py                # 태그 스키마
-│   │   │   ├── analytics.py          # 분석 스키마
-│   │   │   ├── search.py             # 검색 스키마
-│   │   │   ├── workflow_definition.py # 워크플로우 정의 스키마
-│   │   │   ├── common.py            # 공통 응답 스키마
-│   │   │   ├── workspace.py         # 워크스페이스 스키마
-│   │   │   └── team.py              # 팀 스키마
-│   │   └── services/
-│   │       ├── session_manager.py    # 세션 생명주기 관리
-│   │       ├── claude_runner.py      # Claude CLI subprocess + JSON 스트림 파싱
-│   │       ├── websocket_manager.py  # WS 연결 관리 + 이벤트 버퍼링
-│   │       ├── usage_service.py      # ccusage CLI 사용량 조회
-│   │       ├── filesystem_service.py # 파일시스템 + Git 워크트리
-│   │       ├── local_session_scanner.py # 로컬 세션 스캐너
-│   │       ├── settings_service.py   # 글로벌 설정 관리
-│   │       ├── mcp_service.py        # MCP 서버 관리
+| 디렉토리 | 역할 | 레이어 |
+|----------|------|--------|
+| `backend/app/` | FastAPI 백엔드 | endpoints → services → repositories → models |
+| `frontend/src/` | React 프론트엔드 | routes → features → components + hooks |
+| `cli/` | Node.js CLI | commands → lib |
+| `docker-compose.yml` | PostgreSQL + Backend + Frontend 컨테이너 | - |
 
-│   │       ├── tag_service.py        # 태그 관리
-│   │       ├── search_service.py     # 전문 검색 (TSVECTOR)
-│   │       ├── workflow_definition_service.py # 워크플로우 정의 관리
-│   │       ├── pending_questions.py  # AskUserQuestion 대기 상태 관리
-│   │       ├── analytics_service.py  # 분석 데이터 집계
-│   │       ├── jsonl_watcher.py      # JSONL 세션 실시간 감시
-│   │       ├── event_handler.py      # 이벤트 처리
-│   │       ├── workflow_service.py   # 워크플로우 3단계 관리 (Research → Plan → Implement)
-│   │       ├── permission_mcp_server.py # Permission MCP 서버 (stdio)
-│   │       ├── workspace_service.py   # Git clone 기반 워크스페이스 관리
-│   │       ├── git_service.py         # Git 작업 래퍼 (clone, checkout, pull/push)
-│   │       ├── github_service.py      # GitHub API 연동 (PR 생성 등)
-│   │       ├── skills_service.py      # 슬래시 명령어 스킬 관리
-│   │       ├── session_process_manager.py # 세션별 프로세스 관리
-│   │       ├── team_service.py        # 팀 관리
-│   │       ├── team_coordinator.py    # 팀 작업 분배 코디네이터
-│   │       ├── team_task_service.py   # 팀 작업 관리
-│   │       └── team_message_service.py # 팀 메시지 관리
-│   ├── migrations/                       # Alembic 마이그레이션
-│   │   ├── versions/                     # 마이그레이션 버전 파일
-│   │   └── env.py
-│   ├── alembic.ini                   # Alembic 설정
-│   ├── tests/                        # pytest 테스트
-│   ├── Dockerfile                    # 컨테이너 (Python 3.11 + Node.js 22)
-│   ├── .env.example                  # 환경 변수 템플릿
-│   └── pyproject.toml
-│
-├── frontend/                         # React + TypeScript 프론트엔드
-│   ├── src/
-│   │   ├── main.tsx                  # React 엔트리포인트
-│   │   ├── App.tsx                   # Provider 래핑 (Query + Router + Tooltip + Toaster)
-│   │   ├── index.css                 # Tailwind + Deep Space 테마 (HSL CSS 변수)
-│   │   ├── routeTree.gen.ts          # TanStack Router 자동 생성
-│   │   ├── config/
-│   │   │   └── env.ts                # 환경 설정
-│   │   ├── types/
-│   │   │   ├── session.ts            # SessionInfo, SessionStatus
-│   │   │   ├── message.ts            # Message, FileChange, WebSocketEvent
-│   │   │   ├── workflow.ts           # Workflow 타입 (Phase, Status, Artifact, Annotation)
-│   │   │   ├── usage.ts              # Usage 타입
-│   │   │   ├── filesystem.ts         # FileSystem, Git 타입
-│   │   │   ├── local-session.ts      # LocalSession 타입
-│   │   │   ├── mcp.ts                # MCP 서버 타입
-│   │   │   ├── tag.ts                # 태그 타입
-│   │   │   ├── settings.ts           # 설정 타입
-│   │   │   ├── notification.ts       # 알림 타입
-│   │   │   ├── analytics.ts           # 분석 타입
+### Frontend Feature 모듈 (18개)
 
-│   │   │   ├── workspace.ts           # 워크스페이스 타입
-│   │   │   ├── team.ts                # 팀 타입
-│   │   │   ├── ws-events.ts           # WebSocket 이벤트 타입
-│   │   │   └── index.ts              # barrel export
-│   │   ├── store/
-│   │   │   ├── useSessionStore.ts    # Zustand - 활성 세션 ID, UI 상태
-│   │   │   ├── useCommandPaletteStore.ts # 명령 팔레트 상태
-│   │   │   └── index.ts
-│   │   ├── routes/
-│   │   │   ├── __root.tsx            # 루트 레이아웃 (Sidebar + UsageFooter)
-│   │   │   ├── index.tsx             # 홈 (EmptyState)
-│   │   │   └── session/
-│   │   │       ├── $sessionId.tsx    # 세션 작업 공간 (ChatPanel + FilePanel)
-│   │   │       └── new.tsx           # 새 세션 생성
-│   │   ├── components/
-│   │   │   └── ui/                   # shadcn/ui + 공통 컴포넌트 (CodeBlock, MarkdownRenderer 등)
-│   │   ├── features/
-│   │   │   ├── session/              # 세션 관리
-│   │   │   │   ├── components/       # Sidebar, SessionSettings, SessionSetupPanel, ImportLocalDialog
-│   │   │   │   └── hooks/            # useSessions, sessionKeys
-│   │   │   ├── chat/                 # 채팅 인터페이스
-│   │   │   │   ├── components/       # ChatPanel, MessageBubble, ChatInput, ChatHeader
-│   │   │   │   │                     # ActivityStatusBar, PermissionDialog, SlashCommandPopup
-│   │   │   │   ├── hooks/            # useClaudeSocket, useSlashCommands
-│   │   │   │   └── constants/        # slashCommands.ts
-│   │   │   ├── workflow/             # 워크플로우 시스템
-│   │   │   │   ├── components/       # WorkflowProgressBar, WorkflowPhaseCard,
-│   │   │   │   │                     # ArtifactViewer, ArtifactAnnotationPanel, PhaseApprovalBar
-│   │   │   │   └── hooks/            # useWorkflow, useWorkflowActions
-│   │   │   ├── files/                # 파일 변경 추적
-│   │   │   │   └── components/       # FilePanel, FileViewer, DiffViewer
-│   │   │   ├── directory/            # 디렉토리 탐색
-│   │   │   │   ├── components/       # DirectoryBrowser, DirectoryPicker, GitInfoCard, WorktreePanel
-│   │   │   │   └── hooks/            # useDirectoryBrowser, useGitInfo, useWorktrees
-│   │   │   ├── usage/                # 사용량 표시
-│   │   │   │   ├── components/       # UsageFooter
-│   │   │   │   └── hooks/            # useUsage, usageKeys
-│   │   │   ├── git-monitor/          # Git 상태 모니터링
-│   │   │   │   └── components/       # GitStatusFileList, GitDropdownMenu
-│   │   │   ├── mcp/                  # MCP 서버 관리
-│   │   │   │   └── components/       # McpServerManager, McpServerForm, McpServerSelector
-│   │   │   ├── settings/             # 글로벌 설정
-│   │   │   │   └── components/       # GlobalSettingsDialog
-│   │   │   ├── notification/         # 알림 시스템
-│   │   │   │   ├── components/       # NotificationSettingsPanel
-│   │   │   │   └── hooks/            # useNotificationCenter, useNotificationSettings
-│   │   │   ├── command-palette/      # 명령 팔레트 (Ctrl+K)
-│   │   │   │   ├── components/       # CommandPaletteProvider
-│   │   │   │   ├── commands/         # git.ts, chat.ts, session.ts
-│   │   │   │   └── hooks/            # useGlobalShortcuts
-│   │   │   ├── analytics/             # 분석 대시보드
-│   │   │   ├── dashboard/             # 대시보드 뷰
-│   │   │   ├── history/               # 히스토리 뷰
-│   │   │   ├── layout/                # 레이아웃 (Split View 등)
-│   │   │   ├── workspace/             # 워크스페이스 관리
-│   │   │   ├── team/                  # 팀 채팅
-│   │   │   ├── tags/                  # 태그 관리
+`src/features/` 하위: `analytics`, `chat`, `command-palette`, `dashboard`, `directory`,
+`files`, `git-monitor`, `history`, `layout`, `mcp`, `notification`, `session`,
+`settings`, `tags`, `team`, `usage`, `workflow`, `workspace`
 
-│   │   └── lib/
-│   │       ├── utils.ts              # cn() 유틸리티 (clsx + tailwind-merge)
-│   │       └── api/                  # ApiClient + 도메인별 API 함수
-│   ├── design-system/                # 디자인 시스템
-│   │   ├── css/variables.css         # spacing, typography, radius, shadow 토큰
-│   │   ├── tokens/                   # TS 토큰 (spacing, colors, zIndex 등)
-│   │   ├── eslint/                   # ESLint 규칙 (하드코딩 금지)
-│   │   ├── tailwind/plugin.js        # Tailwind 플러그인
-│   │   └── GUIDELINES.md             # 디자인 시스템 가이드
-│   ├── tsconfig.json                 # TypeScript 설정 (references)
-│   ├── tsconfig.app.json             # 앱 TypeScript 설정 (strict, path aliases)
-│   ├── tailwind.config.js            # Tailwind CSS 설정 (Deep Space 테마)
-│   ├── components.json               # shadcn/ui 설정
-│   ├── vite.config.ts                # Vite + TanStack Router 플러그인
-│   ├── Dockerfile                    # 컨테이너 (Node.js 22 + nginx)
-│   ├── nginx.conf                    # Nginx 프록시 설정
-│   └── package.json
-│
-├── docker-compose.yml                # Docker Compose 구성 (PostgreSQL + Backend + Frontend)
-├── CLAUDE.md                         # 개발 가이드 (이 파일)
-└── README.md
-```
+각 feature는 `components/` + `hooks/` 구조를 따름.
+
+### Backend 레이어 패턴
+
+각 도메인은 동일한 4계층 파일 구조:
+`schemas/{name}.py` → `models/{name}.py` → `repositories/{name}_repo.py` → `services/{name}_service.py` → `endpoints/{name}.py`
 
 ---
 
@@ -423,35 +227,9 @@ rocket-session/
 
 ### 핵심 서비스
 
-| 서비스 | 역할 | 상태 저장 |
-|--------|------|----------|
-| `SessionManager` | 세션 생명주기 (CRUD, 상태 전환) | PostgreSQL + 프로세스 핸들(인메모리) |
-| `ClaudeRunner` | Claude CLI subprocess 실행 + 스트리밍 JSON 파싱 | 프로세스 핸들 |
-| `WebSocketManager` | WebSocket 연결 관리 + 이벤트 브로드캐스트 + 버퍼링 | 연결 레지스트리 + PostgreSQL (events) |
-| `UsageService` | ccusage CLI 호출 + 사용량 캐싱 | 60초 TTL 인메모리 캐시 |
-| `FilesystemService` | 디렉토리 탐색, Git 정보, 워크트리, Skills | 없음 (stateless) |
-| `LocalSessionScanner` | `~/.claude/projects/` JSONL 세션 스캔/import | 없음 |
-| `PermissionMCPServer` | 도구 사용 승인 요청/응답 MCP 서버 (stdio) | asyncio.Event 기반 대기 |
-| `SettingsService` | 글로벌 기본 설정 관리 | PostgreSQL |
-| `McpService` | MCP 서버 설정 관리 | PostgreSQL |
-| `TagService` | 세션 태그 관리 | PostgreSQL |
-| `SearchService` | 전문 검색 (TSVECTOR) | PostgreSQL |
-| `AnalyticsService` | 세션 분석 데이터 집계 | PostgreSQL |
-| `WorkflowService` | 3단계 워크플로우 관리 (Research → Plan → Implement) | PostgreSQL |
-| `WorkflowDefinitionService` | 워크플로우 정의 CRUD + 기본값/내보내기/가져오기 | PostgreSQL |
-| `JsonlWatcher` | JSONL 세션 파일 실시간 감시 | 인메모리 |
-| `EventHandler` | WebSocket 이벤트 처리/라우팅 | 없음 (stateless) |
-| `WorkspaceService` | Git clone 기반 워크스페이스 관리 | PostgreSQL + 비동기 clone task |
-| `GitService` | Git 작업 래퍼 (clone, checkout, worktree, pull/push) | 없음 (stateless) |
-| `GitHubService` | GitHub API 연동 (PR 생성 등) | 없음 |
-| `SkillsService` | 슬래시 명령어 스킬 관리 | 없음 (stateless) |
-| `SessionProcessManager` | 세션별 프로세스 관리 (PID 추적 등) | 인메모리 |
-| `TeamService` | 팀 생명주기 관리 | PostgreSQL |
-| `TeamCoordinator` | 팀 작업 분배 코디네이터 | 인메모리 |
-| `TeamTaskService` | 팀 작업 관리 | PostgreSQL |
-| `TeamMessageService` | 팀 메시지 관리 | PostgreSQL |
-
-> **참고**: 세션/메시지/파일 변경/이벤트는 PostgreSQL에 영속 저장됩니다. 프로세스 핸들만 인메모리로 관리되어 서버 재시작 시 실행 중인 세션의 프로세스 연결은 끊어집니다.
+> 상세 서비스 목록(25개)은 Serena 메모리 `service_architecture` 참조.
+> 핵심: `SessionManager`, `ClaudeRunner`, `WebSocketManager`, `WorkflowService`, `TeamCoordinator`
+> 영속 저장: PostgreSQL. 프로세스 핸들만 인메모리 (서버 재시작 시 끊어짐).
 
 ---
 
@@ -525,22 +303,8 @@ import { Button } from '@/components/ui/button';
 
 ### 6.2 Deep Space 테마 (HSL CSS 변수)
 
-프로젝트의 색상 시스템은 `frontend/src/index.css`에 HSL 포맷으로 정의되어 있습니다:
-
-| 용도 | Tailwind 클래스 | CSS 변수 (HSL) |
-|------|----------------|----------------|
-| 배경 (주) | `bg-background` | `--background: 220 50% 5%` |
-| 전경 (주) | `text-foreground` | `--foreground: 215 25% 90%` |
-| 카드 배경 | `bg-card` | `--card: 220 37% 7%` |
-| 강조 (amber) | `bg-primary` / `text-primary` | `--primary: 38 92% 50%` |
-| 보조 | `bg-secondary` | `--secondary: 217 33% 17%` |
-| 뮤트 | `bg-muted` / `text-muted-foreground` | `--muted: 217 33% 17%` |
-| 입력 | `bg-input` | `--input: 220 45% 8%` |
-| 테두리 | `border-border` | `--border: 217 33% 17%` |
-| 파괴적 | `text-destructive` | `--destructive: 0 84% 60%` |
-| 성공 | `text-success` | `--success: 142 71% 45%` |
-| 정보 | `text-info` | `--info: 217 91% 60%` |
-| 경고 | `text-warning` | `--warning: 38 92% 50%` |
+테마 색상은 `frontend/src/index.css`에 HSL 변수로 정의. 상세 색상 테이블은 Serena 메모리 `frontend_design_system` 참조.
+주요 색상: `bg-background`(dark navy), `text-primary`/`bg-primary`(amber), `text-destructive`(red), `text-success`(green).
 
 ### 6.3 Path Aliases
 
@@ -643,14 +407,8 @@ npx shadcn@latest add <component-name>
 
 ### 6.9 디자인 시스템 가이드라인 참조
 
-UI 컴포넌트 작성 시 아래 문서를 참조합니다:
-
-| 문서 | 위치 | 내용 |
-|------|------|------|
-| **Design System Guidelines** | `frontend/design-system/GUIDELINES.md` | 크기, 간격, z-index 등 디자인 토큰 사용 가이드 |
-| **CSS 변수 정의** | `frontend/design-system/css/variables.css` | spacing, typography, radius, shadow 토큰 |
-| **글로벌 스타일** | `frontend/src/index.css` | Deep Space 테마 (HSL), 키프레임 애니메이션 |
-| **Tailwind 설정** | `frontend/tailwind.config.js` | 테마 색상, 폰트, 반지름 매핑 |
+> 테마 색상, 디자인 토큰, 참조 파일 목록은 Serena 메모리 `frontend_design_system` 참조.
+> 핵심 파일: `design-system/GUIDELINES.md`, `design-system/css/variables.css`, `src/index.css`, `tailwind.config.js`
 
 ### 6.10 조건부 렌더링
 
@@ -677,26 +435,8 @@ UI 컴포넌트 작성 시 아래 문서를 참조합니다:
 ### 7.1 의존성 주입 패턴
 
 모든 서비스는 `app/api/dependencies.py`에서 싱글턴으로 관리됩니다.
-앱 시작 시 `init_dependencies()`로 DB/서비스를 초기화하고, 종료 시 `shutdown_dependencies()`로 정리합니다:
-
-```python
-# 주요 의존성 (앱 시작 시 init_dependencies()로 초기화)
-get_settings()           # @lru_cache, Pydantic Settings
-get_database()           # Database (PostgreSQL asyncpg + SQLAlchemy)
-get_session_manager()    # SessionManager (DB 의존)
-get_ws_manager()         # WebSocketManager
-get_claude_runner()      # ClaudeRunner (Settings 의존)
-get_filesystem_service() # FilesystemService (stateless)
-get_local_scanner()      # LocalSessionScanner (DB 의존)
-get_usage_service()      # UsageService (Settings 의존)
-get_settings_service()   # SettingsService (DB 의존)
-get_mcp_service()        # McpService (DB 의존)
-get_tag_service()        # TagService (DB 의존)
-get_search_service()     # SearchService (DB 의존)
-get_analytics_service()  # AnalyticsService (DB 의존)
-get_workflow_service()   # WorkflowService (DB 의존)
-get_jsonl_watcher()      # JsonlWatcher (SessionManager + WsManager 의존)
-```
+앱 시작 시 `init_dependencies()`로 DB/서비스를 초기화하고, 종료 시 `shutdown_dependencies()`로 정리합니다.
+상세 DI 프로바이더 목록은 Serena 메모리 `service_architecture` 참조.
 
 ### 7.2 새 API 엔드포인트 추가 순서
 
@@ -710,19 +450,7 @@ get_jsonl_watcher()      # JsonlWatcher (SessionManager + WsManager 의존)
 
 ### 7.3 환경 설정
 
-`backend/.env` 파일로 관리 (Pydantic Settings):
-
-```env
-DATABASE_URL=postgresql+asyncpg://rocket:rocket_secret@localhost:5432/rocket_session  # PostgreSQL 연결 URL
-CLAUDE_ALLOWED_TOOLS=Read,Write,Edit,MultiEdit,Bash,Glob,Grep,WebFetch,WebSearch,TodoRead,TodoWrite  # 허용 도구
-BACKEND_HOST=0.0.0.0                      # 서버 호스트
-BACKEND_PORT=8101                         # 서버 포트
-UPLOAD_DIR=/app/uploads                   # 파일 업로드 디렉토리
-CORS_EXTRA_ORIGINS=                       # 추가 CORS 허용 출처
-GIT_USER_NAME=                            # Git 커밋 사용자 이름
-GIT_USER_EMAIL=                           # Git 커밋 이메일
-GITHUB_TOKEN=                             # GitHub API 토큰 (PR 생성 등)
-```
+환경변수는 `backend/.env`로 관리 (Pydantic Settings). 상세는 Serena 메모리 `service_architecture` 참조.
 
 ---
 
@@ -786,265 +514,15 @@ pnpm preview                               # 빌드 미리보기
 
 ## 10. 데이터베이스 스키마
 
-PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic (`backend/migrations/`)
-
-### sessions (세션 메타데이터)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 세션 ID |
-| claude_session_id | String | Claude CLI 세션 ID |
-| work_dir | Text | 작업 디렉토리 |
-| status | String | idle / running / error / archived |
-| created_at | Text | 생성 시각 |
-| allowed_tools | Text | 허용 도구 (쉼표 구분) |
-| disallowed_tools | Text | 비허용 도구 (쉼표 구분) |
-| system_prompt | Text | 시스템 프롬프트 |
-| system_prompt_mode | String | replace / append |
-| timeout_seconds | Integer | 타임아웃 |
-| workflow_enabled | Boolean | 워크플로우 활성화 여부 |
-| workflow_phase | String | research / plan / implement |
-| workflow_phase_status | String | in_progress / awaiting_approval / approved / revision_requested |
-| permission_mode | Boolean | Permission 모드 활성화 |
-| permission_required_tools | JSONB | 승인 필요 도구 |
-| name | Text | 세션 이름 |
-| jsonl_path | Text | JSONL 세션 파일 경로 |
-| model | String | 모델명 |
-| max_turns | Integer | 최대 턴 수 |
-| max_budget_usd | Float | 예산 한도 (USD) |
-| mcp_server_ids | JSONB | 연결된 MCP 서버 ID 목록 |
-| additional_dirs | JSONB | 추가 작업 디렉토리 목록 |
-| fallback_model | String | 폴백 모델명 |
-| worktree_name | String | Git 워크트리 이름 |
-| workspace_id | String (FK → workspaces) | 워크스페이스 참조 |
-| parent_session_id | String | 포크 원본 세션 ID |
-| forked_at_message_id | Integer | 포크 시점 메시지 ID |
-| search_vector | TSVECTOR | 전문 검색 인덱스 (GIN) |
-
-### messages (대화 기록)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | Integer (PK, auto) | 메시지 ID |
-| session_id | String (FK → sessions) | 세션 참조 |
-| role | String | user / assistant |
-| content | Text | 메시지 내용 |
-| cost | Float | API 비용 (USD) |
-| duration_ms | Integer | 실행 시간 |
-| timestamp | Text | 생성 시각 |
-| is_error | Boolean | 에러 여부 |
-| input_tokens | Integer | 입력 토큰 수 |
-| output_tokens | Integer | 출력 토큰 수 |
-| cache_creation_tokens | Integer | 캐시 생성 토큰 |
-| cache_read_tokens | Integer | 캐시 읽기 토큰 |
-| model | String | 사용된 모델명 |
-| workflow_phase | String | 메시지 생성 시 워크플로우 단계 |
-
-### session_artifacts (워크플로우 아티팩트)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | Integer (PK, auto) | 아티팩트 ID |
-| session_id | String (FK → sessions) | 세션 참조 |
-| phase | String | research / plan |
-| title | String | 아티팩트 제목 |
-| content | Text | 아티팩트 내용 (Markdown) |
-| status | String | draft / final |
-| version | Integer | 버전 번호 (기본값: 1) |
-| parent_artifact_id | Integer (FK → session_artifacts, nullable) | 이전 버전 참조 |
-| created_at | DateTime(tz) | 생성 시각 |
-| updated_at | DateTime(tz) | 수정 시각 |
-
-### artifact_annotations (아티팩트 인라인 주석)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | Integer (PK, auto) | 주석 ID |
-| artifact_id | Integer (FK → session_artifacts) | 아티팩트 참조 |
-| line_start | Integer | 시작 행 번호 |
-| line_end | Integer (nullable) | 끝 행 번호 |
-| content | Text | 주석 내용 |
-| annotation_type | String | comment / suggestion / issue |
-| status | String | pending / resolved |
-| created_at | DateTime(tz) | 생성 시각 |
-
-### file_changes (파일 변경 기록)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | Integer (PK, auto) | 변경 ID |
-| session_id | String (FK → sessions) | 세션 참조 |
-| tool | String | Write / Edit / Bash 등 |
-| file | Text | 변경된 파일 경로 |
-| timestamp | Text | 변경 시각 |
-
-### events (WebSocket 이벤트 버퍼)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | Integer (PK, auto) | 이벤트 ID |
-| session_id | String (FK → sessions) | 세션 참조 |
-| seq | Integer | 시퀀스 번호 |
-| event_type | String | 이벤트 타입 |
-| payload | JSONB | JSON 페이로드 |
-| timestamp | Text | 생성 시각 |
-
-### workspaces (워크스페이스)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 워크스페이스 ID |
-| name | String | 워크스페이스 이름 |
-| repo_url | Text | Git 저장소 URL |
-| branch | String | 기본 브랜치명 |
-| local_path | Text | 로컬 클론 경로 (/workspaces/{id}) |
-| status | String | cloning / ready / error / deleting |
-| error_message | Text | 오류 메시지 |
-| disk_usage_mb | Float | 디스크 사용량 (MB) |
-| created_at | DateTime(tz) | 생성 시각 |
-| updated_at | DateTime(tz) | 수정 시각 |
-
-### global_settings (글로벌 설정)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 설정 ID (기본값: "default") |
-| default_workspace_id | String | 기본 워크스페이스 ID |
-| allowed_tools | Text | 기본 허용 도구 |
-| system_prompt | Text | 기본 시스템 프롬프트 |
-| timeout_seconds | Integer | 기본 타임아웃 |
-| workflow_enabled | Boolean | 기본 워크플로우 활성화 |
-| permission_mode | Boolean | 기본 Permission 모드 |
-| model | String | 기본 모델 |
-| max_turns | Integer | 기본 최대 턴 |
-| max_budget_usd | Float | 기본 예산 한도 |
-| mcp_server_ids | JSONB | 기본 MCP 서버 |
-
-### mcp_servers (MCP 서버 설정)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 서버 ID |
-| name | String (unique) | 서버 이름 |
-| transport_type | String | stdio / sse |
-| command | Text | 실행 명령어 |
-| args | JSONB | 명령어 인자 |
-| url | Text | SSE URL |
-| headers | JSONB | HTTP 헤더 |
-| env | JSONB | 환경 변수 |
-| enabled | Boolean | 활성화 여부 |
-| source | String | manual / imported |
-| created_at | Text | 생성 시각 |
-| updated_at | Text | 수정 시각 |
-
-### tags (태그)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 태그 ID |
-| name | String (unique) | 태그 이름 |
-| color | String | 색상 코드 |
-| created_at | Text | 생성 시각 |
-
-### session_tags (세션-태그 연결)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| session_id | String (FK → sessions, PK) | 세션 참조 |
-| tag_id | String (FK → tags, PK) | 태그 참조 |
-| created_at | Text | 생성 시각 |
-
-### teams (팀)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 팀 ID |
-| name | String | 팀 이름 |
-| workspace_id | String (FK → workspaces) | 워크스페이스 참조 |
-| goal | Text | 팀 목표/작업 설명 |
-| status | String | idle / running / completed / error |
-| created_at | DateTime(tz) | 생성 시각 |
-
-### team_messages (팀 메시지)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | Integer (PK, auto) | 메시지 ID |
-| team_id | String (FK → teams) | 팀 참조 |
-| role | String | user / coordinator / agent |
-| content | Text | 메시지 내용 |
-| sender_name | String | 발신자 이름 |
-| created_at | DateTime(tz) | 생성 시각 |
-
-### team_tasks (팀 작업)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 작업 ID |
-| team_id | String (FK → teams) | 팀 참조 |
-| session_id | String (FK → sessions) | 담당 세션 참조 |
-| description | Text | 작업 설명 |
-| status | String | pending / in_progress / completed / error |
-| result | Text | 작업 결과 |
-| created_at | DateTime(tz) | 생성 시각 |
-
-### workflow_definitions (워크플로우 정의)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 정의 ID |
-| name | String (unique) | 정의 이름 |
-| description | Text (nullable) | 설명 |
-| is_builtin | Boolean | 내장 정의 여부 (삭제 불가) |
-| is_default | Boolean | 기본 정의 여부 |
-| sort_order | Integer | 정렬 순서 |
-| steps | JSONB | 워크플로우 단계 배열 (WorkflowStepConfig[]) |
-| created_at | DateTime(tz) | 생성 시각 |
-| updated_at | DateTime(tz) | 수정 시각 |
-
-### token_snapshots (토큰 사용량 스냅샷)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | Integer (PK, auto) | 스냅샷 ID |
-| session_id | String | 세션 ID (FK 없음, 독립 보존) |
-| work_dir | Text | 작업 디렉토리 |
-| workflow_phase | String (nullable) | 워크플로우 단계 |
-| model | String (nullable) | 모델명 |
-| input_tokens | Integer | 입력 토큰 수 |
-| output_tokens | Integer | 출력 토큰 수 |
-| cache_creation_tokens | Integer | 캐시 생성 토큰 |
-| cache_read_tokens | Integer | 캐시 읽기 토큰 |
-| timestamp | DateTime(tz) | 생성 시각 |
-
-> **마이그레이션**: Alembic으로 관리됩니다. `database.py`의 `initialize()` 메서드가 서버 시작 시 `alembic upgrade head`를 프로그래매틱으로 실행합니다. 새 마이그레이션 생성: `cd backend && uv run alembic revision --autogenerate -m "설명"`
+> DB 스키마 상세는 Serena 메모리 `database_schema` 참조.
+> 테이블: sessions, messages, session_artifacts, artifact_annotations, file_changes, events, workspaces, global_settings, mcp_servers, tags, session_tags, teams, team_messages, team_tasks, workflow_definitions, token_snapshots
+> 마이그레이션: `cd backend && uv run alembic revision --autogenerate -m "설명"`
 
 ---
 
 ## 11. 새 기능 개발 체크리스트
 
-### Backend 새 기능 추가
-
-- [ ] `app/schemas/` - Pydantic 스키마 생성
-- [ ] `app/models/` - SQLAlchemy ORM 모델 생성
-- [ ] `app/repositories/` - Repository 클래스 생성
-- [ ] `app/services/` - Service 클래스 생성
-- [ ] `app/api/v1/endpoints/` - API 엔드포인트 생성
-- [ ] `app/api/v1/api.py` - 라우터 등록
-- [ ] `app/api/dependencies.py` - DI 프로바이더 추가
-- [ ] `tests/` - 테스트 코드 작성
-
-### Frontend 새 기능 추가
-
-- [ ] `src/types/` - 타입 정의 (필요 시)
-- [ ] `src/features/[feature-name]/` 디렉토리 생성
-- [ ] `components/` - 기능 전용 TSX 컴포넌트 작성 (Tailwind + shadcn/ui)
-- [ ] `hooks/` - 커스텀 훅 + TanStack Query 키 팩토리
-- [ ] `src/lib/api/` - 타입 안전 API 함수 추가
-- [ ] `src/store/` - Zustand 스토어 추가 (필요 시)
-- [ ] `src/routes/` - 라우트 파일 추가 (필요 시)
-- [ ] 접근성 체크리스트 확인 (aria-label, 시맨틱 요소)
-- [ ] `npx tsc --noEmit` TypeScript 에러 없음 확인
+> 상세 체크리스트는 Serena 메모리 `new_feature_checklist` 참조
 
 ---
 

@@ -29,7 +29,12 @@ ignore_all_files_in_gitignore: true
 # same syntax as gitignore, so you can use * and **
 # Was previously called `ignored_dirs`, please update your config if you are using that.
 # Added (renamed) on 2025-04-07
-ignored_paths: []
+ignored_paths:
+  - "frontend/dist/**"
+  - "frontend/node_modules/**"
+  - "backend/.venv/**"
+  - "**/*.pkl"
+  - "docs/work-logs/**"
 
 # whether the project is in read-only mode
 # If set to true, all editing tools will be disabled and attempts to use them will result in an error
@@ -79,7 +84,21 @@ excluded_tools: []
 
 # initial prompt for the project. It will always be given to the LLM upon activating the project
 # (contrary to the memories, which are loaded on demand).
-initial_prompt: ""
+initial_prompt: |
+  rocket-session: 브라우저에서 Claude Code CLI 세션을 관리하는 웹 대시보드.
+  React 18 + TypeScript (frontend) / FastAPI + PostgreSQL (backend) / Node.js CLI.
+
+  ## 정보 2계층 구조
+  - **claude.md** (루트): 핵심 규칙, 개요, 아키텍처 다이어그램, 개발 패턴, 명령어. 항상 우선.
+  - **Serena 메모리**: 상세 참조 정보. 필요한 작업에 맞는 메모리만 선택적으로 읽으세요.
+    - `project_structure`: 전체 디렉토리 트리 (파일 위치 탐색 시)
+    - `database_schema`: DB 테이블 전체 정의 (모델/마이그레이션 작업 시)
+    - `service_architecture`: 서비스 목록 + DI + 환경변수 (백엔드 서비스 작업 시)
+    - `frontend_design_system`: 테마 색상 + 디자인 토큰 (UI 스타일링 작업 시)
+    - `new_feature_checklist`: 새 기능 추가 체크리스트 (새 기능 개발 시작 시)
+
+  claude.md와 메모리가 충돌하면 항상 claude.md를 우선하세요.
+  메모리에 claude.md와 중복되는 정보를 새로 저장하지 마세요.
 
 project_name: "rocket-session"
 included_optional_tools: []
