@@ -4,9 +4,11 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     analytics,
+    context,
     files,
     filesystem,
     health,
+    insights,
     local_sessions,
     mcp,
     permissions,
@@ -37,3 +39,5 @@ api_router.include_router(workflow.router)
 
 api_router.include_router(workflow_definitions.router)
 api_router.include_router(workspaces.router)
+api_router.include_router(insights.router)
+api_router.include_router(context.router)

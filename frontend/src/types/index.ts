@@ -175,4 +175,14 @@ export type {
   WsWorkflowPhaseRevisionEvent,
   WsWorkflowArtifactUpdatedEvent,
   WsWorkflowAnnotationAddedEvent,
+  WsInsightExtractedEvent,
+  WsWorkflowQAFailedEvent,
 } from "./ws-events";
+export type {
+  InsightCategory,
+  WorkspaceInsightInfo,
+  CreateInsightRequest,
+  UpdateInsightRequest,
+  ExtractInsightsRequest,
+  InsightContextResponse,
+} from "./knowledge";

@@ -15,6 +15,7 @@ from app.models.team_task import TeamTask
 from app.models.token_snapshot import TokenSnapshot
 from app.models.workflow_definition import WorkflowDefinition
 from app.models.workspace import Workspace
+from app.models.workspace_insight import WorkspaceInsight
 
 __all__ = [
     "Base",
@@ -36,4 +37,5 @@ __all__ = [
     "TokenSnapshot",
     "WorkflowDefinition",
     "Workspace",
+    "WorkspaceInsight",
 ]

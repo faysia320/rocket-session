@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkflowsRouteImport } from './routes/workflows'
+import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
 import { Route as GitMonitorRouteImport } from './routes/git-monitor'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
@@ -21,6 +22,11 @@ import { Route as SessionSessionIdRouteImport } from './routes/session/$sessionI
 const WorkflowsRoute = WorkflowsRouteImport.update({
   id: '/workflows',
   path: '/workflows',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KnowledgeBaseRoute = KnowledgeBaseRouteImport.update({
+  id: '/knowledge-base',
+  path: '/knowledge-base',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GitMonitorRoute = GitMonitorRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/git-monitor': typeof GitMonitorRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/workflows': typeof WorkflowsRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/git-monitor': typeof GitMonitorRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/workflows': typeof WorkflowsRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/git-monitor': typeof GitMonitorRoute
+  '/knowledge-base': typeof KnowledgeBaseRoute
   '/workflows': typeof WorkflowsRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/git-monitor'
+    | '/knowledge-base'
     | '/workflows'
     | '/session/$sessionId'
     | '/session/new'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/git-monitor'
+    | '/knowledge-base'
     | '/workflows'
     | '/session/$sessionId'
     | '/session/new'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/git-monitor'
+    | '/knowledge-base'
     | '/workflows'
     | '/session/$sessionId'
     | '/session/new'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
   GitMonitorRoute: typeof GitMonitorRoute
+  KnowledgeBaseRoute: typeof KnowledgeBaseRoute
   WorkflowsRoute: typeof WorkflowsRoute
   SessionSessionIdRoute: typeof SessionSessionIdRoute
   SessionNewRoute: typeof SessionNewRoute
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/workflows'
       fullPath: '/workflows'
       preLoaderRoute: typeof WorkflowsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/knowledge-base': {
+      id: '/knowledge-base'
+      path: '/knowledge-base'
+      fullPath: '/knowledge-base'
+      preLoaderRoute: typeof KnowledgeBaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/git-monitor': {
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
   GitMonitorRoute: GitMonitorRoute,
+  KnowledgeBaseRoute: KnowledgeBaseRoute,
   WorkflowsRoute: WorkflowsRoute,
   SessionSessionIdRoute: SessionSessionIdRoute,
   SessionNewRoute: SessionNewRoute,

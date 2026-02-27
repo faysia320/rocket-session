@@ -13,8 +13,10 @@ from app.core.config import WORKSPACES_ROOT, Settings
 from app.core.database import Database
 from app.services.analytics_service import AnalyticsService
 from app.services.claude_runner import ClaudeRunner
+from app.services.context_builder_service import ContextBuilderService
 from app.services.filesystem_service import FilesystemService
 from app.services.git_service import GitService
+from app.services.insight_service import InsightService
 from app.services.github_service import GitHubService
 from app.services.jsonl_watcher import JsonlWatcher
 from app.services.local_session_scanner import LocalSessionScanner
@@ -72,6 +74,8 @@ class ServiceRegistry:
         self.workflow_definition_service: WorkflowDefinitionService | None = None
         self.workflow_service: WorkflowService | None = None
         self.workspace_service: WorkspaceService | None = None
+        self.insight_service: InsightService | None = None
+        self.context_builder_service: ContextBuilderService | None = None
 
     def _require(self, name: str) -> Any:
         """서비스가 초기화되었는지 확인하고 반환."""
@@ -139,6 +143,10 @@ class ServiceRegistry:
         )
         self.workspace_service = WorkspaceService(
             self.database, self.git_service, workspaces_root=WORKSPACES_ROOT
+        )
+        self.insight_service = InsightService(self.database)
+        self.context_builder_service = ContextBuilderService(
+            self.database, self.insight_service
         )
         self.jsonl_watcher = JsonlWatcher(self.session_manager, self.ws_manager)
 
@@ -309,6 +317,14 @@ def get_workflow_service() -> WorkflowService:
 
 def get_workspace_service() -> WorkspaceService:
     return _registry._require("workspace_service")
+
+
+def get_insight_service() -> InsightService:
+    return _registry._require("insight_service")
+
+
+def get_context_builder_service() -> ContextBuilderService:
+    return _registry._require("context_builder_service")
 
 
 # --- 앱 라이프사이클 (레지스트리 위임) ---
