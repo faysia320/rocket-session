@@ -400,6 +400,7 @@ class SessionManager(DBService):
         work_dir: str | None = None,
         worktree_name: str | None = None,
         workflow_original_prompt: str | None | object = _UNSET,
+        workflow_definition_id: str | None = None,
     ) -> dict:
         # None = "미전달" 필드: None이 아닌 값만 포함
         maybe_fields = {
@@ -422,6 +423,7 @@ class SessionManager(DBService):
             "forked_at_message_id": forked_at_message_id,
             "work_dir": work_dir,
             "worktree_name": worktree_name,
+            "workflow_definition_id": workflow_definition_id,
         }
         kwargs = {k: v for k, v in maybe_fields.items() if v is not None}
         # _UNSET 센티넬 필드: None도 유효한 값 (DB에서 NULL로 설정)

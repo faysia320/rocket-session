@@ -4,7 +4,7 @@
 새로운 시스템 워크플로우 "Workflow 4"를 추가합니다.
 
 Revision ID: 0026
-Revises: 0025
+Revises: 0025b
 Create Date: 2026-02-28
 """
 
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0026"
-down_revision: Union[str, None] = "0025"
+down_revision: Union[str, None] = "0025b"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

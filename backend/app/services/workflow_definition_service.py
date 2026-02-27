@@ -123,42 +123,59 @@ class WorkflowDefinitionService(DBService):
             entity = await repo.get_default()
             if entity:
                 return WorkflowDefinitionInfo.model_validate(entity)
-        # default도 없으면 하드코딩 fallback
+        # default도 없으면 하드코딩 fallback을 DB에 저장 후 반환
+        now = utc_now()
+        fallback_id = f"default-{uuid.uuid4().hex[:8]}"
+        fallback_steps = [
+            WorkflowStepConfig(
+                name="research",
+                label="Research",
+                icon="Search",
+                prompt_template="",
+                constraints="readonly",
+                review_required=False,
+                order_index=0,
+            ),
+            WorkflowStepConfig(
+                name="plan",
+                label="Plan",
+                icon="FileText",
+                prompt_template="",
+                constraints="readonly",
+                review_required=True,
+                order_index=1,
+            ),
+            WorkflowStepConfig(
+                name="implement",
+                label="Implement",
+                icon="Code",
+                prompt_template="",
+                constraints="full",
+                review_required=False,
+                order_index=2,
+            ),
+        ]
+        async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
+            entity = WorkflowDefinition(
+                id=fallback_id,
+                name="Default",
+                is_builtin=True,
+                is_default=True,
+                sort_order=0,
+                steps=[s.model_dump() for s in fallback_steps],
+                created_at=now,
+                updated_at=now,
+            )
+            await repo.add(entity)
+            await session.commit()
+            logger.info("기본 워크플로우 정의 자동 생성: %s", fallback_id)
         return WorkflowDefinitionInfo(
-            id="fallback",
+            id=fallback_id,
             name="Default",
             is_default=True,
-            steps=[
-                WorkflowStepConfig(
-                    name="research",
-                    label="Research",
-                    icon="Search",
-                    prompt_template="",
-                    constraints="readonly",
-                    review_required=False,
-                    order_index=0,
-                ),
-                WorkflowStepConfig(
-                    name="plan",
-                    label="Plan",
-                    icon="FileText",
-                    prompt_template="",
-                    constraints="readonly",
-                    review_required=True,
-                    order_index=1,
-                ),
-                WorkflowStepConfig(
-                    name="implement",
-                    label="Implement",
-                    icon="Code",
-                    prompt_template="",
-                    constraints="full",
-                    review_required=False,
-                    order_index=2,
-                ),
-            ],
-            created_at=utc_now(),
-            updated_at=utc_now(),
+            steps=fallback_steps,
+            created_at=now,
+            updated_at=now,
         )
 
     # ── Export / Import ──────────────────────────────────────

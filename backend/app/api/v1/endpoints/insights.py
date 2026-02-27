@@ -95,5 +95,5 @@ async def archive_insights(
     service: InsightService = Depends(get_insight_service),
 ):
     """인사이트 다건 아카이브."""
-    count = await service.archive_insights(req.ids)
+    await service.archive_insights(req.ids)
     return StatusResponse(status="ok")

@@ -2,8 +2,8 @@
 
 워크스페이스별 인사이트를 저장하는 테이블을 생성합니다.
 
-Revision ID: 0025
-Revises: 0024
+Revision ID: 0025b
+Revises: 0025
 Create Date: 2026-02-28
 """
 
@@ -12,8 +12,8 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0025"
-down_revision: Union[str, None] = "0024"
+revision: str = "0025b"
+down_revision: Union[str, None] = "0025"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
