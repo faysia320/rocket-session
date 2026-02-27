@@ -12,6 +12,7 @@ import { McpServerManager } from "@/features/mcp/components/McpServerManager";
 import { NotificationSettingsPanel } from "@/features/notification/components/NotificationSettingsPanel";
 import { useGlobalSettings, useUpdateGlobalSettings } from "../hooks/useGlobalSettings";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AVAILABLE_TOOLS } from "@/features/session/constants/tools";
 
 /** Permission 승인 대상 도구 목록 */
@@ -102,7 +103,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
           </p>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6">
+        <ScrollArea className="flex-1 min-h-0 -mx-6">
           <div className="px-6">
           <div className="space-y-5 pt-2 pb-1">
             {/* Default Workspace */}
@@ -174,16 +175,17 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
               <p className="font-mono text-2xs text-muted-foreground/70">
                 Claude CLI에 전달할 기본 모델입니다. 비워두면 전역 설정 또는 기본값을 사용합니다.
               </p>
-              <select
-                className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-              >
-                <option value="">Default</option>
-                <option value="opus">Opus</option>
-                <option value="sonnet">Sonnet</option>
-                <option value="haiku">Haiku</option>
-              </select>
+              <Select value={model || "__default__"} onValueChange={(val) => setModel(val === "__default__" ? "" : val)}>
+                <SelectTrigger className="font-mono text-xs bg-input border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__default__">Default</SelectItem>
+                  <SelectItem value="opus">Opus</SelectItem>
+                  <SelectItem value="sonnet">Sonnet</SelectItem>
+                  <SelectItem value="haiku">Haiku</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Fallback Model */}

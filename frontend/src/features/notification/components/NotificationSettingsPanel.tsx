@@ -2,6 +2,7 @@ import { Volume2, VolumeX, Bell, BellOff, Play } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { NotificationCategory, NotificationChannel } from "@/types";
 import { CATEGORY_LABELS } from "@/types";
@@ -100,18 +101,18 @@ export function NotificationSettingsPanel() {
             <Label className="font-mono text-2xs font-semibold text-muted-foreground tracking-wider">
               SOUND PACK
             </Label>
-            <select
-              className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
-              value={settings.soundPack}
-              onChange={(e) => setSoundPack(e.target.value)}
-              aria-label="사운드 팩 선택"
-            >
-              {SOUND_PACKS.map((pack) => (
-                <option key={pack.id} value={pack.id}>
-                  {pack.name} — {pack.description}
-                </option>
-              ))}
-            </select>
+            <Select value={settings.soundPack} onValueChange={setSoundPack}>
+              <SelectTrigger className="font-mono text-xs bg-input border-border" aria-label="사운드 팩 선택">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SOUND_PACKS.map((pack) => (
+                  <SelectItem key={pack.id} value={pack.id}>
+                    {pack.name} — {pack.description}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* 카테고리별 설정 */}

@@ -163,6 +163,7 @@ describe("claudeSocketReducer", () => {
         { id: "user1", type: "user_message", content: "hi" } as any,
         { id: "at1", type: "assistant_text", text: "Hello!" },
       ],
+      _pendingAssistantTextIdx: 1,
     };
     const result = claudeSocketReducer(withAssistant, {
       type: "WS_RESULT",

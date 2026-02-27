@@ -260,7 +260,7 @@ function WorkspaceContent({
   const fetchMutation = useFetchRemote(isReady ? workspace.local_path : "");
   const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null);
   const [, setTick] = useState(0); // 상대 시간 갱신용
-  const tickRef = useRef<ReturnType<typeof setInterval>>();
+  const tickRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   // 30초마다 상대 시간 표시 갱신
   useEffect(() => {

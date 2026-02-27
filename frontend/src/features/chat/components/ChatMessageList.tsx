@@ -13,8 +13,8 @@ interface ChatMessageListProps {
   searchQuery: string;
   searchMatches: number[];
   messageGaps: Array<"tight" | "normal" | "turn-start">;
-  animateFromIndex: RefObject<number>;
-  scrollContainerRef: RefObject<HTMLDivElement>;
+  animateFromIndex: RefObject<number | null>;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
   onScroll: () => void;
   status: string;
   activeTools: ToolUseMsg[];

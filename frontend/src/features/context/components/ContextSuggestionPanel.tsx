@@ -22,7 +22,7 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
   const [selectedMemoryPaths, setSelectedMemoryPaths] = useState<Set<string>>(new Set());
   const [selectedFilePaths, setSelectedFilePaths] = useState<Set<string>>(new Set());
   const [debouncedPrompt, setDebouncedPrompt] = useState(prompt);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // 500ms debounce
   useEffect(() => {

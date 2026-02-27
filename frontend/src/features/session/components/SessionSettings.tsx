@@ -18,6 +18,7 @@ import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSele
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import { McpServerSelector } from "@/features/mcp/components/McpServerSelector";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AVAILABLE_TOOLS, PERMISSION_TOOLS } from "../constants/tools";
 
 interface SessionSettingsProps {
@@ -135,7 +136,7 @@ export function SessionSettings({
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 py-5">
           <div className="space-y-5">
             {/* 모델 선택 */}
@@ -146,16 +147,17 @@ export function SessionSettings({
               <p className="font-mono text-2xs text-muted-foreground/70">
                 Claude CLI에 전달할 모델입니다. 비워두면 전역 설정 또는 기본값을 사용합니다.
               </p>
-              <select
-                className="font-mono text-xs bg-input border border-border rounded px-2 py-1.5 w-full outline-none focus:border-primary/50"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-              >
-                <option value="">Default</option>
-                <option value="opus">Opus</option>
-                <option value="sonnet">Sonnet</option>
-                <option value="haiku">Haiku</option>
-              </select>
+              <Select value={model || "__default__"} onValueChange={(val) => setModel(val === "__default__" ? "" : val)}>
+                <SelectTrigger className="font-mono text-xs bg-input border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__default__">Default</SelectItem>
+                  <SelectItem value="opus">Opus</SelectItem>
+                  <SelectItem value="sonnet">Sonnet</SelectItem>
+                  <SelectItem value="haiku">Haiku</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Additional Workspaces */}
