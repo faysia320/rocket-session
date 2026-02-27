@@ -10,6 +10,7 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { cn, formatTime } from "@/lib/utils";
 import { getToolBadgeStyle } from "../constants/toolColors";
 import { useDiffFetch } from "../hooks/useDiffFetch";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 import type { FileChange } from "@/types";
 
 /** 동일 파일의 변경 이력을 병합한 항목 */
@@ -163,6 +164,7 @@ export const FilePanel = memo(function FilePanel({
 }: FilePanelProps) {
   const [viewMode, setViewMode] = useState<FileViewMode>("tree");
   const [openHoverFile, setOpenHoverFile] = useState<string | null>(null);
+  const isMobile = useIsMobile();
   const merged = useMemo(() => mergeFileChanges(fileChanges), [fileChanges]);
   const tree = useMemo(() => buildFileTree(merged), [merged]);
   const uniqueCount = merged.length;
@@ -225,10 +227,11 @@ export const FilePanel = memo(function FilePanel({
                   onFullView={onFileClick}
                   isHoverOpen={openHoverFile === item.file}
                   onHoverOpenChange={(isOpen) => setOpenHoverFile(isOpen ? item.file : null)}
+                  isMobile={isMobile}
                 />
               ))
             ) : (
-              <FileTreeView tree={tree} sessionId={sessionId} onFullView={onFileClick} openHoverFile={openHoverFile} onHoverOpenChange={setOpenHoverFile} />
+              <FileTreeView tree={tree} sessionId={sessionId} onFullView={onFileClick} openHoverFile={openHoverFile} onHoverOpenChange={setOpenHoverFile} isMobile={isMobile} />
             )}
           </div>
         </ScrollArea>
@@ -311,9 +314,10 @@ interface MergedFileChangeItemProps {
   onFullView?: (change: FileChange) => void;
   isHoverOpen: boolean;
   onHoverOpenChange: (isOpen: boolean) => void;
+  isMobile: boolean;
 }
 
-function MergedFileChangeItem({ sessionId, item, onFullView, isHoverOpen, onHoverOpenChange }: MergedFileChangeItemProps) {
+function MergedFileChangeItem({ sessionId, item, onFullView, isHoverOpen, onHoverOpenChange, isMobile }: MergedFileChangeItemProps) {
   const { diff, loading, fetchIfNeeded } = useDiffFetch(sessionId, item.file);
   const openSourceRef = useRef<"hover" | "click" | null>(null);
 
@@ -392,10 +396,13 @@ function MergedFileChangeItem({ sessionId, item, onFullView, isHoverOpen, onHove
         </button>
       </HoverCardTrigger>
       <HoverCardContent
-        side="left"
+        side={isMobile ? "bottom" : "left"}
         align="start"
         sideOffset={8}
-        className="w-[720px] max-h-[450px] overflow-hidden p-0 flex flex-col"
+        className={cn(
+          "overflow-hidden p-0 flex flex-col",
+          isMobile ? "w-[calc(100vw-2rem)] max-h-[300px]" : "w-[720px] max-h-[450px]",
+        )}
       >
         <DiffHoverContent
           diff={diff}
@@ -416,13 +423,14 @@ interface FileTreeViewProps {
   onFullView?: (change: FileChange) => void;
   openHoverFile: string | null;
   onHoverOpenChange: (file: string | null) => void;
+  isMobile: boolean;
 }
 
-function FileTreeView({ tree, sessionId, onFullView, openHoverFile, onHoverOpenChange }: FileTreeViewProps) {
+function FileTreeView({ tree, sessionId, onFullView, openHoverFile, onHoverOpenChange, isMobile }: FileTreeViewProps) {
   return (
     <div className="space-y-0.5">
       {tree.map((node) => (
-        <FileTreeNodeComponent key={node.path} node={node} depth={0} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} />
+        <FileTreeNodeComponent key={node.path} node={node} depth={0} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} isMobile={isMobile} />
       ))}
     </div>
   );
@@ -435,16 +443,17 @@ interface FileTreeNodeComponentProps {
   onFullView?: (change: FileChange) => void;
   openHoverFile: string | null;
   onHoverOpenChange: (file: string | null) => void;
+  isMobile: boolean;
 }
 
-function FileTreeNodeComponent({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange }: FileTreeNodeComponentProps) {
+function FileTreeNodeComponent({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange, isMobile }: FileTreeNodeComponentProps) {
   if (node.isDirectory) {
-    return <FileTreeFolderNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} />;
+    return <FileTreeFolderNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} isMobile={isMobile} />;
   }
-  return <FileTreeFileNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} />;
+  return <FileTreeFileNode node={node} depth={depth} sessionId={sessionId} onFullView={onFullView} openHoverFile={openHoverFile} onHoverOpenChange={onHoverOpenChange} isMobile={isMobile} />;
 }
 
-function FileTreeFolderNode({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange }: FileTreeNodeComponentProps) {
+function FileTreeFolderNode({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange, isMobile }: FileTreeNodeComponentProps) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -481,6 +490,7 @@ function FileTreeFolderNode({ node, depth, sessionId, onFullView, openHoverFile,
             onFullView={onFullView}
             openHoverFile={openHoverFile}
             onHoverOpenChange={onHoverOpenChange}
+            isMobile={isMobile}
           />
         ))}
       </CollapsibleContent>
@@ -488,7 +498,7 @@ function FileTreeFolderNode({ node, depth, sessionId, onFullView, openHoverFile,
   );
 }
 
-function FileTreeFileNode({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange }: FileTreeNodeComponentProps) {
+function FileTreeFileNode({ node, depth, sessionId, onFullView, openHoverFile, onHoverOpenChange, isMobile }: FileTreeNodeComponentProps) {
   const item = node.fileChange!;
   const { diff, loading, fetchIfNeeded } = useDiffFetch(sessionId, item.file);
   const isHoverOpen = openHoverFile === item.file;
@@ -553,10 +563,13 @@ function FileTreeFileNode({ node, depth, sessionId, onFullView, openHoverFile, o
         </button>
       </HoverCardTrigger>
       <HoverCardContent
-        side="left"
+        side={isMobile ? "bottom" : "left"}
         align="start"
         sideOffset={8}
-        className="w-[720px] max-h-[450px] overflow-hidden p-0 flex flex-col"
+        className={cn(
+          "overflow-hidden p-0 flex flex-col",
+          isMobile ? "w-[calc(100vw-2rem)] max-h-[300px]" : "w-[720px] max-h-[450px]",
+        )}
       >
         <DiffHoverContent
           diff={diff}

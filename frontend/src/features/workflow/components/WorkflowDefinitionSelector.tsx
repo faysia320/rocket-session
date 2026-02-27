@@ -44,12 +44,12 @@ export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefiniti
   return (
     <Select onValueChange={handleChange} value={value ?? ""}>
       <SelectTrigger className="font-mono text-xs bg-input border-border">
-        <div className="flex items-center gap-2">
-          <Workflow className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+          <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <SelectValue placeholder="워크플로우 선택…" />
         </div>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="max-w-[min(400px,90vw)]">
         {isLoading ? (
           <SelectItem value="__loading__" disabled className="font-mono text-xs">
             불러오는 중...
@@ -57,11 +57,13 @@ export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefiniti
         ) : null}
         {sortedDefinitions.map((def) => (
           <SelectItem key={def.id} value={def.id} className="font-mono text-xs">
-            <span>{def.name}</span>
-            {def.description ? (
-              <span className="ml-2 text-muted-foreground">— {def.description}</span>
-            ) : null}
-            <span className="ml-2 text-muted-foreground/60">({def.steps.length}단계)</span>
+            <span className="truncate">
+              <span>{def.name}</span>
+              {def.description ? (
+                <span className="ml-2 text-muted-foreground">— {def.description}</span>
+              ) : null}
+              <span className="ml-2 text-muted-foreground/60">({def.steps.length}단계)</span>
+            </span>
           </SelectItem>
         ))}
       </SelectContent>
