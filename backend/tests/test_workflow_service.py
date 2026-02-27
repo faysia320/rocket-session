@@ -12,6 +12,7 @@ import tempfile
 
 import pytest
 
+from app.services.workflow_definition_service import WorkflowDefinitionService
 from app.services.workflow_service import WorkflowService
 
 
@@ -23,7 +24,8 @@ from app.services.workflow_service import WorkflowService
 @pytest.fixture
 def workflow_service(db):
     """WorkflowService fixture (실제 DB 사용)."""
-    return WorkflowService(db)
+    definition_service = WorkflowDefinitionService(db)
+    return WorkflowService(db, definition_service)
 
 
 # ---------------------------------------------------------------------------

@@ -25,6 +25,7 @@ from app.services.mcp_service import McpService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
 from app.services.websocket_manager import WebSocketManager
+from app.services.workflow_definition_service import WorkflowDefinitionService
 from app.services.workspace_service import WorkspaceService
 from tests.conftest import _TEST_DB_URL
 
@@ -52,10 +53,12 @@ async def test_client():
         await session.execute(text("DELETE FROM messages"))
         await session.execute(text("DELETE FROM sessions"))
         await session.execute(text("DELETE FROM workspaces"))
+        await session.execute(text("DELETE FROM workflow_definitions"))
         await session.commit()
 
-    # 테스트용 워크스페이스 생성
+    # 테스트용 워크스페이스 + 기본 워크플로우 정의 생성
     from app.models.workspace import Workspace
+    from app.models.workflow_definition import WorkflowDefinition
 
     async with db.session() as session:
         workspace = Workspace(
@@ -68,6 +71,30 @@ async def test_client():
             created_at=datetime.now(timezone.utc),
         )
         session.add(workspace)
+
+        # 기본 워크플로우 정의 (세션 생성 시 FK 참조)
+        now = datetime.now(timezone.utc)
+        wf_def = WorkflowDefinition(
+            id="default",
+            name="Default",
+            is_builtin=True,
+            is_default=True,
+            sort_order=0,
+            steps=[
+                {"name": "research", "label": "Research", "icon": "Search",
+                 "prompt_template": "", "constraints": "readonly",
+                 "review_required": False, "order_index": 0},
+                {"name": "plan", "label": "Plan", "icon": "FileText",
+                 "prompt_template": "", "constraints": "readonly",
+                 "review_required": True, "order_index": 1},
+                {"name": "implement", "label": "Implement", "icon": "Code",
+                 "prompt_template": "", "constraints": "full",
+                 "review_required": False, "order_index": 2},
+            ],
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(wf_def)
         await session.commit()
 
     # Create test services
@@ -97,6 +124,8 @@ async def test_client():
     app.dependency_overrides[deps.get_skills_service] = lambda: skills_svc
     workspace_svc = WorkspaceService(db, git_svc)
     app.dependency_overrides[deps.get_workspace_service] = lambda: workspace_svc
+    wf_def_svc = WorkflowDefinitionService(db)
+    app.dependency_overrides[deps.get_workflow_definition_service] = lambda: wf_def_svc
 
     # Create client
     transport = ASGITransport(app=app)
@@ -115,7 +144,7 @@ async def create_test_session(
     """Helper function to create a test session."""
     payload = {"workspace_id": workspace_id or TEST_WORKSPACE_ID}
     response = await client.post("/api/sessions/", json=payload)
-    assert response.status_code == 200
+    assert response.status_code == 201
     return response.json()
 
 
@@ -145,7 +174,7 @@ class TestSessionCRUD:
             "/api/sessions/", json={"workspace_id": TEST_WORKSPACE_ID}
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert "id" in data
         assert data["work_dir"] == TEST_WORKSPACE_PATH
@@ -355,7 +384,7 @@ class TestSessionWorkflow:
             "/api/sessions/", json={"workspace_id": TEST_WORKSPACE_ID}
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["workflow_enabled"] is True
         assert data["workflow_phase"] == "research"
@@ -372,7 +401,7 @@ class TestSessionWorkflow:
             },
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["permission_mode"] is True
         assert data["permission_required_tools"] == ["Write", "Edit", "Bash"]
