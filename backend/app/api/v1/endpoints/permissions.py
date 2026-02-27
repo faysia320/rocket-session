@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import uuid
+from collections import OrderedDict
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -19,7 +20,8 @@ MAX_PENDING = 100
 _pending: dict[str, dict] = {}
 
 # 세션별 신뢰 도구 저장소 (인메모리, 서버 재시작 시 초기화)
-_session_trusted_tools: dict[str, set[str]] = {}
+_MAX_TRUSTED_SESSIONS = 200
+_session_trusted_tools: OrderedDict[str, set[str]] = OrderedDict()
 
 
 class PermissionRequest(BaseModel):
@@ -55,6 +57,8 @@ async def request_permission(session_id: str, body: PermissionRequest):
 
     # 1. 세션 레벨 신뢰 확인
     session_trusted = _session_trusted_tools.get(session_id, set())
+    if session_trusted:
+        _session_trusted_tools.move_to_end(session_id)
     if body.tool_name in session_trusted:
         logger.info(
             "Permission 자동 승인 (세션 신뢰): tool=%s, session=%s",
@@ -155,12 +159,18 @@ async def respond_permission(
 
         if trust_level == "session" and tool_name and session_id:
             _session_trusted_tools.setdefault(session_id, set()).add(tool_name)
+            _session_trusted_tools.move_to_end(session_id)
+            while len(_session_trusted_tools) > _MAX_TRUSTED_SESSIONS:
+                _session_trusted_tools.popitem(last=False)
             logger.info("도구 세션 신뢰 등록: %s (세션: %s)", tool_name, session_id)
 
         elif trust_level == "always" and tool_name:
             # 세션 신뢰에도 즉시 등록
             if session_id:
                 _session_trusted_tools.setdefault(session_id, set()).add(tool_name)
+                _session_trusted_tools.move_to_end(session_id)
+                while len(_session_trusted_tools) > _MAX_TRUSTED_SESSIONS:
+                    _session_trusted_tools.popitem(last=False)
             # DB에 글로벌 신뢰 저장
             try:
                 settings_service = get_settings_service()

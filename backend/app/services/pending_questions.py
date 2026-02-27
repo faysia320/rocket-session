@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import logging
+from collections import OrderedDict
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -19,7 +20,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # 인메모리 캐시: {session_id: {questions, tool_use_id, timestamp}}
-_cache: dict[str, dict] = {}
+_MAX_CACHE_SIZE = 200
+_cache: OrderedDict[str, dict] = OrderedDict()
 
 # DB 인스턴스 (앱 시작 시 init()으로 주입)
 _db: Database | None = None
@@ -45,6 +47,9 @@ async def set_pending_question(
         "timestamp": timestamp,
     }
     _cache[session_id] = data
+    _cache.move_to_end(session_id)
+    while len(_cache) > _MAX_CACHE_SIZE:
+        _cache.popitem(last=False)
 
     if _db is not None:
         try:
@@ -62,6 +67,7 @@ async def get_pending_question(session_id: str) -> dict | None:
     """세션의 대기 중인 질문 반환. 캐시 우선, 캐시 miss 시 DB 폴백."""
     cached = _cache.get(session_id)
     if cached is not None:
+        _cache.move_to_end(session_id)
         return cached
 
     if _db is not None:

@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -141,8 +142,9 @@ class ClaudeRunner:
         self._global_limiter = AsyncLimiter(
             max_rate=settings.rate_limit_global_per_minute, time_period=60
         )
-        # 세션별 레이트 리미터: 분당 최대 프롬프트 수
-        self._session_limiters: dict[str, AsyncLimiter] = {}
+        # 세션별 레이트 리미터: 분당 최대 프롬프트 수 (LRU 제한)
+        self._session_limiters: OrderedDict[str, AsyncLimiter] = OrderedDict()
+        self._max_session_limiters: int = 200
         self._session_rate_per_minute = settings.rate_limit_session_per_minute
 
     @staticmethod
@@ -1193,6 +1195,9 @@ class ClaudeRunner:
             self._session_limiters[session_id] = AsyncLimiter(
                 max_rate=self._session_rate_per_minute, time_period=60
             )
+        self._session_limiters.move_to_end(session_id)
+        while len(self._session_limiters) > self._max_session_limiters:
+            self._session_limiters.popitem(last=False)
         await self._session_limiters[session_id].acquire()
 
         # 글로벌 레이트 리미터 (분당 전체 세션 시작 수 제한)
