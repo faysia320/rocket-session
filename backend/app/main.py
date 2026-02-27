@@ -44,71 +44,99 @@ from app.services.pending_questions import clear_all_pending_questions  # noqa: 
 from app.api.v1.endpoints.permissions import clear_pending  # noqa: E402
 
 
-async def _periodic_cleanup():
-    """1시간마다 오래된 이벤트 정리."""
-    from app.repositories.event_repo import EventRepository
+async def _run_background_tasks(shutdown_event: asyncio.Event) -> None:
+    """TaskGroup으로 배경 태스크를 구조화 (structured concurrency).
 
-    while True:
-        await asyncio.sleep(3600)
+    하나의 태스크가 예외로 종료되면 나머지도 자동 정리됩니다.
+    shutdown_event가 set되면 모든 태스크를 종료합니다.
+    """
+    ws_mgr = get_ws_manager()
+    await ws_mgr.start_background_tasks()
+
+    async def _guarded_cleanup():
+        """이벤트 정리 — shutdown 시그널 감시."""
+        while not shutdown_event.is_set():
+            try:
+                await asyncio.wait_for(shutdown_event.wait(), timeout=3600)
+            except asyncio.TimeoutError:
+                pass  # 1시간 경과 → 정리 실행
+            else:
+                break  # shutdown 시그널
+            try:
+                db = get_database()
+                async with db.session() as session:
+                    from app.repositories.event_repo import EventRepository
+                    repo = EventRepository(session)
+                    deleted = await repo.cleanup_old_events(24)
+                    await session.commit()
+                    if deleted:
+                        logging.getLogger(__name__).info(
+                            "오래된 이벤트 %d건 정리 완료", deleted
+                        )
+            except Exception as e:
+                logging.getLogger(__name__).warning("주기적 이벤트 정리 실패: %s", e)
+
+    async def _guarded_mv_refresh():
+        """MV 갱신 — shutdown 시그널 감시."""
+        while not shutdown_event.is_set():
+            try:
+                await asyncio.wait_for(shutdown_event.wait(), timeout=300)
+            except asyncio.TimeoutError:
+                pass
+            else:
+                break
+            try:
+                db = get_database()
+                async with db.session() as session:
+                    from app.repositories.analytics_repo import AnalyticsRepository
+                    await AnalyticsRepository.refresh_materialized_view(session)
+            except Exception as e:
+                logging.getLogger(__name__).warning("MV 갱신 실패: %s", e)
+
+    async def _guarded_warmup():
+        """사용량 캐시 워밍업 (1회성)."""
         try:
-            db = get_database()
-            async with db.session() as session:
-                repo = EventRepository(session)
-                deleted = await repo.cleanup_old_events(24)
-                await session.commit()
-                if deleted:
-                    logging.getLogger(__name__).info(
-                        "오래된 이벤트 %d건 정리 완료", deleted
-                    )
+            await get_usage_service().warmup()
         except Exception as e:
-            logging.getLogger(__name__).warning("주기적 이벤트 정리 실패: %s", e)
+            logging.getLogger(__name__).error("사용량 캐시 워밍업 실패: %s", e)
 
-
-async def _periodic_mv_refresh():
-    """5분마다 분석 Materialized View를 갱신."""
-    from app.repositories.analytics_repo import AnalyticsRepository
-
-    while True:
-        await asyncio.sleep(300)  # 5분
-        try:
-            db = get_database()
-            async with db.session() as session:
-                await AnalyticsRepository.refresh_materialized_view(session)
-        except Exception as e:
-            logging.getLogger(__name__).warning("MV 갱신 실패: %s", e)
+    try:
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(_guarded_cleanup())
+            tg.create_task(_guarded_mv_refresh())
+            tg.create_task(_guarded_warmup())
+            # shutdown 시그널 대기 후 TaskGroup 탈출
+            tg.create_task(shutdown_event.wait())
+    except* Exception as eg:
+        for exc in eg.exceptions:
+            logging.getLogger(__name__).error(
+                "배경 태스크 비정상 종료: %s", exc, exc_info=exc,
+            )
+    finally:
+        await ws_mgr.stop_background_tasks()
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """앱 라이프사이클: DB 초기화 및 정리."""
     await init_dependencies()
-    ws_mgr = get_ws_manager()
-    await ws_mgr.start_background_tasks()
-    cleanup_task = asyncio.create_task(_periodic_cleanup())
-    mv_refresh_task = asyncio.create_task(_periodic_mv_refresh())
-    # 사용량 캐시 백그라운드 워밍업 (서버 시작 시 미리 로드)
-    warmup_task = asyncio.create_task(get_usage_service().warmup())
-    warmup_task.add_done_callback(
-        lambda t: (
-            logging.getLogger(__name__).error(
-                "사용량 캐시 워밍업 실패: %s", t.exception()
-            )
-            if not t.cancelled() and t.exception()
-            else None
-        )
-    )
+
+    shutdown_event = asyncio.Event()
+    bg_task = asyncio.create_task(_run_background_tasks(shutdown_event))
+
     yield
-    cleanup_task.cancel()
-    mv_refresh_task.cancel()
+
+    # shutdown 시그널 → TaskGroup 내 모든 태스크 종료
+    shutdown_event.set()
     try:
-        await cleanup_task
-    except asyncio.CancelledError:
-        pass
-    try:
-        await mv_refresh_task
-    except asyncio.CancelledError:
-        pass
-    await ws_mgr.stop_background_tasks()
+        await asyncio.wait_for(bg_task, timeout=10)
+    except asyncio.TimeoutError:
+        bg_task.cancel()
+        try:
+            await bg_task
+        except asyncio.CancelledError:
+            pass
+
     clear_pending()
     clear_all_pending_questions()
     await shutdown_dependencies()

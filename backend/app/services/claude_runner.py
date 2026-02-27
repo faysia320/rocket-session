@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from aiolimiter import AsyncLimiter
+
 from app.core.config import Settings
 from app.core.constants import READONLY_TOOLS
 from app.core.utils import utc_now, utc_now_iso
@@ -133,6 +135,13 @@ class ClaudeRunner:
     def __init__(self, settings: Settings):
         self._settings = settings
         self._semaphore = asyncio.Semaphore(settings.max_concurrent_sessions)
+        # 글로벌 레이트 리미터: 분당 최대 세션 시작 수
+        self._global_limiter = AsyncLimiter(
+            max_rate=settings.rate_limit_global_per_minute, time_period=60
+        )
+        # 세션별 레이트 리미터: 분당 최대 프롬프트 수
+        self._session_limiters: dict[str, AsyncLimiter] = {}
+        self._session_rate_per_minute = settings.rate_limit_session_per_minute
 
     @staticmethod
     async def _terminate_process(
@@ -1136,6 +1145,16 @@ class ClaudeRunner:
         workflow_step_config: dict | None = None,
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
+        # 세션별 레이트 리미터 (분당 프롬프트 수 제한)
+        if session_id not in self._session_limiters:
+            self._session_limiters[session_id] = AsyncLimiter(
+                max_rate=self._session_rate_per_minute, time_period=60
+            )
+        await self._session_limiters[session_id].acquire()
+
+        # 글로벌 레이트 리미터 (분당 전체 세션 시작 수 제한)
+        await self._global_limiter.acquire()
+
         # 세마포어 대기 (동시 세션 제한)
         if self._semaphore.locked():
             logger.info(

@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # 하트비트 간격 (초)
     ws_heartbeat_interval: int = 15
 
+    # Rate Limiting (aiolimiter)
+    # 글로벌: 분당 최대 세션 시작 수
+    rate_limit_global_per_minute: float = 60
+    # 세션별: 분당 최대 프롬프트 수
+    rate_limit_session_per_minute: float = 20
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
