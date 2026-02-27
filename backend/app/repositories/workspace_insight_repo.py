@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import and_, delete, func, select, update
 
 from app.models.workspace_insight import WorkspaceInsight
 from app.repositories.base import BaseRepository
@@ -46,50 +46,6 @@ class WorkspaceInsightRepository(BaseRepository[WorkspaceInsight]):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
-    async def search_by_keywords(
-        self,
-        workspace_id: str,
-        keywords: list[str],
-        limit: int = 10,
-    ) -> list[WorkspaceInsight]:
-        """키워드 기반 인사이트 검색 (title, content, tags에서 ILIKE 매칭)."""
-        if not keywords:
-            return await self.list_by_workspace(workspace_id, limit=limit)
-
-        keyword_conditions = []
-        for kw in keywords:
-            pattern = f"%{kw}%"
-            keyword_conditions.append(
-                or_(
-                    WorkspaceInsight.title.ilike(pattern),
-                    WorkspaceInsight.content.ilike(pattern),
-                    func.cast(WorkspaceInsight.tags, sa_text()).ilike(pattern),
-                )
-            )
-
-        stmt = (
-            select(WorkspaceInsight)
-            .where(
-                and_(
-                    WorkspaceInsight.workspace_id == workspace_id,
-                    WorkspaceInsight.is_archived == False,  # noqa: E712
-                    or_(*keyword_conditions),
-                )
-            )
-            .order_by(WorkspaceInsight.relevance_score.desc())
-            .limit(limit)
-        )
-        result = await self._session.execute(stmt)
-        return list(result.scalars().all())
-
-    async def bulk_create(
-        self, insights: list[WorkspaceInsight]
-    ) -> list[WorkspaceInsight]:
-        """다건 인사이트 생성."""
-        self._session.add_all(insights)
-        await self._session.flush()
-        return insights
-
     async def archive_by_ids(self, ids: list[int]) -> int:
         """ID 목록으로 인사이트 아카이브."""
         if not ids:
@@ -124,10 +80,3 @@ class WorkspaceInsightRepository(BaseRepository[WorkspaceInsight]):
         )
         result = await self._session.execute(stmt)
         return result.rowcount
-
-
-def sa_text():
-    """JSONB를 TEXT로 캐스팅하기 위한 헬퍼."""
-    from sqlalchemy import Text
-
-    return Text

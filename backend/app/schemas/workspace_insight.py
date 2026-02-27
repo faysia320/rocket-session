@@ -50,20 +50,7 @@ class UpdateInsightRequest(BaseModel):
     is_archived: Optional[bool] = None
 
 
-class ExtractInsightsRequest(BaseModel):
-    """세션에서 인사이트 자동 추출 요청."""
-
-    session_id: str
-
-
 class ArchiveInsightsRequest(BaseModel):
     """인사이트 다건 아카이브 요청."""
 
     ids: list[int] = Field(..., min_length=1)
-
-
-class InsightContextResponse(BaseModel):
-    """컨텍스트 주입용 인사이트 응답."""
-
-    insights: list[WorkspaceInsightInfo]
-    context_text: str

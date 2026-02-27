@@ -8,8 +8,6 @@ from app.schemas.common import StatusResponse
 from app.schemas.workspace_insight import (
     ArchiveInsightsRequest,
     CreateInsightRequest,
-    ExtractInsightsRequest,
-    InsightContextResponse,
     UpdateInsightRequest,
     WorkspaceInsightInfo,
 )
@@ -64,29 +62,6 @@ async def delete_insight(
     if not deleted:
         raise NotFoundError("인사이트를 찾을 수 없습니다")
     return StatusResponse(status="ok")
-
-
-@router.post("/extract", response_model=list[WorkspaceInsightInfo])
-async def extract_insights(
-    workspace_id: str,
-    req: ExtractInsightsRequest,
-    service: InsightService = Depends(get_insight_service),
-):
-    """세션에서 인사이트 자동 추출."""
-    return await service.extract_from_session(req.session_id)
-
-
-@router.get("/context", response_model=InsightContextResponse)
-async def get_insight_context(
-    workspace_id: str,
-    prompt: str = Query(""),
-    limit: int = Query(5, ge=1, le=20),
-    service: InsightService = Depends(get_insight_service),
-):
-    """프롬프트 기반 관련 인사이트 컨텍스트 조회."""
-    return await service.build_context_for_session(
-        workspace_id, prompt=prompt, limit=limit
-    )
 
 
 @router.post("/archive", response_model=StatusResponse)

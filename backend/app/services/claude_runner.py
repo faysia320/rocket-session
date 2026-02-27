@@ -1376,25 +1376,3 @@ class ClaudeRunner:
                     if "초기화되지 않았습니다" not in str(e):
                         logger.warning("세션 %s: 팀 콜백 실패: %s", session_id, e)
 
-                # 인사이트 자동 추출: 세션 완료 시 워크스페이스 지식 축적
-                if turn_state.result_received and not turn_state.is_error:
-                    try:
-                        from app.api.dependencies import get_insight_service
-
-                        insight_svc = get_insight_service()
-                        workspace_id = session.get("workspace_id")
-                        if workspace_id:
-                            insights = await insight_svc.extract_from_session(
-                                session_id
-                            )
-                            if insights:
-                                await ws_manager.broadcast_event(
-                                    session_id,
-                                    {
-                                        "type": WsEventType.INSIGHT_EXTRACTED,
-                                        "workspace_id": workspace_id,
-                                        "count": len(insights),
-                                    },
-                                )
-                    except Exception as e:
-                        logger.debug("세션 %s: 인사이트 추출 스킵: %s", session_id, e)
