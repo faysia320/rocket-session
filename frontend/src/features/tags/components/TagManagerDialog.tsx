@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from "../hooks/useTags";
 import type { TagInfo } from "@/types";
@@ -29,15 +30,24 @@ const TAG_COLOR_PRESETS = [
 ];
 
 interface TagManagerDialogProps {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function TagManagerDialog({ trigger }: TagManagerDialogProps) {
-  const [open, setOpen] = useState(false);
+export function TagManagerDialog({
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: TagManagerDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setUncontrolledOpen;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>태그 관리</DialogTitle>
@@ -208,16 +218,17 @@ function ColorPicker({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="h-6 w-6 shrink-0 rounded-full border-2 border-transparent ring-1 ring-border transition-shadow hover:ring-2 hover:ring-primary"
-        style={{ backgroundColor: selected }}
-        aria-label="색상 선택"
-      />
-      {open ? (
-        <div className="absolute left-0 top-full z-50 mt-1 grid grid-cols-4 gap-1 rounded-md border bg-popover p-2 shadow-md">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="h-6 w-6 shrink-0 rounded-full border-2 border-transparent ring-1 ring-border transition-shadow hover:ring-2 hover:ring-primary"
+          style={{ backgroundColor: selected }}
+          aria-label="색상 선택"
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-2" align="start" sideOffset={4}>
+        <div className="grid grid-cols-4 gap-2">
           {TAG_COLOR_PRESETS.map((preset) => (
             <button
               key={preset.color}
@@ -235,7 +246,7 @@ function ColorPicker({
             />
           ))}
         </div>
-      ) : null}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
