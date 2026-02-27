@@ -5,6 +5,7 @@ from app.models.event import Event
 from app.models.file_change import FileChange
 from app.models.global_settings import GlobalSettings
 from app.models.mcp_server import McpServer
+from app.models.memo_block import MemoBlock
 from app.models.message import Message
 from app.models.session import Session, SessionStatus
 from app.models.session_artifact import ArtifactAnnotation, SessionArtifact
@@ -23,6 +24,7 @@ __all__ = [
     "FileChange",
     "GlobalSettings",
     "McpServer",
+    "MemoBlock",
     "Message",
     "Session",
     "SessionStatus",

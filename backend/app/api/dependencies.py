@@ -21,6 +21,7 @@ from app.services.github_service import GitHubService
 from app.services.jsonl_watcher import JsonlWatcher
 from app.services.local_session_scanner import LocalSessionScanner
 from app.services.mcp_service import McpService
+from app.services.memo_service import MemoService
 from app.services.search_service import SearchService
 from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
@@ -63,6 +64,7 @@ class ServiceRegistry:
         self.settings_service: SettingsService | None = None
         self.jsonl_watcher: JsonlWatcher | None = None
         self.mcp_service: McpService | None = None
+        self.memo_service: MemoService | None = None
         self.tag_service: TagService | None = None
         self.team_service: TeamService | None = None
         self.team_task_service: TeamTaskService | None = None
@@ -127,6 +129,7 @@ class ServiceRegistry:
         self.claude_runner = ClaudeRunner(settings)
         self.settings_service = SettingsService(self.database)
         self.mcp_service = McpService(self.database)
+        self.memo_service = MemoService(self.database)
         self.tag_service = TagService(self.database)
         self.team_service = TeamService(self.database)
         self.team_task_service = TeamTaskService(self.database)
@@ -277,6 +280,10 @@ def get_jsonl_watcher() -> JsonlWatcher:
 
 def get_mcp_service() -> McpService:
     return _registry._require("mcp_service")
+
+
+def get_memo_service() -> MemoService:
+    return _registry._require("memo_service")
 
 
 def get_tag_service() -> TagService:

@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     insights,
     local_sessions,
     mcp,
+    memo,
     permissions,
     sessions,
     settings,
@@ -32,6 +33,7 @@ api_router.include_router(permissions.router)
 api_router.include_router(usage.router)
 api_router.include_router(settings.router)
 api_router.include_router(mcp.router)
+api_router.include_router(memo.router)
 api_router.include_router(tags.router)
 api_router.include_router(teams.router)
 api_router.include_router(analytics.router)
