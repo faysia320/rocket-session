@@ -13,7 +13,8 @@ export function useTeamMessages(teamId: string) {
   const { data: messages = [], isLoading } = useQuery({
     queryKey: teamKeys.messages(teamId),
     queryFn: () => teamsApi.listMessages(teamId, undefined, 100),
-    refetchInterval: 10_000, // 10초마다 폴링 (WS 보완)
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const sendMutation = useMutation({

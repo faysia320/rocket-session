@@ -1,4 +1,4 @@
-import { useState, memo, useMemo } from "react";
+import { useState, memo, useMemo, useCallback } from "react";
 import {
   Brain,
   AlertTriangle,
@@ -73,6 +73,17 @@ export const MessageBubble = memo(function MessageBubble({
 }: MessageBubbleProps) {
   const { type } = message;
 
+  const workflowPhase = "workflow_phase" in message ? message.workflow_phase : null;
+  const messageId = message.id;
+
+  const handleOpenArtifact = useCallback(() => {
+    onOpenArtifact?.(workflowPhase ?? "plan");
+  }, [onOpenArtifact, workflowPhase]);
+
+  const handleRetryError = useCallback(() => {
+    onRetryError?.(messageId);
+  }, [onRetryError, messageId]);
+
   switch (type) {
     case "user_message":
       return (
@@ -97,7 +108,7 @@ export const MessageBubble = memo(function MessageBubble({
             stepConfig={currentStep}
             onApprove={onApprovePhase}
             onRequestRevision={onRequestRevision}
-            onOpenArtifact={onOpenArtifact ? () => onOpenArtifact(message.workflow_phase ?? "plan") : undefined}
+            onOpenArtifact={onOpenArtifact ? handleOpenArtifact : undefined}
             isApproving={isApprovingPhase}
             isRequestingRevision={isRequestingRevision}
             disabled={isRunning}
@@ -127,7 +138,7 @@ export const MessageBubble = memo(function MessageBubble({
         <ErrorMessage
           message={message}
           searchQuery={searchQuery}
-          onRetry={onRetryError ? () => onRetryError(message.id) : undefined}
+          onRetry={onRetryError ? handleRetryError : undefined}
           animate={animate}
         />
       );
@@ -179,7 +190,7 @@ function UserMessage({
   const text = msg?.content || msg?.prompt || message.content || message.prompt || "";
   return (
     <div className={cn("flex justify-end", fadeIn(animate))}>
-      <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-lg rounded-br-sm shadow-sm">
+      <div className="max-w-[80%] px-3.5 py-2.5 bg-primary text-primary-foreground rounded-lg rounded-br-sm shadow-card">
         <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap select-text">
           {searchQuery ? highlightText(text, searchQuery) : text}
         </div>

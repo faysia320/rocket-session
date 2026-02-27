@@ -16,7 +16,14 @@ export function useWorkspaces() {
   return useQuery({
     queryKey: workspaceKeys.list(),
     queryFn: () => workspacesApi.list(),
-    refetchInterval: 5000,
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => {
+      const hasTransitioning = query.state.data?.some(
+        (w) => w.status === "cloning" || w.status === "deleting",
+      );
+      return hasTransitioning ? 5_000 : false;
+    },
   });
 }
 
@@ -25,7 +32,10 @@ export function useWorkspace(id: string | null) {
     queryKey: workspaceKeys.detail(id ?? ""),
     queryFn: () => workspacesApi.get(id!),
     enabled: !!id,
-    refetchInterval: 3000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "cloning" || status === "deleting" ? 3_000 : false;
+    },
   });
 }
 

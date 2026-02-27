@@ -9,6 +9,7 @@ import { sessionsApi } from "@/lib/api/sessions.api";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 import { useSessionStore } from "@/store";
 import { useSessionMutations } from "@/features/session/hooks/useSessions";
+import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 
 interface UseChatSessionActionsParams {
   sessionId: string;
@@ -42,7 +43,7 @@ export function useChatSessionActions({
     try {
       await sessionsApi.delete(sessionId);
       await filesystemApi.removeWorktree(workDir, worktreeName, true);
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
       toast.success("워크트리가 삭제되었습니다.");
       useSessionStore.getState().setViewMode("dashboard");
       navigate({ to: "/" });
@@ -55,7 +56,7 @@ export function useChatSessionActions({
     async (name: string) => {
       try {
         await sessionsApi.convertToWorktree(sessionId, { worktree_name: name });
-        queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        queryClient.invalidateQueries({ queryKey: sessionKeys.all });
         queryClient.invalidateQueries({ queryKey: ["git-info"] });
         toast.success(`워크트리로 전환되었습니다. (worktree-${name})`);
         reconnect();
@@ -69,7 +70,7 @@ export function useChatSessionActions({
   const handleFork = useCallback(async () => {
     try {
       const forked = await sessionsApi.fork(sessionId);
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
       toast.success(
         "세션이 포크되었습니다. 이전 대화 기록은 참조용입니다. Claude는 새 대화로 시작합니다.",
       );

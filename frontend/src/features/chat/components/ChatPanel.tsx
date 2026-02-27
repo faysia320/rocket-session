@@ -25,6 +25,7 @@ import { useSlashCommands } from "../hooks/useSlashCommands";
 import type { SlashCommand } from "../constants/slashCommands";
 import type { TrustLevel } from "./PermissionDialog";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
+import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
 import { filesystemApi } from "@/lib/api/filesystem.api";
@@ -226,7 +227,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       // 2) TanStack Query 캐시 갱신 (세션 목록, 세션 통계 등)
       // P0: Split View 시 focused pane만 갱신하여 중복 호출 방지
       if (!isSplitView || focusedSessionId === sessionId) {
-        queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        queryClient.invalidateQueries({ queryKey: sessionKeys.all });
         queryClient.invalidateQueries({ queryKey: ["workflow-status", sessionId] });
       }
     };

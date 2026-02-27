@@ -1,4 +1,4 @@
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import { resolveWorkflowIcon } from "../utils/workflowIcons";
@@ -42,8 +42,16 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
     [onPhaseClick],
   );
 
-  const sortedSteps = [...steps].sort((a, b) => a.order_index - b.order_index);
-  const orderedNames = sortedSteps.map((s) => s.name);
+  const sortedSteps = useMemo(
+    () => [...steps].sort((a, b) => a.order_index - b.order_index),
+    [steps],
+  );
+  const orderedNames = useMemo(
+    () => sortedSteps.map((s) => s.name),
+    [sortedSteps],
+  );
+
+  if (steps.length === 0) return null;
 
   return (
     <div
