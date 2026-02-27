@@ -300,7 +300,7 @@ export const ChatInput = memo(function ChatInput({
 
         {/* 답변 인디케이터 */}
         {pendingAnswerCount > 0 ? (
-          <div className="flex items-center gap-1.5 mb-2 px-1">
+          <div className="flex items-center gap-1.5 mb-2 px-1" role="status" aria-live="polite">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-info animate-pulse" />
             <span className="font-mono text-xs text-info">
               {pendingAnswerCount}개 답변이 다음 메시지에 포함됩니다
@@ -375,6 +375,7 @@ export const ChatInput = memo(function ChatInput({
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder="메시지를 입력하세요…"
+            aria-label="메시지 입력"
             rows={1}
             disabled={!connected || disabled}
           />

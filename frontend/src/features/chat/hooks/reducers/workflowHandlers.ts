@@ -10,7 +10,6 @@ type WorkflowAction = Extract<
   | { type: "WS_WORKFLOW_PHASE_APPROVED" }
   | { type: "WS_WORKFLOW_PHASE_REVISION" }
   | { type: "WS_WORKFLOW_COMPLETED" }
-  | { type: "WS_WORKFLOW_DATA_CHANGED" }
 >;
 
 export function handleWorkflow(
@@ -54,10 +53,6 @@ export function handleWorkflow(
             }
           : state.sessionInfo,
       };
-
-    case "WS_WORKFLOW_DATA_CHANGED":
-      // 아티팩트/주석 변경 신호 — 프론트엔드에서 TanStack Query invalidation 용도
-      return state;
 
     case "WS_WORKFLOW_PHASE_APPROVED":
       return {

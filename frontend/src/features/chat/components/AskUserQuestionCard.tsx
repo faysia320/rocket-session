@@ -137,7 +137,7 @@ function QuestionItem({
       <div className="font-mono text-sm text-foreground mb-1.5">{question.question}</div>
 
       {options.length > 0 ? (
-        <div className="space-y-1">
+        <div className="space-y-1" role={multiSelect ? "group" : "radiogroup"} aria-label={question.question}>
           {options.map((opt) => {
             const isSelected = selected.includes(opt.label);
             if (multiSelect) {
@@ -176,6 +176,8 @@ function QuestionItem({
               <button
                 key={opt.label}
                 type="button"
+                role="radio"
+                aria-checked={isSelected}
                 disabled={disabled}
                 onClick={() => handleSingleSelect(opt.label)}
                 className={cn(
@@ -243,6 +245,7 @@ function QuestionItem({
                 <input
                   className="flex-1 font-mono text-lg md:text-xs bg-input border border-border rounded px-2 py-1 outline-none focus:border-primary/50"
                   placeholder="custom answer"
+                  aria-label="직접 입력"
                   value={customText}
                   onChange={(e) => setCustomText(e.target.value)}
                   onKeyDown={(e) => {

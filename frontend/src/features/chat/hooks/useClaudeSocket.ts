@@ -30,6 +30,10 @@ export function useClaudeSocket(sessionId: string) {
   // RAF 배치: assistant_text 스트리밍 최적화 (프레임당 1회 dispatch)
   const pendingTextRef = useRef<AssistantTextMsg | null>(null);
   const rafIdRef = useRef<number | null>(null);
+  // WS 이벤트 기반 TanStack Query 캐시 무효화 콜백 (ChatPanel에서 설정)
+  const workflowDataChangedRef = useRef<
+    ((eventType: string, artifactId?: number) => void) | null
+  >(null);
   // sendPrompt에서 messages에 직접 의존하지 않도록 ref로 동기화
   const messagesRef = useRef<Message[]>([]);
   const reconnectAttempt = useRef(0);
@@ -315,12 +319,11 @@ export function useClaudeSocket(sessionId: string) {
 
       case "workflow_artifact_updated":
       case "workflow_annotation_added":
-        // 아티팩트/주석 변경 → TanStack Query 캐시 무효화는 컴포넌트에서 처리
-        dispatch({
-          type: "WS_WORKFLOW_DATA_CHANGED",
-          eventType: data.type as string,
-          artifactId: data.artifact_id as number | undefined,
-        });
+        // 아티팩트/주석 변경 → ChatPanel에서 등록한 콜백을 통해 TanStack Query 캐시 무효화
+        workflowDataChangedRef.current?.(
+          data.type as string,
+          data.artifact_id as number | undefined,
+        );
         break;
 
       case "raw":
@@ -726,5 +729,6 @@ export function useClaudeSocket(sessionId: string) {
     answerQuestion,
     confirmAnswers,
     confirmAndSendAnswers,
+    workflowDataChangedRef,
   };
 }

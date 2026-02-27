@@ -182,7 +182,6 @@ export type ClaudeSocketAction =
   | { type: "WS_WORKFLOW_PHASE_APPROVED"; phase: string; nextPhase: string | null }
   | { type: "WS_WORKFLOW_PHASE_REVISION"; phase: string }
   | { type: "WS_WORKFLOW_COMPLETED" }
-  | { type: "WS_WORKFLOW_DATA_CHANGED"; eventType: string; artifactId?: number }
   // User actions
   | { type: "ANSWER_QUESTION"; messageId: string; questionIndex: number; selectedLabels: string[] }
   | { type: "CONFIRM_ANSWERS"; messageId: string }

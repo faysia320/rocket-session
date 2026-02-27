@@ -12,7 +12,7 @@ interface ChatMessageListProps {
   virtualizer: Virtualizer<HTMLDivElement, Element>;
   searchQuery: string;
   searchMatches: number[];
-  messageGaps: Record<number, "tight" | "normal" | "turn-start">;
+  messageGaps: Array<"tight" | "normal" | "turn-start">;
   animateFromIndex: RefObject<number>;
   scrollContainerRef: RefObject<HTMLDivElement>;
   onScroll: () => void;
@@ -64,7 +64,7 @@ export const ChatMessageList = memo(function ChatMessageList({
       onScroll={onScroll}
     >
       {loading ? (
-        <div className="px-4 space-y-4 animate-pulse">
+        <div className="px-4 space-y-4 animate-pulse" role="status" aria-label="메시지 로딩 중">
           {Array.from({ length: Math.min(Math.max(3, 1), 5) }, (_, i) => (
             <div key={i} className="space-y-2">
               <div className="flex justify-end">
@@ -78,7 +78,7 @@ export const ChatMessageList = memo(function ChatMessageList({
           ))}
         </div>
       ) : messages.length === 0 ? (
-        <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50 animate-[fadeIn_0.3s_ease]">
+        <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50 animate-[fadeIn_0.3s_ease]" role="status">
           <div className="font-mono text-4xl text-primary animate-[blink_1.2s_ease-in-out_infinite]">
             {">"}_
           </div>

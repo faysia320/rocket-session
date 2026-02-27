@@ -10,7 +10,7 @@ import { useChatSessionActions } from "../hooks/useChatSessionActions";
 import { useWorkflowActions } from "@/features/workflow/hooks/useWorkflowActions";
 import { WorkflowProgressBar } from "@/features/workflow/components/WorkflowProgressBar";
 import { ArtifactViewer } from "@/features/workflow/components/ArtifactViewer";
-import { useWorkflowStatus } from "@/features/workflow/hooks/useWorkflow";
+import { useWorkflowStatus, workflowKeys } from "@/features/workflow/hooks/useWorkflow";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatDialogs } from "./ChatDialogs";
 import { ChatSearchBar } from "./ChatSearchBar";
@@ -59,6 +59,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     confirmAndSendAnswers,
     pendingAnswerCount,
     pinnedTodos,
+    workflowDataChangedRef,
   } = useClaudeSocket(sessionId);
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -86,6 +87,19 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       })),
     );
   const queryClient = useQueryClient();
+
+  // WS workflow_artifact_updated/workflow_annotation_added 이벤트 → TanStack Query 캐시 무효화
+  useEffect(() => {
+    workflowDataChangedRef.current = (_eventType: string, artifactId?: number) => {
+      queryClient.invalidateQueries({ queryKey: workflowKeys.artifacts(sessionId) });
+      if (artifactId) {
+        queryClient.invalidateQueries({ queryKey: workflowKeys.artifact(sessionId, artifactId) });
+      }
+    };
+    return () => {
+      workflowDataChangedRef.current = null;
+    };
+  }, [queryClient, sessionId, workflowDataChangedRef]);
 
   // P0: PermissionDialog 콜백 안정화 (타이머 리셋 방지)
   const handlePermissionAllow = useCallback(
@@ -244,7 +258,10 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
 
   // 워크플로우 정의 steps 로드
   const { data: workflowStatusData } = useWorkflowStatus(sessionId, true);
-  const workflowSteps = workflowStatusData?.steps ?? [];
+  const workflowSteps = useMemo(
+    () => workflowStatusData?.steps ?? [],
+    [workflowStatusData?.steps],
+  );
 
   // 워크플로우 액션
   const {
@@ -296,7 +313,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   }, [workflowPhaseStatus]);
 
   // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
-  const prevGapsRef = useRef<Record<number, "tight" | "normal" | "turn-start">>({});
+  const prevGapsRef = useRef<Array<"tight" | "normal" | "turn-start">>([]);
   const messageGaps = useMemo(() => {
     if (status === "running") return prevGapsRef.current;
     return computeMessageGaps(messages);

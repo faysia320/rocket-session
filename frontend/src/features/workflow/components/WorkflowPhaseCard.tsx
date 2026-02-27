@@ -141,6 +141,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                   size="sm"
                   onClick={handleRevisionSubmit}
                   disabled={!revisionFeedback.trim() || isRequestingRevision}
+                  aria-busy={isRequestingRevision}
                   className="h-7 text-xs"
                 >
                   {isRequestingRevision ? "요청 중…" : "수정 요청"}
@@ -164,6 +165,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                 size="sm"
                 onClick={handleApprove}
                 disabled={disabled || isApproving}
+                aria-busy={isApproving}
                 className="h-7 text-xs"
               >
                 <Check className="w-3.5 h-3.5 mr-1" />
