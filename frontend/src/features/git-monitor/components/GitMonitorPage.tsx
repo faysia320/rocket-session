@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { formatRelativeTime } from "@/lib/utils";
 import {
   GitBranch,
   GitPullRequest,
@@ -221,18 +222,6 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       </Button>
     </div>
   );
-}
-
-/** 상대 시간 포맷 (예: "방금", "2분 전", "1시간 전") */
-function formatRelativeTime(ts: number | null): string {
-  if (!ts) return "";
-  const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 10) return "방금";
-  if (diff < 60) return `${diff}초 전`;
-  const mins = Math.floor(diff / 60);
-  if (mins < 60) return `${mins}분 전`;
-  const hours = Math.floor(mins / 60);
-  return `${hours}시간 전`;
 }
 
 function WorkspaceContent({
