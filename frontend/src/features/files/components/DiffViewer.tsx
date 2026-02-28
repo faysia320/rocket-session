@@ -124,6 +124,7 @@ function DiffLineRow({ line }: { line: DiffLine }) {
 }
 
 export const DiffViewer = memo(function DiffViewer({ diff, hideHeaders }: DiffViewerProps) {
+  "use memo";
   const allLines = useMemo(() => parseDiff(diff), [diff]);
   const lines = useMemo(
     () => (hideHeaders ? allLines.filter((l) => l.type !== "info") : allLines),

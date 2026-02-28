@@ -16,6 +16,7 @@ export const CodeBlock = memo(function CodeBlock({
   raw,
   className,
 }: CodeBlockProps) {
+  "use memo";
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const codeRef = useRef<HTMLElement>(null);

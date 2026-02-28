@@ -34,6 +34,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
   messageCount,
   currentModel,
 }: SessionStatsBarProps) {
+  "use memo";
   const { data: stats } = useSessionStats(sessionId, isRunning);
 
   if (!stats || stats.total_messages === 0) return null;

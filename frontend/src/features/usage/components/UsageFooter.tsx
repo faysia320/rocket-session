@@ -21,6 +21,7 @@ function utilizationColor(util: number): string {
 }
 
 export const UsageFooter = memo(function UsageFooter({ centerSlot }: { centerSlot?: ReactNode }) {
+  "use memo";
   const { data, isLoading, isError } = useUsage();
 
   const fiveHourCountdown = useMemo(

@@ -53,6 +53,7 @@ function getTeamWsUrl(teamId: string): string {
  * 팀 대시보드 WebSocket 훅. 실시간 이벤트를 수신하고 쿼리 캐시를 무효화.
  */
 export function useTeamSocket(teamId: string | undefined) {
+  "use no memo";
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const shouldReconnect = useRef(true);

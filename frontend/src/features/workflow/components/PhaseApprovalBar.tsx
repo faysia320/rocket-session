@@ -26,6 +26,7 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
   disabled = false,
   pendingAnnotationCount = 0,
 }: PhaseApprovalBarProps) {
+  "use memo";
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [feedback, setFeedback] = useState("");
 

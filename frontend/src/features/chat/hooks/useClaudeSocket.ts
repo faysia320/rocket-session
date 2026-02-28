@@ -23,6 +23,7 @@ import {
 export type { ReconnectState } from "./claudeSocketReducer";
 
 export function useClaudeSocket(sessionId: string) {
+  "use no memo";
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldReconnect = useRef(true);
