@@ -1,4 +1,4 @@
-import { memo, useCallback, useLayoutEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { MemoEditorRegistry } from "../hooks/useMemoEditorRegistry";
 import { useMemoUndoStack } from "../hooks/useMemoUndoStack";
 
@@ -47,13 +47,16 @@ export const MemoBlockEditor = memo(function MemoBlockEditor({
   const blockIdRef = useRef(blockId);
   const editorRegistryRef = useRef(editorRegistry);
 
-  onChangeRef.current = onChange;
-  onCtrlEnterRef.current = onCtrlEnter;
-  onBackspaceEmptyRef.current = onBackspaceEmpty;
-  onBackspaceAtStartRef.current = onBackspaceAtStart;
-  onBlurRef.current = onBlur;
-  blockIdRef.current = blockId;
-  editorRegistryRef.current = editorRegistry;
+  // 렌더 중 ref 쓰기는 React Rules 위반 → useEffect로 동기화
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onCtrlEnterRef.current = onCtrlEnter;
+    onBackspaceEmptyRef.current = onBackspaceEmpty;
+    onBackspaceAtStartRef.current = onBackspaceAtStart;
+    onBlurRef.current = onBlur;
+    blockIdRef.current = blockId;
+    editorRegistryRef.current = editorRegistry;
+  });
 
   // Mount: set initial content & register
   useLayoutEffect(() => {
