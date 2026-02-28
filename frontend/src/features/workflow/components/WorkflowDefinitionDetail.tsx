@@ -46,7 +46,7 @@ export function WorkflowDefinitionDetail({
   onCancelCreate,
 }: WorkflowDefinitionDetailProps) {
   const [isEditing, setIsEditing] = useState(isCreating);
-  const [expandedPrompts, setExpandedPrompts] = useState<Set<number>>(new Set());
+  const [expandedPrompts, setExpandedPrompts] = useState<Set<number>>(() => new Set());
   const [formData, setFormData] = useState({
     name: "",
     description: "",

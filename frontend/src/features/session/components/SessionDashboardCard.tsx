@@ -1,8 +1,8 @@
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import { MessageSquare, FileText, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { cn, formatWorkDir } from "@/lib/utils";
+import { cn, formatWorkDir, formatRelativeTime } from "@/lib/utils";
 import type { SessionInfo } from "@/types";
 import { getActivityLabel } from "@/features/chat/utils/activityLabel";
 
@@ -13,18 +13,6 @@ interface SessionDashboardCardProps {
   lastEventTime?: number | null;
 }
 
-function formatRelativeTime(dateStr?: string): string {
-  if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "방금 전";
-  if (mins < 60) return `${mins}분 전`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  return `${days}일 전`;
-}
-
 const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 
 export const SessionDashboardCard = memo(function SessionDashboardCard({
@@ -33,11 +21,8 @@ export const SessionDashboardCard = memo(function SessionDashboardCard({
   onSelect,
   lastEventTime,
 }: SessionDashboardCardProps) {
-  const isStale = useMemo(() => {
-    if (s.status !== "running") return false;
-    if (!lastEventTime) return false;
-    return Date.now() - lastEventTime > STALE_THRESHOLD_MS;
-  }, [s.status, lastEventTime]);
+  const isStale =
+    s.status === "running" && !!lastEventTime && Date.now() - lastEventTime > STALE_THRESHOLD_MS;
 
   const statusColor =
     s.status === "running"

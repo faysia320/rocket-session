@@ -71,7 +71,9 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   // 이후 메시지 추가 시 이전 길이를 기록하여 해당 인덱스 이후만 animate=true
   const animateFromIndex = useRef<number>(Infinity);
   const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  useEffect(() => {
+    messagesRef.current = messages;
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
@@ -329,12 +331,14 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     sendPrompt,
     sessionId,
   });
-  cmdPaletteRef.current = {
-    clearMessages,
-    handleToggleSearch,
-    sendPrompt,
-    sessionId,
-  };
+  useEffect(() => {
+    cmdPaletteRef.current = {
+      clearMessages,
+      handleToggleSearch,
+      sendPrompt,
+      sessionId,
+    };
+  });
 
   useEffect(() => {
     const forThis = (e: Event, fn: () => void) => {

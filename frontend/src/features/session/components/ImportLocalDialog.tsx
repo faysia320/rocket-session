@@ -60,7 +60,7 @@ export function ImportLocalDialog({ open, onOpenChange, onImported }: ImportLoca
   const [importing, setImporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hideImported, setHideImported] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
   const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

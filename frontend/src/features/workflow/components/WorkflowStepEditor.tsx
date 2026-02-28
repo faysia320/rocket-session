@@ -275,7 +275,7 @@ interface WorkflowStepEditorProps {
 }
 
 export function WorkflowStepEditor({ steps, onChange }: WorkflowStepEditorProps) {
-  const [openIndices, setOpenIndices] = useState<Set<number>>(new Set());
+  const [openIndices, setOpenIndices] = useState<Set<number>>(() => new Set());
 
   const sortableIds = useMemo(() => steps.map((_, i) => `step-${i}`), [steps]);
 
