@@ -210,9 +210,7 @@ class ContextBuilderService(DBService):
         local_path = await self._get_local_path(workspace_id)
 
         # Claude Code Memory 컨텍스트
-        memory_response = await self._memory_service.build_memory_context(
-            local_path, limit=5
-        )
+        memory_response = await self._memory_service.build_memory_context(local_path)
 
         # 최근 세션
         recent_sessions = await self.get_recent_sessions(workspace_id, limit=5)
