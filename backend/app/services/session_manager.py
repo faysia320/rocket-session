@@ -206,9 +206,9 @@ class SessionManager(DBService):
                 raise NotFoundError(f"세션을 찾을 수 없습니다: {session_id}")
             return result
 
-    async def list_all(self) -> list[dict]:
+    async def list_all(self, *, limit: int = 200) -> list[dict]:
         async with self._session_scope(SessionRepository) as (session, repo):
-            return await repo.list_with_counts()
+            return await repo.list_with_counts(limit=limit)
 
     async def delete(self, session_id: str) -> bool:
         await self.kill_process(session_id)

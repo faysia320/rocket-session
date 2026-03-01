@@ -123,10 +123,11 @@ async def create_session(
 
 @router.get("/", response_model=list[SessionInfo])
 async def list_sessions(
+    limit: int = Query(default=200, le=500, ge=1),
     manager: SessionManager = Depends(get_session_manager),
     ws_manager: WebSocketManager = Depends(get_ws_manager),
 ):
-    sessions = await manager.list_all()
+    sessions = await manager.list_all(limit=limit)
     result = []
     for s in sessions:
         info = manager.to_info(s)

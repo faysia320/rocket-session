@@ -111,3 +111,29 @@ class SettingsService(DBService):
                 "default_additional_workspace_ids": entity.default_additional_workspace_ids,
                 "fallback_model": entity.fallback_model,
             }
+
+    # 세션 설정을 글로벌 설정과 병합할 때 사용하는 키 목록
+    _MERGE_KEYS = [
+        "system_prompt",
+        "timeout_seconds",
+        "permission_mode",
+        "permission_required_tools",
+        "model",
+        "max_turns",
+        "max_budget_usd",
+        "system_prompt_mode",
+        "disallowed_tools",
+        "mcp_server_ids",
+        "fallback_model",
+    ]
+
+    @staticmethod
+    def merge_session_with_globals(
+        session: dict | None, global_settings: dict
+    ) -> dict:
+        """세션 설정에서 빈 필드만 글로벌 기본값으로 채워 반환."""
+        merged = dict(session) if session else {}
+        for key in SettingsService._MERGE_KEYS:
+            if not merged.get(key) and global_settings.get(key):
+                merged[key] = global_settings[key]
+        return merged

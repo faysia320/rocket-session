@@ -54,9 +54,9 @@ class SessionRepository(BaseRepository[Session]):
             .outerjoin(fc_sub, fc_sub.c.session_id == Session.id)
         )
 
-    async def list_with_counts(self) -> list[dict]:
+    async def list_with_counts(self, *, limit: int = 200) -> list[dict]:
         """세션 목록 + message_count, file_changes_count."""
-        stmt = self._counts_query().order_by(Session.created_at.desc())
+        stmt = self._counts_query().order_by(Session.created_at.desc()).limit(limit)
         result = await self._session.execute(stmt)
         return [
             {
