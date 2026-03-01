@@ -1,22 +1,35 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Plus, Brain, FileText, BookOpen, Database } from "lucide-react";
+import { Plus, Brain, FileText, BookOpen, Database, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   useInsights,
   useCreateInsight,
+  useUpdateInsight,
   useDeleteInsight,
   useArchiveInsights,
 } from "../hooks/useInsights";
 import { useMemoryFiles, useMemoryFileContent } from "../hooks/useMemory";
 import { InsightCard } from "./InsightCard";
 import { InsightCreateDialog } from "./InsightCreateDialog";
-import type { InsightCategory, CreateInsightRequest } from "@/types/knowledge";
-import type { MemoryFileInfo } from "@/types/claude-memory";
+import type {
+  InsightCategory,
+  CreateInsightRequest,
+  WorkspaceInsightInfo,
+} from "@/types/knowledge";
+import type { MemoryFileInfo, MemorySource } from "@/types/claude-memory";
 
 type MainTab = "memory" | "insights";
+
+const MEMORY_SOURCE_CHIPS: { value: MemorySource; label: string }[] = [
+  { value: "auto_memory", label: "Auto" },
+  { value: "claude_md", label: "Project" },
+  { value: "rules", label: "Rules" },
+  { value: "serena_memory", label: "Serena" },
+];
 
 const CATEGORY_TABS: { value: InsightCategory | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -56,11 +69,16 @@ export function KnowledgeContent({ workspaceId }: KnowledgeContentProps) {
   const [mainTab, setMainTab] = useState<MainTab>("memory");
   const [categoryFilter, setCategoryFilter] = useState<InsightCategory | "all">("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editingInsight, setEditingInsight] = useState<WorkspaceInsightInfo | null>(null);
   const [selectedMemoryFile, setSelectedMemoryFile] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [memorySourceFilter, setMemorySourceFilter] = useState<Set<MemorySource>>(new Set());
 
-  // 워크스페이스 전환 시 메모리 파일 선택 리셋
+  // 워크스페이스 전환 시 상태 리셋
   useEffect(() => {
     setSelectedMemoryFile(null);
+    setSearchQuery("");
+    setMemorySourceFilter(new Set());
   }, [workspaceId]);
 
   // Insights hooks
@@ -69,6 +87,7 @@ export function KnowledgeContent({ workspaceId }: KnowledgeContentProps) {
     categoryFilter === "all" ? undefined : categoryFilter,
   );
   const createMutation = useCreateInsight(workspaceId);
+  const updateMutation = useUpdateInsight(workspaceId);
   const deleteMutation = useDeleteInsight(workspaceId);
   const archiveMutation = useArchiveInsights(workspaceId);
 
@@ -83,15 +102,47 @@ export function KnowledgeContent({ workspaceId }: KnowledgeContentProps) {
 
   const filteredInsights = useMemo(() => {
     if (!insights) return [];
-    return insights;
-  }, [insights]);
+    if (!searchQuery.trim()) return insights;
+    const q = searchQuery.toLowerCase();
+    return insights.filter(
+      (i) =>
+        i.title.toLowerCase().includes(q) ||
+        i.content.toLowerCase().includes(q) ||
+        i.tags?.some((t) => t.toLowerCase().includes(q)),
+    );
+  }, [insights, searchQuery]);
+
+  const filteredMemoryFiles = useMemo(() => {
+    if (!memoryFiles) return [];
+    let result = memoryFiles;
+    if (memorySourceFilter.size > 0) {
+      result = result.filter((f) => memorySourceFilter.has(f.source));
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((f) => f.name.toLowerCase().includes(q));
+    }
+    return result;
+  }, [memoryFiles, memorySourceFilter, searchQuery]);
 
   const handleCreate = useCallback(
     (data: CreateInsightRequest) => {
-      createMutation.mutate(data);
+      if (editingInsight) {
+        updateMutation.mutate(
+          { insightId: editingInsight.id, data },
+          { onSuccess: () => setEditingInsight(null) },
+        );
+      } else {
+        createMutation.mutate(data);
+      }
     },
-    [createMutation],
+    [editingInsight, createMutation, updateMutation],
   );
+
+  const handleEdit = useCallback((insight: WorkspaceInsightInfo) => {
+    setEditingInsight(insight);
+    setCreateDialogOpen(true);
+  }, []);
 
   const handleDelete = useCallback(
     (id: number) => {
@@ -106,6 +157,18 @@ export function KnowledgeContent({ workspaceId }: KnowledgeContentProps) {
     },
     [archiveMutation],
   );
+
+  const toggleSourceFilter = useCallback((source: MemorySource) => {
+    setMemorySourceFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(source)) {
+        next.delete(source);
+      } else {
+        next.add(source);
+      }
+      return next;
+    });
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -188,6 +251,38 @@ export function KnowledgeContent({ workspaceId }: KnowledgeContentProps) {
         </div>
       )}
 
+      {/* Search bar + Memory source filter */}
+      <div className="shrink-0 px-4 py-2 border-b border-border space-y-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            className="font-mono text-xs pl-8 h-8"
+            placeholder={mainTab === "memory" ? "Search files..." : "Search insights..."}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        {mainTab === "memory" && memoryFiles && memoryFiles.length > 0 ? (
+          <div className="flex gap-1">
+            {MEMORY_SOURCE_CHIPS.map((chip) => (
+              <button
+                key={chip.value}
+                type="button"
+                className={cn(
+                  "font-mono text-2xs px-2.5 py-0.5 rounded-sm border transition-colors",
+                  memorySourceFilter.has(chip.value)
+                    ? "bg-primary/15 text-primary border-primary/30"
+                    : "text-muted-foreground border-transparent hover:bg-muted",
+                )}
+                onClick={() => toggleSourceFilter(chip.value)}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
       {/* Content */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-4 space-y-3">
@@ -229,9 +324,13 @@ export function KnowledgeContent({ workspaceId }: KnowledgeContentProps) {
               </div>
             ) : contentLoading ? (
               <div className="h-48 bg-muted rounded-md animate-pulse" />
+            ) : filteredMemoryFiles.length === 0 ? (
+              <div className="py-12 text-center font-mono text-xs text-muted-foreground">
+                No matching files.
+              </div>
             ) : (
               /* Memory file list */
-              memoryFiles.map((mf: MemoryFileInfo) => {
+              filteredMemoryFiles.map((mf: MemoryFileInfo) => {
                 const Icon = SOURCE_ICONS[mf.source] ?? FileText;
                 return (
                   <button
@@ -273,6 +372,7 @@ export function KnowledgeContent({ workspaceId }: KnowledgeContentProps) {
               <InsightCard
                 key={insight.id}
                 insight={insight}
+                onEdit={handleEdit}
                 onArchive={handleArchive}
                 onDelete={handleDelete}
               />
@@ -281,12 +381,16 @@ export function KnowledgeContent({ workspaceId }: KnowledgeContentProps) {
         </div>
       </ScrollArea>
 
-      {/* Create dialog */}
+      {/* Create / Edit dialog */}
       <InsightCreateDialog
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) setEditingInsight(null);
+        }}
         onSubmit={handleCreate}
-        isPending={createMutation.isPending}
+        isPending={createMutation.isPending || updateMutation.isPending}
+        initialData={editingInsight}
       />
     </div>
   );
