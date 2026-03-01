@@ -79,6 +79,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [contextPrefix, setContextPrefix] = useState("");
+  const [liveInput, setLiveInput] = useState("");
 
   const isSplitView = useSessionStore((s) => s.viewMode === "split");
   const { focusedSessionId, pendingPrompt, pendingPromptSessionId, clearPendingPrompt } =
@@ -557,7 +558,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         <div className="px-3 pb-2">
           <ContextSuggestionPanel
             workspaceId={sessionInfo.workspace_id}
-            prompt=""
+            prompt={liveInput}
             onContextChange={setContextPrefix}
           />
         </div>
@@ -574,6 +575,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           sessionId={sessionId}
           pendingAnswerCount={pendingAnswerCount}
           disabled={waitingForWorkflowApproval}
+          onInputChange={setLiveInput}
         />
       </div>
 

@@ -19,7 +19,6 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
   onContextChange,
 }: ContextSuggestionPanelProps) {
   const [expanded, setExpanded] = useState(false);
-  const [selectedMemoryPaths, setSelectedMemoryPaths] = useState<Set<string>>(new Set());
   const [selectedFilePaths, setSelectedFilePaths] = useState<Set<string>>(new Set());
   const [debouncedPrompt, setDebouncedPrompt] = useState(prompt);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -41,22 +40,10 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
   }, [workspaceId, data]);
 
   // Build context text from selections
+  // Memory는 백엔드가 system_prompt에 자동 주입하므로 여기서는 파일 제안만 포함
   const buildContextText = useCallback(() => {
     if (!data) return "";
     const parts: string[] = [];
-
-    if (selectedMemoryPaths.size > 0) {
-      const selected = data.memory_files.filter((m: MemoryFileInfo) =>
-        selectedMemoryPaths.has(m.relative_path),
-      );
-      if (selected.length > 0) {
-        parts.push("## Claude Code Memory");
-        for (const m of selected) {
-          const sourceLabel = m.source === "auto_memory" ? "Auto" : m.source === "claude_md" ? "Project" : "Rules";
-          parts.push(`- **${m.name}** (${sourceLabel})`);
-        }
-      }
-    }
 
     if (selectedFilePaths.size > 0) {
       const selected = data.suggested_files.filter((f: FileSuggestion) =>
@@ -71,21 +58,12 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
     }
 
     return parts.join("\n");
-  }, [data, selectedMemoryPaths, selectedFilePaths]);
+  }, [data, selectedFilePaths]);
 
   // Notify parent when selection changes
   useEffect(() => {
     onContextChange(buildContextText());
   }, [buildContextText, onContextChange]);
-
-  const toggleMemory = useCallback((path: string) => {
-    setSelectedMemoryPaths((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-  }, []);
 
   const toggleFile = useCallback((path: string) => {
     setSelectedFilePaths((prev) => {
@@ -103,6 +81,7 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
       case "auto_memory": return "Auto";
       case "claude_md": return "Project";
       case "rules": return "Rules";
+      case "serena_memory": return "Serena";
       default: return source;
     }
   };
@@ -147,7 +126,7 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
             </p>
           ) : (
             <>
-              {/* Memory files section */}
+              {/* Memory files section — 읽기 전용 (백엔드 자동 주입) */}
               {data.memory_files.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
@@ -155,18 +134,16 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
                     <span className="font-mono text-2xs font-semibold text-muted-foreground">
                       CLAUDE CODE MEMORY
                     </span>
+                    <Badge variant="outline" className="font-mono text-2xs ml-auto">
+                      Auto-injected
+                    </Badge>
                   </div>
                   <div className="space-y-1">
                     {data.memory_files.map((mf: MemoryFileInfo) => (
-                      <label
+                      <div
                         key={mf.relative_path}
-                        className="flex items-start gap-2 px-2 py-1.5 rounded-sm hover:bg-muted/30 cursor-pointer"
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-sm bg-muted/20"
                       >
-                        <Checkbox
-                          checked={selectedMemoryPaths.has(mf.relative_path)}
-                          onCheckedChange={() => toggleMemory(mf.relative_path)}
-                          className="mt-0.5"
-                        />
                         <div className="flex-1 min-w-0">
                           <span className="font-mono text-xs text-foreground">{mf.name}</span>
                           <p className="font-mono text-2xs text-muted-foreground">
@@ -176,7 +153,7 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
                         <Badge variant="secondary" className="font-mono text-2xs shrink-0">
                           {sourceLabel(mf.source)}
                         </Badge>
-                      </label>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -201,11 +178,11 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
                           <span className="font-mono text-xs text-foreground">
                             {s.name || s.id.slice(0, 8)}
                           </span>
-                          {s.prompt_preview && (
+                          {s.prompt_preview ? (
                             <p className="font-mono text-2xs text-muted-foreground line-clamp-1">
                               {s.prompt_preview}
                             </p>
-                          )}
+                          ) : null}
                         </div>
                         <span className="font-mono text-2xs text-muted-foreground/50 shrink-0">
                           {s.file_count} files

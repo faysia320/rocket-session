@@ -27,6 +27,7 @@ interface ChatInputProps {
   sessionId?: string;
   pendingAnswerCount?: number;
   disabled?: boolean;
+  onInputChange?: (value: string) => void;
 }
 
 const ACCEPTED_IMAGE_TYPES = new Set([
@@ -49,6 +50,7 @@ export const ChatInput = memo(function ChatInput({
   sessionId,
   pendingAnswerCount = 0,
   disabled = false,
+  onInputChange,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -189,10 +191,11 @@ export const ChatInput = memo(function ChatInput({
       const val = e.target.value;
       setInput(val);
       slashCommands.handleInputChange(val);
+      onInputChange?.(val);
       e.target.style.height = "36px";
       e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
     },
-    [slashCommands],
+    [slashCommands, onInputChange],
   );
 
   const handlePaste = useCallback(
