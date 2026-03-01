@@ -84,51 +84,50 @@ class ContextBuilderService(DBService):
         self, workspace_id: str, limit: int = 5
     ) -> list[dict]:
         """동일 워크스페이스의 최근 세션 요약."""
+        # 파일 변경 수 — correlated scalar subquery
+        fc_count = (
+            select(func.count())
+            .where(FileChange.session_id == Session.id)
+            .correlate(Session)
+            .scalar_subquery()
+            .label("file_count")
+        )
+
+        # 첫 번째 사용자 메시지 — correlated scalar subquery
+        first_msg = (
+            select(Message.content)
+            .where(Message.session_id == Session.id, Message.role == "user")
+            .order_by(Message.timestamp.asc())
+            .limit(1)
+            .correlate(Session)
+            .scalar_subquery()
+            .label("first_message")
+        )
+
+        stmt = (
+            select(Session, first_msg, fc_count)
+            .where(Session.workspace_id == workspace_id)
+            .order_by(Session.created_at.desc())
+            .limit(limit)
+        )
+
         async with self._db.session() as db_session:
-            stmt = (
-                select(Session)
-                .where(Session.workspace_id == workspace_id)
-                .order_by(Session.created_at.desc())
-                .limit(limit)
-            )
             result = await db_session.execute(stmt)
-            sessions = list(result.scalars().all())
+            rows = result.all()
 
-            summaries = []
-            for sess in sessions:
-                # 첫 메시지 미리보기
-                msg_stmt = (
-                    select(Message.content)
-                    .where(Message.session_id == sess.id, Message.role == "user")
-                    .order_by(Message.timestamp.asc())
-                    .limit(1)
-                )
-                msg_result = await db_session.execute(msg_stmt)
-                first_msg = msg_result.scalar()
-                prompt_preview = first_msg[:200] if first_msg else ""
-
-                # 파일 변경 수
-                file_count_stmt = (
-                    select(func.count())
-                    .select_from(FileChange)
-                    .where(FileChange.session_id == sess.id)
-                )
-                file_count_result = await db_session.execute(file_count_stmt)
-                file_count = file_count_result.scalar() or 0
-
-                summaries.append(
-                    {
-                        "id": sess.id,
-                        "name": sess.name,
-                        "status": sess.status,
-                        "created_at": sess.created_at.isoformat()
-                        if sess.created_at
-                        else None,
-                        "prompt_preview": prompt_preview,
-                        "file_count": file_count,
-                    }
-                )
-            return summaries
+        return [
+            {
+                "id": sess.id,
+                "name": sess.name,
+                "status": sess.status,
+                "created_at": sess.created_at.isoformat()
+                if sess.created_at
+                else None,
+                "prompt_preview": (first_message[:200] if first_message else ""),
+                "file_count": file_count or 0,
+            }
+            for sess, first_message, file_count in rows
+        ]
 
     async def suggest_files(
         self, workspace_id: str, prompt: str | None = None, limit: int = 10
