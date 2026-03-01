@@ -7,6 +7,7 @@ from collections import OrderedDict
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.api.dependencies import (
+    get_claude_memory_service,
     get_claude_runner,
     get_jsonl_watcher,
     get_mcp_service,
@@ -203,6 +204,25 @@ async def _handle_prompt(
             logger.debug(
                 "세션 %s: TeamCoordinator 컨텍스트 주입 실패 (미초기화)", session_id
             )
+
+        # Knowledge Base 컨텍스트 자동 주입
+        try:
+            work_dir = current_session.get("work_dir")
+            if work_dir:
+                memory_svc = get_claude_memory_service()
+                memory_ctx = await memory_svc.build_memory_context(work_dir)
+                if memory_ctx.context_text:
+                    existing = merged_session.get("system_prompt") or ""
+                    kb_block = (
+                        "\n\n<knowledge_base>\n"
+                        + memory_ctx.context_text
+                        + "\n</knowledge_base>"
+                    )
+                    merged_session["system_prompt"] = (
+                        existing + kb_block if existing else kb_block
+                    )
+        except Exception:
+            logger.debug("세션 %s: KB 컨텍스트 주입 스킵", session_id)
 
         # MCP 서비스 주입
         mcp_service = get_mcp_service()
