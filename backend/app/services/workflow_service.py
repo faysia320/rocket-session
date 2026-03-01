@@ -425,6 +425,67 @@ class WorkflowService:
 
     # ─── Phase별 프롬프트 컨텍스트 ───
 
+    async def resolve_workflow_state(
+        self,
+        session_id: str,
+        current_session: dict,
+        session_manager,
+        ws_manager,
+    ) -> tuple[str | None, dict | None, str | None]:
+        """워크플로우 게이트 로직: (phase, step_config_dict, error_msg) 반환.
+
+        error_msg가 None이 아니면 프롬프트를 차단해야 함.
+        """
+        from app.models.event_types import WsEventType
+
+        workflow_phase = current_session.get("workflow_phase")
+        workflow_phase_status = current_session.get("workflow_phase_status")
+
+        # 워크플로우 완료 상태: 일반 메시지로 처리
+        if workflow_phase_status == "completed":
+            return None, None, None
+
+        def_id = current_session.get("workflow_definition_id")
+        definition = await self._def_service.get_or_default(def_id)
+        steps = sorted(definition.steps, key=lambda s: s.order_index)
+
+        # 게이트 1: 워크플로우 미시작 상태 → 자동 복구
+        if not workflow_phase:
+            first_name = steps[0].name if steps else "research"
+            logger.warning(
+                "워크플로우 자동 복구: session=%s (enabled=True, phase=None → %s)",
+                session_id,
+                first_name,
+            )
+            await session_manager.update_settings(
+                session_id,
+                workflow_phase=first_name,
+                workflow_phase_status="in_progress",
+            )
+            workflow_phase = first_name
+            await ws_manager.broadcast_event(
+                session_id,
+                {"type": WsEventType.WORKFLOW_STARTED, "phase": first_name},
+            )
+
+        # 현재 step config 로드
+        step_config = next(
+            (s for s in steps if s.name == workflow_phase), None
+        )
+
+        # 게이트 2: 승인 대기 중 → 프롬프트 차단
+        if workflow_phase_status == "awaiting_approval":
+            return workflow_phase, None, (
+                "현재 단계의 검토가 완료되지 않았습니다. "
+                "아티팩트를 승인하거나 수정 요청해주세요."
+            )
+
+        return (
+            workflow_phase,
+            step_config.model_dump() if step_config else None,
+            None,
+        )
+
     async def build_phase_context(
         self,
         session_id: str,
