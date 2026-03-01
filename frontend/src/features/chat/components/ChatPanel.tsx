@@ -28,6 +28,7 @@ import type { TrustLevel } from "./PermissionDialog";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
+import { ContextSuggestionPanel } from "@/features/context/components/ContextSuggestionPanel";
 import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 
@@ -77,6 +78,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
+  const [contextPrefix, setContextPrefix] = useState("");
 
   const isSplitView = useSessionStore((s) => s.viewMode === "split");
   const { focusedSessionId, pendingPrompt, pendingPromptSessionId, clearPendingPrompt } =
@@ -422,9 +424,14 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
 
   const handleSendPrompt = useCallback(
     (prompt: string, images?: string[]) => {
-      sendPrompt(prompt, { images });
+      if (contextPrefix && messages.length === 0) {
+        sendPrompt(`<context>\n${contextPrefix}\n</context>\n\n${prompt}`, { images });
+        setContextPrefix("");
+      } else {
+        sendPrompt(prompt, { images });
+      }
     },
-    [sendPrompt],
+    [sendPrompt, contextPrefix, messages.length],
   );
 
   const handleResend = useCallback(
@@ -546,6 +553,15 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         messageCount={messages.length}
         currentModel={sessionInfo?.model}
       />
+      {messages.length === 0 && sessionInfo?.workspace_id ? (
+        <div className="px-3 pb-2">
+          <ContextSuggestionPanel
+            workspaceId={sessionInfo.workspace_id}
+            prompt=""
+            onContextChange={setContextPrefix}
+          />
+        </div>
+      ) : null}
       <div>
         <ChatInput
           connected={connected}
