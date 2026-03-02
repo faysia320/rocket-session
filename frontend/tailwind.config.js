@@ -90,5 +90,6 @@ export default {
   },
   plugins: [
     require('tailwindcss-animate'),
+    require('./design-system/tailwind/plugin'),
   ],
 };

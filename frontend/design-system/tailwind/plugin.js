@@ -128,6 +128,24 @@ module.exports = plugin(
       '.container-prose': { maxWidth: 'var(--container-prose)' },
     };
 
+    // =========================================================================
+    // Safe Area Utilities (노치/다이내믹 아일랜드/홈 인디케이터 대응)
+    // =========================================================================
+    const safeAreaUtilities = {
+      '.pt-safe': { paddingTop: 'env(safe-area-inset-top, 0px)' },
+      '.pb-safe': { paddingBottom: 'env(safe-area-inset-bottom, 0px)' },
+      '.pl-safe': { paddingLeft: 'env(safe-area-inset-left, 0px)' },
+      '.pr-safe': { paddingRight: 'env(safe-area-inset-right, 0px)' },
+      '.px-safe': {
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+      },
+      '.py-safe': {
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      },
+    };
+
     // Add all utilities
     addUtilities(zIndexUtilities);
     addUtilities(shadowUtilities);
@@ -137,6 +155,7 @@ module.exports = plugin(
     addUtilities(transitionUtilities);
     addUtilities(statusColorUtilities);
     addUtilities(containerUtilities);
+    addUtilities(safeAreaUtilities);
 
     // =========================================================================
     // Component Classes
