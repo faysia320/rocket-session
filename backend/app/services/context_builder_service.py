@@ -1,7 +1,9 @@
 """컨텍스트 자동 빌딩 서비스 — 세션 생성 시 Memory + 최근 세션 + 파일 제안."""
 
+import asyncio
 import logging
 import re
+import time
 
 from sqlalchemy import func, select
 
@@ -10,6 +12,7 @@ from app.models.file_change import FileChange
 from app.models.message import Message
 from app.models.session import Session
 from app.models.workspace import Workspace
+from app.schemas.context import SessionContextSuggestion
 from app.services.base import DBService
 from app.services.claude_memory_service import ClaudeMemoryService
 
@@ -76,9 +79,32 @@ STOP_WORDS = frozenset(
 class ContextBuilderService(DBService):
     """워크스페이스 컨텍스트를 자동으로 구성하는 서비스."""
 
+    _LOCAL_PATH_CACHE_TTL = 300  # 5분
+
     def __init__(self, db: Database, memory_service: ClaudeMemoryService) -> None:
         super().__init__(db)
         self._memory_service = memory_service
+        self._local_path_cache: dict[str, tuple[float, str]] = {}
+
+    def invalidate_caches(self, workspace_id: str | None = None) -> None:
+        """캐시 무효화 (T1+S4: 서비스 간 캐시 협조).
+
+        workspace_id가 주어지면 해당 워크스페이스만, 없으면 전체 캐시 무효화.
+        Memory 서비스의 캐시도 함께 무효화한다.
+        """
+        if workspace_id:
+            cached = self._local_path_cache.get(workspace_id)
+            local_path = cached[1] if cached else None
+            # local_path 캐시 삭제
+            self._local_path_cache.pop(workspace_id, None)
+            # memory 서비스 캐시도 무효화
+            if local_path:
+                self._memory_service.invalidate_cache(local_path)
+            logger.info("컨텍스트 캐시 무효화 (workspace_id=%s)", workspace_id)
+        else:
+            self._local_path_cache.clear()
+            self._memory_service.invalidate_cache()
+            logger.info("컨텍스트 캐시 전체 무효화")
 
     async def get_recent_sessions(
         self, workspace_id: str, limit: int = 5
@@ -203,19 +229,21 @@ class ContextBuilderService(DBService):
 
     async def build_full_context(
         self, workspace_id: str, prompt: str | None = None
-    ) -> dict:
-        """Memory + 최근 세션 + 파일 제안을 종합한 컨텍스트."""
+    ) -> SessionContextSuggestion:
+        """Memory + 최근 세션 + 파일 제안을 종합한 컨텍스트.
+
+        T5: 반환 타입을 dict → Pydantic SessionContextSuggestion으로 변경.
+        P2: asyncio.gather로 3개 I/O 병렬 실행.
+        """
         # workspace_id → local_path
         local_path = await self._get_local_path(workspace_id)
 
-        # Claude Code Memory 컨텍스트
-        memory_response = await self._memory_service.build_memory_context(local_path)
-
-        # 최근 세션
-        recent_sessions = await self.get_recent_sessions(workspace_id, limit=5)
-
-        # 파일 제안
-        suggested_files = await self.suggest_files(workspace_id, prompt, limit=10)
+        # P2: 3개 독립 I/O를 병렬 실행
+        memory_response, recent_sessions, suggested_files = await asyncio.gather(
+            self._memory_service.build_memory_context(local_path),
+            self.get_recent_sessions(workspace_id, limit=5),
+            self.suggest_files(workspace_id, prompt, limit=10),
+        )
 
         # 통합 컨텍스트 텍스트 생성
         parts = []
@@ -236,24 +264,33 @@ class ContextBuilderService(DBService):
 
         context_text = "\n\n".join(parts) if parts else ""
 
-        return {
-            "memory_files": [
-                mf.model_dump() for mf in memory_response.memory_files
-            ],
-            "recent_sessions": recent_sessions,
-            "suggested_files": suggested_files,
-            "context_text": context_text,
-        }
+        return SessionContextSuggestion(
+            memory_files=memory_response.memory_files,
+            recent_sessions=recent_sessions,
+            suggested_files=suggested_files,
+            context_text=context_text,
+        )
+
+    async def get_local_path(self, workspace_id: str) -> str:
+        """workspace_id → local_path 조회 (공개 API)."""
+        return await self._get_local_path(workspace_id)
 
     async def _get_local_path(self, workspace_id: str) -> str:
-        """workspace_id → local_path 조회."""
+        """workspace_id → local_path 조회 (5분 TTL 캐시)."""
+        cached = self._local_path_cache.get(workspace_id)
+        if cached and time.time() - cached[0] < self._LOCAL_PATH_CACHE_TTL:
+            return cached[1]
+
         async with self._db.session() as db_session:
             stmt = select(Workspace.local_path).where(Workspace.id == workspace_id)
             result = await db_session.execute(stmt)
-            local_path = result.scalar()
-            if not local_path:
-                return ""
-            return local_path
+            local_path = result.scalar() or ""
+
+        if not local_path:
+            logger.warning("워크스페이스 local_path를 찾을 수 없음: %s", workspace_id)
+
+        self._local_path_cache[workspace_id] = (time.time(), local_path)
+        return local_path
 
     @staticmethod
     def _extract_keywords(text: str) -> list[str]:
