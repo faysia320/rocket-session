@@ -222,7 +222,7 @@ async def _handle_prompt(
                         existing + kb_block if existing else kb_block
                     )
         except Exception:
-            logger.debug("세션 %s: KB 컨텍스트 주입 스킵", session_id)
+            logger.warning("세션 %s: KB 컨텍스트 주입 실패", session_id, exc_info=True)
 
         # MCP 서비스 주입
         mcp_service = get_mcp_service()

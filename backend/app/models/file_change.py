@@ -30,4 +30,7 @@ class FileChange(Base):
     # Relationship
     session: Mapped["Session"] = relationship("Session", back_populates="file_changes")
 
-    __table_args__ = (Index("idx_file_changes_session_id", "session_id"),)
+    __table_args__ = (
+        Index("idx_file_changes_session_id", "session_id"),
+        Index("idx_file_changes_session_file", "session_id", "file"),
+    )
