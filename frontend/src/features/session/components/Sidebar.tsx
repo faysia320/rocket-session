@@ -282,6 +282,8 @@ export const Sidebar = memo(function Sidebar({
 								aria-label="세션 검색"
 								value={searchQuery}
 								onChange={(e) => handleQueryChange(e.target.value)}
+								enterKeyHint="search"
+								autoComplete="off"
 							/>
 							{searchQuery ? (
 								<button
@@ -300,7 +302,7 @@ export const Sidebar = memo(function Sidebar({
 								<Button
 									variant="ghost"
 									size="icon"
-									className={cn("size-7 shrink-0", ftsMode && "text-primary")}
+									className={cn("size-7 shrink-0 touch-target-expand", ftsMode && "text-primary")}
 									onClick={() => setFtsMode(!ftsMode)}
 									aria-label={
 										ftsMode ? "일반 검색으로 전환" : "전문 검색으로 전환"
@@ -458,7 +460,7 @@ export const Sidebar = memo(function Sidebar({
 									variant="ghost"
 									size="icon"
 									className={cn(
-										"h-7 w-7",
+										"h-7 w-7 touch-target-expand",
 										viewMode === "dashboard" && "bg-muted",
 									)}
 									onClick={() => {
@@ -479,7 +481,7 @@ export const Sidebar = memo(function Sidebar({
 								<Button
 									variant="ghost"
 									size="icon"
-									className={cn("h-7 w-7", viewMode === "single" && "bg-muted")}
+									className={cn("h-7 w-7 touch-target-expand", viewMode === "single" && "bg-muted")}
 									onClick={() => {
 										setViewMode("single");
 										const targetId = activeSessionId ?? sessions[0]?.id;
@@ -506,7 +508,7 @@ export const Sidebar = memo(function Sidebar({
 								<Button
 									variant="ghost"
 									size="icon"
-									className={cn("h-7 w-7", viewMode === "split" && "bg-muted")}
+									className={cn("h-7 w-7 touch-target-expand", viewMode === "split" && "bg-muted")}
 									onClick={() => {
 										setViewMode("split");
 										const targetId = activeSessionId ?? sessions[0]?.id;
@@ -533,7 +535,7 @@ export const Sidebar = memo(function Sidebar({
 								<Button
 									variant="ghost"
 									size="icon"
-									className="h-7 w-7"
+									className="h-7 w-7 touch-target-expand"
 									onClick={toggleSidebar}
 									aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
 								>

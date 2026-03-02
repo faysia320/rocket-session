@@ -90,7 +90,7 @@ export const TeamTaskCard = memo(function TeamTaskCard({
           <div className="flex items-center gap-1.5 mb-1">
             <Badge
               variant="outline"
-              className={cn("font-mono text-[10px] px-1.5 py-0", priority.class)}
+              className={cn("font-mono text-2xs px-1.5 py-0", priority.class)}
             >
               {priority.label}
             </Badge>

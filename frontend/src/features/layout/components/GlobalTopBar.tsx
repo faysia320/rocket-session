@@ -121,7 +121,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-10 w-10"
           onClick={() => setSidebarMobileOpen(true)}
           aria-label="세션 목록"
         >
@@ -223,7 +223,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
         {/* 모바일: 더보기 드롭다운 */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 md:hidden" aria-label="더보기">
+            <Button variant="ghost" size="icon" className="h-10 w-10 md:hidden" aria-label="더보기">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>

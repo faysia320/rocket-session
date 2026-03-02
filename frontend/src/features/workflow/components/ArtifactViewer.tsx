@@ -145,17 +145,17 @@ export const ArtifactViewer = memo(function ArtifactViewer({
         <SheetHeader className="px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <SheetTitle className="text-sm font-medium">{artifact.title}</SheetTitle>
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-2xs">
               v{artifact.version}
             </Badge>
             <Badge
               variant={artifact.status === "approved" ? "default" : "secondary"}
-              className="text-[10px]"
+              className="text-2xs"
             >
               {STATUS_LABELS[artifact.status] ?? artifact.status}
             </Badge>
             {pendingAnnotations.length > 0 ? (
-              <Badge variant="outline" className="text-[10px] text-warning">
+              <Badge variant="outline" className="text-2xs text-warning">
                 {pendingAnnotations.length}건 미해결
               </Badge>
             ) : null}
@@ -169,7 +169,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
               variant={viewMode === "markdown" ? "secondary" : "ghost"}
               size="sm"
               onClick={() => setViewMode("markdown")}
-              className="h-6 px-2.5 text-[11px] gap-1.5"
+              className="h-6 px-2.5 text-xs gap-1.5"
             >
               <Eye className="w-3 h-3" />
               미리보기
@@ -178,7 +178,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
               variant={viewMode === "source" ? "secondary" : "ghost"}
               size="sm"
               onClick={() => setViewMode("source")}
-              className="h-6 px-2.5 text-[11px] gap-1.5"
+              className="h-6 px-2.5 text-xs gap-1.5"
             >
               <Code2 className="w-3 h-3" />
               소스
@@ -351,9 +351,9 @@ const InlineAnnotationCard = memo(function InlineAnnotationCard({
     >
       <div className="flex items-center gap-1.5 mb-1">
         <Icon className={cn("w-3 h-3 shrink-0", config.color)} />
-        <span className={cn("font-medium text-[10px]", config.color)}>{config.label}</span>
+        <span className={cn("font-medium text-2xs", config.color)}>{config.label}</span>
         {!isPending ? (
-          <span className="text-[10px] text-muted-foreground ml-auto">
+          <span className="text-2xs text-muted-foreground ml-auto">
             {annotation.status === "resolved" ? "해결됨" : "무시됨"}
           </span>
         ) : null}
@@ -366,7 +366,7 @@ const InlineAnnotationCard = memo(function InlineAnnotationCard({
             size="sm"
             onClick={() => onDismiss?.(annotation.id)}
             aria-label="주석 무시"
-            className="h-5 px-1.5 text-[10px]"
+            className="h-5 px-1.5 text-2xs"
           >
             <X className="w-2.5 h-2.5 mr-0.5" />
             무시
@@ -376,7 +376,7 @@ const InlineAnnotationCard = memo(function InlineAnnotationCard({
             size="sm"
             onClick={() => onResolve?.(annotation.id)}
             aria-label="주석 해결"
-            className="h-5 px-1.5 text-[10px] text-success"
+            className="h-5 px-1.5 text-2xs text-success"
           >
             <Check className="w-2.5 h-2.5 mr-0.5" />
             해결
@@ -419,7 +419,7 @@ function AddAnnotationForm({
               variant={type === t.value ? "default" : "ghost"}
               size="sm"
               onClick={() => onTypeChange(t.value)}
-              className="h-6 px-2 text-[10px]"
+              className="h-6 px-2 text-2xs"
             >
               <TIcon className="w-3 h-3 mr-1" />
               {t.label}

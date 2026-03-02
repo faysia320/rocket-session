@@ -214,6 +214,8 @@ export function HistoryPage({ className }: { className?: string }) {
               placeholder={ftsMode ? "대화 내용으로 검색… (FTS)" : "세션 이름 또는 ID로 검색…"}
               className="pl-8 pr-8 h-8 font-mono text-xs"
               aria-label="세션 검색"
+              enterKeyHint="search"
+              autoComplete="off"
             />
             {query ? (
               <button

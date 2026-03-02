@@ -275,7 +275,7 @@ export const ChatInput = memo(function ChatInput({
 
   return (
     <div
-      className="px-2 py-1.5 border-t border-border bg-secondary"
+      className="px-2 py-1.5 border-t border-border bg-secondary pb-safe"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
@@ -324,7 +324,7 @@ export const ChatInput = memo(function ChatInput({
                 <button
                   type="button"
                   onClick={() => removeImage(i)}
-                  className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity touch-target-expand"
                   aria-label="이미지 제거"
                 >
                   <X className="h-2.5 w-2.5" />
@@ -381,6 +381,8 @@ export const ChatInput = memo(function ChatInput({
             aria-label="메시지 입력"
             rows={1}
             disabled={!connected || disabled}
+            enterKeyHint="send"
+            autoComplete="off"
           />
           <div className="flex items-center">
             {isEffectivelyRunning ? (
@@ -390,7 +392,7 @@ export const ChatInput = memo(function ChatInput({
                     variant="destructive"
                     size="icon"
                     onClick={onStop}
-                    className="h-7 w-7 shrink-0"
+                    className="h-9 w-9 md:h-7 md:w-7 shrink-0"
                     aria-label="중지"
                   >
                     <Square className="h-3 w-3 fill-current" />
@@ -408,7 +410,7 @@ export const ChatInput = memo(function ChatInput({
                       (!input.trim() && pendingImages.length === 0 && pendingAnswerCount === 0) ||
                       !connected
                     }
-                    className="h-7 w-7 shrink-0"
+                    className="h-9 w-9 md:h-7 md:w-7 shrink-0"
                     aria-label="전송"
                   >
                     <Send className="h-3 w-3" />

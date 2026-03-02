@@ -37,6 +37,8 @@ export const ChatSearchBar = memo(function ChatSearchBar({
           if (e.key === "Escape") onClose();
         }}
         autoFocus
+        enterKeyHint="search"
+        autoComplete="off"
       />
       <span className="font-mono text-xs text-muted-foreground shrink-0" aria-live="polite">
         {searchMatchCount > 0

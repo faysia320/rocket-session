@@ -104,7 +104,7 @@ export const InsightCard = memo(function InsightCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-6 w-6 touch-target-expand"
                 onClick={() => onEdit(insight)}
               >
                 <Pencil className="h-3 w-3" />
@@ -119,7 +119,7 @@ export const InsightCard = memo(function InsightCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-6 w-6 touch-target-expand"
                 onClick={() => onArchive(insight.id)}
               >
                 <Archive className="h-3 w-3" />
@@ -134,7 +134,7 @@ export const InsightCard = memo(function InsightCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 text-destructive/70 hover:text-destructive"
+                className="h-6 w-6 text-destructive/70 hover:text-destructive touch-target-expand"
                 onClick={() => onDelete(insight.id)}
               >
                 <Trash2 className="h-3 w-3" />

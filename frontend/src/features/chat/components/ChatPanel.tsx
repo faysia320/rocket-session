@@ -481,7 +481,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   );
 
   return (
-    <div ref={panelRef} className="relative flex-1 flex flex-col overflow-hidden">
+    <div ref={panelRef} className="relative flex-1 flex flex-col overflow-hidden overscroll-y-contain">
       <ChatHeader
         connected={connected}
         workDir={effectiveWorkDir}

@@ -390,6 +390,7 @@ export function GlobalSettingsDialog({ open, onOpenChange }: GlobalSettingsDialo
                 placeholder="없음"
                 value={timeoutMinutes}
                 onChange={(e) => setTimeoutMinutes(e.target.value)}
+                inputMode="numeric"
               />
             </div>
 

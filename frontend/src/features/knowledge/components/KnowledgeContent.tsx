@@ -260,6 +260,8 @@ export function KnowledgeContent({ workspaceId }: KnowledgeContentProps) {
             placeholder={mainTab === "memory" ? "Search files..." : "Search insights..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            enterKeyHint="search"
+            autoComplete="off"
           />
         </div>
         {mainTab === "memory" && memoryFiles && memoryFiles.length > 0 ? (

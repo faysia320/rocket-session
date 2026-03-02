@@ -57,6 +57,8 @@ export function GitCommitHistoryTab({ repoPath }: GitCommitHistoryTabProps) {
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleKeyDown}
             className="pl-8 h-8 font-mono text-xs"
+            enterKeyHint="search"
+            autoComplete="off"
           />
         </div>
         <Button

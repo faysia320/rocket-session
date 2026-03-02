@@ -113,6 +113,8 @@ export const TeamSidebar = memo(function TeamSidebar({
               aria-label="팀 검색"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              enterKeyHint="search"
+              autoComplete="off"
             />
             {searchQuery ? (
               <button

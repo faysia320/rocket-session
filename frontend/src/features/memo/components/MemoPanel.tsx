@@ -55,7 +55,7 @@ export const MemoPanel = memo(function MemoPanel() {
 
   return (
     <div
-      className="fixed flex flex-col inset-0 md:inset-auto md:w-[400px] md:h-[600px] md:rounded-lg border-border bg-background md:border md:shadow-lg"
+      className="fixed flex flex-col inset-0 pt-safe pb-safe px-safe md:inset-auto md:w-[400px] md:h-[600px] md:rounded-lg md:pt-0 md:pb-0 md:px-0 border-border bg-background md:border md:shadow-lg"
       style={{ zIndex: 55, ...posStyle }}
     >
       {/* 헤더 - 드래그 핸들 (데스크톱만) */}
@@ -72,7 +72,7 @@ export const MemoPanel = memo(function MemoPanel() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6"
+          className="h-6 w-6 touch-target-expand"
           onClick={() => setMemoOpen(false)}
           aria-label="메모 닫기"
         >
