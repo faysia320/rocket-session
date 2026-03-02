@@ -29,6 +29,7 @@ import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { ContextSuggestionPanel } from "@/features/context/components/ContextSuggestionPanel";
+import { contextKeys } from "@/features/context/hooks/contextKeys";
 import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 
@@ -105,6 +106,23 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       workflowDataChangedRef.current = null;
     };
   }, [queryClient, sessionId, workflowDataChangedRef]);
+
+  // S1: 파일 변경 시 context suggestion 캐시 무효화
+  const prevFileChangesLen = useRef(fileChanges.length);
+  useEffect(() => {
+    if (fileChanges.length > prevFileChangesLen.current && sessionInfo?.workspace_id) {
+      queryClient.invalidateQueries({ queryKey: contextKeys.all });
+    }
+    prevFileChangesLen.current = fileChanges.length;
+  }, [fileChanges.length, sessionInfo?.workspace_id, queryClient]);
+
+  // U6: 세션 클릭 시 이동 핸들러
+  const handleSessionClick = useCallback(
+    (targetSessionId: string) => {
+      useSessionStore.getState().setFocusedSessionId(targetSessionId);
+    },
+    [],
+  );
 
   // P0: PermissionDialog 콜백 안정화 (타이머 리셋 방지)
   const handlePermissionAllow = useCallback(
@@ -554,15 +572,21 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         messageCount={messages.length}
         currentModel={sessionInfo?.model}
       />
-      {messages.length === 0 && sessionInfo?.workspace_id ? (
-        <div className="px-3 pb-2">
+      <div
+        className="px-3 pb-2"
+        style={{
+          display: messages.length === 0 && sessionInfo?.workspace_id ? "block" : "none",
+        }}
+      >
+        {sessionInfo?.workspace_id ? (
           <ContextSuggestionPanel
             workspaceId={sessionInfo.workspace_id}
             prompt={liveInput}
             onContextChange={setContextPrefix}
+            onSessionClick={handleSessionClick}
           />
-        </div>
-      ) : null}
+        ) : null}
+      </div>
       <div>
         <ChatInput
           connected={connected}

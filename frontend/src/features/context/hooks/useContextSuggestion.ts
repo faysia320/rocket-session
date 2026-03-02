@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { contextApi } from "@/lib/api/context.api";
 import { contextKeys } from "./contextKeys";
 
@@ -12,5 +12,6 @@ export function useContextSuggestion(workspaceId: string | null, prompt?: string
     queryFn: () => contextApi.suggest(workspaceId!, prompt),
     enabled: !!workspaceId,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 }
