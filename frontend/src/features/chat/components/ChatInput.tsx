@@ -18,7 +18,7 @@ interface PendingImage {
 
 interface ChatInputProps {
   connected: boolean;
-  status: "idle" | "running" | "error";
+  status: "idle" | "running" | "preparing" | "error";
   activeTools: ToolUseMsg[];
   slashCommands: ReturnType<typeof useSlashCommands>;
   onSubmit: (prompt: string, images?: string[]) => void;
@@ -110,7 +110,7 @@ export const ChatInput = memo(function ChatInput({
     });
   }, []);
 
-  const isEffectivelyRunning = status === "running" || activeTools.length > 0;
+  const isEffectivelyRunning = status === "running" || status === "preparing" || activeTools.length > 0;
 
   const handleSubmit = useCallback(async () => {
     const prompt = input.trim();

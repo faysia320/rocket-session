@@ -57,7 +57,7 @@ export interface ClaudeSocketState {
   connected: boolean;
   loading: boolean;
   messages: Message[];
-  status: "idle" | "running" | "error";
+  status: "idle" | "running" | "preparing" | "error";
   sessionInfo: SessionState | null;
   fileChanges: FileChange[];
   activeTools: ToolUseMsg[];
@@ -139,7 +139,7 @@ export type ClaudeSocketAction =
       fileChanges: FileChange[] | null;
     }
   | { type: "WS_SESSION_INFO"; claudeSessionId: string }
-  | { type: "WS_STATUS"; status: "idle" | "running" | "error" }
+  | { type: "WS_STATUS"; status: "idle" | "running" | "preparing" | "error" }
   | { type: "WS_USER_MESSAGE"; data: Record<string, unknown> }
   | { type: "WS_ASSISTANT_TEXT"; data: AssistantTextMsg }
   | { type: "WS_TOOL_USE"; data: ToolUseMsg }

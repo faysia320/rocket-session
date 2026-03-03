@@ -28,7 +28,7 @@ interface ChatHeaderProps {
 	workDir?: string;
 	gitInfo: GitInfo | null;
 	worktreeName?: string | null;
-	status: "idle" | "running" | "error";
+	status: "idle" | "running" | "preparing" | "error";
 	activeTools: ToolUseMsg[];
 	sessionId: string;
 	fileChanges: FileChange[];

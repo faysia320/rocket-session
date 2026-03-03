@@ -69,7 +69,7 @@ export interface WsSessionInfoEvent extends WsBaseEvent {
 /** 세션 실행 상태 변경 */
 export interface WsStatusEvent extends WsBaseEvent {
   type: "status";
-  status: "idle" | "running" | "error";
+  status: "idle" | "running" | "preparing" | "error";
 }
 
 /** 실행 중단 완료 */

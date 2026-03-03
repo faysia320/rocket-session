@@ -156,7 +156,7 @@ export function useClaudeSocket(sessionId: string) {
         break;
 
       case "status":
-        dispatch({ type: "WS_STATUS", status: data.status as "idle" | "running" | "error" });
+        dispatch({ type: "WS_STATUS", status: data.status as "idle" | "running" | "preparing" | "error" });
         break;
 
       case "user_message":

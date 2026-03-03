@@ -160,6 +160,7 @@ export function handleWsMessage(
       };
 
     case "WS_STATUS": {
+      // preparing: running과 동일하게 취급 (activeTools 초기화 안 함)
       if (action.status === "idle" || action.status === "error") {
         const runningIndices: number[] = [];
         for (let i = state.messages.length - 1; i >= 0; i--) {

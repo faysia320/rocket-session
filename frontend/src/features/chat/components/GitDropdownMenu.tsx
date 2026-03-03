@@ -24,7 +24,7 @@ import type { GitInfo } from "@/types";
 interface GitDropdownMenuProps {
   gitInfo: GitInfo | null;
   worktreeName?: string | null;
-  status: "idle" | "running" | "error";
+  status: "idle" | "running" | "preparing" | "error";
   connected: boolean;
   onSendPrompt: (prompt: string) => void;
   onRemoveWorktree?: () => void;

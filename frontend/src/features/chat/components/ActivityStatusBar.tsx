@@ -12,7 +12,7 @@ const PHASE_RUNNING_MESSAGES: Record<string, string> = {
 
 interface ActivityStatusBarProps {
   activeTools: ToolUseMsg[];
-  status: "idle" | "running" | "error";
+  status: "idle" | "running" | "preparing" | "error";
   pendingPermission?: PermissionRequestData | null;
   waitingForWorkflowApproval?: boolean;
   workflowPhase?: string | null;
@@ -31,7 +31,7 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
   const hasWorkflowWait = !!waitingForWorkflowApproval;
   const hasActiveTools = activeTools.length > 0;
   // status가 "running"이 아니더라도 activeTools가 있으면 실제로 동작 중
-  const isEffectivelyRunning = status === "running" || hasActiveTools;
+  const isEffectivelyRunning = status === "running" || status === "preparing" || hasActiveTools;
 
   // 아무 표시할 내용이 없으면 null
   if (!hasPermissionWait && !hasWorkflowWait && !isEffectivelyRunning) return null;
@@ -106,9 +106,11 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
           <div className="flex items-center gap-2 min-h-[20px]">
             <span className="inline-block w-3 h-3 border-[1.5px] border-primary/40 border-t-primary rounded-full animate-spin shrink-0" />
             <span className="font-mono text-xs text-muted-foreground">
-              {workflowPhase && PHASE_RUNNING_MESSAGES[workflowPhase]
-                ? PHASE_RUNNING_MESSAGES[workflowPhase]
-                : "Reasoning…"}
+              {status === "preparing"
+                ? "워크플로우 분석 중…"
+                : workflowPhase && PHASE_RUNNING_MESSAGES[workflowPhase]
+                  ? PHASE_RUNNING_MESSAGES[workflowPhase]
+                  : "Reasoning…"}
             </span>
           </div>
         ) : null}
