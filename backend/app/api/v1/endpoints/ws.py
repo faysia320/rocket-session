@@ -192,7 +192,19 @@ async def _handle_prompt(
                     current_def_id = current_session.get("workflow_definition_id")
                     recommended_id = await recommender.recommend(prompt, definitions)
 
-                    if recommended_id and recommended_id != current_def_id:
+                    if recommended_id == "none":
+                        # AI가 워크플로우 불필요로 판단 → 워크플로우 비활성화
+                        await manager.update_settings(
+                            session_id,
+                            workflow_phase=None,
+                            workflow_phase_status=None,
+                            workflow_original_prompt=prompt,
+                        )
+                        workflow_phase = None
+                        workflow_service = None
+                        workflow_step_config = None
+                        current_session = await manager.get(session_id)
+                    elif recommended_id and recommended_id != current_def_id:
                         # 새 워크플로우로 전환
                         wf_svc = get_workflow_service()
                         await wf_svc.start_workflow(
