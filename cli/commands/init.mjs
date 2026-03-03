@@ -58,6 +58,6 @@ export default async function init(flags) {
 
   log.success(`설정 파일이 생성되었습니다: ${envPath}`);
   log.info('');
-  log.info(`서비스 시작: npx rocket-session start`);
+  log.info(`서비스 시작: npx @faysia320/rocket-session start`);
   console.log('');
 }

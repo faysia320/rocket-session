@@ -101,7 +101,7 @@ export function waitForHealthy(url, timeoutMs = 120000) {
       if (Date.now() - start > timeoutMs) {
         reject(
           new Error(
-            `서비스가 ${Math.round(timeoutMs / 1000)}초 내에 시작되지 않았습니다. 'rocket-session logs'로 로그를 확인해주세요.`,
+            `서비스가 ${Math.round(timeoutMs / 1000)}초 내에 시작되지 않았습니다. 'npx @faysia320/rocket-session logs'로 로그를 확인해주세요.`,
           ),
         );
         return;

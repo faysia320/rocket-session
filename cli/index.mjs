@@ -62,7 +62,7 @@ export function parseArgs(argv) {
 
 function printHelp() {
   console.log(`
-Usage: rocket-session <command> [options]
+Usage: npx @faysia320/rocket-session <command> [options]
 
 Commands:
   start     Docker 이미지를 빌드하고 서비스를 시작합니다
@@ -79,12 +79,12 @@ Global Options:
   --json            JSON 출력 모드 (LLM 자동화용)
 
 Examples:
-  npx rocket-session init
-  npx rocket-session start
-  npx rocket-session start --port 9000
-  npx rocket-session stop
-  npx rocket-session status --json
-  npx rocket-session logs -f
+  npx @faysia320/rocket-session init
+  npx @faysia320/rocket-session start
+  npx @faysia320/rocket-session start --port 9000
+  npx @faysia320/rocket-session stop
+  npx @faysia320/rocket-session status --json
+  npx @faysia320/rocket-session logs -f
 `);
 }
 

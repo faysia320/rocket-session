@@ -81,7 +81,7 @@ export default async function start(flags) {
   } catch (err) {
     log.fail();
     log.error(`Docker 빌드/실행 실패: ${err.message}`);
-    log.info(`'rocket-session logs'로 상세 로그를 확인하세요.`);
+    log.info(`'npx @faysia320/rocket-session logs'로 상세 로그를 확인하세요.`);
     log.json({ error: 'docker compose up failed', detail: err.message });
     process.exit(1);
   }
@@ -102,8 +102,8 @@ export default async function start(flags) {
   log.info(`  Dashboard: ${url}`);
   log.info(`  데이터 저장: ${merged.dataDir}`);
   log.info('');
-  log.info(`  중지: npx rocket-session stop`);
-  log.info(`  로그: npx rocket-session logs -f`);
+  log.info(`  중지: npx @faysia320/rocket-session stop`);
+  log.info(`  로그: npx @faysia320/rocket-session logs -f`);
   console.log('');
 
   log.json({

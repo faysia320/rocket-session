@@ -20,7 +20,7 @@ export default async function config(flags) {
       return showPath(flags);
     default:
       log.error(`알 수 없는 서브커맨드: ${subcommand}`);
-      log.info('사용법: rocket-session config [list|set|path]');
+      log.info('사용법: npx @faysia320/rocket-session config [list|set|path]');
       process.exit(1);
   }
 }
@@ -29,7 +29,7 @@ function listConfig(flags) {
   const envFile = getEnvFile({ dataDir: flags.dataDir });
 
   if (!existsSync(envFile)) {
-    log.info('설정 파일이 없습니다. `rocket-session init`으로 생성하세요.');
+    log.info('설정 파일이 없습니다. `npx @faysia320/rocket-session init`으로 생성하세요.');
     log.json({ error: 'no config file' });
     return;
   }
@@ -54,7 +54,7 @@ function listConfig(flags) {
 function setConfig(flags) {
   const args = flags._args || [];
   if (args.length < 3) {
-    log.error('사용법: rocket-session config set <KEY> <VALUE>');
+    log.error('사용법: npx @faysia320/rocket-session config set <KEY> <VALUE>');
     process.exit(1);
   }
 
@@ -63,7 +63,7 @@ function setConfig(flags) {
   const envFile = getEnvFile({ dataDir: flags.dataDir });
 
   if (!existsSync(envFile)) {
-    log.error('설정 파일이 없습니다. `rocket-session init`으로 먼저 생성하세요.');
+    log.error('설정 파일이 없습니다. `npx @faysia320/rocket-session init`으로 먼저 생성하세요.');
     process.exit(1);
   }
 
