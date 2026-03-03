@@ -101,6 +101,11 @@ export const MessageBubble = memo(function MessageBubble({
     case "result": {
       const currentStep = workflowSteps?.find((s) => s.name === message.workflow_phase);
       if (currentStep?.review_required || (!workflowSteps && message.workflow_phase === "plan")) {
+        const isLast = (() => {
+          if (!workflowSteps?.length || !message.workflow_phase) return false;
+          const maxIdx = Math.max(...workflowSteps.map((s) => s.order_index));
+          return currentStep?.order_index === maxIdx;
+        })();
         return (
           <WorkflowPhaseCard
             message={message}
@@ -111,6 +116,7 @@ export const MessageBubble = memo(function MessageBubble({
             isApproving={isApprovingPhase}
             isRequestingRevision={isRequestingRevision}
             disabled={isRunning}
+            isLastPhase={isLast}
           />
         );
       }

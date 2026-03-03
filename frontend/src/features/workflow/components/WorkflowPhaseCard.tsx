@@ -1,6 +1,6 @@
 import { memo, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { FileText, Check, RotateCcw, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, Check, RotateCcw, ExternalLink, ChevronDown, ChevronUp, GitCommit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ interface WorkflowPhaseCardProps {
   isApproving?: boolean;
   isRequestingRevision?: boolean;
   disabled?: boolean;
+  isLastPhase?: boolean;
 }
 
 export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
@@ -29,6 +30,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
   isApproving = false,
   isRequestingRevision = false,
   disabled = false,
+  isLastPhase = false,
 }: WorkflowPhaseCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showRevisionInput, setShowRevisionInput] = useState(false);
@@ -160,17 +162,31 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                 <RotateCcw className="w-3.5 h-3.5 mr-1" />
                 수정 요청
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleApprove}
-                disabled={disabled || isApproving}
-                aria-busy={isApproving}
-                className="h-7 text-xs"
-              >
-                <Check className="w-3.5 h-3.5 mr-1" />
-                {isApproving ? "승인 중…" : "승인 → 다음 단계"}
-              </Button>
+              {isLastPhase ? (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleApprove}
+                  disabled={disabled || isApproving}
+                  aria-busy={isApproving}
+                  className="h-7 text-xs"
+                >
+                  <GitCommit className="w-3.5 h-3.5 mr-1" />
+                  {isApproving ? "처리 중…" : "커밋 요청"}
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleApprove}
+                  disabled={disabled || isApproving}
+                  aria-busy={isApproving}
+                  className="h-7 text-xs"
+                >
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                  {isApproving ? "승인 중…" : "승인 → 다음 단계"}
+                </Button>
+              )}
             </div>
           )}
         </div>

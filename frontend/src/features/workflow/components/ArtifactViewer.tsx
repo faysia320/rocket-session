@@ -48,6 +48,7 @@ interface ArtifactViewerProps {
   isApproving?: boolean;
   isRequestingRevision?: boolean;
   disabled?: boolean;
+  isLastPhase?: boolean;
 }
 
 export const ArtifactViewer = memo(function ArtifactViewer({
@@ -63,6 +64,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
   isApproving = false,
   isRequestingRevision = false,
   disabled = false,
+  isLastPhase = false,
 }: ArtifactViewerProps) {
   type ContentViewMode = "markdown" | "source" | "edit";
   const [viewMode, setViewMode] = useState<ContentViewMode>("markdown");
@@ -303,6 +305,8 @@ export const ArtifactViewer = memo(function ArtifactViewer({
             isEditing={isEditing}
             disabled={disabled}
             pendingAnnotationCount={pendingAnnotations.length}
+            isLastPhase={isLastPhase}
+            artifactContent={artifact?.content}
           />
         ) : null}
       </SheetContent>

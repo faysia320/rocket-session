@@ -98,8 +98,9 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   useEffect(() => {
     workflowDataChangedRef.current = (eventType: string, artifactId?: number) => {
       if (eventType === "workflow_changed") {
-        // 워크플로우 자동 변경 → 세션 상세 정보 및 워크플로우 아티팩트 갱신
+        // 워크플로우 자동 변경 → 세션 상세 정보, 워크플로우 상태(steps) 및 아티팩트 갱신
         queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
+        queryClient.invalidateQueries({ queryKey: workflowKeys.status(sessionId) });
         queryClient.invalidateQueries({ queryKey: workflowKeys.artifacts(sessionId) });
       } else {
         queryClient.invalidateQueries({ queryKey: workflowKeys.artifacts(sessionId) });
@@ -277,7 +278,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       // P0: Split View 시 focused pane만 갱신하여 중복 호출 방지
       if (!isSplitView || focusedSessionId === sessionId) {
         queryClient.invalidateQueries({ queryKey: sessionKeys.all });
-        queryClient.invalidateQueries({ queryKey: ["workflow-status", sessionId] });
+        queryClient.invalidateQueries({ queryKey: workflowKeys.status(sessionId) });
       }
     };
 
@@ -308,6 +309,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     viewingArtifactId,
     isApproving,
     isRequestingRevision,
+    isLastPhase,
   } = useWorkflowActions({
     sessionId,
     sendPrompt,
@@ -543,7 +545,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         currentDefinitionId={workflowStatusData?.workflow_definition_id}
         onWorkflowChanged={() => {
           queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
-          queryClient.invalidateQueries({ queryKey: ["workflow-status", sessionId] });
+          queryClient.invalidateQueries({ queryKey: workflowKeys.status(sessionId) });
         }}
       />
 
@@ -662,6 +664,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           isApproving={isApproving}
           isRequestingRevision={isRequestingRevision}
           disabled={status === "running"}
+          isLastPhase={isLastPhase}
         />
       </ErrorBoundary>
     </div>
