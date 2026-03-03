@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 class SessionStatus(str, Enum):
     IDLE = "idle"
     RUNNING = "running"
+    PREPARING = "preparing"
     ERROR = "error"
     ARCHIVED = "archived"
 

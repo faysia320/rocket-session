@@ -113,11 +113,55 @@ async def _handle_prompt(
             or settings.claude_allowed_tools
         )
 
+        # 이미지 경로 목록 (업로드 API로 먼저 업로드한 파일 경로)
+        images = data.get("images", [])
+
+        # 세션에 이름이 없으면 첫 프롬프트로 자동 이름 설정
+        if current_session and not current_session.get("name"):
+            auto_name = prompt[:40].strip()
+            if len(prompt) > 40:
+                auto_name += "…"
+            await manager.update_settings(session_id, name=auto_name)
+
+        # 메시지 DB 저장 + USER_MESSAGE 즉시 브로드캐스트 (워크플로우 처리 전)
+        ts_dt = utc_now()
+        await manager.add_message(
+            session_id=session_id,
+            role="user",
+            content=prompt,
+            timestamp=ts_dt,
+        )
+        user_msg = {
+            "role": "user",
+            "content": prompt,
+            "timestamp": ts_dt.isoformat(),
+        }
+        await ws_manager.broadcast_event(
+            session_id, {"type": WsEventType.USER_MESSAGE, "message": user_msg}
+        )
+
+        # 대기 중인 AskUserQuestion 클리어 (사용자가 답변 또는 새 프롬프트 전송)
+        await clear_pending_question(session_id)
+
         # 워크플로우 처리
         workflow_phase = None
         workflow_service = None
         workflow_step_config = None
         claude_prompt = prompt
+
+        # 워크플로우 활성 상태면 준비 중 상태 알림
+        has_workflow = current_session and (
+            current_session.get("workflow_phase")
+            or (
+                current_session.get("workflow_phase_status")
+                and current_session.get("workflow_phase_status") != "completed"
+            )
+        )
+        if has_workflow:
+            await ws_manager.broadcast_event(
+                session_id, {"type": WsEventType.STATUS, "status": "preparing"}
+            )
+
         if current_session:
             wf_phase = current_session.get("workflow_phase")
             wf_status = current_session.get("workflow_phase_status")
@@ -201,35 +245,6 @@ async def _handle_prompt(
                     )
                     if phase_context:
                         claude_prompt = phase_context
-
-        # 이미지 경로 목록 (업로드 API로 먼저 업로드한 파일 경로)
-        images = data.get("images", [])
-
-        # 세션에 이름이 없으면 첫 프롬프트로 자동 이름 설정
-        if current_session and not current_session.get("name"):
-            auto_name = prompt[:40].strip()
-            if len(prompt) > 40:
-                auto_name += "…"
-            await manager.update_settings(session_id, name=auto_name)
-
-        ts_dt = utc_now()
-        await manager.add_message(
-            session_id=session_id,
-            role="user",
-            content=prompt,
-            timestamp=ts_dt,
-        )
-        user_msg = {
-            "role": "user",
-            "content": prompt,
-            "timestamp": ts_dt.isoformat(),
-        }
-        await ws_manager.broadcast_event(
-            session_id, {"type": WsEventType.USER_MESSAGE, "message": user_msg}
-        )
-
-        # 대기 중인 AskUserQuestion 클리어 (사용자가 답변 또는 새 프롬프트 전송)
-        await clear_pending_question(session_id)
 
         # 글로벌 기본값으로 세션 설정 병합
         merged_session = settings_service.merge_session_with_globals(
