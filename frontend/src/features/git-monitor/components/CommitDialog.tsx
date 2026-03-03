@@ -117,7 +117,7 @@ export function CommitDialog({
             <p className="font-mono text-xs text-muted-foreground">
               새 세션을 열고{" "}
               <code className="bg-muted px-1 py-0.5 rounded">/git-commit</code> 스킬을 실행합니다.
-              AI가 적합한 워크플로우를 자동 선택합니다.
+              기본 워크플로우가 적용됩니다.
             </p>
             <div className="flex justify-end gap-2">
               <Button

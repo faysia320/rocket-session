@@ -37,6 +37,8 @@ interface WorkflowProgressBarProps {
   /** 워크플로우 수동 변경 UI 활성화 */
   sessionId?: string;
   isRunning?: boolean;
+  /** 대화 시작 후 워크플로우 변경 잠금 */
+  isLocked?: boolean;
   currentDefinitionId?: string | null;
   onWorkflowChanged?: () => void;
 }
@@ -48,13 +50,14 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
   onPhaseClick,
   sessionId,
   isRunning = false,
+  isLocked = false,
   currentDefinitionId,
   onWorkflowChanged,
 }: WorkflowProgressBarProps) {
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(currentDefinitionId ?? null);
 
-  // 외부에서 워크플로우가 변경(AI 추천 등)되면 selectedId 동기화
+  // 외부에서 워크플로우가 변경되면 selectedId 동기화
   useEffect(() => {
     setSelectedId(currentDefinitionId ?? null);
   }, [currentDefinitionId]);
@@ -148,11 +151,12 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
           <PopoverTrigger asChild>
             <button
               type="button"
-              disabled={isRunning}
+              disabled={isRunning || isLocked}
               aria-label="워크플로우 변경"
+              title={isLocked ? "대화 시작 후 워크플로우를 변경할 수 없습니다" : "워크플로우 변경"}
               className={cn(
                 "ml-1 p-1 rounded-md transition-colors",
-                isRunning
+                isRunning || isLocked
                   ? "text-muted-foreground/40 cursor-not-allowed"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
               )}

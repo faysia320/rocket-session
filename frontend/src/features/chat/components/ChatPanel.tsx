@@ -285,6 +285,12 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [virtualizer, queryClient, isSplitView, focusedSessionId, sessionId]);
 
+  // 워크플로우: 첫 메시지 전송 후 워크플로우 변경 잠금
+  const hasUserMessages = useMemo(
+    () => messages.some((m) => m.type === "user_message"),
+    [messages],
+  );
+
   // 워크플로우 정의 steps 로드
   const { data: workflowStatusData } = useWorkflowStatus(sessionId, true);
   const workflowSteps = useMemo(
@@ -533,6 +539,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         onPhaseClick={noop}
         sessionId={sessionId}
         isRunning={status === "running"}
+        isLocked={hasUserMessages}
         currentDefinitionId={workflowStatusData?.workflow_definition_id}
         onWorkflowChanged={() => {
           queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });

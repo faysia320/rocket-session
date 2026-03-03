@@ -326,8 +326,8 @@ export function useClaudeSocket(sessionId: string) {
         // toast 알림
         toast.info(
           workflowName
-            ? `AI가 "${workflowName}" 워크플로우로 변경했습니다.`
-            : "AI가 워크플로우를 자동 변경했습니다.",
+            ? `"${workflowName}" 워크플로우로 변경되었습니다.`
+            : "워크플로우가 변경되었습니다.",
           { duration: 5000 },
         );
         break;
