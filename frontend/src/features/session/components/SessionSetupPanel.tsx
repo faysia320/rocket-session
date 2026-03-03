@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Rocket, GitBranch, Globe, Plus, X, Workflow, ExternalLink } from "lucide-react";
+import { Rocket, GitBranch, Globe, Plus, X, ExternalLink } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { WorkspaceSelector } from "@/features/workspace/components/WorkspaceSelector";
-import { WorkflowDefinitionSelector } from "@/features/workflow/components/WorkflowDefinitionSelector";
+
 import { useWorkspaces } from "@/features/workspace/hooks/useWorkspaces";
 import { useGitBranches } from "@/features/git-monitor/hooks/useGitActions";
 import {
@@ -40,7 +40,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
   const [useWorktree, setUseWorktree] = useState(false);
   const [worktreeName, setWorktreeName] = useState("");
   const [additionalWorkspaceIds, setAdditionalWorkspaceIds] = useState<string[]>([]);
-  const [workflowDefinitionId, setWorkflowDefinitionId] = useState<string | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
   const { data: workspaces } = useWorkspaces();
 
@@ -65,7 +64,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
         system_prompt?: string;
         additional_dirs?: string[];
         worktree_name?: string;
-        workflow_definition_id?: string;
         workspace_id?: string;
         branch?: string;
       } = {};
@@ -81,9 +79,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
       }
       if (useWorktree && worktreeName.trim()) {
         options.worktree_name = worktreeName.trim();
-      }
-      if (workflowDefinitionId) {
-        options.workflow_definition_id = workflowDefinitionId;
       }
       if (selectedWorkspaceId) {
         options.workspace_id = selectedWorkspaceId;
@@ -254,21 +249,6 @@ export function SessionSetupPanel({ onCreate, onCancel }: SessionSetupPanelProps
             <Plus className="h-3.5 w-3.5 mr-1.5" />
             워크스페이스 추가
           </Button>
-        </div>
-
-        {/* Workflow Definition */}
-        <div className="space-y-2">
-          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider flex items-center gap-2">
-            <Workflow className="h-3.5 w-3.5" />
-            WORKFLOW DEFINITION
-          </Label>
-          <p className="font-mono text-2xs text-muted-foreground/70">
-            워크플로우 정의를 선택합니다. 미선택 시 기본 정의를 사용합니다.
-          </p>
-          <WorkflowDefinitionSelector
-            value={workflowDefinitionId}
-            onSelect={setWorkflowDefinitionId}
-          />
         </div>
 
         {/* System Prompt */}

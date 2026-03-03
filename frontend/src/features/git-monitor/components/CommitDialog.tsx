@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { useStageAndCommit } from "../hooks/useGitActions";
 import { useCreateSession } from "@/features/session/hooks/useSessions";
-import { WorkflowDefinitionSelector } from "@/features/workflow/components/WorkflowDefinitionSelector";
+
 import { useSessionStore } from "@/store";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,6 @@ export function CommitDialog({
   const { createSession } = useCreateSession();
   const setPendingPrompt = useSessionStore((s) => s.setPendingPrompt);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
 
   const handleManualCommit = useCallback(() => {
     if (!message.trim()) return;
@@ -50,7 +49,6 @@ export function CommitDialog({
     try {
       const session = await createSession(workspacePath, {
         workspace_id: workspaceId,
-        ...(selectedWorkflow ? { workflow_definition_id: selectedWorkflow } : {}),
       });
       setPendingPrompt("/git-commit", session.id);
       onOpenChange(false);
@@ -61,7 +59,6 @@ export function CommitDialog({
     createSession,
     workspacePath,
     workspaceId,
-    selectedWorkflow,
     setPendingPrompt,
     onOpenChange,
     isCreatingSession,
@@ -118,10 +115,10 @@ export function CommitDialog({
         {mode === "ai" ? (
           <div className="space-y-3 min-w-0">
             <p className="font-mono text-xs text-muted-foreground">
-              선택한 워크플로우로 새 세션을 열고{" "}
+              새 세션을 열고{" "}
               <code className="bg-muted px-1 py-0.5 rounded">/git-commit</code> 스킬을 실행합니다.
+              AI가 적합한 워크플로우를 자동 선택합니다.
             </p>
-            <WorkflowDefinitionSelector value={selectedWorkflow} onSelect={setSelectedWorkflow} />
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -135,7 +132,7 @@ export function CommitDialog({
                 size="sm"
                 className="font-mono text-xs"
                 onClick={handleAiCommit}
-                disabled={isCreatingSession || !selectedWorkflow}
+                disabled={isCreatingSession}
               >
                 {isCreatingSession ? (
                   <Loader2 className="h-3 w-3 animate-spin mr-1" />
