@@ -1,12 +1,6 @@
 import { useEffect, useMemo } from "react";
-import { Workflow } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useWorkflowDefinitions } from "@/features/workflow/hooks/useWorkflowDefinitions";
 
 interface WorkflowDefinitionSelectorProps {
@@ -37,38 +31,41 @@ export function WorkflowDefinitionSelector({ value, onSelect }: WorkflowDefiniti
     });
   }, [definitions]);
 
-  const handleChange = (val: string) => {
-    onSelect(val);
-  };
-
   return (
-    <Select onValueChange={handleChange} value={value ?? ""}>
-      <SelectTrigger className="font-mono text-xs bg-input border-border min-w-0">
-        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-          <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate">
-            <SelectValue placeholder="워크플로우 선택…" />
-          </span>
-        </div>
-      </SelectTrigger>
-      <SelectContent>
-        {isLoading ? (
-          <SelectItem value="__loading__" disabled className="font-mono text-xs">
-            불러오는 중...
-          </SelectItem>
-        ) : null}
-        {sortedDefinitions.map((def) => (
-          <SelectItem key={def.id} value={def.id} className="font-mono text-xs">
-            <span className="truncate">
-              <span>{def.name}</span>
-              {def.description ? (
-                <span className="ml-2 opacity-70">— {def.description}</span>
-              ) : null}
-              <span className="ml-2 opacity-50">({def.steps.length}단계)</span>
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex flex-col gap-0.5 max-h-64 overflow-y-auto">
+      {isLoading ? (
+        <p className="font-mono text-xs text-muted-foreground px-2 py-1.5">
+          불러오는 중...
+        </p>
+      ) : null}
+      {sortedDefinitions.map((def) => {
+        const isSelected = def.id === value;
+        return (
+          <button
+            key={def.id}
+            type="button"
+            onClick={() => onSelect(def.id)}
+            className={cn(
+              "w-full text-left rounded-sm px-2 py-1.5 text-xs font-mono transition-colors",
+              "hover:bg-accent hover:text-accent-foreground",
+              isSelected && "bg-accent text-accent-foreground",
+            )}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate font-medium">{def.name}</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="opacity-50">({def.steps.length}단계)</span>
+                {isSelected ? <Check className="h-3.5 w-3.5" /> : null}
+              </div>
+            </div>
+            {def.description ? (
+              <p className="text-[11px] opacity-60 truncate mt-0.5">
+                {def.description}
+              </p>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
   );
 }
