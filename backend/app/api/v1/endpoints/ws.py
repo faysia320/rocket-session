@@ -14,8 +14,6 @@ from app.api.dependencies import (
     get_session_manager,
     get_settings,
     get_settings_service,
-    get_workflow_definition_service,
-    get_workflow_recommender_service,
     get_workflow_service,
     get_ws_manager,
 )
@@ -184,68 +182,11 @@ async def _handle_prompt(
                     )
                     return
 
-                # 워크플로우 최초 프롬프트 저장 + AI 워크플로우 자동 추천
+                # 워크플로우 최초 프롬프트 저장 (phase 컨텍스트 빌드에 사용)
                 if workflow_phase and not current_session.get("workflow_original_prompt"):
-                    def_service = get_workflow_definition_service()
-                    recommender = get_workflow_recommender_service()
-                    definitions = await def_service.list_definitions()
-                    current_def_id = current_session.get("workflow_definition_id")
-                    recommended_id = await recommender.recommend(prompt, definitions)
-
-                    if recommended_id == "none":
-                        # AI가 워크플로우 불필요로 판단 → 워크플로우 비활성화
-                        await manager.update_settings(
-                            session_id,
-                            workflow_phase=None,
-                            workflow_phase_status=None,
-                            workflow_original_prompt=prompt,
-                        )
-                        workflow_phase = None
-                        workflow_service = None
-                        workflow_step_config = None
-                        current_session = await manager.get(session_id)
-                    elif recommended_id and recommended_id != current_def_id:
-                        # 새 워크플로우로 전환
-                        wf_svc = get_workflow_service()
-                        await wf_svc.start_workflow(
-                            session_id,
-                            manager,
-                            workflow_definition_id=recommended_id,
-                        )
-                        # original_prompt 저장 (한 번만 AI 추천 실행되도록)
-                        await manager.update_settings(
-                            session_id, workflow_original_prompt=prompt
-                        )
-                        # 세션 정보 및 워크플로우 상태 재로드
-                        current_session = await manager.get(session_id)
-                        workflow_phase, workflow_step_config, _ = (
-                            await wf_svc.resolve_workflow_state(
-                                session_id, current_session, manager, ws_manager
-                            )
-                        )
-                        if workflow_phase:
-                            current_session = await manager.get(session_id)
-                        # 클라이언트에 변경 알림 (toast용)
-                        recommended_name = next(
-                            (
-                                (d.name if hasattr(d, "name") else d.get("name"))
-                                for d in definitions
-                                if (d.id if hasattr(d, "id") else d.get("id")) == recommended_id
-                            ),
-                            recommended_id,
-                        )
-                        await ws_manager.broadcast(
-                            session_id,
-                            {
-                                "type": "workflow_changed",
-                                "workflow_definition_id": recommended_id,
-                                "workflow_name": recommended_name,
-                            },
-                        )
-                    else:
-                        await manager.update_settings(
-                            session_id, workflow_original_prompt=prompt
-                        )
+                    await manager.update_settings(
+                        session_id, workflow_original_prompt=prompt
+                    )
 
                 # Phase별 컨텍스트 프롬프트 구성
                 if workflow_phase and workflow_service:

@@ -80,25 +80,12 @@ class TestWorkflowGate1:
         )
         mock_workflow_svc.build_phase_context = AsyncMock(return_value=None)
 
-        mock_def_service = AsyncMock()
-        mock_def_service.list_definitions = AsyncMock(return_value=[])
-        mock_recommender = AsyncMock()
-        mock_recommender.recommend = AsyncMock(return_value=None)
-
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
             patch("app.api.v1.endpoints.ws.get_mcp_service") as mock_mcp_svc,
             patch(
                 "app.api.v1.endpoints.ws.get_workflow_service",
                 return_value=mock_workflow_svc,
-            ),
-            patch(
-                "app.api.v1.endpoints.ws.get_workflow_definition_service",
-                return_value=mock_def_service,
-            ),
-            patch(
-                "app.api.v1.endpoints.ws.get_workflow_recommender_service",
-                return_value=mock_recommender,
             ),
             patch("asyncio.create_task") as mock_create_task,
         ):
@@ -377,10 +364,6 @@ class TestWorkflowAllowed:
             return_value=("research", {"name": "research", "order_index": 0}, None)
         )
         mock_workflow_svc.build_phase_context = AsyncMock(return_value=None)
-        mock_def_service = AsyncMock()
-        mock_def_service.list_definitions = AsyncMock(return_value=[])
-        mock_recommender = AsyncMock()
-        mock_recommender.recommend = AsyncMock(return_value=None)
 
         with (
             patch("app.api.v1.endpoints.ws.get_settings_service") as mock_settings_svc,
@@ -388,14 +371,6 @@ class TestWorkflowAllowed:
             patch(
                 "app.api.v1.endpoints.ws.get_workflow_service",
                 return_value=mock_workflow_svc,
-            ),
-            patch(
-                "app.api.v1.endpoints.ws.get_workflow_definition_service",
-                return_value=mock_def_service,
-            ),
-            patch(
-                "app.api.v1.endpoints.ws.get_workflow_recommender_service",
-                return_value=mock_recommender,
             ),
             patch("asyncio.create_task") as mock_create_task,
         ):
