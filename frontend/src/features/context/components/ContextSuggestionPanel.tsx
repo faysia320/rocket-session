@@ -41,7 +41,6 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
   const [debouncedPrompt, setDebouncedPrompt] = useState(prompt);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const prevContextTextRef = useRef("");
-  const hasAutoExpandedRef = useRef(false);
 
   // 500ms debounce
   useEffect(() => {
@@ -58,21 +57,9 @@ export const ContextSuggestionPanel = memo(function ContextSuggestionPanel({
     debouncedPrompt || undefined,
   );
 
-  // U2: 데이터가 있고 실제 항목이 있을 때만 auto-expand
   const hasContent = data
     ? data.memory_files.length > 0 || data.suggested_files.length > 0 || data.recent_sessions.length > 0
     : false;
-
-  useEffect(() => {
-    if (workspaceId && hasContent && !hasAutoExpandedRef.current) {
-      hasAutoExpandedRef.current = true;
-      setExpanded(true);
-    }
-  }, [workspaceId, hasContent]);
-
-  useEffect(() => {
-    hasAutoExpandedRef.current = false;
-  }, [workspaceId]);
 
   // P4: buildContextText를 useMemo로 변경 — 함수 재생성 방지
   const contextText = useMemo(() => {
