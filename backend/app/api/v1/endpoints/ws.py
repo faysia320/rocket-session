@@ -9,6 +9,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.api.dependencies import (
     get_claude_memory_service,
     get_claude_runner,
+    get_insight_service,
     get_jsonl_watcher,
     get_mcp_service,
     get_session_manager,
@@ -238,6 +239,31 @@ async def _handle_prompt(
                     )
         except Exception:
             logger.warning("세션 %s: KB 컨텍스트 주입 실패", session_id, exc_info=True)
+
+        # Workspace Insights 컨텍스트 자동 주입
+        try:
+            ws_id = (
+                current_session.get("workspace_id") if current_session else None
+            )
+            if ws_id:
+                insight_svc = get_insight_service()
+                insight_ctx = await insight_svc.build_insight_context(ws_id)
+                if insight_ctx:
+                    existing = merged_session.get("system_prompt") or ""
+                    insights_block = (
+                        "\n\n<workspace_insights>\n"
+                        + insight_ctx
+                        + "\n</workspace_insights>"
+                    )
+                    merged_session["system_prompt"] = (
+                        existing + insights_block
+                        if existing
+                        else insights_block
+                    )
+        except Exception:
+            logger.warning(
+                "세션 %s: Insights 컨텍스트 주입 실패", session_id, exc_info=True
+            )
 
         # MCP 서비스 주입
         mcp_service = get_mcp_service()

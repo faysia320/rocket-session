@@ -91,6 +91,7 @@ _TRUNCATE_TABLES = [
     "artifact_annotations",
     "session_artifacts",
     "session_tags",
+    "workspace_insights",
     "events",
     "file_changes",
     "messages",
