@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { PhaseApprovalBar } from "./PhaseApprovalBar";
+import { QAChecklistCard } from "./QAChecklistCard";
+import { parseQaChecklist } from "../utils/parseQaChecklist";
 import type { SessionArtifactInfo, ArtifactAnnotationInfo, AnnotationType } from "@/types/workflow";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -80,6 +83,11 @@ export const ArtifactViewer = memo(function ArtifactViewer({
   const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const lines = useMemo(() => (artifact?.content ?? "").split("\n"), [artifact?.content]);
+
+  const qaResult = useMemo(
+    () => (artifact?.phase === "qa" && artifact.content ? parseQaChecklist(artifact.content) : null),
+    [artifact?.phase, artifact?.content],
+  );
 
   const annotationsByLine = useMemo(() => {
     if (!artifact?.annotations) return new Map<number, ArtifactAnnotationInfo[]>();
@@ -200,6 +208,12 @@ export const ArtifactViewer = memo(function ArtifactViewer({
               />
             ) : viewMode === "markdown" ? (
               <div className="p-4">
+                {qaResult ? (
+                  <>
+                    <QAChecklistCard result={qaResult} />
+                    <Separator className="my-4" />
+                  </>
+                ) : null}
                 <MarkdownRenderer content={artifact.content} />
               </div>
             ) : (

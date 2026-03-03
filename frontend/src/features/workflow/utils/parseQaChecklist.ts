@@ -1,21 +1,11 @@
-export interface QaChecklistItem {
-  item: string;
-  status: "pass" | "fail" | "warn";
-  detail: string;
-}
-
-export interface QaChecklistResult {
-  all_passed: boolean;
-  items: QaChecklistItem[];
-  summary: { pass: number; fail: number; warn: number };
-}
+import type { QAChecklistItem, QAChecklistResult } from "@/types/workflow";
 
 /**
  * QA 아티팩트 콘텐츠에서 체크리스트 결과를 파싱.
  * 백엔드 WorkflowService.parse_qa_checklist() 와 동일한 로직.
  */
-export function parseQaChecklist(content: string): QaChecklistResult {
-  const items: QaChecklistItem[] = [];
+export function parseQaChecklist(content: string): QAChecklistResult {
+  const items: QAChecklistItem[] = [];
 
   // 패턴 1: 마크다운 체크박스 `- [x]` / `- [ ]`
   const checkboxPattern = /-\s*\[(x|X| )\]\s*(.+?)$/gm;

@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from "react";
+import { memo, useState, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { FileText, Check, RotateCcw, ExternalLink, ChevronDown, ChevronUp, GitCommit } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { QAChecklistCard } from "./QAChecklistCard";
+import { parseQaChecklist } from "../utils/parseQaChecklist";
 import type { ResultMsg } from "@/types/message";
 import type { ResolvedWorkflowStep } from "@/types/workflow";
 
@@ -40,6 +42,12 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
   const Icon = FileText;
   const isApproved = message.workflowApproved === true;
   const showActions = stepConfig?.review_required ?? message.workflow_phase === "plan";
+  const isQaPhase = message.workflow_phase === "qa";
+
+  const qaResult = useMemo(
+    () => (isQaPhase && message.text ? parseQaChecklist(message.text) : null),
+    [isQaPhase, message.text],
+  );
 
   const handleApprove = useCallback(() => {
     onApprove?.();
@@ -105,7 +113,18 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
 
       {/* Content preview or full */}
       <div className="px-4 py-3">
-        {expanded ? (
+        {qaResult ? (
+          <>
+            <QAChecklistCard result={qaResult} />
+            {expanded ? (
+              <ScrollArea className="max-h-[400px] mt-3 pt-3 border-t border-border">
+                <div className="prose prose-sm prose-invert max-w-none">
+                  <MarkdownRenderer content={message.text ?? ""} />
+                </div>
+              </ScrollArea>
+            ) : null}
+          </>
+        ) : expanded ? (
           <ScrollArea className="max-h-[400px]">
             <div className="prose prose-sm prose-invert max-w-none">
               <MarkdownRenderer content={message.text ?? ""} />

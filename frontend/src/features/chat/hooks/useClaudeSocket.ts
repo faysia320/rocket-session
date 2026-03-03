@@ -342,6 +342,20 @@ export function useClaudeSocket(sessionId: string) {
         );
         break;
 
+      case "workflow_qa_failed": {
+        const qaResult = data.qa_result as
+          | { summary: { fail: number; warn: number } }
+          | undefined;
+        const failCount = qaResult?.summary?.fail ?? 0;
+        const warnCount = qaResult?.summary?.warn ?? 0;
+        toast.warning(
+          `QA 검증: ${failCount}건 실패${warnCount > 0 ? `, ${warnCount}건 경고` : ""}`,
+          { duration: 8000 },
+        );
+        workflowDataChangedRef.current?.("workflow_qa_failed");
+        break;
+      }
+
       case "raw":
         dispatch({ type: "WS_RAW", text: data.text as string });
         break;
