@@ -489,6 +489,7 @@ class SessionManager(DBService):
                 mcp_server_ids=source.get("mcp_server_ids"),
                 additional_dirs=source.get("additional_dirs"),
                 fallback_model=source.get("fallback_model"),
+                workspace_id=source.get("workspace_id"),
                 # 메타데이터
                 name=f"{source_name} (fork)",
                 parent_session_id=source_session_id,
