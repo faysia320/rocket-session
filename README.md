@@ -2,6 +2,74 @@
 
 브라우저에서 Claude Code CLI 세션을 관리하고 모니터링하는 웹 대시보드입니다.
 
+## 설치
+
+### 전제조건
+
+- [Docker](https://www.docker.com/) + Docker Compose V2
+- [Node.js](https://nodejs.org/) 18 이상
+- [Claude Code CLI](https://www.npmjs.com/package/@anthropic-ai/claude-code) 인증 완료 (`~/.claude/` 디렉토리)
+
+### npx로 설치 (권장)
+
+```bash
+# 1. 설정 초기화 (대화형)
+npx @faysia320/rocket-session init
+
+# 2. 서비스 시작 (최초 실행 시 Docker 이미지 빌드로 5-10분 소요)
+npx @faysia320/rocket-session start
+```
+
+http://localhost:8100 에서 대시보드에 접속합니다.
+
+```bash
+# 서비스 관리
+npx @faysia320/rocket-session status    # 상태 확인
+npx @faysia320/rocket-session logs -f   # 로그 보기
+npx @faysia320/rocket-session stop      # 중지
+```
+
+### AI를 통한 설치 (Claude Code)
+
+AI 에이전트가 자동으로 설치할 수 있습니다. `--json` 플래그로 기계 파싱 가능한 출력을 받습니다.
+
+```bash
+# 비대화형 초기화
+npx @faysia320/rocket-session init \
+  --claude-auth-dir ~/.claude \
+  --port 8100 \
+  --json
+
+# 서비스 시작
+npx @faysia320/rocket-session start --json
+
+# 상태 확인
+npx @faysia320/rocket-session status --json
+```
+
+**비대화형 init 옵션:**
+
+| 옵션 | 설명 | 기본값 |
+|------|------|--------|
+| `--claude-auth-dir` | Claude 인증 디렉토리 | `~/.claude` |
+| `--port` | 대시보드 포트 | `8100` |
+| `--git-user-name` | Git 사용자 이름 | (선택) |
+| `--git-user-email` | Git 이메일 | (선택) |
+| `--github-token` | GitHub 토큰 | (선택) |
+| `--data-dir` | 데이터 디렉토리 | `~/.rocket-session` |
+| `--json` | JSON 출력 모드 | - |
+
+### CLI 명령어
+
+| 명령어 | 설명 |
+|--------|------|
+| `init` | 설정 파일 생성 (대화형/비대화형) |
+| `start [--port N] [--no-build]` | Docker 빌드 + 서비스 시작 |
+| `stop [--remove-volumes]` | 서비스 중지 |
+| `status [--json]` | 상태 확인 |
+| `logs [-f] [--tail N]` | 로그 출력 |
+| `config list\|set\|path` | 설정 조회/변경 |
+
 ## 아키텍처
 
 ```
@@ -312,7 +380,7 @@ MessageBubble 컴포넌트가 `message.type`에 따라 다른 UI를 렌더링합
 - Claude Code CLI (`npm install -g @anthropic-ai/claude-code`)
 - Claude Pro/Max 구독 또는 API key
 
-## 빠른 시작
+## 빠른 시작 (개발 환경)
 
 ### 로컬 실행
 
