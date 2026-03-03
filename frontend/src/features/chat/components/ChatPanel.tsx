@@ -94,12 +94,18 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     );
   const queryClient = useQueryClient();
 
-  // WS workflow_artifact_updated/workflow_annotation_added 이벤트 → TanStack Query 캐시 무효화
+  // WS workflow_artifact_updated/workflow_annotation_added/workflow_changed 이벤트 → TanStack Query 캐시 무효화
   useEffect(() => {
-    workflowDataChangedRef.current = (_eventType: string, artifactId?: number) => {
-      queryClient.invalidateQueries({ queryKey: workflowKeys.artifacts(sessionId) });
-      if (artifactId) {
-        queryClient.invalidateQueries({ queryKey: workflowKeys.artifact(sessionId, artifactId) });
+    workflowDataChangedRef.current = (eventType: string, artifactId?: number) => {
+      if (eventType === "workflow_changed") {
+        // 워크플로우 자동 변경 → 세션 상세 정보 및 워크플로우 아티팩트 갱신
+        queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
+        queryClient.invalidateQueries({ queryKey: workflowKeys.artifacts(sessionId) });
+      } else {
+        queryClient.invalidateQueries({ queryKey: workflowKeys.artifacts(sessionId) });
+        if (artifactId) {
+          queryClient.invalidateQueries({ queryKey: workflowKeys.artifact(sessionId, artifactId) });
+        }
       }
     };
     return () => {
@@ -303,6 +309,14 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     workflowPhaseStatus: sessionInfo?.workflow_phase_status,
     workflowSteps,
   });
+
+  // 상태바에서 아티팩트 뷰어 열기 (phase 바인딩)
+  const handleOpenArtifactFromStatusBar = useCallback(() => {
+    const phase = sessionInfo?.workflow_phase;
+    if (phase) {
+      handleOpenArtifact(phase as string);
+    }
+  }, [handleOpenArtifact, sessionInfo?.workflow_phase]);
 
   // 아티팩트 뷰어 데이터 + 콜백
   const {
@@ -517,6 +531,13 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           null
         }
         onPhaseClick={noop}
+        sessionId={sessionId}
+        isRunning={status === "running"}
+        currentDefinitionId={workflowStatusData?.workflow_definition_id}
+        onWorkflowChanged={() => {
+          queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
+          queryClient.invalidateQueries({ queryKey: ["workflow-status", sessionId] });
+        }}
       />
 
       <PinnedTodoBar todos={pinnedTodos} />
@@ -564,6 +585,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         pendingPermission={pendingPermission}
         waitingForWorkflowApproval={waitingForWorkflowApproval}
         workflowPhase={(sessionInfo?.workflow_phase as string) ?? null}
+        onOpenArtifact={waitingForWorkflowApproval ? handleOpenArtifactFromStatusBar : undefined}
       />
       <SessionStatsBar
         sessionId={sessionId}

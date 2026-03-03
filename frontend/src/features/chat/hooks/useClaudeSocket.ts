@@ -310,11 +310,26 @@ export function useClaudeSocket(sessionId: string) {
           research: "조사",
           plan: "구현 계획 작성",
           implement: "구현",
+          qa: "QA 검증",
         };
         const msg =
           `${phaseLabels[fromPhase] ?? fromPhase} 완료. ` +
           `${phaseLabels[toPhase] ?? toPhase}을(를) 시작합니다…`;
         dispatch({ type: "ADD_SYSTEM_MESSAGE", text: msg });
+        break;
+      }
+
+      case "workflow_changed": {
+        const workflowName = data.workflow_name as string | undefined;
+        // ChatPanel에 등록된 콜백으로 세션 쿼리 캐시 무효화
+        workflowDataChangedRef.current?.("workflow_changed");
+        // toast 알림
+        toast.info(
+          workflowName
+            ? `AI가 "${workflowName}" 워크플로우로 변경했습니다.`
+            : "AI가 워크플로우를 자동 변경했습니다.",
+          { duration: 5000 },
+        );
         break;
       }
 

@@ -16,6 +16,7 @@ interface ActivityStatusBarProps {
   pendingPermission?: PermissionRequestData | null;
   waitingForWorkflowApproval?: boolean;
   workflowPhase?: string | null;
+  onOpenArtifact?: () => void;
 }
 
 export const ActivityStatusBar = memo(function ActivityStatusBar({
@@ -24,6 +25,7 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
   pendingPermission,
   waitingForWorkflowApproval,
   workflowPhase,
+  onOpenArtifact,
 }: ActivityStatusBarProps) {
   const hasPermissionWait = !!pendingPermission;
   const hasWorkflowWait = !!waitingForWorkflowApproval;
@@ -60,7 +62,26 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
 
         {/* 워크플로우 검토 대기 (Plan만 — Research는 자동 체이닝) */}
         {hasWorkflowWait ? (
-          <div className="flex items-center gap-2 min-h-[20px]">
+          <div
+            className={cn(
+              "flex items-center gap-2 min-h-[20px] rounded-sm",
+              onOpenArtifact && "cursor-pointer hover:bg-info/20 transition-colors -mx-1 px-1",
+            )}
+            role={onOpenArtifact ? "button" : undefined}
+            tabIndex={onOpenArtifact ? 0 : undefined}
+            aria-label={onOpenArtifact ? "아티팩트 뷰어 열기" : undefined}
+            onClick={onOpenArtifact}
+            onKeyDown={
+              onOpenArtifact
+                ? (e: React.KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onOpenArtifact();
+                    }
+                  }
+                : undefined
+            }
+          >
             <ClipboardList className="w-3.5 h-3.5 text-info animate-pulse shrink-0" />
             <span className="font-mono text-xs text-info font-semibold">
               구현 계획 검토 대기 — 아티팩트를 검토하고 승인해주세요
