@@ -26,7 +26,6 @@ interface SessionSetupPanelProps {
       system_prompt?: string;
       additional_dirs?: string[];
       worktree_name?: string;
-      workflow_definition_id?: string;
       workspace_id?: string;
       branch?: string;
     },
