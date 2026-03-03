@@ -35,6 +35,7 @@ from app.services.team_task_service import TeamTaskService
 from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
 from app.services.workflow_definition_service import WorkflowDefinitionService
+from app.services.workflow_recommender_service import WorkflowRecommenderService
 from app.services.workflow_service import WorkflowService
 from app.services.workspace_service import WorkspaceService
 
@@ -75,6 +76,7 @@ class ServiceRegistry:
         self.analytics_service: AnalyticsService | None = None
 
         self.workflow_definition_service: WorkflowDefinitionService | None = None
+        self.workflow_recommender_service: WorkflowRecommenderService | None = None
         self.workflow_service: WorkflowService | None = None
         self.workspace_service: WorkspaceService | None = None
         self.insight_service: InsightService | None = None
@@ -147,6 +149,7 @@ class ServiceRegistry:
         self.analytics_service = AnalyticsService(self.database)
 
         self.workflow_definition_service = WorkflowDefinitionService(self.database)
+        self.workflow_recommender_service = WorkflowRecommenderService()
         self.workflow_service = WorkflowService(
             self.database, self.workflow_definition_service
         )
@@ -323,6 +326,10 @@ def get_analytics_service() -> AnalyticsService:
 
 def get_workflow_definition_service() -> WorkflowDefinitionService:
     return _registry._require("workflow_definition_service")
+
+
+def get_workflow_recommender_service() -> WorkflowRecommenderService:
+    return _registry._require("workflow_recommender_service")
 
 
 def get_workflow_service() -> WorkflowService:
