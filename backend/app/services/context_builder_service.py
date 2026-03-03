@@ -12,6 +12,7 @@ from app.models.file_change import FileChange
 from app.models.message import Message
 from app.models.session import Session
 from app.models.workspace import Workspace
+from app.schemas.claude_memory import MemoryContextResponse
 from app.schemas.context import SessionContextSuggestion
 from app.services.base import DBService
 from app.services.claude_memory_service import ClaudeMemoryService
@@ -238,12 +239,32 @@ class ContextBuilderService(DBService):
         # workspace_id → local_path
         local_path = await self._get_local_path(workspace_id)
 
-        # P2: 3개 독립 I/O를 병렬 실행
-        memory_response, recent_sessions, suggested_files = await asyncio.gather(
+        # P2: 3개 독립 I/O를 병렬 실행 (return_exceptions로 부분 실패 허용)
+        results = await asyncio.gather(
             self._memory_service.build_memory_context(local_path),
             self.get_recent_sessions(workspace_id, limit=5),
             self.suggest_files(workspace_id, prompt, limit=10),
+            return_exceptions=True,
         )
+
+        # 부분 실패 graceful 처리 — 실패한 항목은 빈 기본값 사용
+        if isinstance(results[0], BaseException):
+            logger.warning("Memory 컨텍스트 빌드 실패: %s", results[0])
+            memory_response = MemoryContextResponse(memory_files=[], context_text="")
+        else:
+            memory_response = results[0]
+
+        if isinstance(results[1], BaseException):
+            logger.warning("최근 세션 조회 실패: %s", results[1])
+            recent_sessions: list[dict] = []
+        else:
+            recent_sessions = results[1]
+
+        if isinstance(results[2], BaseException):
+            logger.warning("파일 제안 실패: %s", results[2])
+            suggested_files: list[dict] = []
+        else:
+            suggested_files = results[2]
 
         # 통합 컨텍스트 텍스트 생성
         parts = []

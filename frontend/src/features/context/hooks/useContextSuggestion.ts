@@ -11,7 +11,10 @@ export function useContextSuggestion(workspaceId: string | null, prompt?: string
     queryKey: contextKeys.suggest(workspaceId ?? "", prompt),
     queryFn: () => contextApi.suggest(workspaceId!, prompt),
     enabled: !!workspaceId,
-    staleTime: 30_000,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
