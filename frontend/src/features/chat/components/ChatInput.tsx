@@ -110,7 +110,8 @@ export const ChatInput = memo(function ChatInput({
     });
   }, []);
 
-  const isEffectivelyRunning = status === "running" || status === "preparing" || activeTools.length > 0;
+  const isEffectivelyRunning =
+    status === "running" || status === "preparing" || activeTools.length > 0;
 
   const handleSubmit = useCallback(async () => {
     const prompt = input.trim();
@@ -275,7 +276,7 @@ export const ChatInput = memo(function ChatInput({
 
   return (
     <div
-      className="px-2 py-1.5 border-t border-border bg-secondary pb-safe"
+      className="px-2 py-1.5 border-t border-border bg-secondary"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
