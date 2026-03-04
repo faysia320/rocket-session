@@ -7,68 +7,33 @@
 ### 전제조건
 
 - [Docker](https://www.docker.com/) + Docker Compose V2
-- [Node.js](https://nodejs.org/) 18 이상
 - [Claude Code CLI](https://www.npmjs.com/package/@anthropic-ai/claude-code) 인증 완료 (`~/.claude/` 디렉토리)
 
-### npx로 설치 (권장)
+### 설치 및 실행
 
 ```bash
-# 1. 설정 초기화 (대화형)
-npx @faysia320/rocket-session init
+# 1. 소스 코드 가져오기
+git clone https://github.com/faysia320/rocket-session.git
+cd rocket-session
 
-# 2. 서비스 시작 (최초 실행 시 Docker 이미지 빌드로 5-10분 소요)
-npx @faysia320/rocket-session start
+# 2. 환경 변수 설정
+cp .env.docker.example .env.docker
+# .env.docker 파일에서 CLAUDE_AUTH_DIR, CLAUDE_AUTH_FILE 등 수정
+
+# 3. 서비스 시작 (최초 실행 시 Docker 이미지 빌드로 5-10분 소요)
+docker compose up -d
 ```
 
 http://localhost:8100 에서 대시보드에 접속합니다.
 
-```bash
-# 서비스 관리
-npx @faysia320/rocket-session status    # 상태 확인
-npx @faysia320/rocket-session logs -f   # 로그 보기
-npx @faysia320/rocket-session stop      # 중지
-```
-
-### AI를 통한 설치 (Claude Code)
-
-AI 에이전트가 자동으로 설치할 수 있습니다. `--json` 플래그로 기계 파싱 가능한 출력을 받습니다.
+### 서비스 관리
 
 ```bash
-# 비대화형 초기화
-npx @faysia320/rocket-session init \
-  --claude-auth-dir ~/.claude \
-  --port 8100 \
-  --json
-
-# 서비스 시작
-npx @faysia320/rocket-session start --json
-
-# 상태 확인
-npx @faysia320/rocket-session status --json
+docker compose ps          # 상태 확인
+docker compose logs -f     # 로그 보기
+docker compose down        # 중지
+docker compose down -v     # 중지 + 볼륨 삭제
 ```
-
-**비대화형 init 옵션:**
-
-| 옵션 | 설명 | 기본값 |
-|------|------|--------|
-| `--claude-auth-dir` | Claude 인증 디렉토리 | `~/.claude` |
-| `--port` | 대시보드 포트 | `8100` |
-| `--git-user-name` | Git 사용자 이름 | (선택) |
-| `--git-user-email` | Git 이메일 | (선택) |
-| `--github-token` | GitHub 토큰 | (선택) |
-| `--data-dir` | 데이터 디렉토리 | `~/.rocket-session` |
-| `--json` | JSON 출력 모드 | - |
-
-### CLI 명령어
-
-| 명령어 | 설명 |
-|--------|------|
-| `init` | 설정 파일 생성 (대화형/비대화형) |
-| `start [--port N] [--no-build]` | Docker 빌드 + 서비스 시작 |
-| `stop [--remove-volumes]` | 서비스 중지 |
-| `status [--json]` | 상태 확인 |
-| `logs [-f] [--tail N]` | 로그 출력 |
-| `config list\|set\|path` | 설정 조회/변경 |
 
 ## 아키텍처
 
@@ -602,12 +567,6 @@ rocket-session/
 │   ├── Dockerfile
 │   ├── nginx.conf
 │   └── package.json
-│
-├── cli/                               # NPX CLI 패키지
-│   ├── index.mjs                      # CLI 명령어 라우터
-│   ├── commands/                      # CLI 명령어 (start, stop, status, logs, init, config)
-│   ├── lib/                           # 유틸리티 (env, docker, preflight, paths, logger)
-│   └── templates/                     # docker-compose.yml 템플릿
 │
 ├── docker-compose.yml
 ├── CLAUDE.md                          # 개발 가이드

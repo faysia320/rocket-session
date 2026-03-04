@@ -148,7 +148,6 @@
 |----------|------|--------|
 | `backend/app/` | FastAPI 백엔드 | endpoints → services → repositories → models |
 | `frontend/src/` | React 프론트엔드 | routes → features → components + hooks |
-| `cli/` | Node.js CLI | commands → lib |
 | `docker-compose.yml` | PostgreSQL + Backend + Frontend 컨테이너 | - |
 
 ### Frontend Feature 모듈 (18개)
