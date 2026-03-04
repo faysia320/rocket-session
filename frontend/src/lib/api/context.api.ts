@@ -25,9 +25,12 @@ export interface SessionContextSuggestion {
   context_text: string;
 }
 
+const MAX_PROMPT_LENGTH = 1000;
+
 export const contextApi = {
   suggest: (workspaceId: string, prompt?: string) => {
-    const qs = prompt ? `?prompt=${encodeURIComponent(prompt)}` : "";
+    const trimmed = prompt?.slice(0, MAX_PROMPT_LENGTH);
+    const qs = trimmed ? `?prompt=${encodeURIComponent(trimmed)}` : "";
     return api.get<SessionContextSuggestion>(`/api/workspaces/${workspaceId}/context/suggest${qs}`);
   },
 
@@ -38,7 +41,7 @@ export const contextApi = {
 
   suggestFiles: (workspaceId: string, prompt?: string, limit?: number) => {
     const params = new URLSearchParams();
-    if (prompt) params.set("prompt", prompt);
+    if (prompt) params.set("prompt", prompt.slice(0, MAX_PROMPT_LENGTH));
     if (limit) params.set("limit", String(limit));
     const qs = params.toString();
     return api.get<FileSuggestion[]>(
