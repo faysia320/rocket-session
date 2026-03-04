@@ -21,7 +21,7 @@ cp .env.docker.example .env.docker
 # .env.docker 파일에서 CLAUDE_AUTH_DIR, CLAUDE_AUTH_FILE 등 수정
 
 # 3. 서비스 시작 (최초 실행 시 Docker 이미지 빌드로 5-10분 소요)
-docker compose up -d
+docker-compose --env-file .env.docker up -d --build
 ```
 
 http://localhost:8100 에서 대시보드에 접속합니다.
@@ -235,105 +235,105 @@ div (Sheet 내부, 480px)
 
 MessageBubble 컴포넌트가 `message.type`에 따라 다른 UI를 렌더링합니다:
 
-| 타입 | 컴포넌트 | 위치/스타일 | 설명 |
-|------|----------|------------|------|
-| `user_message` | UserMessage | 우측 정렬, 파란 말풍선 | 사용자 입력 메시지 |
-| `assistant_text` | AssistantText | 좌측 카드, 파란 좌측선 | 스트리밍 중 부분 텍스트 |
-| `result` | ResultMessage | 좌측 카드, 파란 좌측선 | 턴 완료 (Markdown, 토큰/시간 메타) |
-| `result` (workflow) | WorkflowPhaseCard | 좌측 카드, 주황 좌측선 | 워크플로우 단계 결과 + 승인/수정 버튼 |
-| `tool_use` | ToolUseMsg 계열 | 좌측 카드, 접이식 | 도구 실행 (아래 상세) |
-| `thinking` | ThinkingMessage | 좌측, 접이식 | 확장 사고 (Brain 아이콘) |
-| `error` | ErrorMessage | 빨간 배경/테두리 | 오류 + 재시도 버튼 |
-| `stderr` | StderrMessage | 작은 경고 텍스트 | CLI stderr 출력 |
-| `system` | SystemMessage | 중앙 구분선 | 시스템 알림 (모드 변경 등) |
-| `event` | EventMessage | 접이식, Zap 아이콘 | 일반 이벤트 (JSON) |
-| `permission_request` | PermissionRequestMsg | 주황 배경 | 도구 승인 요청 |
-| `ask_user_question` | AskUserQuestionCard | 좌측 카드, 파란 좌측선 | 질문 + 선택지/체크박스/텍스트 입력 |
+| 타입                 | 컴포넌트             | 위치/스타일            | 설명                                  |
+| -------------------- | -------------------- | ---------------------- | ------------------------------------- |
+| `user_message`       | UserMessage          | 우측 정렬, 파란 말풍선 | 사용자 입력 메시지                    |
+| `assistant_text`     | AssistantText        | 좌측 카드, 파란 좌측선 | 스트리밍 중 부분 텍스트               |
+| `result`             | ResultMessage        | 좌측 카드, 파란 좌측선 | 턴 완료 (Markdown, 토큰/시간 메타)    |
+| `result` (workflow)  | WorkflowPhaseCard    | 좌측 카드, 주황 좌측선 | 워크플로우 단계 결과 + 승인/수정 버튼 |
+| `tool_use`           | ToolUseMsg 계열      | 좌측 카드, 접이식      | 도구 실행 (아래 상세)                 |
+| `thinking`           | ThinkingMessage      | 좌측, 접이식           | 확장 사고 (Brain 아이콘)              |
+| `error`              | ErrorMessage         | 빨간 배경/테두리       | 오류 + 재시도 버튼                    |
+| `stderr`             | StderrMessage        | 작은 경고 텍스트       | CLI stderr 출력                       |
+| `system`             | SystemMessage        | 중앙 구분선            | 시스템 알림 (모드 변경 등)            |
+| `event`              | EventMessage         | 접이식, Zap 아이콘     | 일반 이벤트 (JSON)                    |
+| `permission_request` | PermissionRequestMsg | 주황 배경              | 도구 승인 요청                        |
+| `ask_user_question`  | AskUserQuestionCard  | 좌측 카드, 파란 좌측선 | 질문 + 선택지/체크박스/텍스트 입력    |
 
 #### tool_use 서브 타입
 
-| 도구 이름 | 컴포넌트 | 표시 내용 |
-|-----------|----------|-----------|
-| `TodoWrite` | TodoWriteMessage | 할 일 목록 (체크/진행/대기 아이콘) |
-| `Edit`, `MultiEdit`, `Write` | EditToolMessage | 파일 경로 + 인라인 diff (빨강/초록) |
-| `Bash` | BashToolMessage | `$ 명령어` + 실행 결과 (에러=빨강) |
-| 기타 (`Read`, `Glob`, `Grep` 등) | ToolUseMessage | 도구명 + 요약 + JSON 입력/출력 |
+| 도구 이름                        | 컴포넌트         | 표시 내용                           |
+| -------------------------------- | ---------------- | ----------------------------------- |
+| `TodoWrite`                      | TodoWriteMessage | 할 일 목록 (체크/진행/대기 아이콘)  |
+| `Edit`, `MultiEdit`, `Write`     | EditToolMessage  | 파일 경로 + 인라인 diff (빨강/초록) |
+| `Bash`                           | BashToolMessage  | `$ 명령어` + 실행 결과 (에러=빨강)  |
+| 기타 (`Read`, `Glob`, `Grep` 등) | ToolUseMessage   | 도구명 + 요약 + JSON 입력/출력      |
 
 ### 뷰 모드
 
-| 모드 | 트리거 | 설명 |
-|------|--------|------|
-| **단일 세션** | 기본 | 한 세션의 ChatPanel을 전체 영역에 표시 |
-| **Split View** | 사이드바 Columns2 아이콘 | 최대 5개 세션을 수평 분할 |
-| **Dashboard** | 사이드바 LayoutGrid 아이콘 | 상단 60% 세션 카드 그리드 + 하단 40% Git Monitor |
+| 모드           | 트리거                     | 설명                                             |
+| -------------- | -------------------------- | ------------------------------------------------ |
+| **단일 세션**  | 기본                       | 한 세션의 ChatPanel을 전체 영역에 표시           |
+| **Split View** | 사이드바 Columns2 아이콘   | 최대 5개 세션을 수평 분할                        |
+| **Dashboard**  | 사이드바 LayoutGrid 아이콘 | 상단 60% 세션 카드 그리드 + 하단 40% Git Monitor |
 
 ### WebSocket 이벤트 타입
 
 프론트엔드가 수신하는 WebSocket 이벤트와 UI 반영:
 
-| 이벤트 | UI 반영 |
-|--------|---------|
-| `session_state` | 초기 세션 데이터 + 메시지 히스토리 로드 |
-| `status` | 헤더 상태 점/텍스트 업데이트, idle/error 시 도구 정리 |
-| `user_message` | UserMessage 말풍선 추가 |
-| `assistant_text` | AssistantText 카드 생성/업데이트 (스트리밍) |
-| `tool_use` | ToolUseMsg 카드 추가 + ActivityStatusBar에 등록 |
-| `tool_result` | 도구 상태 완료/에러 업데이트, ActivityStatusBar에서 제거 |
-| `file_change` | FilePanel 목록에 추가 |
-| `result` | assistant_text를 ResultMessage로 병합, 토큰/비용 메타 |
-| `error` | ErrorMessage 추가 |
-| `thinking` | ThinkingMessage 생성/업데이트 |
-| `permission_request` | PermissionDialog 모달 표시 |
-| `workflow_started` | 워크플로우 시작, WorkflowProgressBar 활성화 |
-| `workflow_phase_completed` | 단계 완료, PhaseApprovalBar 표시 |
-| `workflow_phase_approved` | 단계 승인, 다음 단계 진행 |
-| `workflow_revision_requested` | 수정 요청, 해당 단계 재실행 |
-| `workflow_completed` | 워크플로우 전체 완료 |
-| `stopped` | 상태 idle, 도구 정리, SystemMessage 추가 |
-| `ask_user_question` | AskUserQuestionCard 표시 (선택지/체크박스) |
-| `missed_events` | 재연결 시 놓친 이벤트 순차 재처리 |
+| 이벤트                        | UI 반영                                                  |
+| ----------------------------- | -------------------------------------------------------- |
+| `session_state`               | 초기 세션 데이터 + 메시지 히스토리 로드                  |
+| `status`                      | 헤더 상태 점/텍스트 업데이트, idle/error 시 도구 정리    |
+| `user_message`                | UserMessage 말풍선 추가                                  |
+| `assistant_text`              | AssistantText 카드 생성/업데이트 (스트리밍)              |
+| `tool_use`                    | ToolUseMsg 카드 추가 + ActivityStatusBar에 등록          |
+| `tool_result`                 | 도구 상태 완료/에러 업데이트, ActivityStatusBar에서 제거 |
+| `file_change`                 | FilePanel 목록에 추가                                    |
+| `result`                      | assistant_text를 ResultMessage로 병합, 토큰/비용 메타    |
+| `error`                       | ErrorMessage 추가                                        |
+| `thinking`                    | ThinkingMessage 생성/업데이트                            |
+| `permission_request`          | PermissionDialog 모달 표시                               |
+| `workflow_started`            | 워크플로우 시작, WorkflowProgressBar 활성화              |
+| `workflow_phase_completed`    | 단계 완료, PhaseApprovalBar 표시                         |
+| `workflow_phase_approved`     | 단계 승인, 다음 단계 진행                                |
+| `workflow_revision_requested` | 수정 요청, 해당 단계 재실행                              |
+| `workflow_completed`          | 워크플로우 전체 완료                                     |
+| `stopped`                     | 상태 idle, 도구 정리, SystemMessage 추가                 |
+| `ask_user_question`           | AskUserQuestionCard 표시 (선택지/체크박스)               |
+| `missed_events`               | 재연결 시 놓친 이벤트 순차 재처리                        |
 
 ### 오버레이 / 모달
 
-| 컴포넌트 | 트리거 | 설명 |
-|----------|--------|------|
-| **PermissionDialog** | `permission_request` 이벤트 | 도구 승인 다이얼로그 (120초 타이머, 자동 거부) |
-| **FileViewer** | FilePanel 파일 클릭 | 파일 내용 + Git diff 탭 뷰 |
-| **SessionSettings** | SessionDropdownMenu → 세션 설정 | 시스템 프롬프트, 도구 설정, 타임아웃 등 |
-| **GlobalSettingsDialog** | 사이드바 Settings 아이콘 | 전역 설정 |
-| **ImportLocalDialog** | Import Local 버튼 | 로컬 세션 스캔/import |
-| **CommandPalette** | Ctrl+K | 전역 명령 팔레트 (cmdk) |
+| 컴포넌트                 | 트리거                          | 설명                                           |
+| ------------------------ | ------------------------------- | ---------------------------------------------- |
+| **PermissionDialog**     | `permission_request` 이벤트     | 도구 승인 다이얼로그 (120초 타이머, 자동 거부) |
+| **FileViewer**           | FilePanel 파일 클릭             | 파일 내용 + Git diff 탭 뷰                     |
+| **SessionSettings**      | SessionDropdownMenu → 세션 설정 | 시스템 프롬프트, 도구 설정, 타임아웃 등        |
+| **GlobalSettingsDialog** | 사이드바 Settings 아이콘        | 전역 설정                                      |
+| **ImportLocalDialog**    | Import Local 버튼               | 로컬 세션 스캔/import                          |
+| **CommandPalette**       | Ctrl+K                          | 전역 명령 팔레트 (cmdk)                        |
 
 ## 기술 스택
 
 ### Frontend
 
-| 항목 | 기술 |
-|------|------|
-| 언어 | TypeScript 5.x |
-| 프레임워크 | React 18.3 |
-| 빌드 도구 | Vite 6.x |
-| 라우팅 | TanStack Router |
-| 서버 상태 | TanStack Query |
-| 클라이언트 상태 | Zustand 5.x |
-| UI 컴포넌트 | shadcn/ui + Radix UI |
-| 스타일링 | Tailwind CSS 3.4 + Deep Space 테마 |
-| Markdown | react-markdown + remark-gfm + rehype-highlight |
-| 패키지 매니저 | **pnpm** |
+| 항목            | 기술                                           |
+| --------------- | ---------------------------------------------- |
+| 언어            | TypeScript 5.x                                 |
+| 프레임워크      | React 18.3                                     |
+| 빌드 도구       | Vite 6.x                                       |
+| 라우팅          | TanStack Router                                |
+| 서버 상태       | TanStack Query                                 |
+| 클라이언트 상태 | Zustand 5.x                                    |
+| UI 컴포넌트     | shadcn/ui + Radix UI                           |
+| 스타일링        | Tailwind CSS 3.4 + Deep Space 테마             |
+| Markdown        | react-markdown + remark-gfm + rehype-highlight |
+| 패키지 매니저   | **pnpm**                                       |
 
 ### Backend
 
-| 항목 | 기술 |
-|------|------|
-| 언어 | Python 3.10+ |
-| 프레임워크 | FastAPI 0.115 |
-| 데이터베이스 | PostgreSQL (asyncpg) + SQLAlchemy ORM |
-| 마이그레이션 | Alembic |
-| HTTP 클라이언트 | httpx |
-| WebSocket | websockets 14.1 |
-| 설정 관리 | Pydantic Settings 2.x |
-| 테스트 | pytest + pytest-asyncio + testcontainers |
-| 패키지 매니저 | **uv** |
+| 항목            | 기술                                     |
+| --------------- | ---------------------------------------- |
+| 언어            | Python 3.10+                             |
+| 프레임워크      | FastAPI 0.115                            |
+| 데이터베이스    | PostgreSQL (asyncpg) + SQLAlchemy ORM    |
+| 마이그레이션    | Alembic                                  |
+| HTTP 클라이언트 | httpx                                    |
+| WebSocket       | websockets 14.1                          |
+| 설정 관리       | Pydantic Settings 2.x                    |
+| 테스트          | pytest + pytest-asyncio + testcontainers |
+| 패키지 매니저   | **uv**                                   |
 
 ## 사전 요구사항
 
@@ -576,141 +576,153 @@ rocket-session/
 ## API 엔드포인트
 
 ### Sessions
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `POST` | `/api/v1/sessions/` | 세션 생성 |
-| `GET` | `/api/v1/sessions/` | 세션 목록 |
-| `GET` | `/api/v1/sessions/{id}` | 세션 상세 |
-| `PATCH` | `/api/v1/sessions/{id}` | 세션 설정 수정 |
-| `DELETE` | `/api/v1/sessions/{id}` | 세션 삭제 |
-| `GET` | `/api/v1/sessions/{id}/history` | 메시지 기록 |
-| `GET` | `/api/v1/sessions/{id}/files` | 파일 변경 목록 |
-| `POST` | `/api/v1/sessions/{id}/stop` | 세션 중지 |
-| `GET` | `/api/v1/sessions/{id}/export` | Markdown 내보내기 |
+
+| 메서드   | 경로                            | 설명              |
+| -------- | ------------------------------- | ----------------- |
+| `POST`   | `/api/v1/sessions/`             | 세션 생성         |
+| `GET`    | `/api/v1/sessions/`             | 세션 목록         |
+| `GET`    | `/api/v1/sessions/{id}`         | 세션 상세         |
+| `PATCH`  | `/api/v1/sessions/{id}`         | 세션 설정 수정    |
+| `DELETE` | `/api/v1/sessions/{id}`         | 세션 삭제         |
+| `GET`    | `/api/v1/sessions/{id}/history` | 메시지 기록       |
+| `GET`    | `/api/v1/sessions/{id}/files`   | 파일 변경 목록    |
+| `POST`   | `/api/v1/sessions/{id}/stop`    | 세션 중지         |
+| `GET`    | `/api/v1/sessions/{id}/export`  | Markdown 내보내기 |
 
 ### Files
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/v1/sessions/{id}/file-content/{path}` | 파일 내용 |
-| `GET` | `/api/v1/sessions/{id}/file-diff/{path}` | Git diff |
-| `POST` | `/api/v1/sessions/{id}/upload` | 이미지 업로드 |
+
+| 메서드 | 경로                                        | 설명          |
+| ------ | ------------------------------------------- | ------------- |
+| `GET`  | `/api/v1/sessions/{id}/file-content/{path}` | 파일 내용     |
+| `GET`  | `/api/v1/sessions/{id}/file-diff/{path}`    | Git diff      |
+| `POST` | `/api/v1/sessions/{id}/upload`              | 이미지 업로드 |
 
 ### Filesystem
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/v1/fs/list` | 디렉토리 목록 |
-| `GET` | `/api/v1/fs/git-info` | Git 정보 |
-| `GET` | `/api/v1/fs/worktrees` | 워크트리 목록 |
+
+| 메서드 | 경로                   | 설명          |
+| ------ | ---------------------- | ------------- |
+| `GET`  | `/api/v1/fs/list`      | 디렉토리 목록 |
+| `GET`  | `/api/v1/fs/git-info`  | Git 정보      |
+| `GET`  | `/api/v1/fs/worktrees` | 워크트리 목록 |
 | `POST` | `/api/v1/fs/worktrees` | 워크트리 생성 |
-| `GET` | `/api/v1/fs/skills` | Skills 목록 |
+| `GET`  | `/api/v1/fs/skills`    | Skills 목록   |
 
 ### Others
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/v1/health` | 헬스체크 |
-| `GET` | `/api/v1/local-sessions/` | 로컬 세션 스캔 |
+
+| 메서드 | 경로                            | 설명             |
+| ------ | ------------------------------- | ---------------- |
+| `GET`  | `/api/v1/health`                | 헬스체크         |
+| `GET`  | `/api/v1/local-sessions/`       | 로컬 세션 스캔   |
 | `POST` | `/api/v1/local-sessions/import` | 로컬 세션 import |
-| `POST` | `/api/permissions/{id}/request` | Permission 요청 |
-| `GET` | `/api/v1/usage/` | 사용량 조회 |
-| `WS` | `/ws/{session_id}` | 실시간 스트리밍 |
+| `POST` | `/api/permissions/{id}/request` | Permission 요청  |
+| `GET`  | `/api/v1/usage/`                | 사용량 조회      |
+| `WS`   | `/ws/{session_id}`              | 실시간 스트리밍  |
 
 ### Settings
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/v1/settings/` | 글로벌 설정 조회 |
+
+| 메서드  | 경로                | 설명             |
+| ------- | ------------------- | ---------------- |
+| `GET`   | `/api/v1/settings/` | 글로벌 설정 조회 |
 | `PATCH` | `/api/v1/settings/` | 글로벌 설정 수정 |
 
 ### MCP
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/v1/mcp/servers` | MCP 서버 목록 |
-| `POST` | `/api/v1/mcp/servers` | MCP 서버 추가 |
-| `PATCH` | `/api/v1/mcp/servers/{id}` | MCP 서버 수정 |
-| `DELETE` | `/api/v1/mcp/servers/{id}` | MCP 서버 삭제 |
-| `GET` | `/api/v1/mcp/system-servers` | 시스템 MCP 서버 조회 |
-| `POST` | `/api/v1/mcp/import-system` | 시스템 MCP 서버 가져오기 |
+
+| 메서드   | 경로                         | 설명                     |
+| -------- | ---------------------------- | ------------------------ |
+| `GET`    | `/api/v1/mcp/servers`        | MCP 서버 목록            |
+| `POST`   | `/api/v1/mcp/servers`        | MCP 서버 추가            |
+| `PATCH`  | `/api/v1/mcp/servers/{id}`   | MCP 서버 수정            |
+| `DELETE` | `/api/v1/mcp/servers/{id}`   | MCP 서버 삭제            |
+| `GET`    | `/api/v1/mcp/system-servers` | 시스템 MCP 서버 조회     |
+| `POST`   | `/api/v1/mcp/import-system`  | 시스템 MCP 서버 가져오기 |
 
 ### Workflow Definitions
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/v1/workflow-definitions/` | 워크플로우 정의 목록 |
-| `POST` | `/api/v1/workflow-definitions/` | 워크플로우 정의 생성 |
-| `POST` | `/api/v1/workflow-definitions/import` | 워크플로우 정의 가져오기 |
-| `GET` | `/api/v1/workflow-definitions/{id}` | 워크플로우 정의 상세 |
-| `PATCH` | `/api/v1/workflow-definitions/{id}` | 워크플로우 정의 수정 |
-| `DELETE` | `/api/v1/workflow-definitions/{id}` | 워크플로우 정의 삭제 |
-| `POST` | `/api/v1/workflow-definitions/{id}/set-default` | 기본 정의 설정 |
-| `GET` | `/api/v1/workflow-definitions/{id}/export` | 워크플로우 정의 내보내기 |
+
+| 메서드   | 경로                                            | 설명                     |
+| -------- | ----------------------------------------------- | ------------------------ |
+| `GET`    | `/api/v1/workflow-definitions/`                 | 워크플로우 정의 목록     |
+| `POST`   | `/api/v1/workflow-definitions/`                 | 워크플로우 정의 생성     |
+| `POST`   | `/api/v1/workflow-definitions/import`           | 워크플로우 정의 가져오기 |
+| `GET`    | `/api/v1/workflow-definitions/{id}`             | 워크플로우 정의 상세     |
+| `PATCH`  | `/api/v1/workflow-definitions/{id}`             | 워크플로우 정의 수정     |
+| `DELETE` | `/api/v1/workflow-definitions/{id}`             | 워크플로우 정의 삭제     |
+| `POST`   | `/api/v1/workflow-definitions/{id}/set-default` | 기본 정의 설정           |
+| `GET`    | `/api/v1/workflow-definitions/{id}/export`      | 워크플로우 정의 내보내기 |
 
 ### Tags
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/v1/tags/` | 태그 목록 |
-| `POST` | `/api/v1/tags/` | 태그 생성 |
-| `PATCH` | `/api/v1/tags/{id}` | 태그 수정 |
+
+| 메서드   | 경로                | 설명      |
+| -------- | ------------------- | --------- |
+| `GET`    | `/api/v1/tags/`     | 태그 목록 |
+| `POST`   | `/api/v1/tags/`     | 태그 생성 |
+| `PATCH`  | `/api/v1/tags/{id}` | 태그 수정 |
 | `DELETE` | `/api/v1/tags/{id}` | 태그 삭제 |
 
 ### Analytics
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/v1/analytics/summary` | 분석 요약 |
+
+| 메서드 | 경로                        | 설명      |
+| ------ | --------------------------- | --------- |
+| `GET`  | `/api/v1/analytics/summary` | 분석 요약 |
 
 ### Workflow
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `POST` | `/api/v1/sessions/{id}/workflow/start` | 워크플로우 시작 |
-| `GET` | `/api/v1/sessions/{id}/workflow/status` | 워크플로우 상태 조회 |
-| `GET` | `/api/v1/sessions/{id}/workflow/artifacts` | 아티팩트 목록 |
-| `GET` | `/api/v1/sessions/{id}/workflow/artifacts/{artifact_id}` | 아티팩트 상세 |
-| `PUT` | `/api/v1/sessions/{id}/workflow/artifacts/{artifact_id}` | 아티팩트 수정 |
-| `POST` | `/api/v1/sessions/{id}/workflow/artifacts/{artifact_id}/annotations` | 인라인 주석 추가 |
-| `PUT` | `/api/v1/sessions/{id}/workflow/annotations/{annotation_id}` | 주석 수정 |
-| `POST` | `/api/v1/sessions/{id}/workflow/approve` | 현재 단계 승인 |
-| `POST` | `/api/v1/sessions/{id}/workflow/request-revision` | 수정 요청 |
+
+| 메서드 | 경로                                                                 | 설명                 |
+| ------ | -------------------------------------------------------------------- | -------------------- |
+| `POST` | `/api/v1/sessions/{id}/workflow/start`                               | 워크플로우 시작      |
+| `GET`  | `/api/v1/sessions/{id}/workflow/status`                              | 워크플로우 상태 조회 |
+| `GET`  | `/api/v1/sessions/{id}/workflow/artifacts`                           | 아티팩트 목록        |
+| `GET`  | `/api/v1/sessions/{id}/workflow/artifacts/{artifact_id}`             | 아티팩트 상세        |
+| `PUT`  | `/api/v1/sessions/{id}/workflow/artifacts/{artifact_id}`             | 아티팩트 수정        |
+| `POST` | `/api/v1/sessions/{id}/workflow/artifacts/{artifact_id}/annotations` | 인라인 주석 추가     |
+| `PUT`  | `/api/v1/sessions/{id}/workflow/annotations/{annotation_id}`         | 주석 수정            |
+| `POST` | `/api/v1/sessions/{id}/workflow/approve`                             | 현재 단계 승인       |
+| `POST` | `/api/v1/sessions/{id}/workflow/request-revision`                    | 수정 요청            |
 
 ### Workspaces
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/v1/workspaces/` | 워크스페이스 목록 |
-| `POST` | `/api/v1/workspaces/` | 워크스페이스 생성 (Git clone 시작) |
-| `GET` | `/api/v1/workspaces/{id}` | 워크스페이스 상세 |
-| `PATCH` | `/api/v1/workspaces/{id}` | 워크스페이스 수정 |
-| `DELETE` | `/api/v1/workspaces/{id}` | 워크스페이스 삭제 |
-| `POST` | `/api/v1/workspaces/{id}/sync` | 워크스페이스 동기화 (Pull/Push) |
+
+| 메서드   | 경로                           | 설명                               |
+| -------- | ------------------------------ | ---------------------------------- |
+| `GET`    | `/api/v1/workspaces/`          | 워크스페이스 목록                  |
+| `POST`   | `/api/v1/workspaces/`          | 워크스페이스 생성 (Git clone 시작) |
+| `GET`    | `/api/v1/workspaces/{id}`      | 워크스페이스 상세                  |
+| `PATCH`  | `/api/v1/workspaces/{id}`      | 워크스페이스 수정                  |
+| `DELETE` | `/api/v1/workspaces/{id}`      | 워크스페이스 삭제                  |
+| `POST`   | `/api/v1/workspaces/{id}/sync` | 워크스페이스 동기화 (Pull/Push)    |
 
 ### Teams
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `POST` | `/api/v1/teams/` | 팀 생성 |
-| `GET` | `/api/v1/teams/` | 팀 목록 |
-| `GET` | `/api/v1/teams/{id}` | 팀 상세 |
-| `DELETE` | `/api/v1/teams/{id}` | 팀 삭제 |
-| `POST` | `/api/v1/teams/{id}/message` | 팀 메시지 전송 |
-| `GET` | `/api/v1/teams/{id}/messages` | 팀 메시지 목록 |
-| `POST` | `/api/v1/teams/{id}/stop` | 팀 중지 |
+
+| 메서드   | 경로                          | 설명           |
+| -------- | ----------------------------- | -------------- |
+| `POST`   | `/api/v1/teams/`              | 팀 생성        |
+| `GET`    | `/api/v1/teams/`              | 팀 목록        |
+| `GET`    | `/api/v1/teams/{id}`          | 팀 상세        |
+| `DELETE` | `/api/v1/teams/{id}`          | 팀 삭제        |
+| `POST`   | `/api/v1/teams/{id}/message`  | 팀 메시지 전송 |
+| `GET`    | `/api/v1/teams/{id}/messages` | 팀 메시지 목록 |
+| `POST`   | `/api/v1/teams/{id}/stop`     | 팀 중지        |
 
 ## 데이터베이스 스키마
 
 PostgreSQL + SQLAlchemy ORM, 마이그레이션: Alembic:
 
-| 테이블 | 설명 |
-|--------|------|
-| `sessions` | 세션 메타데이터 (id, status, work_dir, workspace_id, workflow_enabled/phase/phase_status, model, max_turns 등) |
-| `messages` | 대화 기록 (role, content, cost, duration_ms, input_tokens, output_tokens, model) |
-| `file_changes` | 파일 변경 기록 (tool, file, timestamp) |
-| `events` | WebSocket 이벤트 버퍼 (seq, event_type, payload -- JSONB) -- 재연결 복구용 |
-| `workspaces` | 워크스페이스 (repo_url, branch, local_path, status, disk_usage_mb) |
-| `global_settings` | 글로벌 기본 설정 (default_workspace_id, 모든 세션 옵션의 기본값) |
-| `mcp_servers` | MCP 서버 설정 (name, transport_type, command, url, env) |
-| `tags` | 태그 정의 (name, color) |
-| `session_tags` | 세션-태그 다대다 연결 |
-| `workflow_definitions` | 워크플로우 정의 (name, description, steps, is_default, is_builtin, sort_order) |
-| `token_snapshots` | 토큰 사용량 스냅샷 (session_id, input_tokens, output_tokens, model, timestamp) |
-| `session_artifacts` | 워크플로우 아티팩트 (phase, title, content, status) |
-| `artifact_annotations` | 아티팩트 인라인 주석 (line_start/end, content, type, status) |
-| `teams` | 팀 (name, workspace_id, goal, status) |
-| `team_messages` | 팀 대화 기록 (team_id, role, content) |
-| `team_tasks` | 팀 작업 (team_id, session_id, description, status) |
+| 테이블                 | 설명                                                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `sessions`             | 세션 메타데이터 (id, status, work_dir, workspace_id, workflow_enabled/phase/phase_status, model, max_turns 등) |
+| `messages`             | 대화 기록 (role, content, cost, duration_ms, input_tokens, output_tokens, model)                               |
+| `file_changes`         | 파일 변경 기록 (tool, file, timestamp)                                                                         |
+| `events`               | WebSocket 이벤트 버퍼 (seq, event_type, payload -- JSONB) -- 재연결 복구용                                     |
+| `workspaces`           | 워크스페이스 (repo_url, branch, local_path, status, disk_usage_mb)                                             |
+| `global_settings`      | 글로벌 기본 설정 (default_workspace_id, 모든 세션 옵션의 기본값)                                               |
+| `mcp_servers`          | MCP 서버 설정 (name, transport_type, command, url, env)                                                        |
+| `tags`                 | 태그 정의 (name, color)                                                                                        |
+| `session_tags`         | 세션-태그 다대다 연결                                                                                          |
+| `workflow_definitions` | 워크플로우 정의 (name, description, steps, is_default, is_builtin, sort_order)                                 |
+| `token_snapshots`      | 토큰 사용량 스냅샷 (session_id, input_tokens, output_tokens, model, timestamp)                                 |
+| `session_artifacts`    | 워크플로우 아티팩트 (phase, title, content, status)                                                            |
+| `artifact_annotations` | 아티팩트 인라인 주석 (line_start/end, content, type, status)                                                   |
+| `teams`                | 팀 (name, workspace_id, goal, status)                                                                          |
+| `team_messages`        | 팀 대화 기록 (team_id, role, content)                                                                          |
+| `team_tasks`           | 팀 작업 (team_id, session_id, description, status)                                                             |
 
 ## 동작 방식
 
@@ -722,8 +734,8 @@ PostgreSQL + SQLAlchemy ORM, 마이그레이션: Alembic:
 
 ## 접속 정보
 
-| 서비스 | URL |
-|--------|-----|
-| Frontend (개발) | http://localhost:8100 |
-| Backend API | http://localhost:8101/api |
-| WebSocket | ws://localhost:8101/ws |
+| 서비스          | URL                       |
+| --------------- | ------------------------- |
+| Frontend (개발) | http://localhost:8100     |
+| Backend API     | http://localhost:8101/api |
+| WebSocket       | ws://localhost:8101/ws    |
