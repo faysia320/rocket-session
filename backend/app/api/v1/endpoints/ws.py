@@ -191,11 +191,14 @@ async def _handle_prompt(
 
                 # Phase별 컨텍스트 프롬프트 구성
                 if workflow_phase and workflow_service:
+                    # claude_session_id가 있으면 경량 컨텍스트 (continuation turn)
+                    has_session = bool(current_session.get("claude_session_id"))
                     phase_context = await workflow_service.build_phase_context(
                         session_id,
                         workflow_phase,
                         prompt,
                         session_manager=manager,
+                        is_continuation=has_session,
                     )
                     if phase_context:
                         claude_prompt = phase_context

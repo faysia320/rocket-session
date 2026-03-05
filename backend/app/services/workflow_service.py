@@ -492,10 +492,12 @@ class WorkflowService:
         workflow_phase: str,
         user_prompt: str,
         session_manager=None,
+        is_continuation: bool = False,
     ) -> str:
         """Phase별 컨텍스트 프롬프트를 구성하여 반환.
 
         definition의 step.prompt_template에 {user_prompt}와 {previous_artifact}를 치환.
+        is_continuation=True이면 이전 아티팩트를 참조만 포함 (토큰 절감).
         """
         # definition에서 steps 로드
         if session_manager:
@@ -514,19 +516,29 @@ class WorkflowService:
         )
         if current_idx > 0:
             prev_step = steps[current_idx - 1]
-            async with self._db.session() as db_sess:
-                repo = SessionArtifactRepository(db_sess)
-                artifact = await repo.get_latest_by_phase(session_id, prev_step.name)
-                if artifact and artifact.status == "approved":
-                    ann_repo = ArtifactAnnotationRepository(db_sess)
-                    pending = await ann_repo.list_pending(artifact.id)
-                    if pending:
-                        content = await self.render_annotated_content(artifact.id)
-                    else:
-                        content = artifact.content
-                    previous_artifact = (
-                        f"## {prev_step.label} 결과 ({prev_step.name}.md)\n{content}"
+            if is_continuation:
+                # Continuation turn: 이전 아티팩트는 이미 세션 컨텍스트에 있으므로 참조만
+                previous_artifact = (
+                    f"## {prev_step.label} 결과 ({prev_step.name}.md)\n"
+                    "[이전 단계에서 이미 제출한 결과물입니다. 위 컨텍스트를 참조하세요.]"
+                )
+            else:
+                async with self._db.session() as db_sess:
+                    repo = SessionArtifactRepository(db_sess)
+                    artifact = await repo.get_latest_by_phase(
+                        session_id, prev_step.name
                     )
+                    if artifact and artifact.status == "approved":
+                        ann_repo = ArtifactAnnotationRepository(db_sess)
+                        pending = await ann_repo.list_pending(artifact.id)
+                        if pending:
+                            content = await self.render_annotated_content(artifact.id)
+                        else:
+                            content = artifact.content
+                        previous_artifact = (
+                            f"## {prev_step.label} 결과 ({prev_step.name}.md)\n"
+                            f"{content}"
+                        )
 
         return current_step.prompt_template.format(
             user_prompt=user_prompt,
