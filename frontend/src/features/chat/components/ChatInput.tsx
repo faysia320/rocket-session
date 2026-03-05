@@ -378,6 +378,12 @@ export const ChatInput = memo(function ChatInput({
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              if (e.dataTransfer.files.length > 0) {
+                e.preventDefault();
+              }
+            }}
             placeholder="메시지를 입력하세요…"
             aria-label="메시지 입력"
             rows={1}
