@@ -10,4 +10,5 @@ export interface UsageInfo {
   seven_day: PeriodUsage;
   available: boolean;
   error: string | null;
+  retry_after: number | null;
 }

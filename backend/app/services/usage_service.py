@@ -10,6 +10,7 @@ import httpx
 
 from app.core.constants import (
     USAGE_CACHE_ERROR_TTL,
+    USAGE_CACHE_RATE_LIMIT_TTL,
     USAGE_CACHE_TTL,
     USAGE_HTTP_TIMEOUT,
 )
@@ -97,9 +98,13 @@ class UsageService:
 
             result = await self._fetch_usage()
             self._cache = result
-            self._cache_time = (
-                now if result.available else now - _CACHE_TTL + USAGE_CACHE_ERROR_TTL
-            )
+            if result.available:
+                self._cache_time = now
+            elif result.retry_after is not None:
+                # 429 Rate Limit: Retry-After 값만큼 캐싱
+                self._cache_time = now - _CACHE_TTL + result.retry_after
+            else:
+                self._cache_time = now - _CACHE_TTL + USAGE_CACHE_ERROR_TTL
             self._inflight_result = result
             return result
         finally:
@@ -147,13 +152,26 @@ class UsageService:
                 available=True,
             )
         except httpx.HTTPStatusError as e:
+            status = e.response.status_code
             logger.error(
                 "OAuth API HTTP 오류: %d %s",
-                e.response.status_code,
+                status,
                 e.response.text[:200],
             )
+            if status == 429:
+                retry_after = self._parse_retry_after(
+                    e.response.headers.get("retry-after"),
+                )
+                logger.warning(
+                    "Rate limited – retry_after=%.0f초", retry_after,
+                )
+                return UsageInfo(
+                    available=False,
+                    error="Rate limited",
+                    retry_after=retry_after,
+                )
             return UsageInfo(
-                available=False, error=f"API 오류: {e.response.status_code}"
+                available=False, error=f"API 오류: {status}"
             )
         except httpx.TimeoutException:
             logger.error("OAuth API 타임아웃 (%s초)", _TIMEOUT)
@@ -161,6 +179,18 @@ class UsageService:
         except Exception as e:
             logger.error("OAuth API 호출 실패: %s", e)
             return UsageInfo(available=False, error=str(e))
+
+    @staticmethod
+    def _parse_retry_after(header_value: str | None) -> float:
+        """Retry-After 헤더를 파싱하여 대기 시간(초)을 반환합니다."""
+        if not header_value:
+            return USAGE_CACHE_RATE_LIMIT_TTL
+        try:
+            seconds = float(header_value)
+            # 최소 10초, 최대 600초(10분)로 클램핑
+            return max(10.0, min(seconds, 600.0))
+        except (ValueError, TypeError):
+            return USAGE_CACHE_RATE_LIMIT_TTL
 
     @staticmethod
     def _read_access_token() -> str | None:

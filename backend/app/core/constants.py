@@ -25,6 +25,9 @@ USAGE_CACHE_TTL: float = 60.0
 #: Usage API 에러 응답 캐시 TTL (초) - 빠른 재시도 허용
 USAGE_CACHE_ERROR_TTL: float = 5.0
 
+#: Usage API 429 Rate Limit 캐시 TTL (초) - Retry-After 없을 때 기본값
+USAGE_CACHE_RATE_LIMIT_TTL: float = 60.0
+
 #: Git 정보 캐시 TTL (초)
 GIT_CACHE_TTL: float = 10.0
 

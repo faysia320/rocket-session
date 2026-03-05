@@ -17,3 +17,4 @@ class UsageInfo(BaseModel):
     seven_day: PeriodUsage = PeriodUsage()
     available: bool = True
     error: str | None = None
+    retry_after: float | None = None
