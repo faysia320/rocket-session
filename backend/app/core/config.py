@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # 세션별: 분당 최대 프롬프트 수
     rate_limit_session_per_minute: float = 20
 
+    # Stall Detection
+    stall_timeout_seconds: int = 120
+    max_retries: int = 2
+    retry_initial_backoff_seconds: float = 5
+    retry_max_backoff_seconds: float = 60
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

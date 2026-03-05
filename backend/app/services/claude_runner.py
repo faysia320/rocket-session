@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -66,6 +67,8 @@ class TurnState:
     exit_plan_content: str | None = None
     exit_plan_allowed_prompts: list = field(default_factory=list)
     seen_tool_use_ids: set = field(default_factory=set)
+    last_event_at: float = field(default_factory=time.monotonic)
+    stall_detected: bool = False
 
 
 class _AsyncStreamReader:
@@ -867,13 +870,20 @@ class ClaudeRunner:
         """
 
         while True:
-            line = await process.stdout.readline()
+            try:
+                line = await process.stdout.readline()
+            except (OSError, BrokenPipeError):
+                logger.debug("세션 %s: 스트림 종료 (프로세스 kill)", session_id)
+                break
             if not line:
                 break
 
             line_str = line.decode("utf-8").strip()
             if not line_str:
                 continue
+
+            # Stall detection: 모든 수신 데이터에 대해 타임스탬프 갱신
+            turn_state.last_event_at = time.monotonic()
 
             try:
                 event = json.loads(line_str)
@@ -915,6 +925,36 @@ class ClaudeRunner:
         finally:
             self._cleanup_mcp_config(mcp_config_path)
 
+    async def _stall_watcher(
+        self,
+        process: asyncio.subprocess.Process,
+        session_id: str,
+        ws_manager: WebSocketManager,
+        turn_state: TurnState,
+        stall_timeout: int,
+    ) -> None:
+        """프로세스 stall(무출력) 감지 워처."""
+        check_interval = min(10, stall_timeout // 2) or 5
+        while process.returncode is None:
+            await asyncio.sleep(check_interval)
+            elapsed = time.monotonic() - turn_state.last_event_at
+            if elapsed >= stall_timeout:
+                turn_state.stall_detected = True
+                logger.warning(
+                    "세션 %s: stall 감지 — %d초 무출력", session_id, stall_timeout
+                )
+                await ws_manager.broadcast_event(
+                    session_id,
+                    {
+                        "type": WsEventType.STALL_DETECTED,
+                        "message": f"프로세스 무응답 감지 ({stall_timeout}초)",
+                    },
+                )
+                await self._terminate_process(
+                    process, self._GRACEFUL_TERMINATE_TIMEOUT, session_id
+                )
+                break
+
     async def _run_process_lifecycle(
         self,
         cmd: list[str],
@@ -924,46 +964,54 @@ class ClaudeRunner:
         session_manager: "SessionManager",
         turn_state: TurnState,
     ) -> None:
-        """프로세스 시작 → 스트림 파싱 → 종료 처리."""
+        """프로세스 시작 → 스트림 파싱 (+ stall 감지) → 종료 처리."""
         timeout_seconds = session.get("timeout_seconds")
+        stall_timeout = self._settings.stall_timeout_seconds
         process = await self._start_process(cmd, session["work_dir"])
         session_manager.set_process(session_id, process)
 
-        # 타임아웃 적용
-        if timeout_seconds and timeout_seconds > 0:
-            try:
-                await asyncio.wait_for(
-                    self._parse_stream(
-                        process,
-                        session_id,
-                        ws_manager,
-                        session_manager,
-                        turn_state=turn_state,
-                    ),
-                    timeout=timeout_seconds,
+        # stall 감지 워처 — parse_stream과 병렬 실행
+        stall_task: asyncio.Task | None = None
+        if stall_timeout and stall_timeout > 0:
+            stall_task = asyncio.create_task(
+                self._stall_watcher(
+                    process, session_id, ws_manager, turn_state, stall_timeout
                 )
-            except asyncio.TimeoutError:
-                logger.warning(
-                    "세션 %s: 타임아웃 (%d초) 초과", session_id, timeout_seconds
-                )
-                await self._terminate_process(
-                    process, self._GRACEFUL_TERMINATE_TIMEOUT, session_id
-                )
-                await ws_manager.broadcast_event(
-                    session_id,
-                    {
-                        "type": WsEventType.ERROR,
-                        "message": f"프로세스 타임아웃 ({timeout_seconds}초) 초과로 종료되었습니다.",
-                    },
-                )
-        else:
-            await self._parse_stream(
-                process,
-                session_id,
-                ws_manager,
-                session_manager,
-                turn_state=turn_state,
             )
+
+        parse_coro = self._parse_stream(
+            process, session_id, ws_manager, session_manager, turn_state=turn_state
+        )
+
+        try:
+            # 타임아웃 적용
+            if timeout_seconds and timeout_seconds > 0:
+                try:
+                    await asyncio.wait_for(parse_coro, timeout=timeout_seconds)
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "세션 %s: 타임아웃 (%d초) 초과", session_id, timeout_seconds
+                    )
+                    await self._terminate_process(
+                        process, self._GRACEFUL_TERMINATE_TIMEOUT, session_id
+                    )
+                    await ws_manager.broadcast_event(
+                        session_id,
+                        {
+                            "type": WsEventType.ERROR,
+                            "message": f"프로세스 타임아웃 ({timeout_seconds}초) 초과로 종료되었습니다.",
+                        },
+                    )
+            else:
+                await parse_coro
+        finally:
+            # stall 워처 정리
+            if stall_task and not stall_task.done():
+                stall_task.cancel()
+                try:
+                    await stall_task
+                except asyncio.CancelledError:
+                    pass
 
         # AskUserQuestion으로 인한 조기 중단
         if turn_state.should_terminate:
@@ -974,7 +1022,7 @@ class ClaudeRunner:
             await self._terminate_process(
                 process, self._GRACEFUL_TERMINATE_TIMEOUT, session_id
             )
-        else:
+        elif not turn_state.stall_detected:
             # 정상 흐름: stderr 읽기와 프로세스 대기를 병렬 실행
             async def _read_stderr():
                 try:
@@ -1094,11 +1142,17 @@ class ClaudeRunner:
                     },
                 )
                 raw_prompt = original_prompt or prompt
+                # Continuation turn: claude_session_id가 있으면 경량 컨텍스트 사용
+                updated_for_check = await session_manager.get(session_id)
+                has_claude_session = bool(
+                    updated_for_check and updated_for_check.get("claude_session_id")
+                )
                 next_context = await workflow_service.build_phase_context(
                     session_id,
                     next_phase,
                     raw_prompt,
                     session_manager=session_manager,
+                    is_continuation=has_claude_session,
                 )
                 next_steps = await workflow_service._get_steps(
                     session_id, session_manager
@@ -1283,107 +1337,141 @@ class ClaudeRunner:
             workflow_phase=workflow_phase,
         )
 
+        max_retries = self._settings.max_retries
+        initial_backoff = self._settings.retry_initial_backoff_seconds
+        max_backoff = self._settings.retry_max_backoff_seconds
+
         async with self._mcp_config_scope(session, session_id, cmd, mcp_service):
-            try:
-                await self._run_process_lifecycle(
-                    cmd,
-                    session,
-                    session_id,
-                    ws_manager,
-                    session_manager,
-                    turn_state,
-                )
-            except Exception as e:
-                error_msg = str(e) or f"{type(e).__name__}: (no message)"
-                logger.error(
-                    "세션 %s 실행 오류: %s", session_id, error_msg, exc_info=True
-                )
-                await self._update_and_broadcast_status(
-                    session_id, SessionStatus.ERROR, session_manager, ws_manager
-                )
-                await ws_manager.broadcast_event(
-                    session_id, {"type": WsEventType.ERROR, "message": error_msg}
-                )
-
-            finally:
-                # 비정상 종료 시 스트리밍 중이던 텍스트를 DB에 저장 (데이터 유실 방지)
-                if (
-                    turn_state.text
-                    and not turn_state.result_received
-                    and not turn_state.should_terminate
-                ):
-                    logger.info(
-                        "세션 %s: result 미수신 상태에서 종료 — partial text 저장 (%d자)",
+            for attempt in range(max_retries + 1):
+                try:
+                    await self._run_process_lifecycle(
+                        cmd,
+                        session,
                         session_id,
-                        len(turn_state.text),
-                    )
-                    try:
-                        await session_manager.add_message(
-                            session_id=session_id,
-                            role="assistant",
-                            content=turn_state.text,
-                            timestamp=utc_now(),
-                            is_error=False,
-                            model=turn_state.model,
-                        )
-                    except Exception:
-                        logger.warning(
-                            "세션 %s: partial text DB 저장 실패",
-                            session_id,
-                            exc_info=True,
-                        )
-
-                # 턴 종료 시 잔여 배치 메시지 flush
-                await session_manager.flush_messages()
-
-                # ERROR 상태인 경우 보존, 그 외에는 IDLE로 전환
-                current_session = await session_manager.get(session_id)
-                current_status = (
-                    current_session.get("status") if current_session else None
-                )
-                if current_status != SessionStatus.ERROR:
-                    await session_manager.update_status(session_id, SessionStatus.IDLE)
-                final_status = (
-                    current_status
-                    if current_status == SessionStatus.ERROR
-                    else SessionStatus.IDLE
-                )
-                session_manager.clear_process(session_id)
-                await ws_manager.broadcast_event(
-                    session_id, {"type": WsEventType.STATUS, "status": final_status}
-                )
-                await ws_manager.flush_events()
-                ws_manager.clear_buffer(session_id)
-
-                # 워크플로우 완료 처리
-                if (
-                    workflow_phase
-                    and workflow_service
-                    and turn_state.result_received
-                    and not turn_state.is_error
-                ):
-                    await self._handle_workflow_completion(
-                        session_id,
-                        turn_state,
-                        prompt,
-                        allowed_tools,
                         ws_manager,
                         session_manager,
-                        workflow_phase,
-                        workflow_service,
-                        workflow_step_config,
-                        original_prompt,
-                        mcp_service,
+                        turn_state,
+                    )
+                except Exception as e:
+                    error_msg = str(e) or f"{type(e).__name__}: (no message)"
+                    logger.error(
+                        "세션 %s 실행 오류: %s", session_id, error_msg, exc_info=True
+                    )
+                    await self._update_and_broadcast_status(
+                        session_id, SessionStatus.ERROR, session_manager, ws_manager
+                    )
+                    await ws_manager.broadcast_event(
+                        session_id, {"type": WsEventType.ERROR, "message": error_msg}
+                    )
+                    break  # Exception은 재시도하지 않음
+
+                # stall 감지 시 재시도
+                if turn_state.stall_detected and attempt < max_retries:
+                    backoff = min(initial_backoff * (2 ** attempt), max_backoff)
+                    logger.info(
+                        "세션 %s: stall 재시도 %d/%d — %.1f초 후",
+                        session_id, attempt + 1, max_retries, backoff,
+                    )
+                    await ws_manager.broadcast_event(
+                        session_id,
+                        {
+                            "type": WsEventType.RETRY_ATTEMPT,
+                            "attempt": attempt + 1,
+                            "max_retries": max_retries,
+                            "backoff_seconds": backoff,
+                        },
+                    )
+                    await asyncio.sleep(backoff)
+                    # turn_state 초기화
+                    turn_state.text = ""
+                    turn_state.stall_detected = False
+                    turn_state.result_received = False
+                    turn_state.result_text = None
+                    turn_state.is_error = False
+                    turn_state.should_terminate = False
+                    turn_state.last_event_at = time.monotonic()
+                    continue
+
+                break  # 정상 완료 또는 최대 재시도 초과
+
+            # 비정상 종료 시 스트리밍 중이던 텍스트를 DB에 저장 (데이터 유실 방지)
+            if (
+                turn_state.text
+                and not turn_state.result_received
+                and not turn_state.should_terminate
+            ):
+                logger.info(
+                    "세션 %s: result 미수신 상태에서 종료 — partial text 저장 (%d자)",
+                    session_id,
+                    len(turn_state.text),
+                )
+                try:
+                    await session_manager.add_message(
+                        session_id=session_id,
+                        role="assistant",
+                        content=turn_state.text,
+                        timestamp=utc_now(),
+                        is_error=False,
+                        model=turn_state.model,
+                    )
+                except Exception:
+                    logger.warning(
+                        "세션 %s: partial text DB 저장 실패",
+                        session_id,
+                        exc_info=True,
                     )
 
-                # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
-                try:
-                    from app.api.dependencies import get_team_coordinator
+            # 턴 종료 시 잔여 배치 메시지 flush
+            await session_manager.flush_messages()
 
-                    coordinator = get_team_coordinator()
-                    last_text = turn_state.text if turn_state else None
-                    await coordinator.on_session_completed(session_id, last_text)
-                except Exception as e:
-                    if "초기화되지 않았습니다" not in str(e):
-                        logger.warning("세션 %s: 팀 콜백 실패: %s", session_id, e)
+            # ERROR 상태인 경우 보존, 그 외에는 IDLE로 전환
+            current_session = await session_manager.get(session_id)
+            current_status = (
+                current_session.get("status") if current_session else None
+            )
+            if current_status != SessionStatus.ERROR:
+                await session_manager.update_status(session_id, SessionStatus.IDLE)
+            final_status = (
+                current_status
+                if current_status == SessionStatus.ERROR
+                else SessionStatus.IDLE
+            )
+            session_manager.clear_process(session_id)
+            await ws_manager.broadcast_event(
+                session_id, {"type": WsEventType.STATUS, "status": final_status}
+            )
+            await ws_manager.flush_events()
+            ws_manager.clear_buffer(session_id)
+
+            # 워크플로우 완료 처리
+            if (
+                workflow_phase
+                and workflow_service
+                and turn_state.result_received
+                and not turn_state.is_error
+            ):
+                await self._handle_workflow_completion(
+                    session_id,
+                    turn_state,
+                    prompt,
+                    allowed_tools,
+                    ws_manager,
+                    session_manager,
+                    workflow_phase,
+                    workflow_service,
+                    workflow_step_config,
+                    original_prompt,
+                    mcp_service,
+                )
+
+            # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
+            try:
+                from app.api.dependencies import get_team_coordinator
+
+                coordinator = get_team_coordinator()
+                last_text = turn_state.text if turn_state else None
+                await coordinator.on_session_completed(session_id, last_text)
+            except Exception as e:
+                if "초기화되지 않았습니다" not in str(e):
+                    logger.warning("세션 %s: 팀 콜백 실패: %s", session_id, e)
 

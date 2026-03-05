@@ -68,6 +68,10 @@ class WsEventType:
     # System
     SYSTEM = "system"
 
+    # Stall / Retry
+    STALL_DETECTED = "stall_detected"
+    RETRY_ATTEMPT = "retry_attempt"
+
     # Team events
     TEAM_TASK_CREATED = "team_task_created"
     TEAM_TASK_UPDATED = "team_task_updated"
