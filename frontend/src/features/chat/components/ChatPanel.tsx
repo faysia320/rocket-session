@@ -124,12 +124,9 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   }, [fileChanges.length, sessionInfo?.workspace_id, queryClient]);
 
   // U6: 세션 클릭 시 이동 핸들러
-  const handleSessionClick = useCallback(
-    (targetSessionId: string) => {
-      useSessionStore.getState().setFocusedSessionId(targetSessionId);
-    },
-    [],
-  );
+  const handleSessionClick = useCallback((targetSessionId: string) => {
+    useSessionStore.getState().setFocusedSessionId(targetSessionId);
+  }, []);
 
   // P0: PermissionDialog 콜백 안정화 (타이머 리셋 방지)
   const handlePermissionAllow = useCallback(
@@ -294,10 +291,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
 
   // 워크플로우 정의 steps 로드
   const { data: workflowStatusData } = useWorkflowStatus(sessionId, true);
-  const workflowSteps = useMemo(
-    () => workflowStatusData?.steps ?? [],
-    [workflowStatusData?.steps],
-  );
+  const workflowSteps = useMemo(() => workflowStatusData?.steps ?? [], [workflowStatusData?.steps]);
 
   // 워크플로우 액션
   const {
@@ -503,7 +497,10 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   );
 
   return (
-    <div ref={panelRef} className="relative flex-1 flex flex-col overflow-hidden overscroll-y-contain">
+    <div
+      ref={panelRef}
+      className="relative flex-1 flex flex-col overflow-hidden overscroll-y-contain"
+    >
       <ChatHeader
         connected={connected}
         workDir={effectiveWorkDir}
@@ -596,13 +593,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         workflowPhase={(sessionInfo?.workflow_phase as string) ?? null}
         onOpenArtifact={waitingForWorkflowApproval ? handleOpenArtifactFromStatusBar : undefined}
       />
-      <SessionStatsBar
-        sessionId={sessionId}
-        isRunning={status === "running" || activeTools.length > 0}
-        tokenUsage={tokenUsage}
-        messageCount={messages.length}
-        currentModel={sessionInfo?.model}
-      />
       <div
         className="px-3 pb-2"
         style={{
@@ -633,7 +623,13 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           onInputChange={setLiveInput}
         />
       </div>
-
+      <SessionStatsBar
+        sessionId={sessionId}
+        isRunning={status === "running" || activeTools.length > 0}
+        tokenUsage={tokenUsage}
+        messageCount={messages.length}
+        currentModel={sessionInfo?.model}
+      />
       <ChatDialogs
         permissionRequest={pendingPermission}
         onAllow={handlePermissionAllow}
