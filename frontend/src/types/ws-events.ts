@@ -252,6 +252,24 @@ export interface WsWorkflowQAFailedEvent extends WsBaseEvent {
 }
 
 // ---------------------------------------------------------------------------
+// Stall / Retry 이벤트
+// ---------------------------------------------------------------------------
+
+/** 프로세스 무응답(stall) 감지 */
+export interface WsStallDetectedEvent extends WsBaseEvent {
+  type: "stall_detected";
+  message: string;
+}
+
+/** Stall 후 자동 재시도 */
+export interface WsRetryAttemptEvent extends WsBaseEvent {
+  type: "retry_attempt";
+  attempt: number;
+  max_retries: number;
+  backoff_seconds: number;
+}
+
+// ---------------------------------------------------------------------------
 // Discriminated union: 모든 WS 이벤트
 // ---------------------------------------------------------------------------
 
@@ -284,7 +302,9 @@ export type WsEvent =
   | WsWorkflowPhaseRevisionEvent
   | WsWorkflowArtifactUpdatedEvent
   | WsWorkflowAnnotationAddedEvent
-  | WsWorkflowQAFailedEvent;
+  | WsWorkflowQAFailedEvent
+  | WsStallDetectedEvent
+  | WsRetryAttemptEvent;
 
 /** WS 이벤트 type 필드 값의 union (편의 타입) */
 export type WsEventType = WsEvent["type"];

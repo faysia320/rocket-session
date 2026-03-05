@@ -370,6 +370,24 @@ export function useClaudeSocket(sessionId: string) {
         // 서버 ping 응답 — 별도 처리 불필요 (visibility probe가 message 리스너로 감지)
         break;
 
+      case "stall_detected":
+        dispatch({
+          type: "ADD_SYSTEM_MESSAGE",
+          text: (data.message as string) || "프로세스 무응답 감지",
+        });
+        break;
+
+      case "retry_attempt": {
+        const attempt = (data.attempt as number) ?? 0;
+        const maxRetries = (data.max_retries as number) ?? 0;
+        const backoff = (data.backoff_seconds as number) ?? 0;
+        dispatch({
+          type: "ADD_SYSTEM_MESSAGE",
+          text: `Stall 재시도 ${attempt}/${maxRetries} — ${backoff}초 후 재시작`,
+        });
+        break;
+      }
+
       default:
         break;
     }
