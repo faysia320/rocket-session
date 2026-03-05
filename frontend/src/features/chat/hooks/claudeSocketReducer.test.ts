@@ -231,6 +231,85 @@ describe("claudeSocketReducer", () => {
     expect(result.sessionInfo?.work_dir).toBe("/test");
   });
 
+  it("WS_SESSION_STATE는 세션이 완료된 상태일 때 잔여 todo를 completed로 전환한다", () => {
+    const result = claudeSocketReducer(initialState, {
+      type: "WS_SESSION_STATE",
+      session: { work_dir: "/test" },
+      isRunning: false,
+      isReconnect: false,
+      history: [
+        { role: "user", content: "hi", input_tokens: 10, output_tokens: 0 },
+        {
+          message_type: "tool_use",
+          tool_name: "TodoWrite",
+          tool_use_id: "todo1",
+          tool_input: {
+            todos: [
+              { content: "Task 1", status: "completed", activeForm: "Doing task 1" },
+              { content: "Task 2", status: "in_progress", activeForm: "Doing task 2" },
+              { content: "Task 3", status: "pending", activeForm: "Doing task 3" },
+            ],
+          },
+        },
+        { role: "assistant", content: "done", input_tokens: 0, output_tokens: 20 },
+      ],
+      latestSeq: undefined,
+      currentTurnEvents: null,
+      pendingInteractions: null,
+      fileChanges: null,
+    });
+    expect(result.pinnedTodos).toHaveLength(3);
+    expect(result.pinnedTodos.every((t) => t.status === "completed")).toBe(true);
+  });
+
+  it("WS_SESSION_STATE는 세션이 실행 중일 때 todo 상태를 유지한다", () => {
+    const result = claudeSocketReducer(initialState, {
+      type: "WS_SESSION_STATE",
+      session: { work_dir: "/test" },
+      isRunning: true,
+      isReconnect: false,
+      history: [
+        { role: "user", content: "hi", input_tokens: 10, output_tokens: 0 },
+        {
+          message_type: "tool_use",
+          tool_name: "TodoWrite",
+          tool_use_id: "todo1",
+          tool_input: {
+            todos: [
+              { content: "Task 1", status: "completed", activeForm: "Doing task 1" },
+              { content: "Task 2", status: "in_progress", activeForm: "Doing task 2" },
+            ],
+          },
+        },
+      ],
+      latestSeq: undefined,
+      currentTurnEvents: null,
+      pendingInteractions: null,
+      fileChanges: null,
+    });
+    expect(result.pinnedTodos).toHaveLength(2);
+    expect(result.pinnedTodos[0].status).toBe("completed");
+    expect(result.pinnedTodos[1].status).toBe("in_progress");
+  });
+
+  it("WS_STATUS idle 시 pending 및 in_progress todo를 모두 completed로 전환한다", () => {
+    const withTodos: ClaudeSocketState = {
+      ...initialState,
+      status: "running",
+      pinnedTodos: [
+        { content: "Task 1", status: "completed", activeForm: "Doing task 1" },
+        { content: "Task 2", status: "in_progress", activeForm: "Doing task 2" },
+        { content: "Task 3", status: "pending", activeForm: "Doing task 3" },
+      ],
+    };
+    const result = claudeSocketReducer(withTodos, {
+      type: "WS_STATUS",
+      status: "idle",
+    });
+    expect(result.pinnedTodos).toHaveLength(3);
+    expect(result.pinnedTodos.every((t) => t.status === "completed")).toBe(true);
+  });
+
   // -------------------------------------------------------------------
   // User actions
   // -------------------------------------------------------------------

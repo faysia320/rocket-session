@@ -107,6 +107,13 @@ export function handleWsMessage(
           return true;
         });
 
+        // 세션이 이미 완료된 상태(idle/error)라면 잔여 todo를 전체 completed 처리
+        if (!action.isRunning && lastTodoWriteTodos.length > 0) {
+          lastTodoWriteTodos = lastTodoWriteTodos.map((t) =>
+            t.status !== "completed" ? { ...t, status: "completed" as const } : t
+          );
+        }
+
         // 토큰 집계
         let totalIn = 0,
           totalOut = 0,
@@ -170,10 +177,10 @@ export function handleWsMessage(
             runningIndices.push(i);
           }
         }
-        // in_progress 상태의 todo를 completed로 자동 전환 (idle/error 시 작업 중인 항목 없음)
-        const todosUpdated = state.pinnedTodos.some((t) => t.status === "in_progress")
+        // idle/error 시 잔여 todo 전체 completed 처리 (in_progress + pending 모두)
+        const todosUpdated = state.pinnedTodos.some((t) => t.status !== "completed")
           ? state.pinnedTodos.map((t) =>
-              t.status === "in_progress" ? { ...t, status: "completed" as const } : t
+              t.status !== "completed" ? { ...t, status: "completed" as const } : t
             )
           : state.pinnedTodos;
         if (runningIndices.length === 0) {
@@ -433,6 +440,12 @@ export function handleWsMessage(
           runningIndices.push(i);
         }
       }
+      // 세션 중지 시 잔여 todo 전체 completed 처리
+      const stoppedTodos = state.pinnedTodos.some((t) => t.status !== "completed")
+        ? state.pinnedTodos.map((t) =>
+            t.status !== "completed" ? { ...t, status: "completed" as const } : t
+          )
+        : state.pinnedTodos;
       const systemMsg = {
         id: generateMessageId(),
         type: "system" as const,
@@ -444,6 +457,7 @@ export function handleWsMessage(
           status: "idle",
           activeTools: [],
           messages: [...msgs, systemMsg],
+          pinnedTodos: stoppedTodos,
         };
       }
       const updated = [...msgs];
@@ -455,6 +469,7 @@ export function handleWsMessage(
         status: "idle",
         activeTools: [],
         messages: [...updated, systemMsg],
+        pinnedTodos: stoppedTodos,
       };
     }
 
