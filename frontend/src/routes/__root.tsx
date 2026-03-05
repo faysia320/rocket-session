@@ -23,7 +23,6 @@ import { useSessions } from "@/features/session/hooks/useSessions";
 import { useTeams } from "@/features/team/hooks/useTeams";
 import { useShallow } from "zustand/react/shallow";
 import { useSessionStore } from "@/store";
-import { UsageFooter } from "@/features/usage/components/UsageFooter";
 import { CommandPaletteProvider } from "@/features/command-palette/components/CommandPaletteProvider";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -218,17 +217,15 @@ function SessionLayout() {
             <Outlet />
           )}
         </main>
-        <UsageFooter
-          centerSlot={
-            isSplitView && !isMobile && totalSplitPages > 1 ? (
-              <SplitViewPagination
-                currentPage={splitPage}
-                totalPages={totalSplitPages}
-                onPageChange={setSplitPage}
-              />
-            ) : undefined
-          }
-        />
+        {isSplitView && !isMobile && totalSplitPages > 1 ? (
+          <div className="h-8 shrink-0 flex items-center justify-center border-t border-sidebar-border bg-sidebar">
+            <SplitViewPagination
+              currentPage={splitPage}
+              totalPages={totalSplitPages}
+              onPageChange={setSplitPage}
+            />
+          </div>
+        ) : null}
       </div>
     </>
   );
@@ -298,7 +295,6 @@ function TeamLayout() {
         <main className="flex-1 flex overflow-hidden">
           <Outlet />
         </main>
-        <UsageFooter />
       </div>
     </>
   );

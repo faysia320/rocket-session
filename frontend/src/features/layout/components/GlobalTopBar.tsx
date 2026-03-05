@@ -1,7 +1,8 @@
-import { memo, useState, useCallback, lazy, Suspense } from "react";
+import { memo, useState, useCallback, useMemo, lazy, Suspense } from "react";
 import { useTheme } from "next-themes";
 import { useNavigate, useLocation } from "@tanstack/react-router";
 import {
+  AlertCircle,
   BarChart3,
   BookOpen,
   GitBranch,
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useSessionStore, useCommandPaletteStore, useMemoStore } from "@/store";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useNotificationCenter } from "@/features/notification/hooks/useNotificationCenter";
+import { useUsage } from "@/features/usage/hooks/useUsage";
 
 const GlobalSettingsDialog = lazy(() =>
   import("@/features/settings/components/GlobalSettingsDialog").then((m) => ({
@@ -148,8 +150,10 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
         ))}
       </nav>
 
-      {/* 우측: 글로벌 액션 */}
+      {/* 우측: 사용량 + 글로벌 액션 */}
       <div className="flex items-center gap-0.5 ml-auto shrink-0">
+        <UsageIndicator />
+
         {/* 명령 팔레트 */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -317,5 +321,81 @@ function ThemeToggle() {
       </TooltipTrigger>
       <TooltipContent side="bottom">{isDark ? "라이트 모드" : "다크 모드"}</TooltipContent>
     </Tooltip>
+  );
+}
+
+function formatTimeRemaining(resetsAt: string | null): string {
+  if (!resetsAt) return "--:--";
+  const now = Date.now();
+  const reset = new Date(resetsAt).getTime();
+  const diffMs = reset - now;
+  if (diffMs <= 0) return "00:00";
+  const hours = Math.floor(diffMs / 3_600_000);
+  const minutes = Math.floor((diffMs % 3_600_000) / 60_000);
+  return `${String(hours).padStart(2, "0")}h${String(minutes).padStart(2, "0")}m`;
+}
+
+function utilizationColor(util: number): string {
+  if (util >= 80) return "text-destructive";
+  if (util >= 50) return "text-warning";
+  return "text-success";
+}
+
+function UsageIndicator() {
+  const { data, isLoading, isError } = useUsage();
+
+  const fiveHourCountdown = useMemo(
+    () => formatTimeRemaining(data?.five_hour?.resets_at ?? null),
+    [data?.five_hour?.resets_at],
+  );
+
+  const sevenDayCountdown = useMemo(
+    () => formatTimeRemaining(data?.seven_day?.resets_at ?? null),
+    [data?.seven_day?.resets_at],
+  );
+
+  if (isLoading) {
+    return <div className="h-3 w-32 animate-pulse rounded bg-muted mr-1" />;
+  }
+
+  if (isError || !data || !data.available) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="flex items-center gap-1 text-2xs text-muted-foreground mr-1">
+            <AlertCircle className="h-3 w-3" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {data?.error ? data.error : "사용량 정보를 가져올 수 없습니다"}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  const { five_hour, seven_day } = data;
+
+  return (
+    <div className="flex items-center gap-1 text-2xs text-muted-foreground whitespace-nowrap mr-1">
+      <span className="text-muted-foreground/60">
+        <span className="hidden sm:inline">5h</span>
+        <span className="sm:hidden">h</span>:
+      </span>
+      <span className={cn("font-medium", utilizationColor(five_hour.utilization))}>
+        {five_hour.utilization.toFixed(0)}%
+      </span>
+      <span className="text-muted-foreground/40 hidden sm:inline">({fiveHourCountdown})</span>
+
+      <span className="text-border mx-0.5">|</span>
+
+      <span className="text-muted-foreground/60">
+        <span className="hidden sm:inline">7d</span>
+        <span className="sm:hidden">w</span>:
+      </span>
+      <span className={cn("font-medium", utilizationColor(seven_day.utilization))}>
+        {seven_day.utilization.toFixed(0)}%
+      </span>
+      <span className="text-muted-foreground/40 hidden sm:inline">({sevenDayCountdown})</span>
+    </div>
   );
 }
