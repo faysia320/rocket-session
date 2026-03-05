@@ -204,6 +204,22 @@ describe("claudeSocketReducer", () => {
     expect(result.messages[1].type).toBe("system");
   });
 
+  it("WS_STOPPED 시 pending 및 in_progress todo를 모두 completed로 전환한다", () => {
+    const running: ClaudeSocketState = {
+      ...initialState,
+      status: "running",
+      pinnedTodos: [
+        { content: "Task 1", status: "completed", activeForm: "Doing task 1" },
+        { content: "Task 2", status: "in_progress", activeForm: "Doing task 2" },
+        { content: "Task 3", status: "pending", activeForm: "Doing task 3" },
+      ],
+    };
+    const result = claudeSocketReducer(running, { type: "WS_STOPPED" });
+    expect(result.status).toBe("idle");
+    expect(result.pinnedTodos).toHaveLength(3);
+    expect(result.pinnedTodos.every((t) => t.status === "completed")).toBe(true);
+  });
+
   // -------------------------------------------------------------------
   // WS_SESSION_STATE (히스토리 로드)
   // -------------------------------------------------------------------
