@@ -156,6 +156,12 @@ class SessionRepository(BaseRepository[Session]):
         stmt = update(Session).where(Session.status == "running").values(status="idle")
         await self._session.execute(stmt)
 
+    async def list_running_session_ids(self) -> list[str]:
+        """running 상태 세션 ID 목록 조회."""
+        stmt = select(Session.id).where(Session.status == "running")
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def set_pending_question(self, session_id: str, data: dict | None) -> None:
         """대기 중인 AskUserQuestion 저장/클리어."""
         stmt = (

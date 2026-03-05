@@ -210,6 +210,49 @@ class SessionManager(DBService):
         async with self._session_scope(SessionRepository) as (session, repo):
             return await repo.list_with_counts(limit=limit)
 
+    async def reconcile_stuck_sessions(self, ws_manager=None) -> int:
+        """고착 세션 정합성 점검.
+
+        1. DB=running인데 인메모리 프로세스 없는 세션 → idle로 전환 + WS 통지
+        2. 인메모리 프로세스 등록됐지만 이미 종료된 세션 → 정리
+        """
+        recovered = 0
+        active_ids = set(self._process_manager.active_session_ids)
+
+        # 1) DB running + 프로세스 없음
+        stale_ids: list[str] = []
+        async with self._session_scope(SessionRepository) as (session, repo):
+            running_ids = await repo.list_running_session_ids()
+            for sid in running_ids:
+                if sid not in active_ids:
+                    stale_ids.append(sid)
+            if stale_ids:
+                for sid in stale_ids:
+                    await repo.update_status(sid, SessionStatus.IDLE)
+                await session.commit()
+
+        for sid in stale_ids:
+            logger.warning(
+                "Reconciliation: 세션 %s running→idle 전환 (프로세스 없음)", sid
+            )
+            if ws_manager:
+                await ws_manager.broadcast_event(
+                    sid, {"type": "status", "status": SessionStatus.IDLE}
+                )
+            recovered += 1
+
+        # 2) 프로세스 등록 + 이미 종료
+        for sid in self._process_manager.get_orphaned_sessions():
+            self._process_manager.clear_process(sid)
+            runner = self._process_manager.get_runner_task(sid)
+            if runner and not runner.done():
+                runner.cancel()
+            self._process_manager.clear_runner_task(sid)
+            logger.warning("Reconciliation: 세션 %s 고아 프로세스 정리", sid)
+            recovered += 1
+
+        return recovered
+
     async def delete(self, session_id: str) -> bool:
         await self.kill_process(session_id)
         async with self._session_scope(SessionRepository) as (session, repo):

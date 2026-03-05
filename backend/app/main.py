@@ -32,6 +32,7 @@ if sys.platform == "win32":
 from app.core.exceptions import AppError  # noqa: E402
 from app.api.dependencies import (  # noqa: E402
     get_database,
+    get_session_manager,
     get_settings,
     get_usage_service,
     get_ws_manager,
@@ -101,11 +102,32 @@ async def _run_background_tasks(shutdown_event: asyncio.Event) -> None:
         except Exception as e:
             logging.getLogger(__name__).error("사용량 캐시 워밍업 실패: %s", e)
 
+    async def _guarded_reconciliation():
+        """세션 정합성 점검 — 60초 간격."""
+        while not shutdown_event.is_set():
+            try:
+                await asyncio.wait_for(shutdown_event.wait(), timeout=60)
+            except asyncio.TimeoutError:
+                pass
+            else:
+                break
+            try:
+                count = await get_session_manager().reconcile_stuck_sessions(
+                    ws_manager=get_ws_manager()
+                )
+                if count:
+                    logging.getLogger(__name__).info(
+                        "세션 정합성 점검: %d건 정리", count
+                    )
+            except Exception as e:
+                logging.getLogger(__name__).warning("세션 정합성 점검 실패: %s", e)
+
     try:
         async with asyncio.TaskGroup() as tg:
             tg.create_task(_guarded_cleanup())
             tg.create_task(_guarded_mv_refresh())
             tg.create_task(_guarded_warmup())
+            tg.create_task(_guarded_reconciliation())
             # shutdown 시그널 대기 후 TaskGroup 탈출
             tg.create_task(shutdown_event.wait())
     except* Exception as eg:

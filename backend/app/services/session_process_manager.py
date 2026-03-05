@@ -74,6 +74,14 @@ class SessionProcessManager:
         if current is task:
             del self._runner_tasks[session_id]
 
+    def get_orphaned_sessions(self) -> list[str]:
+        """프로세스가 등록되어 있지만 이미 종료된 세션 ID 반환."""
+        orphaned = []
+        for sid, proc in list(self._processes.items()):
+            if proc.returncode is not None:
+                orphaned.append(sid)
+        return orphaned
+
     @property
     def active_session_ids(self) -> list[str]:
         """프로세스가 실행 중인 세션 ID 목록."""
