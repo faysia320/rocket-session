@@ -406,9 +406,13 @@ class TestGetOrDefault:
         assert result.id.startswith("default-")
         assert result.name == "Default"
         assert result.is_default is True
-        assert len(result.steps) == 3
+        assert len(result.steps) == 4
         step_names = [s.name for s in result.steps]
-        assert step_names == ["research", "plan", "implement"]
+        assert step_names == ["research", "plan", "implement", "qa"]
+        # QA 단계에 run_validation=True 확인
+        qa_step = result.steps[3]
+        assert qa_step.run_validation is True
+        assert qa_step.review_required is True
 
     async def test_get_or_default_invalid_id_returns_default(
         self, workflow_definition_service

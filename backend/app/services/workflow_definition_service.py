@@ -152,8 +152,18 @@ class WorkflowDefinitionService(DBService):
                 prompt_template="",
                 constraints="full",
                 review_required=False,
-                run_validation=True,
+                run_validation=False,
                 order_index=2,
+            ),
+            WorkflowStepConfig(
+                name="qa",
+                label="QA",
+                icon="ShieldCheck",
+                prompt_template="",
+                constraints="readonly",
+                review_required=True,
+                run_validation=True,
+                order_index=3,
             ),
         ]
         async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):

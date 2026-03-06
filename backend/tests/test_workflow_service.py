@@ -104,9 +104,13 @@ class TestGetNextPhase:
         """plan 다음은 implement이다."""
         assert await workflow_service.get_next_phase("plan") == "implement"
 
-    async def test_implement_to_none(self, workflow_service):
-        """implement 다음은 None이다 (마지막 단계)."""
-        assert await workflow_service.get_next_phase("implement") is None
+    async def test_implement_to_qa(self, workflow_service):
+        """implement 다음은 qa이다."""
+        assert await workflow_service.get_next_phase("implement") == "qa"
+
+    async def test_qa_to_none(self, workflow_service):
+        """qa 다음은 None이다 (마지막 단계)."""
+        assert await workflow_service.get_next_phase("qa") is None
 
     async def test_invalid_phase_returns_none(self, workflow_service):
         """유효하지 않은 phase 입력 시 None을 반환한다."""
@@ -164,10 +168,10 @@ class TestApprovePhase:
         assert result["approved_phase"] == "plan"
         assert result["next_phase"] == "implement"
 
-    async def test_approve_implement_completes_workflow(
+    async def test_approve_implement_advances_to_qa(
         self, workflow_service, session_manager, test_session
     ):
-        """implement 승인 시 워크플로우가 종료된다 (next_phase=None)."""
+        """implement 승인 시 qa로 전환된다."""
         session_id = test_session["id"]
 
         await session_manager.update_settings(
@@ -180,11 +184,33 @@ class TestApprovePhase:
         result = await workflow_service.approve_phase(session_id, session_manager)
 
         assert result["approved_phase"] == "implement"
+        assert result["next_phase"] == "qa"
+
+        # DB 확인: qa phase로 전환
+        session = await session_manager.get(session_id)
+        assert session["workflow_phase"] == "qa"
+
+    async def test_approve_qa_completes_workflow(
+        self, workflow_service, session_manager, test_session
+    ):
+        """qa 승인 시 워크플로우가 종료된다 (next_phase=None)."""
+        session_id = test_session["id"]
+
+        await session_manager.update_settings(
+            session_id,
+            workflow_enabled=True,
+            workflow_phase="qa",
+            workflow_phase_status="awaiting_approval",
+        )
+
+        result = await workflow_service.approve_phase(session_id, session_manager)
+
+        assert result["approved_phase"] == "qa"
         assert result["next_phase"] is None
 
         # DB 확인: 마지막 phase 유지 + status=completed
         session = await session_manager.get(session_id)
-        assert session["workflow_phase"] == "implement"
+        assert session["workflow_phase"] == "qa"
         assert session["workflow_phase_status"] == "completed"
 
     async def test_approve_sets_artifact_status_approved(
@@ -756,7 +782,7 @@ class TestFullWorkflowIntegration:
     async def test_complete_workflow_lifecycle(
         self, workflow_service, session_manager, test_session
     ):
-        """research → plan → implement 전체 흐름을 검증한다."""
+        """research → plan → implement → qa 전체 흐름을 검증한다."""
         session_id = test_session["id"]
 
         # 1. 워크플로우 시작
@@ -787,14 +813,19 @@ class TestFullWorkflowIntegration:
         assert approve2["approved_phase"] == "plan"
         assert approve2["next_phase"] == "implement"
 
-        # 6. implement 승인 → 워크플로우 종료
+        # 6. implement 승인 → qa 전환
         approve3 = await workflow_service.approve_phase(session_id, session_manager)
         assert approve3["approved_phase"] == "implement"
-        assert approve3["next_phase"] is None
+        assert approve3["next_phase"] == "qa"
+
+        # 7. qa 승인 → 워크플로우 종료
+        approve4 = await workflow_service.approve_phase(session_id, session_manager)
+        assert approve4["approved_phase"] == "qa"
+        assert approve4["next_phase"] is None
 
         # 최종 상태 확인: 마지막 phase 유지 + status=completed
         session = await session_manager.get(session_id)
-        assert session["workflow_phase"] == "implement"
+        assert session["workflow_phase"] == "qa"
         assert session["workflow_phase_status"] == "completed"
 
         # 전체 아티팩트 확인
