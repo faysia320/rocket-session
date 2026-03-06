@@ -1,8 +1,10 @@
 """Anthropic OAuth API를 통한 사용량 조회 서비스."""
 
 import asyncio
+import functools
 import json
 import logging
+import subprocess
 import time
 from pathlib import Path
 
@@ -21,6 +23,26 @@ logger = logging.getLogger(__name__)
 _API_URL = "https://api.anthropic.com/api/oauth/usage"
 _TIMEOUT = USAGE_HTTP_TIMEOUT
 _CACHE_TTL = USAGE_CACHE_TTL
+_FALLBACK_VERSION = "2.1.51"
+
+
+@functools.lru_cache(maxsize=1)
+def _detect_claude_code_version() -> str:
+    """설치된 Claude Code 버전을 감지합니다 (1회만 실행, 캐시)."""
+    try:
+        result = subprocess.run(
+            ["claude", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            for part in result.stdout.strip().split():
+                if part and part[0].isdigit():
+                    return part
+    except Exception:
+        pass
+    return _FALLBACK_VERSION
 
 
 def _find_credentials_path() -> Path | None:
@@ -63,8 +85,13 @@ class UsageService:
         """서버 시작 시 백그라운드에서 캐시를 워밍업합니다."""
         logger.info("사용량 캐시 워밍업 시작")
         try:
-            await self.get_usage()
-            logger.info("사용량 캐시 워밍업 완료")
+            result = await self.get_usage()
+            if result.available:
+                logger.info("사용량 캐시 워밍업 완료")
+            else:
+                logger.warning(
+                    "사용량 캐시 워밍업 완료 (에러 상태: %s)", result.error,
+                )
         except Exception as e:
             logger.warning("사용량 캐시 워밍업 실패: %s", e)
 
@@ -76,6 +103,12 @@ class UsageService:
         """
         now = time.time()
         if self._cache and (now - self._cache_time) < _CACHE_TTL:
+            if not self._cache.available:
+                logger.debug(
+                    "캐시된 에러 상태 반환: %s (남은 TTL=%.0f초)",
+                    self._cache.error,
+                    _CACHE_TTL - (now - self._cache_time),
+                )
             return self._cache
 
         # 이미 누군가 fetch 중이면 결과를 기다림
@@ -126,12 +159,13 @@ class UsageService:
         try:
             # 재사용 가능한 HTTP 클라이언트로 연결 풀링 활용
             client = await self._get_client()
+            version = _detect_claude_code_version()
             resp = await client.get(
                 _API_URL,
                 headers={
                     "Authorization": f"Bearer {token}",
                     "anthropic-beta": "oauth-2025-04-20",
-                    "User-Agent": "claude-code/2.0.32",
+                    "User-Agent": f"claude-code/{version}",
                 },
             )
             resp.raise_for_status()
@@ -162,12 +196,18 @@ class UsageService:
                 retry_after = self._parse_retry_after(
                     e.response.headers.get("retry-after"),
                 )
+                body_hint = e.response.text[:100].strip()
                 logger.warning(
-                    "Rate limited – retry_after=%.0f초", retry_after,
+                    "Rate limited – retry_after=%.0f초, body=%s",
+                    retry_after,
+                    body_hint,
                 )
+                error_msg = "Rate limited"
+                if body_hint:
+                    error_msg = f"Rate limited: {body_hint}"
                 return UsageInfo(
                     available=False,
-                    error="Rate limited",
+                    error=error_msg,
                     retry_after=retry_after,
                 )
             return UsageInfo(
