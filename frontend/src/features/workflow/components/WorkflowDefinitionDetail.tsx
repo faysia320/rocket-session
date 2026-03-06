@@ -69,6 +69,7 @@ export function WorkflowDefinitionDetail({
           constraints: s.constraints,
           order_index: s.order_index,
           review_required: s.review_required,
+          run_validation: s.run_validation,
         })),
       });
       setIsEditing(false);
@@ -100,6 +101,7 @@ export function WorkflowDefinitionDetail({
           constraints: s.constraints,
           order_index: s.order_index,
           review_required: s.review_required,
+          run_validation: s.run_validation,
         })),
       });
       setIsEditing(false);
@@ -322,6 +324,15 @@ export function WorkflowDefinitionDetail({
                               className="font-mono text-2xs px-1.5 py-0 text-warning border-warning/30"
                             >
                               승인 필요
+                            </Badge>
+                          ) : null}
+
+                          {step.run_validation ? (
+                            <Badge
+                              variant="outline"
+                              className="font-mono text-2xs px-1.5 py-0 text-chart-2 border-chart-2/30"
+                            >
+                              검증
                             </Badge>
                           ) : null}
                         </div>
