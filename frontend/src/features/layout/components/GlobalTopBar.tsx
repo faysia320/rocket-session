@@ -5,6 +5,7 @@ import {
   AlertCircle,
   BarChart3,
   BookOpen,
+  Clock,
   GitBranch,
   MessageSquare,
   PanelLeft,
@@ -359,15 +360,26 @@ function UsageIndicator() {
   }
 
   if (isError || !data || !data.available) {
+    const isRateLimited = data?.retry_after != null;
+    const retryMin = data?.retry_after ? Math.ceil(data.retry_after / 60) : null;
+
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="flex items-center gap-1 text-2xs text-muted-foreground mr-1">
-            <AlertCircle className="h-3 w-3" />
+            {isRateLimited ? (
+              <Clock className="h-3 w-3" />
+            ) : (
+              <AlertCircle className="h-3 w-3" />
+            )}
           </span>
         </TooltipTrigger>
         <TooltipContent side="bottom">
-          {data?.error ? data.error : "사용량 정보를 가져올 수 없습니다"}
+          {isRateLimited
+            ? `사용량 조회 제한됨 (${retryMin}분 후 재시도)`
+            : data?.error
+              ? "사용량 정보를 일시적으로 가져올 수 없습니다"
+              : "사용량 정보를 가져올 수 없습니다"}
         </TooltipContent>
       </Tooltip>
     );

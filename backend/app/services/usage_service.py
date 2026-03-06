@@ -74,6 +74,8 @@ class UsageService:
         # inflight dedup: 동시 요청을 하나의 fetch로 통합
         self._inflight_event: asyncio.Event | None = None
         self._inflight_result: UsageInfo | None = None
+        # 연속 429 카운터 (지수 백오프에 사용)
+        self._consecutive_429: int = 0
 
     async def _get_client(self) -> httpx.AsyncClient:
         """재사용 가능한 HTTP 클라이언트 반환."""
@@ -136,16 +138,35 @@ class UsageService:
                 return self._cache
 
             result = await self._fetch_usage()
-            self._cache = result
             if result.available:
+                self._cache = result
                 self._cache_time = now
+                self._consecutive_429 = 0
             elif result.retry_after is not None:
-                # 429 Rate Limit: Retry-After 값만큼 캐싱
-                self._cache_time = now - _CACHE_TTL + result.retry_after
+                # 429 Rate Limit: 지수 백오프 적용
+                self._consecutive_429 += 1
+                backoff_multiplier = min(
+                    2 ** (self._consecutive_429 - 1), 8,
+                )
+                effective_retry = min(
+                    result.retry_after * backoff_multiplier, 600.0,
+                )
+                logger.warning(
+                    "Rate limit 지수 백오프: consecutive=%d, "
+                    "base=%.0f초, effective=%.0f초",
+                    self._consecutive_429,
+                    result.retry_after,
+                    effective_retry,
+                )
+                self._cache = result.model_copy(
+                    update={"retry_after": effective_retry},
+                )
+                self._cache_time = now - _CACHE_TTL + effective_retry
             else:
+                self._cache = result
                 self._cache_time = now - _CACHE_TTL + USAGE_CACHE_ERROR_TTL
-            self._inflight_result = result
-            return result
+            self._inflight_result = self._cache
+            return self._cache
         finally:
             event = self._inflight_event
             self._inflight_event = None
