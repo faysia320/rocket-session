@@ -166,6 +166,7 @@ class WorkflowService:
             workflow_definition_id=definition.id,
             workflow_phase=first.name,
             workflow_phase_status="in_progress",
+            workflow_original_prompt=None,
         )
         logger.info("워크플로우 시작: session=%s, phase=%s", session_id, first.name)
         return {"phase": first.name, "status": "in_progress"}

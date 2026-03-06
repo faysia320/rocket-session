@@ -10,7 +10,7 @@ import { useChatSessionActions } from "../hooks/useChatSessionActions";
 import { useWorkflowActions } from "@/features/workflow/hooks/useWorkflowActions";
 import { WorkflowProgressBar } from "@/features/workflow/components/WorkflowProgressBar";
 import { ArtifactViewer } from "@/features/workflow/components/ArtifactViewer";
-import { useWorkflowStatus, workflowKeys } from "@/features/workflow/hooks/useWorkflow";
+import { useWorkflowStatus, useStartWorkflow, workflowKeys } from "@/features/workflow/hooks/useWorkflow";
 import { ChatMessageList } from "./ChatMessageList";
 import { ChatDialogs } from "./ChatDialogs";
 import { ChatSearchBar } from "./ChatSearchBar";
@@ -313,6 +313,17 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     workflowSteps,
   });
 
+  // 워크플로우 새 사이클 시작
+  const startWorkflowMutation = useStartWorkflow(sessionId);
+  const handleNewCycle = useCallback(
+    async (startFromStep?: string) => {
+      await startWorkflowMutation.mutateAsync({
+        start_from_step: startFromStep,
+      });
+    },
+    [startWorkflowMutation],
+  );
+
   // 상태바에서 아티팩트 뷰어 열기 (phase 바인딩)
   const handleOpenArtifactFromStatusBar = useCallback(() => {
     const phase = sessionInfo?.workflow_phase;
@@ -545,6 +556,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
           queryClient.invalidateQueries({ queryKey: workflowKeys.status(sessionId) });
         }}
+        onNewCycle={handleNewCycle}
       />
 
       <PinnedTodoBar todos={pinnedTodos} />
