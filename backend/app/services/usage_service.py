@@ -6,7 +6,9 @@ import json
 import logging
 import subprocess
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -21,9 +23,13 @@ from app.schemas.usage import PeriodUsage, UsageInfo
 logger = logging.getLogger(__name__)
 
 _API_URL = "https://api.anthropic.com/api/oauth/usage"
+_TOKEN_URL = "https://platform.claude.com/v1/oauth/token"
 _TIMEOUT = USAGE_HTTP_TIMEOUT
 _CACHE_TTL = USAGE_CACHE_TTL
 _FALLBACK_VERSION = "2.1.51"
+
+# 토큰 만료 전 갱신 여유 시간 (초)
+_TOKEN_REFRESH_MARGIN = 300
 
 
 @functools.lru_cache(maxsize=1)
@@ -149,11 +155,26 @@ class UsageService:
     async def _fetch_usage(self) -> UsageInfo:
         """Anthropic OAuth API에서 사용량을 조회합니다."""
         # 블로킹 파일 I/O를 이벤트 루프 외부에서 실행
-        token = await asyncio.to_thread(self._read_access_token)
-        if not token:
+        creds = await asyncio.to_thread(self._read_credentials)
+        if not creds:
             return UsageInfo(
                 available=False,
                 error="OAuth 자격증명을 찾을 수 없습니다 (~/.claude/.credentials.json)",
+            )
+
+        token = creds.get("accessToken")
+        if not token:
+            return UsageInfo(
+                available=False,
+                error="accessToken이 자격증명 파일에 없습니다",
+            )
+
+        # 토큰 만료 체크 + 자동 갱신
+        token = await self._ensure_valid_token(creds, token)
+        if not token:
+            return UsageInfo(
+                available=False,
+                error="OAuth 토큰 갱신 실패",
             )
 
         try:
@@ -164,6 +185,7 @@ class UsageService:
                 _API_URL,
                 headers={
                     "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
                     "anthropic-beta": "oauth-2025-04-20",
                     "User-Agent": f"claude-code/{version}",
                 },
@@ -220,6 +242,144 @@ class UsageService:
             logger.error("OAuth API 호출 실패: %s", e)
             return UsageInfo(available=False, error=str(e))
 
+    async def _ensure_valid_token(
+        self,
+        creds: dict[str, Any],
+        current_token: str,
+    ) -> str | None:
+        """토큰 만료 여부를 확인하고, 만료 시 자동 갱신합니다.
+
+        Returns:
+            유효한 access token 또는 갱신 실패 시 None.
+        """
+        expires_at = creds.get("expiresAt")
+        if not expires_at:
+            # expiresAt 필드가 없으면 갱신 불가, 현재 토큰으로 시도
+            return current_token
+
+        try:
+            if isinstance(expires_at, str):
+                expiry = datetime.fromisoformat(
+                    expires_at.replace("Z", "+00:00"),
+                )
+            else:
+                # epoch milliseconds
+                expiry = datetime.fromtimestamp(
+                    expires_at / 1000, tz=timezone.utc,
+                )
+
+            remaining = (expiry - datetime.now(timezone.utc)).total_seconds()
+            if remaining > _TOKEN_REFRESH_MARGIN:
+                return current_token  # 아직 유효
+
+            logger.info(
+                "OAuth 토큰 만료 임박 (%.0f초 남음), 갱신 시도", remaining,
+            )
+        except (ValueError, TypeError, OSError) as e:
+            logger.warning("expiresAt 파싱 실패 (%s), 현재 토큰으로 시도", e)
+            return current_token
+
+        # 갱신 시도
+        refresh_token = creds.get("refreshToken")
+        client_id = creds.get("clientId")
+        if not refresh_token or not client_id:
+            logger.warning(
+                "refreshToken 또는 clientId 없음, 토큰 갱신 불가 "
+                "(refreshToken=%s, clientId=%s)",
+                "있음" if refresh_token else "없음",
+                "있음" if client_id else "없음",
+            )
+            return current_token
+
+        return await self._refresh_token(creds, refresh_token, client_id)
+
+    async def _refresh_token(
+        self,
+        creds: dict[str, Any],
+        refresh_token: str,
+        client_id: str,
+    ) -> str | None:
+        """OAuth refresh_token을 사용하여 새 access_token을 발급받습니다."""
+        payload = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+            "client_id": client_id,
+        }
+
+        try:
+            client = await self._get_client()
+            resp = await client.post(
+                _TOKEN_URL,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+            new_access_token = data.get("access_token")
+            new_refresh_token = data.get("refresh_token", refresh_token)
+            expires_in = data.get("expires_in", 3600)
+
+            if not new_access_token:
+                logger.error("토큰 갱신 응답에 access_token 없음")
+                return None
+
+            # 자격증명 파일 업데이트
+            new_expires_at = datetime.fromtimestamp(
+                time.time() + expires_in, tz=timezone.utc,
+            ).isoformat()
+
+            await asyncio.to_thread(
+                self._update_credentials,
+                creds,
+                new_access_token,
+                new_refresh_token,
+                new_expires_at,
+            )
+
+            logger.info(
+                "OAuth 토큰 갱신 성공 (expires_in=%d초)", expires_in,
+            )
+            return new_access_token
+
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                "토큰 갱신 HTTP 오류: %d %s",
+                e.response.status_code,
+                e.response.text[:200],
+            )
+            return None
+        except Exception as e:
+            logger.error("토큰 갱신 실패: %s", e)
+            return None
+
+    @staticmethod
+    def _update_credentials(
+        creds: dict[str, Any],
+        access_token: str,
+        refresh_token: str,
+        expires_at: str,
+    ) -> None:
+        """자격증명 파일에 갱신된 토큰을 저장합니다."""
+        cred_path = _find_credentials_path()
+        if not cred_path:
+            logger.warning("자격증명 파일을 찾을 수 없어 토큰 저장 불가")
+            return
+        try:
+            full_cred = json.loads(cred_path.read_text(encoding="utf-8"))
+            oauth_data = full_cred.get("claudeAiOauth", {})
+            oauth_data["accessToken"] = access_token
+            oauth_data["refreshToken"] = refresh_token
+            oauth_data["expiresAt"] = expires_at
+            full_cred["claudeAiOauth"] = oauth_data
+            cred_path.write_text(
+                json.dumps(full_cred, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            logger.debug("자격증명 파일 업데이트 완료")
+        except Exception as e:
+            logger.error("자격증명 파일 저장 실패: %s", e)
+
     @staticmethod
     def _parse_retry_after(header_value: str | None) -> float:
         """Retry-After 헤더를 파싱하여 대기 시간(초)을 반환합니다."""
@@ -233,18 +393,19 @@ class UsageService:
             return USAGE_CACHE_RATE_LIMIT_TTL
 
     @staticmethod
-    def _read_access_token() -> str | None:
-        """~/.claude/.credentials.json에서 OAuth accessToken을 읽습니다."""
+    def _read_credentials() -> dict[str, Any] | None:
+        """~/.claude/.credentials.json에서 OAuth 자격증명을 읽습니다."""
         cred_path = _find_credentials_path()
         if not cred_path:
             logger.warning("자격증명 파일을 찾을 수 없습니다")
             return None
         try:
             cred = json.loads(cred_path.read_text(encoding="utf-8"))
-            token = cred.get("claudeAiOauth", {}).get("accessToken")
-            if not token:
-                logger.warning("accessToken이 자격증명 파일에 없습니다")
-            return token
+            oauth = cred.get("claudeAiOauth", {})
+            if not oauth:
+                logger.warning("claudeAiOauth 섹션이 자격증명 파일에 없습니다")
+                return None
+            return oauth
         except Exception as e:
             logger.error("자격증명 파일 읽기 실패: %s", e)
             return None

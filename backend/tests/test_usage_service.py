@@ -9,6 +9,15 @@ import pytest
 from app.schemas.usage import UsageInfo
 
 
+# 테스트용 OAuth 자격증명 (만료가 먼 미래)
+_TEST_CREDS = {
+    "accessToken": "test-token",
+    "refreshToken": "test-refresh",
+    "expiresAt": "2099-12-31T23:59:59Z",
+    "clientId": "test-client-id",
+}
+
+
 @pytest.mark.asyncio
 class TestUsageService:
     """Test suite for UsageService."""
@@ -26,7 +35,7 @@ class TestUsageService:
         mock_resp.raise_for_status = MagicMock()
 
         with patch.object(
-            usage_service, "_read_access_token", return_value="test-token"
+            usage_service, "_read_credentials", return_value=_TEST_CREDS
         ):
             with patch(
                 "httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp
@@ -53,7 +62,7 @@ class TestUsageService:
         mock_resp.raise_for_status = MagicMock()
 
         with patch.object(
-            usage_service, "_read_access_token", return_value="test-token"
+            usage_service, "_read_credentials", return_value=_TEST_CREDS
         ):
             with patch(
                 "httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp
@@ -86,7 +95,7 @@ class TestUsageService:
         mock_resp2.raise_for_status = MagicMock()
 
         with patch.object(
-            usage_service, "_read_access_token", return_value="test-token"
+            usage_service, "_read_credentials", return_value=_TEST_CREDS
         ):
             with patch(
                 "httpx.AsyncClient.get",
@@ -100,9 +109,9 @@ class TestUsageService:
         assert result1.five_hour.utilization == 10.0
         assert result2.five_hour.utilization == 50.0
 
-    async def test_get_usage_no_token(self, usage_service):
-        """Test get_usage returns unavailable when no token found."""
-        with patch.object(usage_service, "_read_access_token", return_value=None):
+    async def test_get_usage_no_credentials(self, usage_service):
+        """Test get_usage returns unavailable when no credentials found."""
+        with patch.object(usage_service, "_read_credentials", return_value=None):
             result = await usage_service.get_usage()
 
         assert result.available is False
@@ -116,7 +125,7 @@ class TestUsageService:
         http_error = httpx.HTTPStatusError("", request=MagicMock(), response=mock_resp)
 
         with patch.object(
-            usage_service, "_read_access_token", return_value="test-token"
+            usage_service, "_read_credentials", return_value=_TEST_CREDS
         ):
             with patch(
                 "httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=http_error
@@ -129,7 +138,7 @@ class TestUsageService:
     async def test_get_usage_timeout(self, usage_service):
         """Test get_usage handles timeout gracefully."""
         with patch.object(
-            usage_service, "_read_access_token", return_value="test-token"
+            usage_service, "_read_credentials", return_value=_TEST_CREDS
         ):
             with patch(
                 "httpx.AsyncClient.get",
@@ -150,7 +159,7 @@ class TestUsageService:
         mock_resp.raise_for_status = MagicMock()
 
         with patch.object(
-            usage_service, "_read_access_token", return_value="test-token"
+            usage_service, "_read_credentials", return_value=_TEST_CREDS
         ):
             with patch(
                 "httpx.AsyncClient.get", new_callable=AsyncMock, return_value=mock_resp
@@ -180,3 +189,81 @@ class TestUsageService:
         ):
             # Should not raise
             await usage_service.warmup()
+
+    async def test_token_refresh_on_expiry(self, usage_service):
+        """Test token is refreshed when expired."""
+        expired_creds = {
+            "accessToken": "old-token",
+            "refreshToken": "test-refresh",
+            "expiresAt": "2020-01-01T00:00:00Z",  # 과거 시점
+            "clientId": "test-client-id",
+        }
+
+        # 토큰 갱신 응답
+        refresh_resp = MagicMock()
+        refresh_resp.status_code = 200
+        refresh_resp.json.return_value = {
+            "access_token": "new-token",
+            "refresh_token": "new-refresh",
+            "expires_in": 3600,
+        }
+        refresh_resp.raise_for_status = MagicMock()
+
+        # Usage API 응답
+        usage_resp = MagicMock()
+        usage_resp.status_code = 200
+        usage_resp.json.return_value = {
+            "five_hour": {"utilization": 25.0, "resets_at": None},
+            "seven_day": {"utilization": 40.0, "resets_at": None},
+        }
+        usage_resp.raise_for_status = MagicMock()
+
+        with patch.object(
+            usage_service, "_read_credentials", return_value=expired_creds
+        ):
+            with patch.object(
+                usage_service, "_update_credentials"
+            ):
+                with patch(
+                    "httpx.AsyncClient.post",
+                    new_callable=AsyncMock,
+                    return_value=refresh_resp,
+                ):
+                    with patch(
+                        "httpx.AsyncClient.get",
+                        new_callable=AsyncMock,
+                        return_value=usage_resp,
+                    ):
+                        result = await usage_service.get_usage()
+
+        assert result.available is True
+        assert result.five_hour.utilization == 25.0
+
+    async def test_no_refresh_token_uses_current(self, usage_service):
+        """Test falls back to current token when refreshToken is missing."""
+        no_refresh_creds = {
+            "accessToken": "old-token",
+            "expiresAt": "2020-01-01T00:00:00Z",  # 만료됨
+            # refreshToken 없음
+        }
+
+        usage_resp = MagicMock()
+        usage_resp.status_code = 200
+        usage_resp.json.return_value = {
+            "five_hour": {"utilization": 10.0, "resets_at": None},
+            "seven_day": {"utilization": 20.0, "resets_at": None},
+        }
+        usage_resp.raise_for_status = MagicMock()
+
+        with patch.object(
+            usage_service, "_read_credentials", return_value=no_refresh_creds
+        ):
+            with patch(
+                "httpx.AsyncClient.get",
+                new_callable=AsyncMock,
+                return_value=usage_resp,
+            ):
+                result = await usage_service.get_usage()
+
+        # refreshToken 없으면 현재 토큰으로 시도
+        assert result.available is True
