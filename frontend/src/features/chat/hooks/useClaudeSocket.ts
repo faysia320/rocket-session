@@ -356,6 +356,35 @@ export function useClaudeSocket(sessionId: string) {
         break;
       }
 
+      case "workflow_validation_failed": {
+        const retryCount = (data.retry_count as number) ?? 0;
+        const maxRetries = (data.max_retries as number) ?? 3;
+        toast.warning(
+          `검증 실패 (${retryCount}/${maxRetries}): Implement 단계로 돌아가 자동 수정합니다`,
+          { duration: 8000 },
+        );
+        dispatch({
+          type: "ADD_SYSTEM_MESSAGE",
+          text: `검증 실패 → Implement 단계 자동 복귀 (시도 ${retryCount}/${maxRetries})`,
+        });
+        workflowDataChangedRef.current?.("workflow_validation_failed");
+        break;
+      }
+
+      case "workflow_validation_max_retries": {
+        const retryCount = (data.retry_count as number) ?? 0;
+        toast.error(
+          `검증 재시도 ${retryCount}회 초과. QA 단계로 진행합니다 (수동 확인 필요)`,
+          { duration: 10000 },
+        );
+        dispatch({
+          type: "ADD_SYSTEM_MESSAGE",
+          text: `검증 재시도 초과 (${retryCount}회) → QA 단계로 진행 (수동 확인 필요)`,
+        });
+        workflowDataChangedRef.current?.("workflow_validation_max_retries");
+        break;
+      }
+
       case "raw":
         dispatch({ type: "WS_RAW", text: data.text as string });
         break;

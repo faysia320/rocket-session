@@ -7,6 +7,7 @@ import {
   HardDrive,
   Loader2,
   Plus,
+  Settings,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useWorkspaces, useDeleteWorkspace, useSyncWorkspace } from "../hooks/useWorkspaces";
 import { WorkspaceCreateDialog } from "./WorkspaceCreateDialog";
+import { WorkspaceSettingsSheet } from "./WorkspaceSettingsSheet";
 import type { WorkspaceInfo } from "@/types/workspace";
 import { toast } from "sonner";
 
@@ -30,6 +32,7 @@ const STATUS_CONFIG: Record<
 function WorkspaceCard({ workspace }: { workspace: WorkspaceInfo }) {
   const deleteMutation = useDeleteWorkspace();
   const syncMutation = useSyncWorkspace();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const statusCfg = STATUS_CONFIG[workspace.status] ?? {
     label: workspace.status,
@@ -143,6 +146,15 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceInfo }) {
         <Button
           variant="ghost"
           size="sm"
+          className="font-mono text-2xs h-7 text-muted-foreground hover:text-foreground"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="워크스페이스 설정"
+        >
+          <Settings className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           className={cn("font-mono text-2xs h-7 text-muted-foreground hover:text-destructive")}
           onClick={handleDelete}
           disabled={deleteMutation.isPending || workspace.status === "deleting"}
@@ -151,6 +163,11 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceInfo }) {
           <Trash2 className="h-3 w-3" />
         </Button>
       </div>
+      <WorkspaceSettingsSheet
+        workspace={workspace}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
     </div>
   );
 }
