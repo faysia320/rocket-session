@@ -5,7 +5,7 @@ import { useApprovePhase, useRequestRevision, workflowKeys } from "./useWorkflow
 import { workflowApi } from "@/lib/api/workflow.api";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
 
-import type { ResolvedWorkflowStep } from "@/types/workflow";
+import type { ResolvedWorkflowStep, ValidationResult } from "@/types/workflow";
 
 interface UseWorkflowActionsParams {
   sessionId: string;
@@ -59,11 +59,24 @@ export function useWorkflowActions({
     }
   }, [sessionId, workflowPhase, workflowPhaseStatus, artifactViewerOpen]);
 
+  const [lastValidationResult, setLastValidationResult] = useState<ValidationResult | null>(null);
+
   const handleAdvancePhase = useCallback(
-    async (feedback?: string) => {
+    async (feedback?: string, force?: boolean) => {
       try {
-        const result = await approveMutation.mutateAsync({ feedback });
-        const nextPhase = (result as Record<string, unknown>).next_phase as string | null;
+        const result = await approveMutation.mutateAsync({ feedback, force });
+        const data = result as Record<string, unknown>;
+
+        // 검증 실패 응답 처리
+        if (data.validation_failed) {
+          const vr = data.validation_result as ValidationResult;
+          setLastValidationResult(vr);
+          toast.error("검증에 실패했습니다. 결과를 확인하세요.");
+          return;
+        }
+
+        setLastValidationResult(null);
+        const nextPhase = data.next_phase as string | null;
 
         if (nextPhase) {
           const nextStep = workflowSteps?.find((s) => s.name === nextPhase);
@@ -98,9 +111,12 @@ export function useWorkflowActions({
   );
 
   const handleRequestRevision = useCallback(
-    async (feedback?: string) => {
+    async (feedback?: string, validationSummary?: string) => {
       try {
-        await revisionMutation.mutateAsync({ feedback: feedback || "" });
+        await revisionMutation.mutateAsync({
+          feedback: feedback || "",
+          validation_summary: validationSummary ?? null,
+        });
         toast.success("수정 요청이 전송되었습니다. 계획을 다시 작성합니다…");
 
         queryClient.invalidateQueries({
@@ -155,5 +171,6 @@ export function useWorkflowActions({
     isApproving: approveMutation.isPending,
     isRequestingRevision: revisionMutation.isPending,
     isLastPhase,
+    lastValidationResult,
   };
 }

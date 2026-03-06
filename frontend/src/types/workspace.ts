@@ -1,5 +1,12 @@
 export type WorkspaceStatus = "cloning" | "ready" | "error" | "deleting";
 
+export interface ValidationCommand {
+  name: string;
+  command: string;
+  run_on: string[];
+  timeout_seconds: number;
+}
+
 export interface WorkspaceInfo {
   id: string;
   name: string;
@@ -12,6 +19,7 @@ export interface WorkspaceInfo {
   last_synced_at?: string | null;
   created_at: string;
   updated_at?: string | null;
+  validation_commands?: ValidationCommand[] | null;
   current_branch?: string | null;
   is_dirty?: boolean | null;
   ahead?: number | null;
@@ -26,6 +34,7 @@ export interface CreateWorkspaceRequest {
 
 export interface UpdateWorkspaceRequest {
   name?: string | null;
+  validation_commands?: ValidationCommand[] | null;
 }
 
 export interface WorkspaceSyncRequest {

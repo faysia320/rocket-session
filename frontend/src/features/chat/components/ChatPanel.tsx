@@ -304,6 +304,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     isApproving,
     isRequestingRevision,
     isLastPhase,
+    lastValidationResult,
   } = useWorkflowActions({
     sessionId,
     sendPrompt,
@@ -661,6 +662,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           isRequestingRevision={isRequestingRevision}
           disabled={status === "running"}
           isLastPhase={isLastPhase}
+          validationResult={lastValidationResult}
         />
       </ErrorBoundary>
     </div>

@@ -8,6 +8,7 @@ import type {
   StartWorkflowRequest,
   UpdateAnnotationRequest,
   UpdateArtifactRequest,
+  ValidationResult,
   WorkflowStatusResponse,
 } from "@/types/workflow";
 
@@ -47,4 +48,7 @@ export const workflowApi = {
 
   requestRevision: (sessionId: string, req: RequestRevisionRequest) =>
     api.post<Record<string, unknown>>(`${base(sessionId)}/request-revision`, req),
+
+  runValidation: (sessionId: string) =>
+    api.post<ValidationResult>(`${base(sessionId)}/validate`, {}),
 };

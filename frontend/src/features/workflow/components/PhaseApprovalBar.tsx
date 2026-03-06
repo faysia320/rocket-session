@@ -1,5 +1,5 @@
 import { memo, useState, useCallback } from "react";
-import { Check, RotateCcw, Pencil, GitCommit } from "lucide-react";
+import { Check, RotateCcw, Pencil, GitCommit, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -13,11 +13,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { parseQaChecklist } from "../utils/parseQaChecklist";
+import type { ValidationResult } from "@/types/workflow";
 
 interface PhaseApprovalBarProps {
   phase?: string;
-  onApprove?: (feedback?: string) => void;
-  onRequestRevision?: (feedback?: string) => void;
+  onApprove?: (feedback?: string, force?: boolean) => void;
+  onRequestRevision?: (feedback?: string, validationSummary?: string) => void;
   onToggleEdit?: () => void;
   isApproving?: boolean;
   isRequestingRevision?: boolean;
@@ -26,6 +27,7 @@ interface PhaseApprovalBarProps {
   pendingAnnotationCount?: number;
   isLastPhase?: boolean;
   artifactContent?: string;
+  validationResult?: ValidationResult | null;
 }
 
 export const PhaseApprovalBar = memo(function PhaseApprovalBar({
@@ -40,17 +42,25 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
   pendingAnnotationCount = 0,
   isLastPhase = false,
   artifactContent,
+  validationResult,
 }: PhaseApprovalBarProps) {
   "use memo";
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [qaWarningOpen, setQaWarningOpen] = useState(false);
   const [qaFailCount, setQaFailCount] = useState(0);
+  const [validationWarningOpen, setValidationWarningOpen] = useState(false);
 
   const hasPendingAnnotations = pendingAnnotationCount > 0;
+  const hasValidationFailure = validationResult != null && !validationResult.passed;
 
   const handleApprove = useCallback(() => {
     onApprove?.();
+  }, [onApprove]);
+
+  const handleForceApprove = useCallback(() => {
+    setValidationWarningOpen(false);
+    onApprove?.(undefined, true);
   }, [onApprove]);
 
   const handleRevisionSubmit = useCallback(() => {
@@ -80,6 +90,66 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
 
   return (
     <>
+      {/* 검증 실패 결과 배너 */}
+      {hasValidationFailure ? (
+        <div className="border-t border-destructive/30 bg-destructive/5 px-4 py-2.5 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-destructive">
+            <ShieldAlert className="w-4 h-4" />
+            검증 실패
+          </div>
+          <div className="space-y-1">
+            {validationResult.results.map((r) => (
+              <div
+                key={r.name}
+                className="flex items-center gap-2 text-xs font-mono"
+              >
+                {r.passed ? (
+                  <ShieldCheck className="w-3.5 h-3.5 text-chart-2 shrink-0" />
+                ) : (
+                  <ShieldAlert className="w-3.5 h-3.5 text-destructive shrink-0" />
+                )}
+                <span className={r.passed ? "text-muted-foreground" : "text-destructive"}>
+                  {r.name}
+                </span>
+                <span className="text-muted-foreground">
+                  (exit={r.exit_code}, {r.duration_ms}ms)
+                </span>
+              </div>
+            ))}
+          </div>
+          {validationResult.results.some((r) => !r.passed && (r.stderr || r.stdout)) ? (
+            <pre className="text-2xs text-muted-foreground bg-muted rounded p-2 max-h-32 overflow-auto whitespace-pre-wrap">
+              {validationResult.results
+                .filter((r) => !r.passed)
+                .map((r) => r.stderr || r.stdout)
+                .join("\n---\n")
+                .slice(0, 1000)}
+            </pre>
+          ) : null}
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onRequestRevision?.(undefined, validationResult.summary);
+              }}
+              disabled={isRequestingRevision}
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+              {isRequestingRevision ? "요청 중…" : "수정 요청 (검증 결과 포함)"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setValidationWarningOpen(true)}
+              className="text-muted-foreground"
+            >
+              강제 승인
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {showRevisionInput ? (
         <div className="border-t border-border px-4 py-3 space-y-2 bg-card">
           {hasPendingAnnotations ? (
@@ -112,7 +182,7 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
             </Button>
           </div>
         </div>
-      ) : (
+      ) : !hasValidationFailure ? (
         <div className="border-t border-border px-4 py-2.5 flex items-center gap-2 justify-end bg-card">
           {onToggleEdit ? (
             <Button
@@ -157,7 +227,7 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
             </Button>
           )}
         </div>
-      )}
+      ) : null}
       <AlertDialog open={qaWarningOpen} onOpenChange={setQaWarningOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -169,6 +239,20 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmCommit}>그래도 커밋</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={validationWarningOpen} onOpenChange={setValidationWarningOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>검증 실패를 무시하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              검증에 실패한 항목이 있습니다. 강제 승인하면 검증을 건너뛰고 다음 단계로 진행합니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleForceApprove}>강제 승인</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -19,6 +19,7 @@ export interface WorkflowStepConfig {
   constraints: string;
   order_index: number;
   review_required: boolean;
+  run_validation: boolean;
 }
 
 // 하위 호환 별칭
@@ -96,10 +97,30 @@ export interface UpdateArtifactRequest {
 
 export interface ApprovePhaseRequest {
   feedback?: string | null;
+  force?: boolean;
 }
 
 export interface RequestRevisionRequest {
   feedback: string;
+  validation_summary?: string | null;
+}
+
+// ── Validation Pipeline Types ────────────────────────────
+
+export interface ValidationCommandResult {
+  name: string;
+  command: string;
+  passed: boolean;
+  exit_code: number;
+  stdout: string;
+  stderr: string;
+  duration_ms: number;
+}
+
+export interface ValidationResult {
+  passed: boolean;
+  results: ValidationCommandResult[];
+  summary: string;
 }
 
 export interface CreateWorkflowDefinitionRequest {

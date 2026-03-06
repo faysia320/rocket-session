@@ -50,6 +50,7 @@ function createDefaultStep(orderIndex: number): WorkflowStepConfig {
     constraints: "readonly",
     order_index: orderIndex,
     review_required: false,
+    run_validation: false,
   };
 }
 
@@ -121,6 +122,14 @@ function SortableStepCard({
                 className="font-mono text-2xs px-1.5 py-0 shrink-0 text-warning border-warning/30"
               >
                 승인
+              </Badge>
+            ) : null}
+            {step.run_validation ? (
+              <Badge
+                variant="outline"
+                className="font-mono text-2xs px-1.5 py-0 shrink-0 text-chart-2 border-chart-2/30"
+              >
+                검증
               </Badge>
             ) : null}
             <Badge variant="secondary" className="font-mono text-2xs shrink-0">
@@ -243,7 +252,7 @@ function SortableStepCard({
                 />
               </div>
 
-              {/* review_required */}
+              {/* review_required + run_validation */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -257,6 +266,22 @@ function SortableStepCard({
                   >
                     승인 필요
                   </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`step-run-validation-${index}`}
+                    checked={step.run_validation}
+                    onCheckedChange={(checked) => onUpdate({ run_validation: checked === true })}
+                  />
+                  <Label
+                    htmlFor={`step-run-validation-${index}`}
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    검증 실행
+                  </Label>
+                  <span className="text-2xs text-muted-foreground">
+                    (승인 시 워크스페이스 검증 명령 자동 실행)
+                  </span>
                 </div>
               </div>
             </div>

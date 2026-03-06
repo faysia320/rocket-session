@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { PhaseApprovalBar } from "./PhaseApprovalBar";
 import { QAChecklistCard } from "./QAChecklistCard";
 import { parseQaChecklist } from "../utils/parseQaChecklist";
-import type { SessionArtifactInfo, ArtifactAnnotationInfo, AnnotationType } from "@/types/workflow";
+import type { SessionArtifactInfo, ArtifactAnnotationInfo, AnnotationType, ValidationResult } from "@/types/workflow";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "초안",
@@ -37,8 +37,9 @@ interface ArtifactViewerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   artifact: SessionArtifactInfo | null;
-  onApprove?: (feedback?: string) => void;
-  onRequestRevision?: (feedback?: string) => void;
+  onApprove?: (feedback?: string, force?: boolean) => void;
+  onRequestRevision?: (feedback?: string, validationSummary?: string) => void;
+  validationResult?: ValidationResult | null;
   onAddAnnotation?: (
     lineStart: number,
     lineEnd: number | null,
@@ -60,6 +61,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
   artifact,
   onApprove,
   onRequestRevision,
+  validationResult,
   onAddAnnotation,
   onResolveAnnotation,
   onDismissAnnotation,
@@ -321,6 +323,7 @@ export const ArtifactViewer = memo(function ArtifactViewer({
             pendingAnnotationCount={pendingAnnotations.length}
             isLastPhase={isLastPhase}
             artifactContent={artifact?.content}
+            validationResult={validationResult}
           />
         ) : null}
       </SheetContent>
