@@ -107,6 +107,11 @@ class _AsyncProcessWrapper:
         return self._popen.returncode
 
 
+# 검증 재시도 카운터: session_id → 재시도 횟수
+_validation_retry_counts: dict[str, int] = {}
+_VALIDATION_MAX_RETRIES = 3
+
+
 def _auto_chain_done(
     task: asyncio.Task, session_id: str, manager: "SessionManager"
 ) -> None:
@@ -1059,6 +1064,150 @@ class ClaudeRunner:
 
             await asyncio.gather(_read_stderr(), _wait_process())
 
+    async def _run_entry_validation(
+        self,
+        session_id: str,
+        next_phase: str,
+        current_phase: str,
+        prompt: str,
+        allowed_tools: str,
+        ws_manager: WebSocketManager,
+        session_manager: "SessionManager",
+        workflow_service,
+        mcp_service,
+        original_prompt: str | None,
+    ) -> bool:
+        """다음 단계 진입 전 검증을 실행한다.
+
+        Returns:
+            True: 검증 통과 또는 검증 명령 없음 → 정상 진행
+            False: 검증 실패 → 이전 단계로 복귀하여 자동 수정 시작됨
+        """
+        session = await session_manager.get(session_id)
+        workspace_id = session.get("workspace_id")
+        work_dir = session.get("work_dir", "")
+
+        if not workspace_id or not work_dir:
+            return True  # 워크스페이스 없으면 검증 스킵
+
+        # DI를 통해 ValidationService 가져오기
+        from app.api.dependencies import get_validation_service
+
+        validation_service = get_validation_service()
+        result = await validation_service.run_validation(
+            workspace_id, "phase_entry", work_dir
+        )
+
+        if result.passed:
+            # 검증 통과 → 재시도 카운터 리셋
+            _validation_retry_counts.pop(session_id, None)
+            logger.info(
+                "세션 %s: %s 진입 검증 통과 → %s 단계 정상 진행",
+                session_id,
+                next_phase,
+                next_phase,
+            )
+            return True
+
+        # 검증 실패
+        retry_count = _validation_retry_counts.get(session_id, 0)
+
+        if retry_count >= _VALIDATION_MAX_RETRIES:
+            # 재시도 초과 → 검증 실패 상태로 QA 진행 (사용자가 판단)
+            _validation_retry_counts.pop(session_id, None)
+            logger.warning(
+                "세션 %s: 검증 재시도 %d회 초과 → %s 단계로 진행 (사용자 판단)",
+                session_id,
+                _VALIDATION_MAX_RETRIES,
+                next_phase,
+            )
+            await ws_manager.broadcast_event(
+                session_id,
+                {
+                    "type": WsEventType.WORKFLOW_VALIDATION_MAX_RETRIES,
+                    "phase": next_phase,
+                    "retry_count": retry_count,
+                    "validation_summary": result.summary,
+                },
+            )
+            return True  # 재시도 초과 시에도 진행 허용
+
+        # 재시도 가능 → implement로 복귀하여 Claude가 자동 수정
+        _validation_retry_counts[session_id] = retry_count + 1
+        logger.info(
+            "세션 %s: %s 진입 검증 실패 (시도 %d/%d) → %s로 복귀하여 자동 수정",
+            session_id,
+            next_phase,
+            retry_count + 1,
+            _VALIDATION_MAX_RETRIES,
+            current_phase,
+        )
+
+        await ws_manager.broadcast_event(
+            session_id,
+            {
+                "type": WsEventType.WORKFLOW_VALIDATION_FAILED,
+                "phase": next_phase,
+                "from_phase": current_phase,
+                "retry_count": retry_count + 1,
+                "max_retries": _VALIDATION_MAX_RETRIES,
+                "validation_summary": result.summary,
+            },
+        )
+
+        # implement 단계로 복귀: revision context에 검증 에러 포함
+        try:
+            await workflow_service.approve_phase(
+                session_id, session_manager=session_manager
+            )
+            # QA 진입 후 → 다시 implement로 revision
+            raw_prompt = original_prompt or prompt
+            revision_context = await workflow_service.build_revision_context(
+                session_id,
+                raw_prompt,
+                "",
+                session_manager=session_manager,
+                validation_summary=result.summary,
+            )
+
+            # implement 단계의 step config 가져오기
+            steps = await workflow_service._get_steps(session_id, session_manager)
+            impl_step = next(
+                (s for s in steps if s.name == current_phase), None
+            )
+
+            updated = await session_manager.get(session_id)
+            chain_task = asyncio.create_task(
+                self.run(
+                    updated,
+                    revision_context,
+                    allowed_tools,
+                    session_id,
+                    ws_manager,
+                    session_manager,
+                    mcp_service=mcp_service,
+                    workflow_phase=current_phase,
+                    workflow_service=workflow_service,
+                    original_prompt=raw_prompt,
+                    workflow_step_config=(
+                        impl_step.model_dump() if impl_step else None
+                    ),
+                )
+            )
+            chain_task.add_done_callback(
+                lambda t: _auto_chain_done(t, session_id, session_manager)
+            )
+            session_manager.set_runner_task(session_id, chain_task)
+        except Exception:
+            logger.warning(
+                "세션 %s: 검증 실패 후 %s 복귀 자동 수정 실패",
+                session_id,
+                current_phase,
+                exc_info=True,
+            )
+
+        return False
+
     async def _handle_workflow_completion(
         self,
         session_id: str,
@@ -1160,6 +1309,25 @@ class ClaudeRunner:
                 next_step_config = next(
                     (s for s in next_steps if s.name == next_phase), None
                 )
+
+                # ── Validation-on-entry: 다음 단계가 run_validation이면 진입 전 검증 ──
+                if next_step_config and next_step_config.run_validation:
+                    validation_passed = await self._run_entry_validation(
+                        session_id,
+                        next_phase,
+                        workflow_phase,
+                        prompt,
+                        allowed_tools,
+                        ws_manager,
+                        session_manager,
+                        workflow_service,
+                        mcp_service,
+                        original_prompt,
+                    )
+                    if not validation_passed:
+                        # 검증 실패 → implement로 복귀 완료, 추가 체이닝 불필요
+                        return
+
                 updated = await session_manager.get(session_id)
                 chain_task = asyncio.create_task(
                     self.run(

@@ -29,7 +29,7 @@ from app.schemas.workflow import (
     UpdateArtifactRequest,
     WorkflowStatusResponse,
 )
-from app.services.claude_runner import ClaudeRunner, _auto_chain_done
+from app.services.claude_runner import ClaudeRunner, _auto_chain_done, _validation_retry_counts
 from app.services.session_manager import SessionManager
 from app.services.websocket_manager import WebSocketManager
 from app.services.workflow_service import WorkflowService
@@ -248,6 +248,9 @@ async def approve_phase(
     result = await workflow.approve_phase(
         session_id, session_manager=manager, feedback=req.feedback
     )
+
+    # 승인 성공 시 검증 재시도 카운터 리셋
+    _validation_retry_counts.pop(session_id, None)
 
     event_type = (
         WsEventType.WORKFLOW_COMPLETED

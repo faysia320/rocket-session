@@ -49,6 +49,8 @@ class WsEventType:
     WORKFLOW_COMMIT_COMPLETED = "workflow_commit_completed"
     WORKFLOW_AUTO_CHAIN = "workflow_auto_chain"
     WORKFLOW_QA_FAILED = "workflow_qa_failed"
+    WORKFLOW_VALIDATION_FAILED = "workflow_validation_failed"
+    WORKFLOW_VALIDATION_MAX_RETRIES = "workflow_validation_max_retries"
 
     # Interactive
     ASK_USER_QUESTION = "ask_user_question"
