@@ -152,6 +152,7 @@ class WorkflowDefinitionService(DBService):
                 prompt_template="",
                 constraints="full",
                 review_required=False,
+                run_validation=True,
                 order_index=2,
             ),
         ]

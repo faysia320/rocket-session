@@ -11,8 +11,10 @@ from app.api.dependencies import (
     get_session_manager,
     get_settings,
     get_settings_service,
+    get_validation_service,
     get_workflow_definition_service,
     get_workflow_service,
+    get_workspace_service,
     get_ws_manager,
 )
 from app.models.event_types import WsEventType
@@ -212,9 +214,36 @@ async def approve_phase(
     mcp_service=Depends(get_mcp_service),
     settings=Depends(get_settings),
     settings_service=Depends(get_settings_service),
+    validation_service=Depends(get_validation_service),
+    workspace_service=Depends(get_workspace_service),
 ):
     """현재 phase 승인 → 다음 phase 전환 (Plan→Implement 자동 실행)."""
     session = await manager.get(session_id)
+
+    # ── Validation Pipeline: run_validation=True인 단계에서 검증 실행 ──
+    if not req.force:
+        current_phase = session.get("workflow_phase")
+        def_id = session.get("workflow_definition_id")
+        if current_phase and def_id:
+            from app.api.dependencies import get_workflow_definition_service
+
+            def_service = get_workflow_definition_service()
+            definition = await def_service.get_or_default(def_id)
+            current_step = next(
+                (s for s in definition.steps if s.name == current_phase), None
+            )
+            if current_step and current_step.run_validation:
+                workspace_id = session.get("workspace_id")
+                work_dir = session.get("work_dir", "")
+                if workspace_id and work_dir:
+                    validation_result = await validation_service.run_validation(
+                        workspace_id, "phase_complete", work_dir
+                    )
+                    if not validation_result.passed:
+                        return {
+                            "validation_failed": True,
+                            "validation_result": validation_result.model_dump(),
+                        }
 
     result = await workflow.approve_phase(
         session_id, session_manager=manager, feedback=req.feedback
@@ -349,6 +378,7 @@ async def request_revision(
                     original_prompt,
                     req.feedback or "",
                     session_manager=manager,
+                    validation_summary=req.validation_summary,
                 )
 
                 global_settings = await settings_service.get()
@@ -388,3 +418,23 @@ async def request_revision(
             )
 
     return result
+
+
+@router.post("/validate")
+async def run_validation(
+    session_id: str,
+    manager: SessionManager = Depends(get_session_manager),
+    validation_service=Depends(get_validation_service),
+):
+    """워크스페이스 검증 명령을 수동으로 실행한다."""
+    session = await manager.get(session_id)
+    workspace_id = session.get("workspace_id")
+    work_dir = session.get("work_dir", "")
+
+    if not workspace_id or not work_dir:
+        raise HTTPException(
+            status_code=400, detail="워크스페이스가 연결되지 않은 세션입니다"
+        )
+
+    result = await validation_service.run_validation(workspace_id, "manual", work_dir)
+    return result.model_dump()

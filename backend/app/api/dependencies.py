@@ -34,6 +34,7 @@ from app.services.team_service import TeamService
 from app.services.team_task_service import TeamTaskService
 from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
+from app.services.validation_service import ValidationService
 from app.services.workflow_definition_service import WorkflowDefinitionService
 from app.services.workflow_service import WorkflowService
 from app.services.workspace_service import WorkspaceService
@@ -77,6 +78,7 @@ class ServiceRegistry:
         self.workflow_definition_service: WorkflowDefinitionService | None = None
         self.workflow_service: WorkflowService | None = None
         self.workspace_service: WorkspaceService | None = None
+        self.validation_service: ValidationService | None = None
         self.insight_service: InsightService | None = None
         self.claude_memory_service: ClaudeMemoryService | None = None
         self.context_builder_service: ContextBuilderService | None = None
@@ -153,6 +155,7 @@ class ServiceRegistry:
         self.workspace_service = WorkspaceService(
             self.database, self.git_service, workspaces_root=WORKSPACES_ROOT
         )
+        self.validation_service = ValidationService(self.database)
         self.insight_service = InsightService(self.database)
         self.claude_memory_service = ClaudeMemoryService()
         self.context_builder_service = ContextBuilderService(
@@ -331,6 +334,10 @@ def get_workflow_service() -> WorkflowService:
 
 def get_workspace_service() -> WorkspaceService:
     return _registry._require("workspace_service")
+
+
+def get_validation_service() -> ValidationService:
+    return _registry._require("validation_service")
 
 
 def get_insight_service() -> InsightService:
