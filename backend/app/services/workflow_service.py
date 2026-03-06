@@ -551,6 +551,7 @@ class WorkflowService:
         original_prompt: str,
         feedback: str,
         session_manager=None,
+        validation_summary: str | None = None,
     ) -> str:
         """수정 요청 시 컨텍스트 구성: 이전 아티팩트들 + 주석 + 피드백 + 원본 요구사항."""
         parts: list[str] = []
@@ -604,6 +605,11 @@ class WorkflowService:
                             f"## 이전 {label} (수정 필요)\n{current_artifact.content}"
                         )
 
+        if validation_summary:
+            parts.append(
+                f"## 검증 실패 결과\n{validation_summary}\n\n"
+                "위 검증 오류를 모두 수정해주세요."
+            )
         if feedback and feedback.strip():
             parts.append(f"## 수정 요청 피드백\n{feedback}")
         parts.append(

@@ -6,6 +6,38 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
+class ValidationCommand(BaseModel):
+    """워크스페이스 검증 명령 설정."""
+
+    name: str = Field(..., min_length=1, max_length=100, description="검증 명령 이름")
+    command: str = Field(..., min_length=1, description="실행할 셸 명령")
+    run_on: list[str] = Field(
+        default=["phase_complete"],
+        description="트리거 시점: phase_complete, pre_commit, manual",
+    )
+    timeout_seconds: int = Field(default=60, ge=5, le=600, description="타임아웃 (초)")
+
+
+class ValidationCommandResult(BaseModel):
+    """단일 검증 명령 실행 결과."""
+
+    name: str
+    command: str
+    passed: bool
+    exit_code: int
+    stdout: str = ""
+    stderr: str = ""
+    duration_ms: int = 0
+
+
+class ValidationResult(BaseModel):
+    """검증 파이프라인 전체 결과."""
+
+    passed: bool
+    results: list[ValidationCommandResult] = []
+    summary: str = ""
+
+
 class CreateWorkspaceRequest(BaseModel):
     repo_url: str = Field(..., min_length=1, description="Git 저장소 URL")
     branch: Optional[str] = Field(None, description="클론할 브랜치 (기본: 기본 브랜치)")
@@ -16,6 +48,9 @@ class CreateWorkspaceRequest(BaseModel):
 
 class UpdateWorkspaceRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
+    validation_commands: Optional[list[ValidationCommand]] = Field(
+        None, description="검증 명령 목록"
+    )
 
 
 class WorkspaceInfo(BaseModel):
@@ -30,6 +65,7 @@ class WorkspaceInfo(BaseModel):
     last_synced_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    validation_commands: Optional[list[ValidationCommand]] = None
     # Git 실시간 정보 (ready 상태일 때만)
     current_branch: Optional[str] = None
     is_dirty: Optional[bool] = None

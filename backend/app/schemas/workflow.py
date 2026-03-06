@@ -88,9 +88,11 @@ class ApprovePhaseRequest(BaseModel):
     """Phase 승인 요청."""
 
     feedback: Optional[str] = None
+    force: bool = False
 
 
 class RequestRevisionRequest(BaseModel):
     """수정 요청."""
 
     feedback: Optional[str] = None
+    validation_summary: Optional[str] = None

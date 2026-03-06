@@ -16,6 +16,7 @@ class WorkflowStepConfig(BaseModel):
     constraints: str = "readonly"
     order_index: int = 0
     review_required: bool = False
+    run_validation: bool = False
 
 
 # 하위 호환용 별칭 — 기존 코드에서 ResolvedWorkflowStep을 참조하는 곳 대응
