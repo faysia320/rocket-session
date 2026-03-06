@@ -9,6 +9,7 @@ import { useChatArtifact } from "../hooks/useChatArtifact";
 import { useChatSessionActions } from "../hooks/useChatSessionActions";
 import { useWorkflowActions } from "@/features/workflow/hooks/useWorkflowActions";
 import { WorkflowProgressBar } from "@/features/workflow/components/WorkflowProgressBar";
+import { WorkflowCompletedActions } from "@/features/workflow/components/WorkflowCompletedActions";
 import { ArtifactViewer } from "@/features/workflow/components/ArtifactViewer";
 import { useWorkflowStatus, useStartWorkflow, workflowKeys } from "@/features/workflow/hooks/useWorkflow";
 import { ChatMessageList } from "./ChatMessageList";
@@ -27,6 +28,9 @@ import type { SlashCommand } from "../constants/slashCommands";
 import type { TrustLevel } from "./PermissionDialog";
 import { useGitInfo } from "@/features/directory/hooks/useGitInfo";
 import { sessionKeys } from "@/features/session/hooks/sessionKeys";
+import { useCreateSession } from "@/features/session/hooks/useSessions";
+import { sessionsApi } from "@/lib/api/sessions.api";
+import { toast } from "sonner";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { ContextSuggestionPanel } from "@/features/context/components/ContextSuggestionPanel";
 import { contextKeys } from "@/features/context/hooks/contextKeys";
@@ -313,16 +317,26 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     workflowSteps,
   });
 
-  // 워크플로우 새 사이클 시작
+  // 워크플로우 새 사이클: 이어서 구현
   const startWorkflowMutation = useStartWorkflow(sessionId);
-  const handleNewCycle = useCallback(
-    async (startFromStep?: string) => {
-      await startWorkflowMutation.mutateAsync({
-        start_from_step: startFromStep,
+  const handleContinueImplement = useCallback(async () => {
+    await startWorkflowMutation.mutateAsync({ start_from_step: "implement" });
+  }, [startWorkflowMutation]);
+
+  // 워크플로우 새 사이클: 새 주제 (현재 세션 보관 → 새 세션 생성)
+  const { createSession } = useCreateSession();
+  const handleNewTopic = useCallback(async () => {
+    try {
+      await sessionsApi.archive(sessionId);
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
+      await createSession(sessionInfo?.work_dir, {
+        workspace_id: sessionInfo?.workspace_id,
+        workflow_definition_id: workflowStatusData?.workflow_definition_id,
       });
-    },
-    [startWorkflowMutation],
-  );
+    } catch {
+      toast.error("새 주제 생성에 실패했습니다");
+    }
+  }, [sessionId, sessionInfo, createSession, queryClient, workflowStatusData]);
 
   // 상태바에서 아티팩트 뷰어 열기 (phase 바인딩)
   const handleOpenArtifactFromStatusBar = useCallback(() => {
@@ -556,7 +570,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
           queryClient.invalidateQueries({ queryKey: workflowKeys.status(sessionId) });
         }}
-        onNewCycle={handleNewCycle}
       />
 
       <PinnedTodoBar todos={pinnedTodos} />
@@ -621,6 +634,15 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           />
         ) : null}
       </div>
+      {sessionInfo?.workflow_phase_status === "completed" ? (
+        <WorkflowCompletedActions
+          onContinue={handleContinueImplement}
+          onNewTopic={handleNewTopic}
+          onArchive={handleArchive}
+          onDelete={handleDelete}
+          isRunning={status === "running"}
+        />
+      ) : null}
       <div>
         <ChatInput
           connected={connected}

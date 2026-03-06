@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Check, Settings2, RotateCcw, Plus } from "lucide-react";
+import { Check, Settings2 } from "lucide-react";
 import { resolveWorkflowIcon } from "../utils/workflowIcons";
 import type { WorkflowPhaseStatus, ResolvedWorkflowStep } from "@/types/workflow";
 import {
@@ -41,8 +41,6 @@ interface WorkflowProgressBarProps {
   isLocked?: boolean;
   currentDefinitionId?: string | null;
   onWorkflowChanged?: () => void;
-  /** 워크플로우 사이클 완료 후 새 사이클 시작 콜백 */
-  onNewCycle?: (startFromStep?: string) => void;
 }
 
 export const WorkflowProgressBar = memo(function WorkflowProgressBar({
@@ -55,7 +53,6 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
   isLocked = false,
   currentDefinitionId,
   onWorkflowChanged,
-  onNewCycle,
 }: WorkflowProgressBarProps) {
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(currentDefinitionId ?? null);
@@ -149,29 +146,7 @@ export const WorkflowProgressBar = memo(function WorkflowProgressBar({
         );
       })}
 
-      {currentStatus === "completed" && onNewCycle ? (
-        <>
-          <div className="h-4 w-px bg-border mx-1 shrink-0" />
-          <button
-            type="button"
-            onClick={() => onNewCycle("implement")}
-            disabled={isRunning}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span className="hidden sm:inline">이어서 구현</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onNewCycle()}
-            disabled={isRunning}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-          >
-            <Plus className="w-3 h-3" />
-            <span className="hidden sm:inline">새 주제</span>
-          </button>
-        </>
-      ) : showChangeButton ? (
+      {showChangeButton ? (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
