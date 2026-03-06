@@ -256,6 +256,8 @@ describe("claudeSocketReducer", () => {
       history: [
         { role: "user", content: "hi", input_tokens: 10, output_tokens: 0 },
         {
+          role: "assistant",
+          content: "",
           message_type: "tool_use",
           tool_name: "TodoWrite",
           tool_use_id: "todo1",
@@ -287,6 +289,8 @@ describe("claudeSocketReducer", () => {
       history: [
         { role: "user", content: "hi", input_tokens: 10, output_tokens: 0 },
         {
+          role: "assistant",
+          content: "",
           message_type: "tool_use",
           tool_name: "TodoWrite",
           tool_use_id: "todo1",

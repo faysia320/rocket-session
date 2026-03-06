@@ -38,6 +38,7 @@ export interface SessionState {
   workflow_enabled?: boolean;
   workflow_phase?: string | null;
   workflow_phase_status?: string | null;
+  workspace_id?: string | null;
 }
 
 export interface ReconnectState {

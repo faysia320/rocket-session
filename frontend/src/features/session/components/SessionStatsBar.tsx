@@ -37,7 +37,7 @@ export const SessionStatsBar = memo(function SessionStatsBar({
   "use memo";
   const { data: stats } = useSessionStats(sessionId, isRunning);
 
-  //if (!stats || stats.total_messages === 0) return null;
+  if (!stats) return null;
 
   return (
     <div className="flex items-center gap-3 px-4 py-1 border-t border-border bg-secondary/50">

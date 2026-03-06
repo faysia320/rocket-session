@@ -115,10 +115,10 @@ export const SessionPhaseChart = memo(function SessionPhaseChart({ data }: Sessi
 
   // y축 라벨 호버 시 전체 세션명을 native tooltip으로 표시
   const showLabelTooltip = useCallback(
-    (params: { componentType: string; targetType?: string; value?: string }) => {
-      if (params.componentType === "yAxis" && params.targetType === "axisLabel" && params.value) {
+    (params: { componentType: string; targetType?: string; value?: unknown }) => {
+      if (params.componentType === "yAxis" && params.targetType === "axisLabel" && typeof params.value === "string") {
         const el = containerRef.current;
-        if (el) el.title = params.value;
+        if (el) el.title = params.value as string;
       }
     },
     [containerRef],
