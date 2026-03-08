@@ -30,8 +30,8 @@ export const WorkflowCompletedActions = memo(function WorkflowCompletedActions({
 
   return (
     <>
-      <div className="flex items-center justify-center gap-2 px-4 py-2.5 animate-[fadeIn_0.15s_ease]">
-        <span className="flex items-center gap-1 text-xs font-medium text-success">
+      <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-2.5 animate-[fadeIn_0.15s_ease]">
+        <span className="flex items-center gap-1 text-xs font-medium text-success whitespace-nowrap shrink-0">
           <CheckCircle2 className="w-3.5 h-3.5" />
           사이클 완료
         </span>
@@ -40,7 +40,7 @@ export const WorkflowCompletedActions = memo(function WorkflowCompletedActions({
           type="button"
           onClick={onContinue}
           disabled={isRunning}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
         >
           <RotateCcw className="w-3 h-3" />
           이어서 구현
@@ -49,7 +49,7 @@ export const WorkflowCompletedActions = memo(function WorkflowCompletedActions({
           type="button"
           onClick={onNewTopic}
           disabled={isRunning}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
         >
           <Plus className="w-3 h-3" />
           새 주제
@@ -59,7 +59,7 @@ export const WorkflowCompletedActions = memo(function WorkflowCompletedActions({
           type="button"
           onClick={onArchive}
           disabled={isRunning}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
         >
           <Archive className="w-3 h-3" />
           보관
@@ -68,7 +68,7 @@ export const WorkflowCompletedActions = memo(function WorkflowCompletedActions({
           type="button"
           onClick={() => setDeleteConfirmOpen(true)}
           disabled={isRunning}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
         >
           <Trash2 className="w-3 h-3" />
           삭제
