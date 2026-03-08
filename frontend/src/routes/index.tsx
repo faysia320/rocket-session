@@ -54,25 +54,14 @@ function IndexPage() {
   };
   const handleNew = () => navigate({ to: "/session/new" });
 
-  // Empty state: 탭 없이 기존 레이아웃 유지
-  if (activeSessions.length === 0) {
-    return (
-      <div className="relative flex-1 flex flex-col overflow-hidden">
-        <div className="shrink-0">
-          <EmptyState onNew={handleNew} />
-        </div>
-        <div className="shrink-0 border-t border-border" />
-        <Suspense fallback={<LoadingFallback />}>
-          <HistoryPage className="flex-1 min-h-0" />
-        </Suspense>
-      </div>
-    );
-  }
-
-  // 모바일: 탭 레이아웃
+  // 모바일: 탭 레이아웃 (빈 상태 포함)
   if (isMobile) {
+    const isEmpty = activeSessions.length === 0;
     return (
-      <Tabs defaultValue="dashboard" className="relative flex-1 flex flex-col overflow-hidden">
+      <Tabs
+        defaultValue={isEmpty ? "history" : "dashboard"}
+        className="relative flex-1 flex flex-col overflow-hidden"
+      >
         <TabsList className="shrink-0 w-full rounded-none border-b border-border bg-background h-10 p-0">
           <TabsTrigger
             value="dashboard"
@@ -88,23 +77,42 @@ function IndexPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard" className="flex-1 overflow-hidden m-0">
+        <TabsContent value="dashboard" className="flex-1 flex flex-col overflow-hidden m-0">
           <Suspense fallback={<LoadingFallback />}>
-            <DashboardGrid
-              sessions={activeSessions}
-              activeSessionId={activeSessionId}
-              onSelect={handleSelect}
-              onNew={handleNew}
-            />
+            {isEmpty ? (
+              <EmptyState onNew={handleNew} />
+            ) : (
+              <DashboardGrid
+                sessions={activeSessions}
+                activeSessionId={activeSessionId}
+                onSelect={handleSelect}
+                onNew={handleNew}
+              />
+            )}
           </Suspense>
         </TabsContent>
 
-        <TabsContent value="history" className="flex-1 overflow-hidden m-0">
+        <TabsContent value="history" className="flex-1 flex flex-col overflow-hidden m-0">
           <Suspense fallback={<LoadingFallback />}>
             <HistoryPage className="flex-1 min-h-0" />
           </Suspense>
         </TabsContent>
       </Tabs>
+    );
+  }
+
+  // 데스크톱 Empty state: 수직 스택
+  if (activeSessions.length === 0) {
+    return (
+      <div className="relative flex-1 flex flex-col overflow-hidden">
+        <div className="shrink-0">
+          <EmptyState onNew={handleNew} />
+        </div>
+        <div className="shrink-0 border-t border-border" />
+        <Suspense fallback={<LoadingFallback />}>
+          <HistoryPage className="flex-1 min-h-0" />
+        </Suspense>
+      </div>
     );
   }
 
