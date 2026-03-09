@@ -31,5 +31,6 @@
       "@design-system/*": ["./design-system/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/features/task/_reference"]
 }

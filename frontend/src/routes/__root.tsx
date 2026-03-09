@@ -9,11 +9,6 @@ const ChatPanel = lazy(() =>
     default: m.ChatPanel,
   })),
 );
-const TeamSidebar = lazy(() =>
-  import("@/features/team/components/TeamSidebar").then((m) => ({
-    default: m.TeamSidebar,
-  })),
-);
 const MemoPanel = lazy(() =>
   import("@/features/memo/components/MemoPanel").then((m) => ({
     default: m.MemoPanel,
@@ -25,7 +20,6 @@ const WebPreviewPanel = lazy(() =>
   })),
 );
 import { useSessions } from "@/features/session/hooks/useSessions";
-import { useTeams } from "@/features/team/hooks/useTeams";
 import { useShallow } from "zustand/react/shallow";
 import { useSessionStore } from "@/store";
 import { CommandPaletteProvider } from "@/features/command-palette/components/CommandPaletteProvider";
@@ -47,8 +41,6 @@ function RootComponent() {
 
   const isSessionArea = location.pathname === "/" || location.pathname.startsWith("/session");
 
-  const isTeamArea = location.pathname.startsWith("/team");
-
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background pt-safe px-safe">
       {/* 글로벌 Top Bar */}
@@ -56,7 +48,7 @@ function RootComponent() {
 
       {/* 사이드바 + 콘텐츠 영역 */}
       <div className="flex flex-1 overflow-hidden">
-        {isSessionArea ? <SessionLayout /> : isTeamArea ? <TeamLayout /> : <Outlet />}
+        {isSessionArea ? <SessionLayout /> : <Outlet />}
       </div>
       <CommandPaletteProvider />
       <Suspense fallback={null}>
@@ -234,75 +226,6 @@ function SessionLayout() {
             />
           </div>
         ) : null}
-      </div>
-    </>
-  );
-}
-
-/**
- * TeamLayout: useTeams()를 구독하는 격리된 영역.
- * 팀 목록 데이터는 이 컴포넌트 트리 내에서만 리렌더를 유발.
- */
-function TeamLayout() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { teams, isLoading, isError } = useTeams();
-  const { sidebarMobileOpen, setSidebarMobileOpen } = useSessionStore(
-    useShallow((s) => ({
-      sidebarMobileOpen: s.sidebarMobileOpen,
-      setSidebarMobileOpen: s.setSidebarMobileOpen,
-    })),
-  );
-  const isMobile = useIsMobile();
-
-  const activeTeamId = useMemo(() => {
-    const match = location.pathname.match(/\/team\/([^/]+)/);
-    return match?.[1] ?? null;
-  }, [location.pathname]);
-
-  const handleSelect = useCallback(
-    (id: string) => {
-      navigate({ to: "/team/$teamId", params: { teamId: id } });
-      if (isMobile) setSidebarMobileOpen(false);
-    },
-    [navigate, isMobile, setSidebarMobileOpen],
-  );
-
-  const sidebarElement = (
-    <Suspense fallback={null}>
-      <TeamSidebar
-        teams={teams}
-        activeTeamId={activeTeamId}
-        onSelect={handleSelect}
-        isMobileOverlay={isMobile}
-        isLoading={isLoading}
-        isError={isError}
-      />
-    </Suspense>
-  );
-
-  return (
-    <>
-      {isMobile ? (
-        <Sheet open={sidebarMobileOpen} onOpenChange={setSidebarMobileOpen}>
-          <SheetContent
-            side="left"
-            className="p-0 w-[280px]"
-            aria-describedby={undefined}
-            hideClose
-          >
-            <SheetTitle className="sr-only">팀 목록</SheetTitle>
-            {sidebarElement}
-          </SheetContent>
-        </Sheet>
-      ) : (
-        sidebarElement
-      )}
-
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <main className="flex-1 flex overflow-hidden">
-          <Outlet />
-        </main>
       </div>
     </>
   );

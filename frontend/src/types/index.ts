@@ -113,28 +113,6 @@ export type {
   AnalyticsResponse,
 } from "./analytics";
 export type {
-  TeamInfo,
-  TeamListItem,
-  TeamMemberInfo,
-  TaskSummary,
-  CreateTeamRequest,
-  UpdateTeamRequest,
-  AddTeamMemberRequest,
-  UpdateTeamMemberRequest,
-  SetLeadRequest,
-  TaskStatus,
-  TaskPriority,
-  TeamTaskInfo,
-  CreateTaskRequest,
-  UpdateTaskRequest,
-  CompleteTaskRequest,
-  DelegateTaskRequest,
-  TeamMessageType,
-  TeamMessageInfo,
-  SendMessageRequest,
-  MarkReadRequest,
-} from "./team";
-export type {
   WorkflowPhase,
   WorkflowPhaseStatus,
   ArtifactStatus,

@@ -14,8 +14,6 @@ import { Route as KnowledgeBaseRouteImport } from './routes/knowledge-base'
 import { Route as GitMonitorRouteImport } from './routes/git-monitor'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TeamIndexRouteImport } from './routes/team/index'
-import { Route as TeamTeamIdRouteImport } from './routes/team/$teamId'
 import { Route as SessionNewRouteImport } from './routes/session/new'
 import { Route as SessionSessionIdRouteImport } from './routes/session/$sessionId'
 
@@ -44,16 +42,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TeamIndexRoute = TeamIndexRouteImport.update({
-  id: '/team/',
-  path: '/team/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TeamTeamIdRoute = TeamTeamIdRouteImport.update({
-  id: '/team/$teamId',
-  path: '/team/$teamId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SessionNewRoute = SessionNewRouteImport.update({
   id: '/session/new',
   path: '/session/new',
@@ -73,8 +61,6 @@ export interface FileRoutesByFullPath {
   '/workflows': typeof WorkflowsRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
-  '/team/$teamId': typeof TeamTeamIdRoute
-  '/team/': typeof TeamIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -84,8 +70,6 @@ export interface FileRoutesByTo {
   '/workflows': typeof WorkflowsRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
-  '/team/$teamId': typeof TeamTeamIdRoute
-  '/team': typeof TeamIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -96,8 +80,6 @@ export interface FileRoutesById {
   '/workflows': typeof WorkflowsRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
   '/session/new': typeof SessionNewRoute
-  '/team/$teamId': typeof TeamTeamIdRoute
-  '/team/': typeof TeamIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -109,8 +91,6 @@ export interface FileRouteTypes {
     | '/workflows'
     | '/session/$sessionId'
     | '/session/new'
-    | '/team/$teamId'
-    | '/team/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -120,8 +100,6 @@ export interface FileRouteTypes {
     | '/workflows'
     | '/session/$sessionId'
     | '/session/new'
-    | '/team/$teamId'
-    | '/team'
   id:
     | '__root__'
     | '/'
@@ -131,8 +109,6 @@ export interface FileRouteTypes {
     | '/workflows'
     | '/session/$sessionId'
     | '/session/new'
-    | '/team/$teamId'
-    | '/team/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -143,8 +119,6 @@ export interface RootRouteChildren {
   WorkflowsRoute: typeof WorkflowsRoute
   SessionSessionIdRoute: typeof SessionSessionIdRoute
   SessionNewRoute: typeof SessionNewRoute
-  TeamTeamIdRoute: typeof TeamTeamIdRoute
-  TeamIndexRoute: typeof TeamIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -184,20 +158,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/team/': {
-      id: '/team/'
-      path: '/team'
-      fullPath: '/team/'
-      preLoaderRoute: typeof TeamIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/team/$teamId': {
-      id: '/team/$teamId'
-      path: '/team/$teamId'
-      fullPath: '/team/$teamId'
-      preLoaderRoute: typeof TeamTeamIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/session/new': {
       id: '/session/new'
       path: '/session/new'
@@ -223,8 +183,6 @@ const rootRouteChildren: RootRouteChildren = {
   WorkflowsRoute: WorkflowsRoute,
   SessionSessionIdRoute: SessionSessionIdRoute,
   SessionNewRoute: SessionNewRoute,
-  TeamTeamIdRoute: TeamTeamIdRoute,
-  TeamIndexRoute: TeamIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
