@@ -1,4 +1,5 @@
 import { memo, useState, useRef, useCallback, useEffect } from "react";
+import type { RefObject } from "react";
 import { Send, Square, Image, X, Upload } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -7,6 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { SlashCommandPopup } from "./SlashCommandPopup";
 import { cn } from "@/lib/utils";
 import { sessionsApi } from "@/lib/api/sessions.api";
+import {
+  getLanguageFromFilename,
+  isTextSafeFile,
+  MAX_TEXT_FILE_SIZE,
+} from "../utils/fileLanguageMap";
 import type { ToolUseMsg } from "@/types";
 import type { SlashCommand } from "../constants/slashCommands";
 import type { useSlashCommands } from "../hooks/useSlashCommands";
@@ -28,6 +34,10 @@ interface ChatInputProps {
   pendingAnswerCount?: number;
   disabled?: boolean;
   onInputChange?: (value: string) => void;
+  /** ChatPanel 레벨 드래그 상태 — true이면 ChatInput 자체 오버레이 억제 */
+  externalIsDragOver?: boolean;
+  /** ChatPanel에서 drop을 위임하기 위한 ref */
+  dropHandlerRef?: RefObject<((e: React.DragEvent) => void) | null>;
 }
 
 const ACCEPTED_IMAGE_TYPES = new Set([
@@ -51,6 +61,8 @@ export const ChatInput = memo(function ChatInput({
   pendingAnswerCount = 0,
   disabled = false,
   onInputChange,
+  externalIsDragOver = false,
+  dropHandlerRef,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
@@ -221,7 +233,7 @@ export const ChatInput = memo(function ChatInput({
   );
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    async (e: React.DragEvent) => {
       e.preventDefault();
       dragCounterRef.current = 0;
       setIsDragOver(false);
@@ -237,22 +249,50 @@ export const ChatInput = memo(function ChatInput({
       }
 
       if (nonImageFiles.length > 0) {
-        const fileNames = nonImageFiles.map((f) => f.name).join(" ");
-        setInput((prev) => {
-          const separator = prev.length > 0 && !prev.endsWith(" ") ? " " : "";
-          return prev + separator + fileNames;
-        });
-        requestAnimationFrame(() => {
-          if (textareaRef.current) {
-            textareaRef.current.style.height = "36px";
-            textareaRef.current.style.height =
-              Math.min(textareaRef.current.scrollHeight, 200) + "px";
+        const blocks: string[] = [];
+
+        for (const file of nonImageFiles) {
+          if (!isTextSafeFile(file.name)) {
+            blocks.push(`\`${file.name}\``);
+            continue;
           }
-        });
+          if (file.size > MAX_TEXT_FILE_SIZE) {
+            toast.warning(`파일이 너무 큽니다 (500KB 초과): ${file.name}`);
+            blocks.push(`\`${file.name}\``);
+            continue;
+          }
+          try {
+            const content = await file.text();
+            const lang = getLanguageFromFilename(file.name);
+            blocks.push(`\`\`\`${lang}\n${content}\n\`\`\``);
+          } catch {
+            blocks.push(`\`${file.name}\``);
+          }
+        }
+
+        if (blocks.length > 0) {
+          const insertion = blocks.join("\n\n");
+          setInput((prev) => (prev ? `${prev}\n\n${insertion}` : insertion));
+          requestAnimationFrame(() => {
+            if (textareaRef.current) {
+              textareaRef.current.style.height = "36px";
+              textareaRef.current.style.height =
+                Math.min(textareaRef.current.scrollHeight, 200) + "px";
+            }
+          });
+        }
       }
     },
     [addImages],
   );
+
+  // ChatPanel에서 drop 위임을 위해 ref에 handleDrop 등록
+  useEffect(() => {
+    if (dropHandlerRef) {
+      (dropHandlerRef as React.MutableRefObject<((e: React.DragEvent) => void) | null>).current =
+        handleDrop;
+    }
+  }, [handleDrop, dropHandlerRef]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -292,8 +332,8 @@ export const ChatInput = memo(function ChatInput({
           />
         ) : null}
 
-        {/* 드래그 오버레이 */}
-        {isDragOver ? (
+        {/* 드래그 오버레이 (패널 전체 드래그 시 억제) */}
+        {isDragOver && !externalIsDragOver ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-[var(--radius-md)]">
             <div className="flex items-center gap-2 font-mono text-sm text-primary font-semibold">
               <Upload className="h-5 w-5" />
