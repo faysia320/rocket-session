@@ -141,7 +141,6 @@ class WorkflowService:
         workflow_definition_id: str | None = None,
         start_from_step: str | None = None,
         skip_research: bool = False,
-        skip_plan: bool = False,
     ) -> dict:
         """워크플로우 시작: 첫 번째 phase 설정."""
         definition = await self._def_service.get_or_default(workflow_definition_id)
@@ -149,14 +148,8 @@ class WorkflowService:
 
         if start_from_step:
             first = next((s for s in steps if s.name == start_from_step), steps[0])
-        elif skip_research and skip_plan:
-            # 하위 호환: 기본 프리셋에서 implement로 점프
-            first = next((s for s in steps if s.name == "implement"), steps[-1])
         elif skip_research:
-            first = next(
-                (s for s in steps if s.name == "plan"),
-                steps[1] if len(steps) > 1 else steps[0],
-            )
+            first = steps[1] if len(steps) > 1 else steps[0]
         else:
             first = steps[0]
 

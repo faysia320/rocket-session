@@ -239,7 +239,7 @@ class ClaudeRunner:
                 # 커스텀 도구 목록
                 cmd.extend(["--permission-mode", "plan"])
                 allowed_tools = constraints
-        elif workflow_phase in ("research", "plan"):
+        elif workflow_phase == "research":
             # 하위 호환: step_config 없이 호출된 경우
             cmd.extend(["--permission-mode", "plan"])
             allowed_tools = READONLY_TOOLS

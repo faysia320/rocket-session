@@ -59,7 +59,6 @@ async def start_workflow(
         workflow_definition_id=req.workflow_definition_id,
         start_from_step=req.start_from_step,
         skip_research=req.skip_research,
-        skip_plan=req.skip_plan,
     )
 
     await ws_manager.broadcast_event(
@@ -217,7 +216,7 @@ async def approve_phase(
     validation_service=Depends(get_validation_service),
     workspace_service=Depends(get_workspace_service),
 ):
-    """현재 phase 승인 → 다음 phase 전환 (Plan→Implement 자동 실행)."""
+    """현재 phase 승인 → 다음 phase 자동 전환."""
     session = await manager.get(session_id)
 
     # ── Validation Pipeline: run_validation=True인 단계에서 검증 실행 ──
@@ -347,7 +346,7 @@ async def request_revision(
     settings=Depends(get_settings),
     settings_service=Depends(get_settings_service),
 ):
-    """수정 요청 → Plan 자동 재실행."""
+    """수정 요청 → 현재 phase 자동 재실행."""
     session = await manager.get(session_id)
 
     result = await workflow.request_revision(

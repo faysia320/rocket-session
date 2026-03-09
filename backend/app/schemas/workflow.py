@@ -49,7 +49,6 @@ class StartWorkflowRequest(BaseModel):
     workflow_definition_id: Optional[str] = None
     start_from_step: Optional[str] = None
     skip_research: bool = False
-    skip_plan: bool = False
 
 
 class WorkflowStatusResponse(BaseModel):

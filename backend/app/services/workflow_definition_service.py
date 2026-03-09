@@ -133,17 +133,8 @@ class WorkflowDefinitionService(DBService):
                 icon="Search",
                 prompt_template="",
                 constraints="readonly",
-                review_required=False,
-                order_index=0,
-            ),
-            WorkflowStepConfig(
-                name="plan",
-                label="Plan",
-                icon="FileText",
-                prompt_template="",
-                constraints="readonly",
                 review_required=True,
-                order_index=1,
+                order_index=0,
             ),
             WorkflowStepConfig(
                 name="implement",
@@ -153,7 +144,7 @@ class WorkflowDefinitionService(DBService):
                 constraints="full",
                 review_required=False,
                 run_validation=False,
-                order_index=2,
+                order_index=1,
             ),
             WorkflowStepConfig(
                 name="qa",
@@ -163,7 +154,7 @@ class WorkflowDefinitionService(DBService):
                 constraints="readonly",
                 review_required=True,
                 run_validation=True,
-                order_index=3,
+                order_index=2,
             ),
         ]
         async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
