@@ -31,13 +31,13 @@ htmlcov/
 tmpclaude-*-cwd
 nul
 
-# Claude local settings
+# Claude - 로컬 전용 파일만 무시 (rules, skills는 이력 관리)
 .claude/settings.local.json
+.claude/worktrees/
 .playwright-mcp
 
 # Docker environment
 .env.docker
 /.rocket-uploads
 /e2e-screenshots
-/.claude
 /.next
