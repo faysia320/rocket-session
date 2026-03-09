@@ -77,7 +77,7 @@ function IndexPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard" className="flex-1 flex flex-col overflow-hidden m-0">
+        <TabsContent value="dashboard" className="flex-1 data-[state=active]:flex flex-col overflow-hidden m-0">
           <Suspense fallback={<LoadingFallback />}>
             {isEmpty ? (
               <EmptyState onNew={handleNew} />
@@ -92,7 +92,7 @@ function IndexPage() {
           </Suspense>
         </TabsContent>
 
-        <TabsContent value="history" className="flex-1 flex flex-col overflow-hidden m-0">
+        <TabsContent value="history" className="flex-1 data-[state=active]:flex flex-col overflow-hidden m-0">
           <Suspense fallback={<LoadingFallback />}>
             <HistoryPage className="flex-1 min-h-0" />
           </Suspense>
