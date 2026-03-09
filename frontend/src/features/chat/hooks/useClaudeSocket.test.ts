@@ -637,13 +637,13 @@ describe("handleMessage: result", () => {
       openAndInit(ws);
       ws.simulateMessage({
         type: "result",
-        text: "plan result",
-        workflow_phase: "plan",
+        text: "research result",
+        workflow_phase: "research",
         seq: 1,
       });
     });
 
-    expect((result.current.messages[0] as any).workflow_phase).toBe("plan");
+    expect((result.current.messages[0] as any).workflow_phase).toBe("research");
   });
 
   it("assigns new ID to result message", () => {

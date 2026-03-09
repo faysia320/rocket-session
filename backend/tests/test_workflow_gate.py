@@ -215,8 +215,8 @@ class TestWorkflowGate2:
         assert "현재 단계의 검토가 완료되지 않았습니다" in call_args["message"]
 
     async def test_blocks_all_phases_when_awaiting_approval(self):
-        """모든 phase(research/plan/implement)에서 awaiting_approval이면 차단."""
-        for phase in ["research", "plan", "implement"]:
+        """모든 phase(research/implement/qa)에서 awaiting_approval이면 차단."""
+        for phase in ["research", "implement", "qa"]:
             ws = _make_mock_ws()
             session_data = {
                 "workflow_enabled": True,

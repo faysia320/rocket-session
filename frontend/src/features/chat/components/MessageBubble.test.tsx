@@ -188,16 +188,20 @@ describe("ResultMessage", () => {
   });
 
   it("routes to WorkflowPhaseCard when workflow_phase is set", () => {
+    const steps = [
+      { name: "research", label: "Research", order_index: 0, review_required: true },
+    ];
     render(
       <MessageBubble
-        message={makeMsg({ type: "result", workflow_phase: "plan", id: "plan-1" })}
+        message={makeMsg({ type: "result", workflow_phase: "research", id: "research-1" })}
+        workflowSteps={steps}
         onApprovePhase={vi.fn()}
         onRequestRevision={vi.fn()}
         onOpenArtifact={vi.fn()}
       />,
     );
     expect(screen.getByTestId("workflow-phase-card")).toBeInTheDocument();
-    expect(screen.getByTestId("workflow-phase-card")).toHaveAttribute("data-message-id", "plan-1");
+    expect(screen.getByTestId("workflow-phase-card")).toHaveAttribute("data-message-id", "research-1");
   });
 });
 

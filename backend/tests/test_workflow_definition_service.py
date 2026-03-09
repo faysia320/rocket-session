@@ -77,9 +77,9 @@ class TestCreateDefinition:
     async def test_create_steps_order(self, workflow_definition_service):
         """스텝이 order_index 순으로 정렬되어 반환된다."""
         steps = [
-            WorkflowStepConfig(name="implement", label="Implement", order_index=2),
+            WorkflowStepConfig(name="qa", label="QA", order_index=2),
             WorkflowStepConfig(name="research", label="Research", order_index=0),
-            WorkflowStepConfig(name="plan", label="Plan", order_index=1),
+            WorkflowStepConfig(name="implement", label="Implement", order_index=1),
         ]
         result = await workflow_definition_service.create_definition(
             name="Ordered Workflow", steps=steps
@@ -87,8 +87,8 @@ class TestCreateDefinition:
 
         assert len(result.steps) == 3
         assert result.steps[0].name == "research"
-        assert result.steps[1].name == "plan"
-        assert result.steps[2].name == "implement"
+        assert result.steps[1].name == "implement"
+        assert result.steps[2].name == "qa"
 
 
 # ---------------------------------------------------------------------------
@@ -406,11 +406,14 @@ class TestGetOrDefault:
         assert result.id.startswith("default-")
         assert result.name == "Default"
         assert result.is_default is True
-        assert len(result.steps) == 4
+        assert len(result.steps) == 3
         step_names = [s.name for s in result.steps]
-        assert step_names == ["research", "plan", "implement", "qa"]
+        assert step_names == ["research", "implement", "qa"]
+        # Research 단계에 review_required=True 확인
+        research_step = result.steps[0]
+        assert research_step.review_required is True
         # QA 단계에 run_validation=True 확인
-        qa_step = result.steps[3]
+        qa_step = result.steps[2]
         assert qa_step.run_validation is True
         assert qa_step.review_required is True
 

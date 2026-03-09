@@ -58,51 +58,22 @@ class TestStartWorkflow:
     async def test_start_workflow_skip_research(
         self, workflow_service, session_manager, test_session
     ):
-        """skip_research=True 시 plan phase부터 시작한다."""
+        """skip_research=True 시 두 번째 step(implement)부터 시작한다."""
         result = await workflow_service.start_workflow(
             test_session["id"], session_manager, skip_research=True
         )
 
-        assert result["phase"] == "plan"
-        assert result["status"] == "in_progress"
-
-    async def test_start_workflow_skip_both(
-        self, workflow_service, session_manager, test_session
-    ):
-        """skip_research + skip_plan 시 implement phase부터 시작한다."""
-        result = await workflow_service.start_workflow(
-            test_session["id"],
-            session_manager,
-            skip_research=True,
-            skip_plan=True,
-        )
-
         assert result["phase"] == "implement"
         assert result["status"] == "in_progress"
-
-    async def test_start_workflow_skip_plan_only(
-        self, workflow_service, session_manager, test_session
-    ):
-        """skip_plan=True만 설정하면 research부터 시작한다 (skip_plan은 skip_research 없이는 효과 없음)."""
-        result = await workflow_service.start_workflow(
-            test_session["id"], session_manager, skip_plan=True
-        )
-
-        # skip_plan만 True일 때: skip_research=False이므로 첫 phase는 research
-        assert result["phase"] == "research"
 
 
 @pytest.mark.asyncio
 class TestGetNextPhase:
     """get_next_phase: 다음 phase 반환."""
 
-    async def test_research_to_plan(self, workflow_service):
-        """research 다음은 plan이다."""
-        assert await workflow_service.get_next_phase("research") == "plan"
-
-    async def test_plan_to_implement(self, workflow_service):
-        """plan 다음은 implement이다."""
-        assert await workflow_service.get_next_phase("plan") == "implement"
+    async def test_research_to_implement(self, workflow_service):
+        """research 다음은 implement이다."""
+        assert await workflow_service.get_next_phase("research") == "implement"
 
     async def test_implement_to_qa(self, workflow_service):
         """implement 다음은 qa이다."""
@@ -122,10 +93,10 @@ class TestGetNextPhase:
 class TestApprovePhase:
     """approve_phase: phase 승인 + 다음 phase 전환."""
 
-    async def test_approve_research_advances_to_plan(
+    async def test_approve_research_advances_to_implement(
         self, workflow_service, session_manager, test_session
     ):
-        """research 승인 시 plan으로 전환된다."""
+        """research 승인 시 implement로 전환된다."""
         session_id = test_session["id"]
         await workflow_service.start_workflow(session_id, session_manager)
 
@@ -137,36 +108,12 @@ class TestApprovePhase:
         result = await workflow_service.approve_phase(session_id, session_manager)
 
         assert result["approved_phase"] == "research"
-        assert result["next_phase"] == "plan"
-
-        # DB 확인: plan phase로 전환
-        session = await session_manager.get(session_id)
-        assert session["workflow_phase"] == "plan"
-        assert session["workflow_phase_status"] == "in_progress"
-
-    async def test_approve_plan_advances_to_implement(
-        self, workflow_service, session_manager, test_session
-    ):
-        """plan 승인 시 implement로 전환된다."""
-        session_id = test_session["id"]
-
-        # plan phase로 직접 설정
-        await session_manager.update_settings(
-            session_id,
-            workflow_enabled=True,
-            workflow_phase="plan",
-            workflow_phase_status="awaiting_approval",
-        )
-
-        # plan 아티팩트 생성
-        await workflow_service.create_artifact(
-            session_id, "plan", "# 구현 계획\n1. 파일 수정"
-        )
-
-        result = await workflow_service.approve_phase(session_id, session_manager)
-
-        assert result["approved_phase"] == "plan"
         assert result["next_phase"] == "implement"
+
+        # DB 확인: implement phase로 전환
+        session = await session_manager.get(session_id)
+        assert session["workflow_phase"] == "implement"
+        assert session["workflow_phase_status"] == "in_progress"
 
     async def test_approve_implement_advances_to_qa(
         self, workflow_service, session_manager, test_session
@@ -369,11 +316,11 @@ class TestCreateArtifact:
         research = await workflow_service.create_artifact(
             session_id, "research", "# 연구"
         )
-        plan = await workflow_service.create_artifact(session_id, "plan", "# 계획")
+        implement = await workflow_service.create_artifact(session_id, "implement", "# 구현")
 
         assert research.version == 1
-        assert plan.version == 1
-        assert plan.parent_artifact_id is None
+        assert implement.version == 1
+        assert implement.parent_artifact_id is None
 
 
 @pytest.mark.asyncio
@@ -429,13 +376,13 @@ class TestListArtifacts:
         session_id = test_session["id"]
 
         await workflow_service.create_artifact(session_id, "research", "# 연구")
-        await workflow_service.create_artifact(session_id, "plan", "# 계획")
+        await workflow_service.create_artifact(session_id, "implement", "# 구현")
 
         artifacts = await workflow_service.list_artifacts(session_id)
         assert len(artifacts) == 2
 
         phases = {a.phase for a in artifacts}
-        assert phases == {"research", "plan"}
+        assert phases == {"research", "implement"}
 
     async def test_list_only_session_artifacts(self, workflow_service, session_manager):
         """다른 세션의 아티팩트는 포함하지 않는다."""
@@ -506,7 +453,7 @@ class TestAddAnnotation:
     async def test_add_suggestion_with_line_range(self, workflow_service, test_session):
         """suggestion 타입 + line_end 범위를 지정하여 주석을 추가한다."""
         artifact = await workflow_service.create_artifact(
-            test_session["id"], "plan", "# 계획\n1단계\n2단계\n3단계"
+            test_session["id"], "implement", "# 구현\n1단계\n2단계\n3단계"
         )
 
         annotation = await workflow_service.add_annotation(
@@ -682,15 +629,15 @@ class TestBuildPhaseContext:
 
         assert context == "이 프로젝트의 인증 시스템 분석"
 
-    async def test_plan_phase_without_research(self, workflow_service, test_session):
+    async def test_implement_phase_without_research(self, workflow_service, test_session):
         """prompt_template이 없으면 원본 프롬프트를 그대로 반환한다."""
         context = await workflow_service.build_phase_context(
-            test_session["id"], "plan", "API 리팩토링 계획"
+            test_session["id"], "implement", "구현 시작"
         )
 
-        assert context == "API 리팩토링 계획"
+        assert context == "구현 시작"
 
-    async def test_plan_phase_with_approved_research(
+    async def test_implement_phase_with_approved_research(
         self, workflow_service, session_manager, test_session
     ):
         """prompt_template이 비어있으면 approved 아티팩트가 있어도 원본 프롬프트 반환."""
@@ -703,60 +650,10 @@ class TestBuildPhaseContext:
         await workflow_service.approve_phase(session_id, session_manager)
 
         context = await workflow_service.build_phase_context(
-            session_id, "plan", "계획 수립"
-        )
-
-        # prompt_template이 비어있으므로 원본 프롬프트 반환
-        assert context == "계획 수립"
-
-    async def test_plan_phase_with_annotated_research(
-        self, workflow_service, session_manager, test_session
-    ):
-        """prompt_template이 비어있으면 주석이 있어도 원본 프롬프트 반환."""
-        session_id = test_session["id"]
-
-        await workflow_service.start_workflow(session_id, session_manager)
-        artifact = await workflow_service.create_artifact(
-            session_id, "research", "line0\nline1\nline2"
-        )
-        await workflow_service.add_annotation(
-            artifact.id, line_start=1, content="이 부분 보강"
-        )
-        await workflow_service.approve_phase(session_id, session_manager)
-
-        context = await workflow_service.build_phase_context(session_id, "plan", "계획")
-
-        assert context == "계획"
-
-    async def test_implement_phase_without_plan(self, workflow_service, test_session):
-        """prompt_template이 비어있으면 원본 프롬프트를 그대로 반환한다."""
-        context = await workflow_service.build_phase_context(
-            test_session["id"], "implement", "구현 시작"
-        )
-
-        assert context == "구현 시작"
-
-    async def test_implement_phase_with_approved_plan(
-        self, workflow_service, session_manager, test_session
-    ):
-        """prompt_template이 비어있으면 approved plan이 있어도 원본 프롬프트 반환."""
-        session_id = test_session["id"]
-
-        await session_manager.update_settings(
-            session_id,
-            workflow_enabled=True,
-            workflow_phase="plan",
-            workflow_phase_status="awaiting_approval",
-        )
-        await workflow_service.create_artifact(
-            session_id, "plan", "# 계획\n1. API 엔드포인트 추가\n2. 테스트 작성"
-        )
-        await workflow_service.approve_phase(session_id, session_manager)
-
-        context = await workflow_service.build_phase_context(
             session_id, "implement", "구현"
         )
 
+        # prompt_template이 비어있으므로 원본 프롬프트 반환
         assert context == "구현"
 
     async def test_unknown_phase_returns_original_prompt(
@@ -777,12 +674,12 @@ class TestBuildPhaseContext:
 
 @pytest.mark.asyncio
 class TestFullWorkflowIntegration:
-    """전체 워크플로우 흐름 (research → plan → implement) 통합 테스트."""
+    """전체 워크플로우 흐름 (research → implement → qa) 통합 테스트."""
 
     async def test_complete_workflow_lifecycle(
         self, workflow_service, session_manager, test_session
     ):
-        """research → plan → implement → qa 전체 흐름을 검증한다."""
+        """research → implement → qa 전체 흐름을 검증한다."""
         session_id = test_session["id"]
 
         # 1. 워크플로우 시작
@@ -796,32 +693,20 @@ class TestFullWorkflowIntegration:
         assert research_artifact.phase == "research"
         assert research_artifact.version == 1
 
-        # 3. research 승인 → plan 전환
+        # 3. research 승인 → implement 전환
         approve1 = await workflow_service.approve_phase(session_id, session_manager)
         assert approve1["approved_phase"] == "research"
-        assert approve1["next_phase"] == "plan"
+        assert approve1["next_phase"] == "implement"
 
-        # 4. plan 아티팩트 생성
-        plan_artifact = await workflow_service.create_artifact(
-            session_id, "plan", "# 구현 계획\n1. 서비스 추가"
-        )
-        assert plan_artifact.phase == "plan"
-        assert plan_artifact.version == 1
-
-        # 5. plan 승인 → implement 전환
+        # 4. implement 승인 → qa 전환
         approve2 = await workflow_service.approve_phase(session_id, session_manager)
-        assert approve2["approved_phase"] == "plan"
-        assert approve2["next_phase"] == "implement"
+        assert approve2["approved_phase"] == "implement"
+        assert approve2["next_phase"] == "qa"
 
-        # 6. implement 승인 → qa 전환
+        # 5. qa 승인 → 워크플로우 종료
         approve3 = await workflow_service.approve_phase(session_id, session_manager)
-        assert approve3["approved_phase"] == "implement"
-        assert approve3["next_phase"] == "qa"
-
-        # 7. qa 승인 → 워크플로우 종료
-        approve4 = await workflow_service.approve_phase(session_id, session_manager)
-        assert approve4["approved_phase"] == "qa"
-        assert approve4["next_phase"] is None
+        assert approve3["approved_phase"] == "qa"
+        assert approve3["next_phase"] is None
 
         # 최종 상태 확인: 마지막 phase 유지 + status=completed
         session = await session_manager.get(session_id)
@@ -830,7 +715,7 @@ class TestFullWorkflowIntegration:
 
         # 전체 아티팩트 확인
         all_artifacts = await workflow_service.list_artifacts(session_id)
-        assert len(all_artifacts) == 2  # research + plan
+        assert len(all_artifacts) == 1  # research
 
     async def test_revision_and_re_approve_cycle(
         self, workflow_service, session_manager, test_session
@@ -862,10 +747,10 @@ class TestFullWorkflowIntegration:
         assert v1_check.status == "superseded"
         assert v2.status == "review"
 
-        # v2 승인 → plan으로 전환
+        # v2 승인 → implement로 전환
         approve = await workflow_service.approve_phase(session_id, session_manager)
         assert approve["approved_phase"] == "research"
-        assert approve["next_phase"] == "plan"
+        assert approve["next_phase"] == "implement"
 
         v2_check = await workflow_service.get_artifact(v2.id)
         assert v2_check is not None
