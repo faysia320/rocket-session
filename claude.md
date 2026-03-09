@@ -91,7 +91,6 @@
   - 전문 검색 (PostgreSQL TSVECTOR 기반)
   - 글로벌 설정 (새 세션의 기본값 일괄 관리)
   - 워크스페이스 관리 (Git clone 기반, 자동 의존성 설치, Pull/Push 동기화)
-  - 팀 채팅 (다중 Claude 에이전트 팀 협업, Coordinator가 작업 분배)
 - **동작 방식**: FastAPI 백엔드가 Claude Code CLI를 subprocess로 실행하고, `--output-format stream-json`으로 출력을 파싱하여 WebSocket으로 프론트엔드에 전달. 모든 데이터는 PostgreSQL에 영속 저장
 
 ---
@@ -154,7 +153,7 @@
 
 `src/features/` 하위: `analytics`, `chat`, `command-palette`, `dashboard`, `directory`,
 `files`, `git-monitor`, `history`, `layout`, `mcp`, `notification`, `session`,
-`settings`, `tags`, `team`, `usage`, `workflow`, `workspace`
+`settings`, `tags`, `task`, `usage`, `workflow`, `workspace`
 
 각 feature는 `components/` + `hooks/` 구조를 따름.
 
@@ -204,7 +203,7 @@
 │  sessions · messages · file_changes · events · workspaces    │
 │  session_artifacts · artifact_annotations                    │
 │  global_settings · mcp_servers · tags · workflow_definitions  │
-│  token_snapshots · teams · team_messages · team_tasks         │
+│  token_snapshots · workspace_insights                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -514,7 +513,7 @@ pnpm preview                               # 빌드 미리보기
 ## 10. 데이터베이스 스키마
 
 > DB 스키마 상세는 Serena 메모리 `database_schema` 참조.
-> 테이블: sessions, messages, session_artifacts, artifact_annotations, file_changes, events, workspaces, global_settings, mcp_servers, tags, session_tags, teams, team_messages, team_tasks, workflow_definitions, token_snapshots
+> 테이블: sessions, messages, session_artifacts, artifact_annotations, file_changes, events, workspaces, global_settings, mcp_servers, tags, session_tags, workflow_definitions, token_snapshots, workspace_insights, memo_blocks
 > 마이그레이션: `cd backend && uv run alembic revision --autogenerate -m "설명"`
 
 ---
