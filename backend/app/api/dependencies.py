@@ -28,10 +28,6 @@ from app.services.session_manager import SessionManager
 from app.services.settings_service import SettingsService
 from app.services.skills_service import SkillsService
 from app.services.tag_service import TagService
-from app.services.team_coordinator import TeamCoordinator
-from app.services.team_message_service import TeamMessageService
-from app.services.team_service import TeamService
-from app.services.team_task_service import TeamTaskService
 from app.services.usage_service import UsageService
 from app.services.websocket_manager import WebSocketManager
 from app.services.validation_service import ValidationService
@@ -68,10 +64,6 @@ class ServiceRegistry:
         self.mcp_service: McpService | None = None
         self.memo_service: MemoService | None = None
         self.tag_service: TagService | None = None
-        self.team_service: TeamService | None = None
-        self.team_task_service: TeamTaskService | None = None
-        self.team_coordinator: TeamCoordinator | None = None
-        self.team_message_service: TeamMessageService | None = None
         self.search_service: SearchService | None = None
         self.analytics_service: AnalyticsService | None = None
 
@@ -139,12 +131,6 @@ class ServiceRegistry:
         self.mcp_service = McpService(self.database)
         self.memo_service = MemoService(self.database)
         self.tag_service = TagService(self.database)
-        self.team_service = TeamService(self.database)
-        self.team_task_service = TeamTaskService(self.database)
-        self.team_coordinator = TeamCoordinator(
-            self.database, self.session_manager, self.ws_manager, self.claude_runner
-        )
-        self.team_message_service = TeamMessageService(self.database)
         self.search_service = SearchService(self.database)
         self.analytics_service = AnalyticsService(self.database)
 
@@ -302,22 +288,6 @@ def get_tag_service() -> TagService:
 
 def get_search_service() -> SearchService:
     return _registry._require("search_service")
-
-
-def get_team_service() -> TeamService:
-    return _registry._require("team_service")
-
-
-def get_team_task_service() -> TeamTaskService:
-    return _registry._require("team_task_service")
-
-
-def get_team_coordinator() -> TeamCoordinator:
-    return _registry._require("team_coordinator")
-
-
-def get_team_message_service() -> TeamMessageService:
-    return _registry._require("team_message_service")
 
 
 def get_analytics_service() -> AnalyticsService:

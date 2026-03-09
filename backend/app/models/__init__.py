@@ -10,9 +10,6 @@ from app.models.message import Message
 from app.models.session import Session, SessionStatus
 from app.models.session_artifact import ArtifactAnnotation, SessionArtifact
 from app.models.tag import SessionTag, Tag
-from app.models.team import Team, TeamMember
-from app.models.team_message import TeamMessage
-from app.models.team_task import TeamTask
 from app.models.token_snapshot import TokenSnapshot
 from app.models.workflow_definition import WorkflowDefinition
 from app.models.workspace import Workspace
@@ -30,10 +27,6 @@ __all__ = [
     "SessionStatus",
     "SessionTag",
     "Tag",
-    "Team",
-    "TeamMember",
-    "TeamMessage",
-    "TeamTask",
     "SessionArtifact",
     "ArtifactAnnotation",
     "TokenSnapshot",

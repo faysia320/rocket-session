@@ -14,9 +14,6 @@ from app.repositories.artifact_repo import (
     ArtifactAnnotationRepository,
     SessionArtifactRepository,
 )
-from app.repositories.team_message_repo import TeamMessageRepository
-from app.repositories.team_repo import TeamMemberRepository, TeamRepository
-from app.repositories.team_task_repo import TeamTaskRepository
 from app.repositories.token_snapshot_repo import TokenSnapshotRepository
 from app.repositories.workflow_definition_repo import WorkflowDefinitionRepository
 from app.repositories.workspace_repo import WorkspaceRepository
@@ -34,10 +31,6 @@ __all__ = [
     "SessionRepository",
     "SettingsRepository",
     "TagRepository",
-    "TeamMemberRepository",
-    "TeamMessageRepository",
-    "TeamRepository",
-    "TeamTaskRepository",
     "TokenSnapshotRepository",
     "WorkflowDefinitionRepository",
     "WorkspaceRepository",

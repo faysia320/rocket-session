@@ -30,7 +30,6 @@ from app.services.session_manager import SessionManager  # noqa: E402
 from app.services.usage_service import UsageService  # noqa: E402
 from app.services.websocket_manager import WebSocketManager  # noqa: E402
 from app.services.tag_service import TagService  # noqa: E402
-from app.services.team_service import TeamService  # noqa: E402
 from app.services.mcp_service import McpService  # noqa: E402
 from app.services.analytics_service import AnalyticsService  # noqa: E402
 from app.services.workflow_definition_service import WorkflowDefinitionService  # noqa: E402
@@ -100,10 +99,6 @@ _TRUNCATE_TABLES = [
     "mcp_servers",
     "tags",
     "global_settings",
-    "team_tasks",
-    "team_messages",
-    "team_members",
-    "teams",
     "token_snapshots",
     "workflow_definitions",
 ]
@@ -212,12 +207,6 @@ async def test_session(session_manager):
 async def tag_service(db):
     """TagService fixture."""
     return TagService(db)
-
-
-@pytest_asyncio.fixture
-async def team_service(db):
-    """TeamService fixture."""
-    return TeamService(db)
 
 
 @pytest_asyncio.fixture

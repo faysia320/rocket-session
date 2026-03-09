@@ -685,21 +685,6 @@ class ClaudeRunner:
                     "timestamp": utc_now_iso(),
                 },
             )
-            await self._try_handle_delegate_commands(session_id, turn_state.text)
-
-    @staticmethod
-    async def _try_handle_delegate_commands(session_id: str, text: str) -> None:
-        """리드 세션의 @delegate 패턴 자동 위임 (TeamCoordinator에 위임)."""
-        try:
-            from app.api.dependencies import get_team_coordinator
-
-            coordinator = get_team_coordinator()
-            await coordinator.try_handle_delegate_commands(session_id, text)
-        except Exception:
-            logger.debug(
-                "세션 %s: TeamCoordinator @delegate 처리 실패 (미초기화)",
-                session_id,
-            )
 
     async def _handle_user_event(
         self,
@@ -1632,14 +1617,4 @@ class ClaudeRunner:
                     mcp_service,
                 )
 
-            # 팀 코디네이터 콜백: 세션 완료 시 팀 태스크 자동 완료
-            try:
-                from app.api.dependencies import get_team_coordinator
-
-                coordinator = get_team_coordinator()
-                last_text = turn_state.text if turn_state else None
-                await coordinator.on_session_completed(session_id, last_text)
-            except Exception as e:
-                if "초기화되지 않았습니다" not in str(e):
-                    logger.warning("세션 %s: 팀 콜백 실패: %s", session_id, e)
 

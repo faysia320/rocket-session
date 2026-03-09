@@ -74,13 +74,5 @@ class WsEventType:
     STALL_DETECTED = "stall_detected"
     RETRY_ATTEMPT = "retry_attempt"
 
-    # Team events
-    TEAM_TASK_CREATED = "team_task_created"
-    TEAM_TASK_UPDATED = "team_task_updated"
-    TEAM_TASK_COMPLETED = "team_task_completed"
-    TEAM_TASK_DELEGATED = "team_task_delegated"
-    TEAM_MEMBER_JOINED = "team_member_joined"
-    TEAM_MEMBER_LEFT = "team_member_left"
-    TEAM_STATUS_CHANGED = "team_status_changed"
-    TEAM_MESSAGE = "team_message"
+
 

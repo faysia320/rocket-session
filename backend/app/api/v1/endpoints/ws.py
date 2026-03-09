@@ -208,22 +208,6 @@ async def _handle_prompt(
             current_session, global_settings
         )
 
-        # 팀 리드 세션인 경우 시스템 프롬프트에 팀 컨텍스트 자동 주입
-        try:
-            from app.api.dependencies import get_team_coordinator
-
-            team_coordinator = get_team_coordinator()
-            team_context = await team_coordinator.inject_team_context(session_id)
-            if team_context:
-                existing = merged_session.get("system_prompt") or ""
-                merged_session["system_prompt"] = (
-                    existing + "\n\n" + team_context if existing else team_context
-                )
-        except Exception:
-            logger.debug(
-                "세션 %s: TeamCoordinator 컨텍스트 주입 실패 (미초기화)", session_id
-            )
-
         # Knowledge Base 컨텍스트 자동 주입
         try:
             work_dir = current_session.get("work_dir")
