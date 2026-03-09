@@ -41,7 +41,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
   const label = stepConfig?.label ?? message.workflow_phase ?? "Phase";
   const Icon = FileText;
   const isApproved = message.workflowApproved === true;
-  const showActions = stepConfig?.review_required ?? message.workflow_phase === "plan";
+  const showActions = stepConfig?.review_required ?? false;
   const isQaPhase = message.workflow_phase === "qa";
 
   const qaResult = useMemo(

@@ -80,7 +80,7 @@ export const MessageBubble = memo(function MessageBubble({
   const messageId = message.id;
 
   const handleOpenArtifact = useCallback(() => {
-    onOpenArtifact?.(workflowPhase ?? "plan");
+    onOpenArtifact?.(workflowPhase ?? "research");
   }, [onOpenArtifact, workflowPhase]);
 
   const handleRetryError = useCallback(() => {
@@ -102,7 +102,7 @@ export const MessageBubble = memo(function MessageBubble({
       return <AssistantText message={message} isStreaming={isRunning} animate={animate} />;
     case "result": {
       const currentStep = workflowSteps?.find((s) => s.name === message.workflow_phase);
-      if (currentStep?.review_required || (!workflowSteps && message.workflow_phase === "plan")) {
+      if (currentStep?.review_required) {
         const isLast = (() => {
           if (!workflowSteps?.length || !message.workflow_phase) return false;
           const maxIdx = Math.max(...workflowSteps.map((s) => s.order_index));

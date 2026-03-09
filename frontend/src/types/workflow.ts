@@ -68,7 +68,6 @@ export interface StartWorkflowRequest {
   workflow_definition_id?: string;
   start_from_step?: string;
   skip_research?: boolean;
-  skip_plan?: boolean;
 }
 
 export interface WorkflowStatusResponse {
