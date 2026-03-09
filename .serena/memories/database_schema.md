@@ -168,40 +168,6 @@ PostgreSQL + SQLAlchemy ORM (`backend/app/models/`), 마이그레이션: Alembic
 | tag_id | String (FK → tags, PK) | 태그 참조 |
 | created_at | Text | 생성 시각 |
 
-## teams (팀)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 팀 ID |
-| name | String | 팀 이름 |
-| workspace_id | String (FK → workspaces) | 워크스페이스 참조 |
-| goal | Text | 팀 목표/작업 설명 |
-| status | String | idle / running / completed / error |
-| created_at | DateTime(tz) | 생성 시각 |
-
-## team_messages (팀 메시지)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | Integer (PK, auto) | 메시지 ID |
-| team_id | String (FK → teams) | 팀 참조 |
-| role | String | user / coordinator / agent |
-| content | Text | 메시지 내용 |
-| sender_name | String | 발신자 이름 |
-| created_at | DateTime(tz) | 생성 시각 |
-
-## team_tasks (팀 작업)
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | String (PK) | 작업 ID |
-| team_id | String (FK → teams) | 팀 참조 |
-| session_id | String (FK → sessions) | 담당 세션 참조 |
-| description | Text | 작업 설명 |
-| status | String | pending / in_progress / completed / error |
-| result | Text | 작업 결과 |
-| created_at | DateTime(tz) | 생성 시각 |
-
 ## workflow_definitions (워크플로우 정의)
 
 | 컬럼 | 타입 | 설명 |

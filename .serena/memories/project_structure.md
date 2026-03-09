@@ -28,7 +28,7 @@ rocket-session/
 │   │   │           ├── workflow.py   # 워크플로우 관리
 │   │   │           ├── workflow_definitions.py  # 워크플로우 정의
 │   │   │           ├── workspaces.py  # 워크스페이스 CRUD + 동기화
-│   │   │           └── teams.py       # 팀 채팅
+
 │   │   ├── models/
 │   │   │   ├── base.py               # SQLAlchemy DeclarativeBase
 │   │   │   ├── session.py            # Session ORM 모델
@@ -43,9 +43,7 @@ rocket-session/
 │   │   │   ├── token_snapshot.py    # TokenSnapshot ORM 모델
 │   │   │   ├── workflow_definition.py # WorkflowDefinition ORM 모델
 │   │   │   ├── workspace.py         # Workspace ORM 모델
-│   │   │   ├── team.py              # Team ORM 모델
-│   │   │   ├── team_message.py      # TeamMessage ORM 모델
-│   │   │   └── team_task.py         # TeamTask ORM 모델
+
 │   │   ├── repositories/
 │   │   │   ├── base.py               # BaseRepository
 │   │   │   ├── session_repo.py       # SessionRepository
@@ -61,9 +59,7 @@ rocket-session/
 │   │   │   ├── artifact_repo.py      # ArtifactRepository
 │   │   │   ├── workflow_definition_repo.py # WorkflowDefinitionRepository
 │   │   │   ├── workspace_repo.py    # WorkspaceRepository
-│   │   │   ├── team_repo.py         # TeamRepository
-│   │   │   ├── team_task_repo.py    # TeamTaskRepository
-│   │   │   └── team_message_repo.py # TeamMessageRepository
+
 │   │   ├── schemas/
 │   │   │   ├── session.py            # 세션 Request/Response 스키마
 │   │   │   ├── workflow.py           # 워크플로우 스키마
@@ -78,7 +74,7 @@ rocket-session/
 │   │   │   ├── workflow_definition.py # 워크플로우 정의 스키마
 │   │   │   ├── common.py            # 공통 응답 스키마
 │   │   │   ├── workspace.py         # 워크스페이스 스키마
-│   │   │   └── team.py              # 팀 스키마
+
 │   │   └── services/
 │   │       ├── session_manager.py    # 세션 생명주기 관리
 │   │       ├── claude_runner.py      # Claude CLI subprocess + JSON 스트림 파싱
@@ -102,10 +98,7 @@ rocket-session/
 │   │       ├── github_service.py      # GitHub API 연동 (PR 생성 등)
 │   │       ├── skills_service.py      # 슬래시 명령어 스킬 관리
 │   │       ├── session_process_manager.py # 세션별 프로세스 관리
-│   │       ├── team_service.py        # 팀 관리
-│   │       ├── team_coordinator.py    # 팀 작업 분배 코디네이터
-│   │       ├── team_task_service.py   # 팀 작업 관리
-│   │       └── team_message_service.py # 팀 메시지 관리
+
 │   ├── migrations/                       # Alembic 마이그레이션
 │   │   ├── versions/                     # 마이그레이션 버전 파일
 │   │   └── env.py
@@ -136,7 +129,7 @@ rocket-session/
 │   │   │   ├── notification.ts       # 알림 타입
 │   │   │   ├── analytics.ts           # 분석 타입
 │   │   │   ├── workspace.ts           # 워크스페이스 타입
-│   │   │   ├── team.ts                # 팀 타입
+
 │   │   │   ├── ws-events.ts           # WebSocket 이벤트 타입
 │   │   │   └── index.ts              # barrel export
 │   │   ├── store/
@@ -190,7 +183,7 @@ rocket-session/
 │   │   │   ├── history/               # 히스토리 뷰
 │   │   │   ├── layout/                # 레이아웃 (Split View 등)
 │   │   │   ├── workspace/             # 워크스페이스 관리
-│   │   │   ├── team/                  # 팀 채팅
+│   │   │   ├── task/                  # 태스크 관리 (_reference/ 포함)
 │   │   │   ├── tags/                  # 태그 관리
 │   │   └── lib/
 │   │       ├── utils.ts              # cn() 유틸리티 (clsx + tailwind-merge)

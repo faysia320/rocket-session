@@ -25,10 +25,7 @@
 | `GitHubService` | GitHub API 연동 (PR 생성 등) | 없음 |
 | `SkillsService` | 슬래시 명령어 스킬 관리 | 없음 (stateless) |
 | `SessionProcessManager` | 세션별 프로세스 관리 (PID 추적 등) | 인메모리 |
-| `TeamService` | 팀 생명주기 관리 | PostgreSQL |
-| `TeamCoordinator` | 팀 작업 분배 코디네이터 | 인메모리 |
-| `TeamTaskService` | 팀 작업 관리 | PostgreSQL |
-| `TeamMessageService` | 팀 메시지 관리 | PostgreSQL |
+
 
 > **참고**: 세션/메시지/파일 변경/이벤트는 PostgreSQL에 영속 저장됩니다. 프로세스 핸들만 인메모리로 관리되어 서버 재시작 시 실행 중인 세션의 프로세스 연결은 끊어집니다.
 
