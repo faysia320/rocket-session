@@ -54,6 +54,7 @@ interface MessageBubbleProps {
   onAnswerQuestion?: (messageId: string, questionIndex: number, labels: string[]) => void;
   onConfirmAnswers?: (messageId: string) => void;
   workflowSteps?: ResolvedWorkflowStep[];
+  onOpenPreview?: (url: string) => void;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -71,6 +72,7 @@ export const MessageBubble = memo(function MessageBubble({
   onAnswerQuestion,
   onConfirmAnswers,
   workflowSteps,
+  onOpenPreview,
 }: MessageBubbleProps) {
   const { type } = message;
 
@@ -126,7 +128,8 @@ export const MessageBubble = memo(function MessageBubble({
       if (message.tool === "TodoWrite") return null; // PinnedTodoBar에서 처리
       if (message.tool === "ExitPlanMode") return null; // WorkflowPhaseCard에서 처리
       if (EDIT_TOOLS.has(message.tool)) return <EditToolMessage message={message} />;
-      if (message.tool === "Bash") return <BashToolMessage message={message} />;
+      if (message.tool === "Bash")
+        return <BashToolMessage message={message} onOpenPreview={onOpenPreview} />;
       if (message.tool === "Read") return <ReadToolMessage message={message} />;
       if (message.tool === "Grep" || message.tool === "Glob")
         return <SearchToolMessage message={message} />;

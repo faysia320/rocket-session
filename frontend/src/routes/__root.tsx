@@ -19,6 +19,11 @@ const MemoPanel = lazy(() =>
     default: m.MemoPanel,
   })),
 );
+const WebPreviewPanel = lazy(() =>
+  import("@/features/preview/components/WebPreviewPanel").then((m) => ({
+    default: m.WebPreviewPanel,
+  })),
+);
 import { useSessions } from "@/features/session/hooks/useSessions";
 import { useTeams } from "@/features/team/hooks/useTeams";
 import { useShallow } from "zustand/react/shallow";
@@ -56,6 +61,9 @@ function RootComponent() {
       <CommandPaletteProvider />
       <Suspense fallback={null}>
         <MemoPanel />
+      </Suspense>
+      <Suspense fallback={null}>
+        <WebPreviewPanel />
       </Suspense>
     </div>
   );

@@ -1,4 +1,4 @@
-import { FolderOpen, GitBranch, GitBranchPlus, RefreshCw } from "lucide-react";
+import { FolderOpen, GitBranch, GitBranchPlus, RefreshCw, Globe } from "lucide-react";
 import { memo, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -22,6 +22,7 @@ import type { FileChange, GitInfo, ToolUseMsg } from "@/types";
 import type { ReconnectState } from "../hooks/useClaudeSocket";
 import { GitDropdownMenu } from "./GitDropdownMenu";
 import { SessionDropdownMenu } from "./SessionDropdownMenu";
+import { usePreviewStore } from "@/store";
 
 interface ChatHeaderProps {
 	connected: boolean;
@@ -79,6 +80,12 @@ export const ChatHeader = memo(function ChatHeader({
 }: ChatHeaderProps) {
 	const isEffectivelyRunning = status === "running" || activeTools.length > 0;
 	const isWorktree = !!worktreeName;
+
+	// 웹 프리뷰 스토어
+	const previewIsOpen = usePreviewStore((s) => s.isOpen);
+	const previewUrl = usePreviewStore((s) => s.url);
+	const previewOpen = usePreviewStore((s) => s.openPreview);
+	const previewClose = usePreviewStore((s) => s.closePreview);
 
 	const displayWorkDir = useMemo(() => {
 		if (isWorktree && workDir) {
@@ -207,6 +214,22 @@ export const ChatHeader = memo(function ChatHeader({
 				/>
 
 				<ButtonGroup>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								variant="outline"
+								size="icon"
+								onClick={() =>
+									previewIsOpen ? previewClose() : previewOpen(previewUrl || "")
+								}
+								className={cn(previewIsOpen && "bg-muted text-primary")}
+								aria-label="웹 미리보기"
+							>
+								<Globe className="h-4 w-4" />
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>웹 미리보기</TooltipContent>
+					</Tooltip>
 					<SessionDropdownMenu
 						sessionId={sessionId}
 						isArchived={isArchived}

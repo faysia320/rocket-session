@@ -29,6 +29,7 @@ interface ChatMessageListProps {
   onAnswerQuestion: (toolUseId: string, questionIndex: number, selectedLabels: string[]) => void;
   onConfirmAnswers: (toolUseId: string) => void;
   workflowSteps?: ResolvedWorkflowStep[];
+  onOpenPreview?: (url: string) => void;
 }
 
 export const ChatMessageList = memo(function ChatMessageList({
@@ -53,6 +54,7 @@ export const ChatMessageList = memo(function ChatMessageList({
   onAnswerQuestion,
   onConfirmAnswers,
   workflowSteps,
+  onOpenPreview,
 }: ChatMessageListProps) {
   const searchMatchSet = useMemo(() => new Set(searchMatches), [searchMatches]);
 
@@ -138,6 +140,7 @@ export const ChatMessageList = memo(function ChatMessageList({
                     onAnswerQuestion={onAnswerQuestion}
                     onConfirmAnswers={onConfirmAnswers}
                     workflowSteps={workflowSteps}
+                    onOpenPreview={onOpenPreview}
                   />
                 </ErrorBoundary>
               </div>

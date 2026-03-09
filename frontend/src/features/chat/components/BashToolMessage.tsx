@@ -1,15 +1,21 @@
-import { useState, memo, useRef, useCallback } from "react";
-import { Terminal, Copy, Check } from "lucide-react";
+import { useState, memo, useRef, useCallback, useMemo } from "react";
+import { Terminal, Copy, Check, Globe } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { ToolUseMsg } from "@/types";
 import { ToolMessageShell } from "./ToolMessageShell";
 
+const LOCALHOST_URL_REGEX = /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)(\/[^\s"'<>)}\]]*)?/g;
+
 interface BashToolMessageProps {
   message: ToolUseMsg;
+  onOpenPreview?: (url: string) => void;
 }
 
-export const BashToolMessage = memo(function BashToolMessage({ message }: BashToolMessageProps) {
+export const BashToolMessage = memo(function BashToolMessage({
+  message,
+  onOpenPreview,
+}: BashToolMessageProps) {
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -37,6 +43,13 @@ export const BashToolMessage = memo(function BashToolMessage({ message }: BashTo
     },
     [command],
   );
+
+  // localhost URL 감지
+  const detectedUrls = useMemo(() => {
+    if (!message.output || !onOpenPreview) return [];
+    const matches = message.output.matchAll(LOCALHOST_URL_REGEX);
+    return [...new Set([...matches].map((m) => m[0]))];
+  }, [message.output, onOpenPreview]);
 
   return (
     <ToolMessageShell
@@ -97,6 +110,22 @@ export const BashToolMessage = memo(function BashToolMessage({ message }: BashTo
                 {message.output}
               </pre>
             </ScrollArea>
+            {/* localhost URL 칩 */}
+            {detectedUrls.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 px-2.5 py-1.5 border-t border-border/30">
+                {detectedUrls.map((detectedUrl) => (
+                  <button
+                    key={detectedUrl}
+                    type="button"
+                    onClick={() => onOpenPreview?.(detectedUrl)}
+                    className="flex items-center gap-1 font-mono text-2xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                  >
+                    <Globe className="h-3 w-3" />
+                    {detectedUrl}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="h-0" />

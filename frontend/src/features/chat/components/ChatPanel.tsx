@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
+import { Upload } from "lucide-react";
 import { isMobileDevice } from "@/lib/platform";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,7 +23,7 @@ import { ActivityStatusBar } from "./ActivityStatusBar";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { FileChange, UserMsg } from "@/types";
 import { useShallow } from "zustand/react/shallow";
-import { useSessionStore } from "@/store";
+import { useSessionStore, usePreviewStore } from "@/store";
 import { useSlashCommands } from "../hooks/useSlashCommands";
 import type { SlashCommand } from "../constants/slashCommands";
 import type { TrustLevel } from "./PermissionDialog";
@@ -85,6 +86,43 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const [selectedFile, setSelectedFile] = useState<FileChange | null>(null);
   const [contextPrefix, setContextPrefix] = useState("");
   const [liveInput, setLiveInput] = useState("");
+
+  // — 패널 전체 드롭존 (Feature A) —
+  const [panelIsDragOver, setPanelIsDragOver] = useState(false);
+  const panelDragCounter = useRef(0);
+  const chatInputDropRef = useRef<((e: React.DragEvent) => void) | null>(null);
+
+  const handlePanelDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    panelDragCounter.current += 1;
+    if (panelDragCounter.current === 1) setPanelIsDragOver(true);
+  }, []);
+
+  const handlePanelDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    panelDragCounter.current -= 1;
+    if (panelDragCounter.current === 0) setPanelIsDragOver(false);
+  }, []);
+
+  const handlePanelDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handlePanelDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    panelDragCounter.current = 0;
+    setPanelIsDragOver(false);
+    chatInputDropRef.current?.(e);
+  }, []);
+
+  // — 웹 프리뷰 (Feature B) —
+  const openPreview = usePreviewStore((s) => s.openPreview);
+  const handleOpenPreview = useCallback(
+    (url: string) => {
+      openPreview(url);
+    },
+    [openPreview],
+  );
 
   const isSplitView = useSessionStore((s) => s.viewMode === "split");
   const { focusedSessionId, pendingPrompt, pendingPromptSessionId, clearPendingPrompt } =
@@ -529,7 +567,21 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     <div
       ref={panelRef}
       className="relative flex-1 flex flex-col overflow-hidden overscroll-y-contain"
+      onDragEnter={handlePanelDragEnter}
+      onDragLeave={handlePanelDragLeave}
+      onDragOver={handlePanelDragOver}
+      onDrop={handlePanelDrop}
     >
+      {/* 풀패널 드래그 오버레이 */}
+      {panelIsDragOver ? (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary pointer-events-none">
+          <div className="flex flex-col items-center gap-3 text-primary">
+            <Upload className="h-10 w-10" />
+            <span className="font-mono text-sm font-semibold">파일을 여기에 놓으세요</span>
+          </div>
+        </div>
+      ) : null}
+
       <ChatHeader
         connected={connected}
         workDir={effectiveWorkDir}
@@ -612,6 +664,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         onAnswerQuestion={answerQuestion}
         onConfirmAnswers={confirmAndSendAnswers}
         workflowSteps={workflowSteps}
+        onOpenPreview={handleOpenPreview}
       />
 
       <ActivityStatusBar
@@ -659,6 +712,8 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           pendingAnswerCount={pendingAnswerCount}
           disabled={waitingForWorkflowApproval}
           onInputChange={setLiveInput}
+          externalIsDragOver={panelIsDragOver}
+          dropHandlerRef={chatInputDropRef}
         />
       </div>
       <SessionStatsBar
