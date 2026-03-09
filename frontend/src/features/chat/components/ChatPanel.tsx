@@ -536,6 +536,10 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     [sendPrompt, contextPrefix, messages.length],
   );
 
+  const handleCommit = useCallback(() => {
+    handleSendPrompt("/git-commit");
+  }, [handleSendPrompt]);
+
   const handleResend = useCallback(
     (content: string) => {
       sendPrompt(content);
@@ -694,9 +698,11 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         <WorkflowCompletedActions
           onContinue={handleContinueImplement}
           onNewTopic={handleNewTopic}
+          onCommit={handleCommit}
           onArchive={handleArchive}
           onDelete={handleDelete}
           isRunning={status === "running"}
+          showCommit={gitInfo?.is_dirty || gitInfo?.has_untracked || false}
         />
       ) : null}
       <div>

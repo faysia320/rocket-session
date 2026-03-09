@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { RotateCcw, Plus, Archive, Trash2, CheckCircle2 } from "lucide-react";
+import { RotateCcw, Plus, Archive, Trash2, CheckCircle2, GitCommitHorizontal } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,17 +14,21 @@ import {
 interface WorkflowCompletedActionsProps {
   onContinue: () => void;
   onNewTopic: () => void;
+  onCommit?: () => void;
   onArchive: () => void;
   onDelete: () => void;
   isRunning?: boolean;
+  showCommit?: boolean;
 }
 
 export const WorkflowCompletedActions = memo(function WorkflowCompletedActions({
   onContinue,
   onNewTopic,
+  onCommit,
   onArchive,
   onDelete,
   isRunning = false,
+  showCommit = false,
 }: WorkflowCompletedActionsProps) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
@@ -54,6 +58,17 @@ export const WorkflowCompletedActions = memo(function WorkflowCompletedActions({
           <Plus className="w-3 h-3" />
           새 주제
         </button>
+        {showCommit ? (
+          <button
+            type="button"
+            onClick={onCommit}
+            disabled={isRunning}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-success/10 text-success hover:bg-success/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
+          >
+            <GitCommitHorizontal className="w-3 h-3" />
+            커밋
+          </button>
+        ) : null}
         <div className="h-4 w-px bg-border shrink-0" />
         <button
           type="button"
