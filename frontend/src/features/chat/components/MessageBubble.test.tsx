@@ -189,7 +189,7 @@ describe("ResultMessage", () => {
 
   it("routes to WorkflowPhaseCard when workflow_phase is set", () => {
     const steps = [
-      { name: "research", label: "Research", order_index: 0, review_required: true },
+      { name: "research", label: "Research", order_index: 0, review_required: true, icon: "", prompt_template: "", constraints: "", run_validation: false },
     ];
     render(
       <MessageBubble

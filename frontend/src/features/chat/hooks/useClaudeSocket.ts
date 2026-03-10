@@ -308,7 +308,6 @@ export function useClaudeSocket(sessionId: string) {
         const toPhase = data.to_phase as string;
         const phaseLabels: Record<string, string> = {
           research: "조사",
-          plan: "구현 계획 작성",
           implement: "구현",
           qa: "QA 검증",
         };

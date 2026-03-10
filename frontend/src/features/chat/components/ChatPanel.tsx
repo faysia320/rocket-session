@@ -364,13 +364,13 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const { createSession } = useCreateSession();
   const handleNewTopic = useCallback(async () => {
     try {
-      console.warn("[NewTopic] archiving sessionId:", sessionId, "sessionInfo.id:", sessionInfo?.id, "name:", sessionInfo?.name);
+      console.warn("[NewTopic] archiving sessionId:", sessionId, "name:", sessionInfo?.name);
       await sessionsApi.archive(sessionId);
       console.warn("[NewTopic] archive done for:", sessionId);
       queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
       await createSession(sessionInfo?.work_dir, {
-        workspace_id: sessionInfo?.workspace_id,
-        workflow_definition_id: workflowStatusData?.workflow_definition_id,
+        workspace_id: sessionInfo?.workspace_id ?? undefined,
+        workflow_definition_id: workflowStatusData?.workflow_definition_id ?? undefined,
       });
       console.warn("[NewTopic] new session created, navigating");
     } catch {

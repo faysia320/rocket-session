@@ -31,7 +31,6 @@ interface PhaseApprovalBarProps {
 }
 
 export const PhaseApprovalBar = memo(function PhaseApprovalBar({
-  phase,
   onApprove,
   onRequestRevision,
   onToggleEdit,
