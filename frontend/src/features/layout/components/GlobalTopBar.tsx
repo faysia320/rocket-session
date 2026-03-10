@@ -19,6 +19,7 @@ import {
   MoreHorizontal,
   Workflow,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
@@ -337,10 +338,10 @@ function formatTimeRemaining(resetsAt: string | null): string {
   return `${hours}h ${minutes}m`;
 }
 
-function utilizationColor(util: number): string {
-  if (util >= 80) return "text-destructive";
-  if (util >= 50) return "text-warning";
-  return "text-success";
+function utilizationBadgeClass(util: number): string {
+  if (util >= 80) return "bg-destructive/15 text-destructive border-destructive/30";
+  if (util >= 50) return "bg-warning/15 text-warning border-warning/30";
+  return "bg-success/15 text-success border-success/30";
 }
 
 function UsageIndicator() {
@@ -389,26 +390,25 @@ function UsageIndicator() {
   const { five_hour, seven_day } = data;
 
   return (
-    <div className="flex items-center gap-1 text-2xs text-muted-foreground whitespace-nowrap">
-      <span className="text-muted-foreground/80">
+    <div className="flex items-center gap-1.5 whitespace-nowrap">
+      <Badge
+        variant="outline"
+        className={cn("px-2 py-0.5 text-2xs font-medium gap-1", utilizationBadgeClass(five_hour.utilization))}
+      >
         <span className="hidden sm:inline">5h</span>
-        <span className="sm:hidden">h</span>:
-      </span>
-      <span className={cn("font-medium", utilizationColor(five_hour.utilization))}>
-        {five_hour.utilization.toFixed(0)}%
-      </span>
-      <span className="text-muted-foreground/60 hidden sm:inline">({fiveHourCountdown})</span>
-
-      <span className="text-muted-foreground/50 mx-0.5">|</span>
-
-      <span className="text-muted-foreground/80">
+        <span className="sm:hidden">h</span>
+        <span>{five_hour.utilization.toFixed(0)}%</span>
+        <span className="hidden sm:inline opacity-60">({fiveHourCountdown})</span>
+      </Badge>
+      <Badge
+        variant="outline"
+        className={cn("px-2 py-0.5 text-2xs font-medium gap-1", utilizationBadgeClass(seven_day.utilization))}
+      >
         <span className="hidden sm:inline">7d</span>
-        <span className="sm:hidden">w</span>:
-      </span>
-      <span className={cn("font-medium", utilizationColor(seven_day.utilization))}>
-        {seven_day.utilization.toFixed(0)}%
-      </span>
-      <span className="text-muted-foreground/60 hidden sm:inline">({sevenDayCountdown})</span>
+        <span className="sm:hidden">w</span>
+        <span>{seven_day.utilization.toFixed(0)}%</span>
+        <span className="hidden sm:inline opacity-60">({sevenDayCountdown})</span>
+      </Badge>
     </div>
   );
 }
