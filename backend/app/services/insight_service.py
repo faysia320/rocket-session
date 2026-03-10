@@ -23,6 +23,8 @@ _CATEGORY_LABELS: dict[str, str] = {
     "decision": "결정",
     "file_map": "파일맵",
     "dependency": "의존성",
+    "session_analysis": "세션분석",
+    "performance": "성능",
 }
 
 

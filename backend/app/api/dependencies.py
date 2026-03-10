@@ -18,6 +18,7 @@ from app.services.context_builder_service import ContextBuilderService
 from app.services.filesystem_service import FilesystemService
 from app.services.git_service import GitService
 from app.services.insight_service import InsightService
+from app.services.session_analysis_service import SessionAnalysisService
 from app.services.github_service import GitHubService
 from app.services.jsonl_watcher import JsonlWatcher
 from app.services.local_session_scanner import LocalSessionScanner
@@ -74,6 +75,7 @@ class ServiceRegistry:
         self.insight_service: InsightService | None = None
         self.claude_memory_service: ClaudeMemoryService | None = None
         self.context_builder_service: ContextBuilderService | None = None
+        self.session_analysis_service: SessionAnalysisService | None = None
 
     def _require(self, name: str) -> Any:
         """서비스가 초기화되었는지 확인하고 반환."""
@@ -143,6 +145,7 @@ class ServiceRegistry:
         )
         self.validation_service = ValidationService(self.database)
         self.insight_service = InsightService(self.database)
+        self.session_analysis_service = SessionAnalysisService(self.database)
         self.claude_memory_service = ClaudeMemoryService()
         self.context_builder_service = ContextBuilderService(
             self.database, self.claude_memory_service
@@ -320,6 +323,10 @@ def get_claude_memory_service() -> ClaudeMemoryService:
 
 def get_context_builder_service() -> ContextBuilderService:
     return _registry._require("context_builder_service")
+
+
+def get_session_analysis_service() -> SessionAnalysisService:
+    return _registry._require("session_analysis_service")
 
 
 # --- 앱 라이프사이클 (레지스트리 위임) ---

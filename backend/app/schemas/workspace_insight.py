@@ -5,7 +5,10 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-InsightCategory = Literal["pattern", "gotcha", "decision", "file_map", "dependency"]
+InsightCategory = Literal[
+    "pattern", "gotcha", "decision", "file_map", "dependency",
+    "session_analysis", "performance",
+]
 
 
 class WorkspaceInsightInfo(BaseModel):

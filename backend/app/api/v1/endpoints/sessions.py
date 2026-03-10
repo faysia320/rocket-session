@@ -10,6 +10,7 @@ from app.api.dependencies import (
     get_git_service,
     get_mcp_service,
     get_search_service,
+    get_session_analysis_service,
     get_session_manager,
     get_settings_service,
     get_tag_service,
@@ -428,3 +429,17 @@ async def remove_session_tag(
     if not removed:
         raise HTTPException(status_code=404, detail="세션에 해당 태그가 없습니다")
     return StatusResponse(status="removed")
+
+
+@router.get("/{session_id}/summary")
+async def get_session_summary(
+    session_id: str,
+    manager: SessionManager = Depends(get_session_manager),
+    analysis_service=Depends(get_session_analysis_service),
+):
+    """세션 분석 요약을 반환합니다."""
+    session = await manager.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
+    summary = await analysis_service.generate_session_summary(session_id)
+    return summary
