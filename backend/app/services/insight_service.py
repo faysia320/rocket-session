@@ -1,6 +1,6 @@
 """워크스페이스 인사이트 서비스 — 수동 CRUD 관리 + 세션 컨텍스트 주입."""
 
-import logging
+import structlog
 import time
 from datetime import datetime, timezone
 
@@ -14,7 +14,7 @@ from app.schemas.workspace_insight import (
 )
 from app.services.base import DBService
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 _CATEGORY_LABELS: dict[str, str] = {
