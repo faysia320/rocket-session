@@ -22,7 +22,6 @@ interface PhaseTokenBreakdownProps {
 
 const PHASE_LABELS: Record<string, string> = {
   research: "Research",
-  plan: "Plan",
   implement: "Implement",
 };
 

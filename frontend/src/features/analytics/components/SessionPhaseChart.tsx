@@ -21,7 +21,6 @@ interface SessionPhaseChartProps {
 
 const PHASE_LABELS: Record<string, string> = {
   research: "Research",
-  plan: "Plan",
   implement: "Implement",
   review: "Review",
   test: "Test",

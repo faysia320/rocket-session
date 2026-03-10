@@ -6,7 +6,6 @@ import { getActivityLabel } from "../utils/activityLabel";
 
 const PHASE_RUNNING_MESSAGES: Record<string, string> = {
   research: "요구사항 조사 중…",
-  plan: "구현 계획 작성 중…",
   implement: "구현 진행 중…",
 };
 
@@ -60,7 +59,7 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
           </div>
         ) : null}
 
-        {/* 워크플로우 검토 대기 (Plan만 — Research는 자동 체이닝) */}
+        {/* 워크플로우 검토 대기 */}
         {hasWorkflowWait ? (
           <div
             className={cn(
@@ -84,7 +83,7 @@ export const ActivityStatusBar = memo(function ActivityStatusBar({
           >
             <ClipboardList className="w-3.5 h-3.5 text-info animate-pulse shrink-0" />
             <span className="font-mono text-xs text-info font-semibold">
-              구현 계획 검토 대기 — 아티팩트를 검토하고 승인해주세요
+              검토 대기 — 아티팩트를 검토하고 승인해주세요
             </span>
           </div>
         ) : null}

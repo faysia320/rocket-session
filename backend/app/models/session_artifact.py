@@ -11,7 +11,7 @@ from app.models.base import Base
 class SessionArtifact(Base):
     """session_artifacts 테이블 ORM 모델.
 
-    워크플로우의 각 단계(research, plan) 산출물을 저장합니다.
+    워크플로우의 각 단계(research, implement, qa) 산출물을 저장합니다.
     """
 
     __tablename__ = "session_artifacts"
