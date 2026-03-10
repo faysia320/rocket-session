@@ -66,7 +66,13 @@ def _on_runner_task_done(
         return
     exc = task.exception()
     if exc:
-        logger.error("Runner task 비정상 종료 (세션 %s): %s", session_id, exc)
+        logger.error(
+            "Runner task 비정상 종료",
+            component="runner",
+            operation="task_failed",
+            session_id=session_id,
+            error=str(exc),
+        )
 
 
 async def _handle_prompt(
@@ -522,10 +528,10 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                 raise  # 상위 except에서 처리
             except Exception as e:
                 logger.error(
-                    "메시지 처리 오류 (세션 %s, type=%s): %s",
-                    session_id,
-                    msg_type,
-                    e,
+                    "메시지 처리 오류",
+                    component="ws",
+                    operation="message_handle",
+                    msg_type=msg_type,
                     exc_info=True,
                 )
                 try:
@@ -537,8 +543,9 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                     )
                 except Exception:
                     logger.debug(
-                        "세션 %s: 에러 메시지 WebSocket 전송 실패 (연결 끊김)",
-                        session_id,
+                        "에러 메시지 WebSocket 전송 실패 (연결 끊김)",
+                        component="ws",
+                        operation="error_send_failed",
                     )
 
     except WebSocketDisconnect:
