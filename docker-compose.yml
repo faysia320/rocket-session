@@ -69,13 +69,15 @@ services:
     restart: unless-stopped
 
   serena:
-    image: ghcr.io/oraios/serena:latest
+    build:
+      context: ./serena
+      dockerfile: Dockerfile
     container_name: rocket-session-serena
     volumes:
       - rocket-workspaces:/workspaces
       - ./serena/serena_config.yml:/root/.serena/serena_config.yml:ro
     command: >
-      uv run --directory /app serena-mcp-server
+      serena-mcp-server
       --transport sse --port 9121 --host 0.0.0.0
     expose:
       - "9121"
