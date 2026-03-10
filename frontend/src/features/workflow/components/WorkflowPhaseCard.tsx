@@ -1,6 +1,6 @@
 import { memo, useState, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { FileText, Check, RotateCcw, ExternalLink, ChevronDown, ChevronUp, GitCommit } from "lucide-react";
+import { FileText, Check, RotateCcw, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ interface WorkflowPhaseCardProps {
   message: ResultMsg;
   stepConfig?: ResolvedWorkflowStep;
   onApprove?: (feedback?: string) => void;
-  onRequestRevision?: (feedback?: string) => void;
+  onRequestRevision?: (feedback?: string, validationSummary?: string, targetPhase?: string) => void;
   onOpenArtifact?: () => void;
   isApproving?: boolean;
   isRequestingRevision?: boolean;
@@ -55,11 +55,15 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
 
   const handleRevisionSubmit = useCallback(() => {
     if (revisionFeedback.trim()) {
-      onRequestRevision?.(revisionFeedback.trim());
+      onRequestRevision?.(
+        revisionFeedback.trim(),
+        undefined,
+        isLastPhase ? "implement" : undefined,
+      );
       setRevisionFeedback("");
       setShowRevisionInput(false);
     }
-  }, [revisionFeedback, onRequestRevision]);
+  }, [revisionFeedback, onRequestRevision, isLastPhase]);
 
   const previewText = message.text
     ? message.text.length > 300
@@ -179,7 +183,7 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                 className="h-7 text-xs"
               >
                 <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                수정 요청
+                {isLastPhase ? "추가 수정 요청" : "수정 요청"}
               </Button>
               {isLastPhase ? (
                 <Button
@@ -190,8 +194,8 @@ export const WorkflowPhaseCard = memo(function WorkflowPhaseCard({
                   aria-busy={isApproving}
                   className="h-7 text-xs"
                 >
-                  <GitCommit className="w-3.5 h-3.5 mr-1" />
-                  {isApproving ? "처리 중…" : "커밋 요청"}
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                  {isApproving ? "처리 중…" : "완료"}
                 </Button>
               ) : (
                 <Button

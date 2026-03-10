@@ -47,7 +47,7 @@ interface MessageBubbleProps {
   onResend?: (content: string) => void;
   onRetryError?: (messageId: string) => void;
   onApprovePhase?: (feedback?: string) => void;
-  onRequestRevision?: (feedback?: string) => void;
+  onRequestRevision?: (feedback?: string, validationSummary?: string, targetPhase?: string) => void;
   onOpenArtifact?: (phase: string) => void;
   isApprovingPhase?: boolean;
   isRequestingRevision?: boolean;
