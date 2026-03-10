@@ -1219,11 +1219,14 @@ class ClaudeRunner:
         )
 
         # implement 단계로 복귀: revision context에 검증 에러 포함
+        # approve_phase()를 호출하지 않음 — 검증 실패이므로 아티팩트 승인 없이
+        # 현재 phase(implement)를 유지한 채 재실행
         try:
-            await workflow_service.approve_phase(
-                session_id, session_manager=session_manager
+            await session_manager.update_settings(
+                session_id,
+                workflow_phase=current_phase,
+                workflow_phase_status="in_progress",
             )
-            # QA 진입 후 → 다시 implement로 revision
             raw_prompt = original_prompt or prompt
             revision_context = await workflow_service.build_revision_context(
                 session_id,
@@ -1311,9 +1314,12 @@ class ClaudeRunner:
             workflow_phase, session_id, session_manager
         )
 
-        if not next_phase:
-            # 마지막 단계 완료 → 워크플로우 종료
+        if not next_phase and not review_required:
+            # 마지막 단계 + 승인 불필요 → 아티팩트 approved + 워크플로우 종료
             try:
+                await workflow_service.approve_phase(
+                    session_id, session_manager=session_manager
+                )
                 await session_manager.update_settings(
                     session_id,
                     workflow_phase=workflow_phase,
@@ -1327,6 +1333,47 @@ class ClaudeRunner:
             except Exception:
                 logger.warning(
                     "세션 %s: 워크플로우 완료 처리 실패",
+                    session_id,
+                    exc_info=True,
+                )
+
+        elif not next_phase:
+            # 마지막 단계 + 승인 필요 → 사용자 승인 대기
+            try:
+                await session_manager.update_settings(
+                    session_id,
+                    workflow_phase_status="awaiting_approval",
+                )
+                await ws_manager.broadcast_event(
+                    session_id,
+                    {
+                        "type": WsEventType.WORKFLOW_PHASE_COMPLETED,
+                        "phase": workflow_phase,
+                    },
+                )
+                # QA phase인 경우 체크리스트 파싱 후 결과 이벤트 추가 전송
+                if workflow_phase == "qa" and result_text:
+                    try:
+                        qa_result = workflow_service.parse_qa_checklist(result_text)
+                        if not qa_result["all_passed"]:
+                            await ws_manager.broadcast_event(
+                                session_id,
+                                {
+                                    "type": WsEventType.WORKFLOW_QA_FAILED,
+                                    "phase": workflow_phase,
+                                    "qa_result": qa_result,
+                                },
+                            )
+                    except Exception:
+                        logger.debug("세션 %s: QA 체크리스트 파싱 스킵", session_id)
+                logger.info(
+                    "워크플로우 마지막 단계 승인 대기: session=%s, phase=%s",
+                    session_id,
+                    workflow_phase,
+                )
+            except Exception:
+                logger.warning(
+                    "세션 %s: 워크플로우 마지막 단계 승인 대기 처리 실패",
                     session_id,
                     exc_info=True,
                 )

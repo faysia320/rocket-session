@@ -7,7 +7,7 @@
 # Tool sets
 # ---------------------------------------------------------------------------
 
-#: 읽기 전용 도구 (워크플로우 research/plan 단계 및 비워크플로우 세션)
+#: 읽기 전용 도구 (워크플로우 research 단계 및 비워크플로우 세션)
 READONLY_TOOLS = "Read,Glob,Grep,WebFetch,WebSearch,TodoRead"
 
 #: 전체 도구 기본값 (Settings env 기본값)
