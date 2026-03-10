@@ -349,7 +349,6 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     lastValidationResult,
   } = useWorkflowActions({
     sessionId,
-    sendPrompt,
     workflowPhase: sessionInfo?.workflow_phase,
     workflowPhaseStatus: sessionInfo?.workflow_phase_status,
     workflowSteps,
@@ -416,6 +415,10 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   const workflowPhaseStatus = sessionInfo?.workflow_phase_status;
   const waitingForWorkflowApproval = useMemo(() => {
     return workflowPhaseStatus === "awaiting_approval";
+  }, [workflowPhaseStatus]);
+
+  const chatDisabledByWorkflow = useMemo(() => {
+    return workflowPhaseStatus === "awaiting_approval" || workflowPhaseStatus === "completed";
   }, [workflowPhaseStatus]);
 
   // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
@@ -716,7 +719,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
           onSlashCommand={handleSlashCommand}
           sessionId={sessionId}
           pendingAnswerCount={pendingAnswerCount}
-          disabled={waitingForWorkflowApproval}
+          disabled={chatDisabledByWorkflow}
           onInputChange={setLiveInput}
           externalIsDragOver={panelIsDragOver}
           dropHandlerRef={chatInputDropRef}

@@ -348,22 +348,28 @@ async def request_revision(
 ):
     """수정 요청 → 현재 phase 자동 재실행."""
     session = await manager.get(session_id)
+    current_phase_before = session.get("workflow_phase")
 
     result = await workflow.request_revision(
-        session_id, session_manager=manager, feedback=req.feedback or ""
+        session_id,
+        session_manager=manager,
+        feedback=req.feedback or "",
+        target_phase=req.target_phase,
     )
-    current_phase = result.get("phase")
+    run_phase = result.get("phase")
 
     await ws_manager.broadcast_event(
         session_id,
         {
             "type": WsEventType.WORKFLOW_PHASE_REVISION,
-            "phase": current_phase,
+            "phase": run_phase,
         },
     )
 
-    # review_required step → 자동 재실행
-    if current_phase:
+    # 자동 재실행 조건:
+    # - review_required step (기존 동작)
+    # - target_phase가 지정된 경우 (QA→implement 되돌아가기)
+    if run_phase:
         try:
             from app.api.dependencies import get_workflow_definition_service
 
@@ -371,9 +377,14 @@ async def request_revision(
             def_id = session.get("workflow_definition_id")
             definition = await def_service.get_or_default(def_id)
             steps = sorted(definition.steps, key=lambda s: s.order_index)
-            current_step = next((s for s in steps if s.name == current_phase), None)
+            run_step = next((s for s in steps if s.name == run_phase), None)
 
-            if current_step and current_step.review_required:
+            should_auto_run = (
+                (run_step and run_step.review_required)
+                or req.target_phase is not None
+            )
+
+            if should_auto_run and run_step:
                 original_prompt = session.get("workflow_original_prompt", "")
                 revision_context = await workflow.build_revision_context(
                     session_id,
@@ -381,6 +392,9 @@ async def request_revision(
                     req.feedback or "",
                     session_manager=manager,
                     validation_summary=req.validation_summary,
+                    source_phase=(
+                        current_phase_before if req.target_phase else None
+                    ),
                 )
 
                 global_settings = await settings_service.get()
@@ -401,10 +415,10 @@ async def request_revision(
                         ws_manager,
                         manager,
                         mcp_service=mcp_service,
-                        workflow_phase=current_phase,
+                        workflow_phase=run_phase,
                         workflow_service=workflow,
                         original_prompt=original_prompt,
-                        workflow_step_config=current_step.model_dump(),
+                        workflow_step_config=run_step.model_dump(),
                     )
                 )
                 task.add_done_callback(
@@ -415,7 +429,7 @@ async def request_revision(
             logger.warning(
                 "세션 %s: %s 수정 자동 재실행 실패",
                 session_id,
-                current_phase,
+                run_phase,
                 exc_info=True,
             )
 

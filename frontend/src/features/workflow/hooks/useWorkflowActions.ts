@@ -9,7 +9,6 @@ import type { ResolvedWorkflowStep, ValidationResult } from "@/types/workflow";
 
 interface UseWorkflowActionsParams {
   sessionId: string;
-  sendPrompt?: (prompt: string) => void;
   workflowPhase?: string | null;
   workflowPhaseStatus?: string | null;
   workflowSteps?: ResolvedWorkflowStep[];
@@ -17,7 +16,6 @@ interface UseWorkflowActionsParams {
 
 export function useWorkflowActions({
   sessionId,
-  sendPrompt: _sendPrompt,
   workflowPhase,
   workflowPhaseStatus,
   workflowSteps,
@@ -82,8 +80,6 @@ export function useWorkflowActions({
           const nextStep = workflowSteps?.find((s) => s.name === nextPhase);
           const nextLabel = nextStep?.label ?? nextPhase;
           toast.success(`${nextLabel} 단계로 전환되었습니다`);
-        } else if (_sendPrompt) {
-          toast.success("워크플로우가 완료되었습니다. 커밋을 준비합니다…");
         } else {
           toast.success("워크플로우가 완료되었습니다");
         }
@@ -99,25 +95,26 @@ export function useWorkflowActions({
         setArtifactViewerOpen(false);
         setViewingArtifactId(null);
 
-        // 마지막 단계 승인 완료 → /git-commit 자동 실행
-        if (!nextPhase && _sendPrompt) {
-          _sendPrompt("/git-commit");
-        }
       } catch {
         // 에러 토스트는 mutation onError에서 처리
       }
     },
-    [approveMutation, sessionId, queryClient, workflowSteps, _sendPrompt],
+    [approveMutation, sessionId, queryClient, workflowSteps],
   );
 
   const handleRequestRevision = useCallback(
-    async (feedback?: string, validationSummary?: string) => {
+    async (feedback?: string, validationSummary?: string, targetPhase?: string) => {
       try {
         await revisionMutation.mutateAsync({
           feedback: feedback || "",
           validation_summary: validationSummary ?? null,
+          target_phase: targetPhase ?? null,
         });
-        toast.success("수정 요청이 전송되었습니다. 계획을 다시 작성합니다…");
+        toast.success(
+          targetPhase
+            ? "추가 수정 요청이 전송되었습니다. 구현을 다시 진행합니다…"
+            : "수정 요청이 전송되었습니다. 다시 작성합니다…",
+        );
 
         queryClient.invalidateQueries({
           queryKey: workflowKeys.status(sessionId),

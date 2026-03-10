@@ -102,6 +102,7 @@ export interface ApprovePhaseRequest {
 export interface RequestRevisionRequest {
   feedback: string;
   validation_summary?: string | null;
+  target_phase?: string | null;
 }
 
 // ── Validation Pipeline Types ────────────────────────────

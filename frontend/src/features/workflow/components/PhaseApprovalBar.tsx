@@ -1,5 +1,5 @@
 import { memo, useState, useCallback } from "react";
-import { Check, RotateCcw, Pencil, GitCommit, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Check, RotateCcw, Pencil, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -18,7 +18,7 @@ import type { ValidationResult } from "@/types/workflow";
 interface PhaseApprovalBarProps {
   phase?: string;
   onApprove?: (feedback?: string, force?: boolean) => void;
-  onRequestRevision?: (feedback?: string, validationSummary?: string) => void;
+  onRequestRevision?: (feedback?: string, validationSummary?: string, targetPhase?: string) => void;
   onToggleEdit?: () => void;
   isApproving?: boolean;
   isRequestingRevision?: boolean;
@@ -65,11 +65,15 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
 
   const handleRevisionSubmit = useCallback(() => {
     if (feedback.trim() || hasPendingAnnotations) {
-      onRequestRevision?.(feedback.trim() || undefined);
+      onRequestRevision?.(
+        feedback.trim() || undefined,
+        undefined,
+        isLastPhase ? "implement" : undefined,
+      );
       setFeedback("");
       setShowRevisionInput(false);
     }
-  }, [feedback, onRequestRevision, hasPendingAnnotations]);
+  }, [feedback, onRequestRevision, hasPendingAnnotations, isLastPhase]);
 
   const handleCommitClick = useCallback(() => {
     if (artifactContent) {
@@ -131,7 +135,11 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
               variant="outline"
               size="sm"
               onClick={() => {
-                onRequestRevision?.(undefined, validationResult.summary);
+                onRequestRevision?.(
+                  undefined,
+                  validationResult.summary,
+                  isLastPhase ? "implement" : undefined,
+                );
               }}
               disabled={isRequestingRevision}
             >
@@ -203,7 +211,7 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
             disabled={disabled}
           >
             <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-            수정 요청
+            {isLastPhase ? "추가 수정 요청" : "수정 요청"}
           </Button>
           {isLastPhase ? (
             <Button
@@ -212,8 +220,8 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
               onClick={handleCommitClick}
               disabled={disabled || isApproving}
             >
-              <GitCommit className="w-3.5 h-3.5 mr-1.5" />
-              {isApproving ? "처리 중…" : "커밋 요청"}
+              <Check className="w-3.5 h-3.5 mr-1.5" />
+              {isApproving ? "처리 중…" : "완료"}
             </Button>
           ) : (
             <Button
@@ -233,12 +241,12 @@ export const PhaseApprovalBar = memo(function PhaseApprovalBar({
           <AlertDialogHeader>
             <AlertDialogTitle>QA 실패 항목이 있습니다</AlertDialogTitle>
             <AlertDialogDescription>
-              {qaFailCount}건의 실패 항목이 있습니다. 그래도 커밋을 진행하시겠습니까?
+              {qaFailCount}건의 실패 항목이 있습니다. 그래도 완료하시겠습니까?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmCommit}>그래도 커밋</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmCommit}>그래도 완료</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

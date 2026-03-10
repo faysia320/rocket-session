@@ -236,8 +236,12 @@ class WorkflowService:
         session_id: str,
         session_manager,
         feedback: str,
+        target_phase: str | None = None,
     ) -> dict:
-        """수정 요청 → 아티팩트 superseded + 새 버전 생성 → 재실행 대기."""
+        """수정 요청 → 아티팩트 superseded + 새 버전 생성 → 재실행 대기.
+
+        target_phase가 지정되면 해당 phase로 되돌아감 (예: QA→implement).
+        """
         session_data = await session_manager.get(session_id)
 
         current_phase = session_data.get("workflow_phase")
@@ -258,13 +262,18 @@ class WorkflowService:
 
             await db_sess.commit()
 
-        # phase_status → in_progress (재실행 대기)
+        # target_phase가 있으면 해당 phase로 전환, 없으면 현재 phase 유지
+        effective_phase = target_phase or current_phase
         await session_manager.update_settings(
             session_id,
+            workflow_phase=effective_phase,
             workflow_phase_status="in_progress",
         )
-        logger.info("수정 요청: session=%s, phase=%s", session_id, current_phase)
-        return {"phase": current_phase, "old_artifact_id": old_artifact_id}
+        logger.info(
+            "수정 요청: session=%s, phase=%s → %s",
+            session_id, current_phase, effective_phase,
+        )
+        return {"phase": effective_phase, "old_artifact_id": old_artifact_id}
 
     # ─── 아티팩트 CRUD ───
 
@@ -546,8 +555,14 @@ class WorkflowService:
         feedback: str,
         session_manager=None,
         validation_summary: str | None = None,
+        source_phase: str | None = None,
     ) -> str:
-        """수정 요청 시 컨텍스트 구성: 이전 아티팩트들 + 주석 + 피드백 + 원본 요구사항."""
+        """수정 요청 시 컨텍스트 구성: 이전 아티팩트들 + 주석 + 피드백 + 원본 요구사항.
+
+        source_phase: QA→implement 되돌아가기 시 원래 phase (예: "qa").
+        지정되면 source_phase 아티팩트를 "QA 검토 결과"로 포함하고,
+        지시사항을 implement용으로 변경.
+        """
         parts: list[str] = []
 
         # definition에서 steps 로드
@@ -579,8 +594,20 @@ class WorkflowService:
                         f"## {step.label} 결과 ({step.name}.md)\n{artifact.content}"
                     )
 
-            # 현재 step의 아티팩트 + 주석
-            if current_phase:
+            # source_phase가 있으면 해당 phase의 아티팩트를 "검토 결과"로 추가
+            if source_phase:
+                source_step = self._get_step(steps, source_phase)
+                source_label = source_step.label if source_step else source_phase
+                source_artifact = await repo.get_latest_by_phase(
+                    session_id, source_phase
+                )
+                if source_artifact:
+                    parts.append(
+                        f"## {source_label} 검토 결과\n{source_artifact.content}"
+                    )
+
+            # 현재 step의 아티팩트 + 주석 (source_phase가 없을 때만)
+            if current_phase and not source_phase:
                 current_artifact = await repo.get_latest_by_phase(
                     session_id, current_phase
                 )
@@ -606,13 +633,32 @@ class WorkflowService:
             )
         if feedback and feedback.strip():
             parts.append(f"## 수정 요청 피드백\n{feedback}")
-        parts.append(
-            "## 지시사항\n"
-            "위 피드백과 주석을 반영하여 결과물을 **수정**하세요.\n"
-            "변경할 파일, 구체적인 코드 변경 내용, 순서를 명시하세요.\n"
-            "**중요: 아직 코드를 수정하거나 구현하지 마세요.**\n\n"
-            f"## 원본 요청\n{original_prompt}"
-        )
+
+        if source_phase:
+            # QA→implement: 코드 수정 지시사항 (Implement 프롬프트의 실행 지침 포함)
+            parts.append(
+                "## 지시사항\n"
+                "위 QA 검토 결과와 피드백을 반영하여 코드를 **수정**하세요.\n\n"
+                "### 실행 지침\n"
+                "- **논스톱 실행:** 사용자에게 추가적인 컨펌을 받지 말고, "
+                "모든 작업이 완료될 때까지 구현을 멈추지 마세요.\n"
+                "- **자가 수정(Self-Correction):** 구현 후 반드시 빌드 및 린트(Lint)를 "
+                "실행하세요. 에러가 발생하면 작업을 중단하지 말고, 에러 로그를 분석하여 "
+                "스스로 코드를 수정하세요. (최대 3회 시도)\n\n"
+                "### 최종 리포트\n"
+                "모든 구현이 완료되면, 다음 내용을 마크다운으로 짧게 보고하세요:\n"
+                "- 변경된 파일 목록\n"
+                "- 적용된 핵심 로직 요약 (어떤 문제를 어떻게 해결했는지)\n\n"
+                f"## 원본 요청\n{original_prompt}"
+            )
+        else:
+            parts.append(
+                "## 지시사항\n"
+                "위 피드백과 주석을 반영하여 결과물을 **수정**하세요.\n"
+                "변경할 파일, 구체적인 코드 변경 내용, 순서를 명시하세요.\n"
+                "**중요: 아직 코드를 수정하거나 구현하지 마세요.**\n\n"
+                f"## 원본 요청\n{original_prompt}"
+            )
         return "\n\n".join(parts)
 
     @staticmethod

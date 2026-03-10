@@ -95,3 +95,4 @@ class RequestRevisionRequest(BaseModel):
 
     feedback: Optional[str] = None
     validation_summary: Optional[str] = None
+    target_phase: Optional[str] = None
