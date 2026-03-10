@@ -34,6 +34,17 @@ def _resolve_url_for_docker(url: str) -> str:
     )
 
 
+def _resolve_url_for_docker_service(url: str, service_name: str) -> str:
+    """Docker 서비스명으로 localhost/127.0.0.1을 대체."""
+    if not url:
+        return url
+    return re.sub(
+        r"://(localhost|127\.0\.0\.1)",
+        f"://{service_name}",
+        url,
+    )
+
+
 class McpService(DBService):
     """글로벌 MCP 서버 풀 관리 및 MCP config 빌드."""
 
@@ -59,6 +70,7 @@ class McpService(DBService):
         headers: dict[str, str] | None = None,
         env: dict[str, str] | None = None,
         enabled: bool = True,
+        docker_service_name: str | None = None,
         source: str = "manual",
     ) -> McpServerInfo:
         server_id = str(uuid.uuid4())[:16]
@@ -74,6 +86,7 @@ class McpService(DBService):
                 headers=headers,
                 env=env,
                 enabled=enabled,
+                docker_service_name=docker_service_name,
                 source=source,
                 created_at=now,
                 updated_at=now,
@@ -93,6 +106,7 @@ class McpService(DBService):
         headers: dict[str, str] | None = None,
         env: dict[str, str] | None = None,
         enabled: bool | None = None,
+        docker_service_name: str | None = None,
     ) -> McpServerInfo:
         now = utc_now()
         kwargs: dict = {"updated_at": now}
@@ -112,6 +126,8 @@ class McpService(DBService):
             kwargs["env"] = env
         if enabled is not None:
             kwargs["enabled"] = enabled
+        if docker_service_name is not None:
+            kwargs["docker_service_name"] = docker_service_name
         async with self._session_scope(McpServerRepository) as (session, repo):
             server = await repo.update_by_id(server_id, **kwargs)
             if not server:
@@ -221,7 +237,12 @@ class McpService(DBService):
                             entry["args"] = info.args
                     else:
                         if info.url:
-                            entry["url"] = _resolve_url_for_docker(info.url)
+                            if info.docker_service_name and _RUNNING_IN_DOCKER:
+                                entry["url"] = _resolve_url_for_docker_service(
+                                    info.url, info.docker_service_name
+                                )
+                            else:
+                                entry["url"] = _resolve_url_for_docker(info.url)
                         if info.headers:
                             entry["headers"] = info.headers
                         entry["type"] = info.transport_type

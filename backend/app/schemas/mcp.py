@@ -17,6 +17,7 @@ class CreateMcpServerRequest(BaseModel):
     headers: Optional[dict[str, str]] = None
     env: Optional[dict[str, str]] = None
     enabled: bool = True
+    docker_service_name: Optional[str] = None
 
 
 class UpdateMcpServerRequest(BaseModel):
@@ -28,6 +29,7 @@ class UpdateMcpServerRequest(BaseModel):
     headers: Optional[dict[str, str]] = None
     env: Optional[dict[str, str]] = None
     enabled: Optional[bool] = None
+    docker_service_name: Optional[str] = None
 
 
 class McpServerInfo(BaseModel):
@@ -42,6 +44,7 @@ class McpServerInfo(BaseModel):
     headers: Optional[dict[str, str]] = None
     env: Optional[dict[str, str]] = None
     enabled: bool = True
+    docker_service_name: Optional[str] = None
     source: str = "manual"
     created_at: datetime
     updated_at: datetime

@@ -36,6 +36,7 @@ export function McpServerForm({ initial, onSubmit, onCancel, isPending }: McpSer
   const [command, setCommand] = useState(initial?.command ?? "");
   const [args, setArgs] = useState(initial?.args?.join(" ") ?? "");
   const [url, setUrl] = useState(initial?.url ?? "");
+  const [dockerServiceName, setDockerServiceName] = useState(initial?.docker_service_name ?? "");
   const [envEntries, setEnvEntries] = useState<KeyValueEntry[]>(toEntries(initial?.env));
   const [headerEntries, setHeaderEntries] = useState<KeyValueEntry[]>(toEntries(initial?.headers));
 
@@ -46,6 +47,7 @@ export function McpServerForm({ initial, onSubmit, onCancel, isPending }: McpSer
       setCommand(initial.command ?? "");
       setArgs(initial.args?.join(" ") ?? "");
       setUrl(initial.url ?? "");
+      setDockerServiceName(initial.docker_service_name ?? "");
       setEnvEntries(toEntries(initial.env));
       setHeaderEntries(toEntries(initial.headers));
     }
@@ -68,6 +70,7 @@ export function McpServerForm({ initial, onSubmit, onCancel, isPending }: McpSer
       data.headers = fromEntries(headerEntries);
     }
     data.env = fromEntries(envEntries);
+    data.docker_service_name = dockerServiceName.trim() || null;
     onSubmit(data);
   };
 
@@ -219,6 +222,24 @@ export function McpServerForm({ initial, onSubmit, onCancel, isPending }: McpSer
           {renderKeyValueEditor("HEADERS", headerEntries, setHeaderEntries)}
         </>
       )}
+
+      {/* Docker Service Name */}
+      {transportType !== "stdio" ? (
+        <div className="space-y-1.5">
+          <Label className="font-mono text-xs font-semibold text-muted-foreground tracking-wider">
+            DOCKER SERVICE NAME
+          </Label>
+          <Input
+            className="font-mono text-xs bg-input border-border"
+            placeholder="예: serena"
+            value={dockerServiceName}
+            onChange={(e) => setDockerServiceName(e.target.value)}
+          />
+          <p className="font-mono text-2xs text-muted-foreground/70">
+            Docker 내부 서비스명. 설정 시 Docker 네트워크를 통해 연결됩니다.
+          </p>
+        </div>
+      ) : null}
 
       {/* ENV */}
       {renderKeyValueEditor("ENV", envEntries, setEnvEntries, true)}

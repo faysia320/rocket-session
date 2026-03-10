@@ -23,6 +23,7 @@ class McpServer(Base):
     headers: Mapped[dict | None] = mapped_column(JSONB, default=None)
     env: Mapped[dict | None] = mapped_column(JSONB, default=None)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    docker_service_name: Mapped[str | None] = mapped_column(String, default=None)
     source: Mapped[str] = mapped_column(String, nullable=False, default="manual")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False

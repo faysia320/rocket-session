@@ -12,6 +12,7 @@ export interface McpServerInfo {
   headers?: Record<string, string> | null;
   env?: Record<string, string> | null;
   enabled: boolean;
+  docker_service_name?: string | null;
   source: string;
   created_at: string;
   updated_at: string;
@@ -26,6 +27,7 @@ export interface CreateMcpServerRequest {
   headers?: Record<string, string> | null;
   env?: Record<string, string> | null;
   enabled?: boolean;
+  docker_service_name?: string | null;
 }
 
 export interface UpdateMcpServerRequest {
@@ -37,6 +39,7 @@ export interface UpdateMcpServerRequest {
   headers?: Record<string, string> | null;
   env?: Record<string, string> | null;
   enabled?: boolean | null;
+  docker_service_name?: string | null;
 }
 
 export interface SystemMcpServer {

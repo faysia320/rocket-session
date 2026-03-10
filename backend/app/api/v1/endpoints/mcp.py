@@ -37,6 +37,7 @@ async def create_mcp_server(
         headers=req.headers,
         env=req.env,
         enabled=req.enabled,
+        docker_service_name=req.docker_service_name,
     )
 
 
@@ -82,6 +83,7 @@ async def update_mcp_server(
         headers=req.headers,
         env=req.env,
         enabled=req.enabled,
+        docker_service_name=req.docker_service_name,
     )
 
 

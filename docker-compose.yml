@@ -68,6 +68,25 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  serena:
+    image: ghcr.io/oraios/serena:latest
+    container_name: rocket-session-serena
+    volumes:
+      - rocket-workspaces:/workspaces
+      - ./serena/serena_config.yml:/root/.serena/serena_config.yml:ro
+    command: >
+      uv run --directory /app serena-mcp-server
+      --transport sse --port 9121 --host 0.0.0.0
+    expose:
+      - "9121"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9121/sse"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: rocket-session-redis
