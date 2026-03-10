@@ -128,7 +128,7 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
       ) : null}
 
       {/* 좌측: 네비게이션 */}
-      <nav className="hidden md:flex items-center gap-1">
+      <nav className="hidden md:flex items-center gap-1 flex-1 min-w-0">
         {NAV_ITEMS.map((item) => (
           <Button
             key={item.to}
@@ -146,9 +146,13 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
         ))}
       </nav>
 
-      {/* 우측: 사용량 + 글로벌 액션 */}
-      <div className="flex items-center gap-0.5 ml-auto shrink-0">
+      {/* 중앙: 사용량 */}
+      <div className="flex justify-center shrink-0">
         <UsageIndicator />
+      </div>
+
+      {/* 우측: 글로벌 액션 */}
+      <div className="flex items-center gap-0.5 flex-1 justify-end min-w-0">
 
         {/* 명령 팔레트 */}
         <Tooltip>
@@ -325,10 +329,12 @@ function formatTimeRemaining(resetsAt: string | null): string {
   const now = Date.now();
   const reset = new Date(resetsAt).getTime();
   const diffMs = reset - now;
-  if (diffMs <= 0) return "00:00";
-  const hours = Math.floor(diffMs / 3_600_000);
+  if (diffMs <= 0) return "0h 0m";
+  const days = Math.floor(diffMs / 86_400_000);
+  const hours = Math.floor((diffMs % 86_400_000) / 3_600_000);
   const minutes = Math.floor((diffMs % 3_600_000) / 60_000);
-  return `${String(hours).padStart(2, "0")}h${String(minutes).padStart(2, "0")}m`;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  return `${hours}h ${minutes}m`;
 }
 
 function utilizationColor(util: number): string {
@@ -351,7 +357,7 @@ function UsageIndicator() {
   );
 
   if (isLoading) {
-    return <div className="h-3 w-32 animate-pulse rounded bg-muted mr-1" />;
+    return <div className="h-3 w-32 animate-pulse rounded bg-muted" />;
   }
 
   if (isError || !data || !data.available) {
@@ -361,7 +367,7 @@ function UsageIndicator() {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="flex items-center gap-1 text-2xs text-muted-foreground mr-1">
+          <span className="flex items-center gap-1 text-2xs text-muted-foreground">
             {isRateLimited ? (
               <Clock className="h-3 w-3" />
             ) : (
@@ -383,26 +389,26 @@ function UsageIndicator() {
   const { five_hour, seven_day } = data;
 
   return (
-    <div className="flex items-center gap-1 text-2xs text-muted-foreground whitespace-nowrap mr-1">
-      <span className="text-muted-foreground/60">
+    <div className="flex items-center gap-1 text-2xs text-muted-foreground whitespace-nowrap">
+      <span className="text-muted-foreground/80">
         <span className="hidden sm:inline">5h</span>
         <span className="sm:hidden">h</span>:
       </span>
       <span className={cn("font-medium", utilizationColor(five_hour.utilization))}>
         {five_hour.utilization.toFixed(0)}%
       </span>
-      <span className="text-muted-foreground/40 hidden sm:inline">({fiveHourCountdown})</span>
+      <span className="text-muted-foreground/60 hidden sm:inline">({fiveHourCountdown})</span>
 
-      <span className="text-border mx-0.5">|</span>
+      <span className="text-muted-foreground/50 mx-0.5">|</span>
 
-      <span className="text-muted-foreground/60">
+      <span className="text-muted-foreground/80">
         <span className="hidden sm:inline">7d</span>
         <span className="sm:hidden">w</span>:
       </span>
       <span className={cn("font-medium", utilizationColor(seven_day.utilization))}>
         {seven_day.utilization.toFixed(0)}%
       </span>
-      <span className="text-muted-foreground/40 hidden sm:inline">({sevenDayCountdown})</span>
+      <span className="text-muted-foreground/60 hidden sm:inline">({sevenDayCountdown})</span>
     </div>
   );
 }
