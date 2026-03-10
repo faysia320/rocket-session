@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     rate_limit_session_per_minute: float = 20
 
     # Stall Detection
-    stall_timeout_seconds: int = 120
+    stall_timeout_seconds: int = 300
     max_retries: int = 2
     retry_initial_backoff_seconds: float = 5
     retry_max_backoff_seconds: float = 60

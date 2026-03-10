@@ -171,6 +171,41 @@ class ClaudeRunner:
             process.kill()
 
     @staticmethod
+    async def _is_process_active(process: asyncio.subprocess.Process) -> bool:
+        """프로세스가 활동 중인지 /proc/<pid>/stat CPU 시간으로 판단.
+
+        Linux 전용. 다른 플랫폼이나 예외 발생 시 안전하게 True 반환(오감지 방지).
+        """
+        pid = process.pid
+        if pid is None or process.returncode is not None:
+            return False
+
+        try:
+            proc_stat = Path(f"/proc/{pid}/stat")
+            if not proc_stat.exists():
+                return False
+
+            if sys.platform != "linux":
+                return True
+
+            stat_text = await asyncio.to_thread(proc_stat.read_text)
+            fields = stat_text.rsplit(")", 1)[-1].split()
+            cpu_time_1 = int(fields[11]) + int(fields[12])
+
+            await asyncio.sleep(1)
+
+            if process.returncode is not None:
+                return False
+
+            stat_text = await asyncio.to_thread(proc_stat.read_text)
+            fields = stat_text.rsplit(")", 1)[-1].split()
+            cpu_time_2 = int(fields[11]) + int(fields[12])
+
+            return cpu_time_2 > cpu_time_1
+        except (OSError, IndexError, ValueError):
+            return True
+
+    @staticmethod
     async def _update_and_broadcast_status(
         session_id: str,
         status: str,
@@ -923,27 +958,70 @@ class ClaudeRunner:
         turn_state: TurnState,
         stall_timeout: int,
     ) -> None:
-        """프로세스 stall(무출력) 감지 워처."""
+        """프로세스 stall(무출력) 감지 워처.
+
+        소프트 타임아웃: 프로세스 비활동 시에만 stall 판정.
+        하드 타임아웃(×3): 프로세스 상태와 무관하게 stall 판정.
+        """
         check_interval = min(10, stall_timeout // 2) or 5
+        hard_limit = stall_timeout * 3
+        grace_logged = False
+
         while process.returncode is None:
             await asyncio.sleep(check_interval)
             elapsed = time.monotonic() - turn_state.last_event_at
-            if elapsed >= stall_timeout:
+
+            if elapsed < stall_timeout:
+                grace_logged = False
+                continue
+
+            # 하드 리밋 초과 → 무조건 stall
+            if elapsed >= hard_limit:
                 turn_state.stall_detected = True
                 logger.warning(
-                    "세션 %s: stall 감지 — %d초 무출력", session_id, stall_timeout
+                    "세션 %s: hard stall 감지 — %d초 무출력", session_id, int(elapsed)
                 )
                 await ws_manager.broadcast_event(
                     session_id,
                     {
                         "type": WsEventType.STALL_DETECTED,
-                        "message": f"프로세스 무응답 감지 ({stall_timeout}초)",
+                        "message": f"프로세스 무응답 감지 ({int(elapsed)}초)",
                     },
                 )
                 await self._terminate_process(
                     process, self._GRACEFUL_TERMINATE_TIMEOUT, session_id
                 )
                 break
+
+            # 소프트 타임아웃: 프로세스가 활동 중이면 유예
+            if await self._is_process_active(process):
+                if not grace_logged:
+                    logger.info(
+                        "세션 %s: stdout %d초 무출력이나 프로세스 활동 중 — stall 유예",
+                        session_id,
+                        int(elapsed),
+                    )
+                    grace_logged = True
+                continue
+
+            # 프로세스 비활동 + 소프트 타임아웃 초과 → stall
+            turn_state.stall_detected = True
+            logger.warning(
+                "세션 %s: stall 감지 — %d초 무출력 + 프로세스 비활동",
+                session_id,
+                int(elapsed),
+            )
+            await ws_manager.broadcast_event(
+                session_id,
+                {
+                    "type": WsEventType.STALL_DETECTED,
+                    "message": f"프로세스 무응답 감지 ({int(elapsed)}초)",
+                },
+            )
+            await self._terminate_process(
+                process, self._GRACEFUL_TERMINATE_TIMEOUT, session_id
+            )
+            break
 
     async def _run_process_lifecycle(
         self,
@@ -1520,6 +1598,20 @@ class ClaudeRunner:
 
                 # stall 감지 시 재시도
                 if turn_state.stall_detected and attempt < max_retries:
+                    # 연속 stall → 같은 프롬프트로 재시도해도 동일 결과 가능성 높음
+                    if attempt > 0:
+                        logger.warning(
+                            "세션 %s: 연속 stall 감지 — 재시도 중단", session_id
+                        )
+                        await ws_manager.broadcast_event(
+                            session_id,
+                            {
+                                "type": WsEventType.STALL_DETECTED,
+                                "message": "연속 무응답으로 재시도를 중단합니다.",
+                            },
+                        )
+                        break
+
                     backoff = min(initial_backoff * (2 ** attempt), max_backoff)
                     logger.info(
                         "세션 %s: stall 재시도 %d/%d — %.1f초 후",
