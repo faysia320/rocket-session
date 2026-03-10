@@ -35,11 +35,11 @@ def _resolve_url_for_docker(url: str) -> str:
 
 
 def _resolve_url_for_docker_service(url: str, service_name: str) -> str:
-    """Docker 서비스명으로 localhost/127.0.0.1을 대체."""
+    """Docker 서비스명으로 localhost/127.0.0.1/host.docker.internal을 대체."""
     if not url:
         return url
     return re.sub(
-        r"://(localhost|127\.0\.0\.1)",
+        r"://(localhost|127\.0\.0\.1|host\.docker\.internal)",
         f"://{service_name}",
         url,
     )
