@@ -6,9 +6,10 @@ SessionManager는 파사드로서 내부 서브 서비스에 위임합니다:
 """
 
 import asyncio
-import logging
 import shutil
 import uuid
+
+import structlog
 from datetime import datetime
 from pathlib import Path
 
@@ -24,7 +25,7 @@ from app.schemas.session import SessionInfo
 from app.services.base import DBService
 from app.services.session_process_manager import SessionProcessManager
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 _UNSET = object()  # 센티넬: "전달되지 않음" vs "명시적 None" 구분
@@ -183,7 +184,13 @@ class SessionManager(DBService):
             await repo.add(entity)
             await session.commit()
             result = _session_to_dict(entity)
-        logger.info("세션 생성: %s", sid)
+        logger.info(
+            "세션 생성",
+            component="session",
+            operation="create",
+            workspace_id=workspace_id,
+            workflow_enabled=True,
+        )
         return result
 
     async def get(self, session_id: str) -> dict:
@@ -269,7 +276,7 @@ class SessionManager(DBService):
                     logger.info("업로드 디렉토리 삭제: %s", upload_path)
                 except OSError as e:
                     logger.warning("업로드 디렉토리 삭제 실패: %s - %s", upload_path, e)
-        logger.info("세션 삭제: %s", session_id)
+        logger.info("세션 삭제", component="session", operation="delete")
         return True
 
     # --- 프로세스 관리 (SessionProcessManager 위임) ---
@@ -307,6 +314,12 @@ class SessionManager(DBService):
                 raise NotFoundError(f"세션을 찾을 수 없습니다: {session_id}")
             await repo.update_status(session_id, status)
             await session.commit()
+        logger.info(
+            "세션 상태 변경",
+            component="session",
+            operation="status_change",
+            status=status,
+        )
 
     async def update_claude_session_id(self, session_id: str, claude_session_id: str):
         async with self._session_scope(SessionRepository) as (session, repo):

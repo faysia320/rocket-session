@@ -1,6 +1,6 @@
 """워크플로우 서비스 — 세션 레벨 동적 단계 관리."""
 
-import logging
+import structlog
 
 from app.core.database import Database
 from app.core.exceptions import NotFoundError, ValidationError
@@ -14,7 +14,7 @@ from app.schemas.workflow import ArtifactAnnotationInfo, SessionArtifactInfo
 from app.schemas.workflow_definition import ResolvedWorkflowStep
 from app.services.workflow_definition_service import WorkflowDefinitionService
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _artifact_to_info(artifact: SessionArtifact) -> SessionArtifactInfo:
@@ -130,7 +130,10 @@ class WorkflowService:
             workflow_original_prompt=None,
         )
         logger.info(
-            "워크플로우 리셋: session=%s → %s/in_progress", session_id, first_name
+            "워크플로우 리셋",
+            component="workflow",
+            operation="reset",
+            phase=first_name,
         )
 
     async def start_workflow(
@@ -161,7 +164,13 @@ class WorkflowService:
             workflow_phase_status="in_progress",
             workflow_original_prompt=None,
         )
-        logger.info("워크플로우 시작: session=%s, phase=%s", session_id, first.name)
+        logger.info(
+            "워크플로우 시작",
+            component="workflow",
+            operation="start",
+            phase=first.name,
+            definition_id=definition.id,
+        )
         return {"phase": first.name, "status": "in_progress"}
 
     async def get_next_phase(
@@ -215,10 +224,11 @@ class WorkflowService:
                 workflow_phase_status="in_progress",
             )
             logger.info(
-                "Phase 승인: session=%s, %s → %s",
-                session_id,
-                current_phase,
-                next_phase,
+                "Phase 승인",
+                component="workflow",
+                operation="approve",
+                from_phase=current_phase,
+                to_phase=next_phase,
             )
             return {"approved_phase": current_phase, "next_phase": next_phase}
         else:
@@ -228,7 +238,12 @@ class WorkflowService:
                 workflow_phase=current_phase,
                 workflow_phase_status="completed",
             )
-            logger.info("워크플로우 완료: session=%s", session_id)
+            logger.info(
+                "워크플로우 완료 (approve)",
+                component="workflow",
+                operation="completed",
+                phase=current_phase,
+            )
             return {"approved_phase": current_phase, "next_phase": None}
 
     async def request_revision(
@@ -270,8 +285,11 @@ class WorkflowService:
             workflow_phase_status="in_progress",
         )
         logger.info(
-            "수정 요청: session=%s, phase=%s → %s",
-            session_id, current_phase, effective_phase,
+            "수정 요청",
+            component="workflow",
+            operation="revision",
+            from_phase=current_phase,
+            to_phase=effective_phase,
         )
         return {"phase": effective_phase, "old_artifact_id": old_artifact_id}
 
@@ -478,6 +496,13 @@ class WorkflowService:
 
         # 게이트 2: 승인 대기 중 → 프롬프트 차단
         if workflow_phase_status == "awaiting_approval":
+            logger.info(
+                "워크플로우 게이트 차단",
+                component="workflow",
+                operation="gate_block",
+                phase=workflow_phase,
+                reason="awaiting_approval",
+            )
             return workflow_phase, None, (
                 "현재 단계의 검토가 완료되지 않았습니다. "
                 "아티팩트를 승인하거나 수정 요청해주세요."

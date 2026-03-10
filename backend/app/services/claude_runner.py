@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import os
 import subprocess
 import sys
@@ -16,7 +15,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import structlog
 from aiolimiter import AsyncLimiter
+from structlog.contextvars import bind_contextvars
 
 from app.core.config import Settings
 from app.core.constants import READONLY_TOOLS
@@ -33,7 +34,7 @@ from app.services.websocket_manager import WebSocketManager
 if TYPE_CHECKING:
     from app.services.session_manager import SessionManager
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -571,6 +572,12 @@ class ClaudeRunner:
         if tool_name == self.TOOL_ASK_USER_QUESTION:
             turn_state.ask_user_question_tool_id = tool_use_id
             turn_state.should_terminate = True
+            logger.info(
+                "사용자 질문 요청",
+                component="runner",
+                operation="ask_user_question",
+                question_count=len(tool_input.get("questions", [])),
+            )
             question_timestamp = utc_now_iso()
             question_list = tool_input.get("questions", [])
             await ws_manager.broadcast_event(
@@ -612,6 +619,13 @@ class ClaudeRunner:
                 "tool_use_id": tool_use_id,
                 "timestamp": utc_now_iso(),
             },
+        )
+        logger.info(
+            "도구 호출",
+            component="runner",
+            operation="tool_invocation",
+            tool_name=tool_name,
+            tool_use_id=tool_use_id,
         )
         ts = utc_now()
         if not session_manager.queue_message(
@@ -826,6 +840,20 @@ class ClaudeRunner:
             "timestamp": utc_now_iso(),
         }
         await ws_manager.broadcast_event(session_id, result_event)
+        logger.info(
+            "결과 수신",
+            component="runner",
+            operation="result_received",
+            token_input=input_tokens,
+            token_output=output_tokens,
+            token_cache_read=cache_read_tokens,
+            token_cache_create=cache_creation_tokens,
+            cost_usd=cost_info,
+            duration_ms=duration,
+            model=model,
+            text_length=len(result_text) if result_text else 0,
+            is_error=is_error,
+        )
 
         # is_error일 때 세션 상태를 error로 전환
         if is_error:
@@ -1313,6 +1341,14 @@ class ClaudeRunner:
         next_phase = await workflow_service.get_next_phase(
             workflow_phase, session_id, session_manager
         )
+        logger.info(
+            "워크플로우 단계 완료",
+            component="workflow",
+            operation="phase_completed",
+            phase=workflow_phase,
+            has_next=bool(next_phase),
+            review_required=review_required,
+        )
 
         if not next_phase and not review_required:
             # 마지막 단계 + 승인 불필요 → 아티팩트 approved + 워크플로우 종료
@@ -1330,6 +1366,10 @@ class ClaudeRunner:
                     {"type": WsEventType.WORKFLOW_COMPLETED},
                 )
                 logger.info("워크플로우 완료: session=%s", session_id)
+                # 워크플로우 최종 완료 시 분석 트리거
+                session_data = await session_manager.get(session_id)
+                ws_id = session_data.get("workspace_id") if session_data else None
+                self._trigger_session_analysis(session_id, ws_id)
             except Exception:
                 logger.warning(
                     "세션 %s: 워크플로우 완료 처리 실패",
@@ -1438,6 +1478,13 @@ class ClaudeRunner:
                         # 검증 실패 → implement로 복귀 완료, 추가 체이닝 불필요
                         return
 
+                logger.info(
+                    "워크플로우 자동 체이닝",
+                    component="workflow",
+                    operation="auto_chain",
+                    from_phase=workflow_phase,
+                    to_phase=next_phase,
+                )
                 updated = await session_manager.get(session_id)
                 chain_task = asyncio.create_task(
                     self.run(
@@ -1522,9 +1569,7 @@ class ClaudeRunner:
         workflow_step_config: dict | None = None,
     ):
         """Claude CLI 실행 및 스트림 처리 오케스트레이션."""
-        import structlog as _structlog
-
-        _structlog.contextvars.bind_contextvars(session_id=session_id)
+        bind_contextvars(session_id=session_id)
 
         # 세션별 레이트 리미터 (분당 프롬프트 수 제한)
         if session_id not in self._session_limiters:
@@ -1576,6 +1621,31 @@ class ClaudeRunner:
         """세션 삭제 시 해당 세션의 레이트 리미터를 정리."""
         self._session_limiters.pop(session_id, None)
 
+    @staticmethod
+    def _trigger_session_analysis(
+        session_id: str, workspace_id: str | None
+    ) -> None:
+        """세션 분석을 fire-and-forget 태스크로 트리거."""
+        if not workspace_id:
+            return
+
+        async def _analyze() -> None:
+            try:
+                from app.api.dependencies import get_session_analysis_service
+
+                svc = get_session_analysis_service()
+                await svc.generate_auto_insights(session_id, workspace_id)
+            except Exception:
+                logger.warning(
+                    "세션 자동 분석 실패",
+                    component="session",
+                    operation="auto_insights",
+                    is_error=True,
+                    exc_info=True,
+                )
+
+        asyncio.create_task(_analyze())
+
     async def _run_inner(
         self,
         session: dict,
@@ -1594,6 +1664,13 @@ class ClaudeRunner:
         """세마포어 내부에서 실행되는 실제 CLI 실행 로직."""
         await self._update_and_broadcast_status(
             session_id, SessionStatus.RUNNING, session_manager, ws_manager
+        )
+        logger.info(
+            "프로세스 시작",
+            component="runner",
+            operation="process_start",
+            workflow_phase=workflow_phase,
+            work_dir=session.get("work_dir", ""),
         )
 
         cmd, _, _ = await asyncio.to_thread(
@@ -1734,6 +1811,13 @@ class ClaudeRunner:
             )
             await ws_manager.flush_events()
             ws_manager.clear_buffer(session_id)
+            logger.info(
+                "턴 종료",
+                component="runner",
+                operation="turn_end",
+                final_status=final_status,
+                result_received=turn_state.result_received,
+            )
 
             # 워크플로우 완료 처리
             if (
@@ -1756,4 +1840,9 @@ class ClaudeRunner:
                     mcp_service,
                 )
 
+            # 비워크플로우 세션: 정상 완료 턴에서 자동 분석 트리거
+            elif turn_state.result_received and not turn_state.is_error:
+                self._trigger_session_analysis(
+                    session_id, session.get("workspace_id")
+                )
 

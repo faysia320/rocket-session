@@ -1,0 +1,175 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "세션 라이프사이클 타임라인",
+      "type": "logs",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=\"backend\", component=~\"$component\"} | json | session_id=\"$session_id\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Ascending"
+      }
+    },
+    {
+      "title": "턴별 메트릭 테이블",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=\"backend\", operation=\"result_received\"} | json | session_id=\"$session_id\"",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "jsonPaths": [
+              { "path": "turn_id", "alias": "Turn ID" },
+              { "path": "model", "alias": "Model" },
+              { "path": "token_input", "alias": "Input Tokens" },
+              { "path": "token_output", "alias": "Output Tokens" },
+              { "path": "token_cache_read", "alias": "Cache Read" },
+              { "path": "cost_usd", "alias": "Cost (USD)" },
+              { "path": "duration_ms", "alias": "Duration (ms)" },
+              { "path": "is_error", "alias": "Error" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "토큰 사용량 추이",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum_over_time({service=\"backend\", operation=\"result_received\"} | json | session_id=\"$session_id\" | unwrap token_output [1m])",
+          "legendFormat": "Output Tokens",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum_over_time({service=\"backend\", operation=\"result_received\"} | json | session_id=\"$session_id\" | unwrap token_input [1m])",
+          "legendFormat": "Input Tokens",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "drawStyle": "line"
+          }
+        }
+      }
+    },
+    {
+      "title": "도구 사용 분포",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by(tool_name) (count_over_time({service=\"backend\", operation=\"tool_invocation\"} | json | session_id=\"$session_id\" [$__range]))",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "워크플로우 단계 진행",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=\"backend\", component=\"workflow\"} | json | session_id=\"$session_id\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Ascending"
+      }
+    },
+    {
+      "title": "활동 밀도",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by(operation) (count_over_time({service=\"backend\", component=~\"$component\"} | json | session_id=\"$session_id\" [1m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 30,
+            "lineWidth": 1,
+            "drawStyle": "bars",
+            "stacking": { "mode": "normal" }
+          }
+        }
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["session-lifecycle", "rocket-session"],
+  "templating": {
+    "list": [
+      {
+        "name": "session_id",
+        "type": "textbox",
+        "label": "Session ID",
+        "current": { "value": "" }
+      },
+      {
+        "name": "component",
+        "type": "custom",
+        "label": "Component",
+        "current": { "text": "All", "value": ".+" },
+        "options": [
+          { "text": "All", "value": ".+", "selected": true },
+          { "text": "ws", "value": "ws" },
+          { "text": "runner", "value": "runner" },
+          { "text": "session", "value": "session" },
+          { "text": "workflow", "value": "workflow" },
+          { "text": "context", "value": "context" }
+        ]
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "title": "Rocket Session - Session Lifecycle",
+  "uid": "rocket-session-lifecycle"
+}

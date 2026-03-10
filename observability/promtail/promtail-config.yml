@@ -27,6 +27,12 @@ scrape_configs:
                   logger: logger_name
                   request_id: request_id
                   session_id: session_id
+                  component: component
+                  operation: operation
+                  turn_id: turn_id
+                  workflow_phase: workflow_phase
             - labels:
                 level:
                 logger:
+                component:
+                operation:

@@ -1,8 +1,11 @@
 """WebSocket 엔드포인트 - 실시간 스트리밍."""
 
 import asyncio
-import logging
 from collections import OrderedDict
+from uuid import uuid4
+
+import structlog
+from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -29,7 +32,7 @@ from app.services.claude_runner import ClaudeRunner
 from app.services.session_manager import SessionManager
 from app.services.websocket_manager import WebSocketManager
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
@@ -97,8 +100,20 @@ async def _handle_prompt(
             )
             return
 
+        # ---- 턴 ID 생성 + 컨텍스트 바인딩 ----
+        turn_id = uuid4().hex[:12]
+        bind_contextvars(turn_id=turn_id)
+        logger.info(
+            "프롬프트 수신",
+            component="ws",
+            operation="message_receive",
+            prompt_length=len(prompt),
+        )
+
         # 세션 정보 로드
         current_session = await manager.get(session_id)
+        if current_session and current_session.get("workspace_id"):
+            bind_contextvars(workspace_id=current_session["workspace_id"])
 
         # 글로벌 기본 설정 로드
         settings_service = get_settings_service()
@@ -224,8 +239,20 @@ async def _handle_prompt(
                     merged_session["system_prompt"] = (
                         existing + kb_block if existing else kb_block
                     )
+                    logger.info(
+                        "KB 컨텍스트 주입 성공",
+                        component="context",
+                        operation="kb_inject",
+                        context_length=len(memory_ctx.context_text),
+                    )
         except Exception:
-            logger.warning("세션 %s: KB 컨텍스트 주입 실패", session_id, exc_info=True)
+            logger.warning(
+                "KB 컨텍스트 주입 실패",
+                component="context",
+                operation="kb_inject",
+                is_error=True,
+                exc_info=True,
+            )
 
         # Workspace Insights 컨텍스트 자동 주입
         try:
@@ -247,9 +274,19 @@ async def _handle_prompt(
                         if existing
                         else insights_block
                     )
+                    logger.info(
+                        "인사이트 컨텍스트 주입 성공",
+                        component="context",
+                        operation="insights_inject",
+                        context_length=len(insight_ctx),
+                    )
         except Exception:
             logger.warning(
-                "세션 %s: Insights 컨텍스트 주입 실패", session_id, exc_info=True
+                "인사이트 컨텍스트 주입 실패",
+                component="context",
+                operation="insights_inject",
+                is_error=True,
+                exc_info=True,
             )
 
         # MCP 서비스 주입
@@ -274,6 +311,15 @@ async def _handle_prompt(
         )
         task.add_done_callback(lambda t: _on_runner_task_done(t, session_id, manager))
         manager.set_runner_task(session_id, task)
+        logger.info(
+            "러너 턴 시작",
+            component="runner",
+            operation="turn_start",
+            workflow_phase=workflow_phase,
+            has_images=bool(images),
+        )
+        if workflow_phase:
+            bind_contextvars(workflow_phase=workflow_phase)
 
 
 async def _handle_stop(
@@ -282,6 +328,7 @@ async def _handle_stop(
     ws_manager: WebSocketManager,
 ) -> None:
     """stop 메시지 처리: 프로세스 종료 (kill_process가 runner_task도 취소)."""
+    logger.info("러너 중지 요청", component="runner", operation="stop")
     await manager.kill_process(session_id)
     await ws_manager.broadcast_event(session_id, {"type": WsEventType.STOPPED})
 
@@ -325,10 +372,15 @@ async def _handle_permission_respond(data: dict) -> None:
 @router.websocket("/ws/{session_id}")
 async def websocket_endpoint(ws: WebSocket, session_id: str):
     await ws.accept()
-
-    import structlog as _structlog
-
-    _structlog.contextvars.bind_contextvars(session_id=session_id)
+    clear_contextvars()
+    bind_contextvars(session_id=session_id)
+    is_reconnect = ws.query_params.get("last_seq") is not None
+    logger.info(
+        "WebSocket 연결",
+        component="ws",
+        operation="connect",
+        is_reconnect=is_reconnect,
+    )
 
     manager = get_session_manager()
     ws_manager = get_ws_manager()
@@ -492,6 +544,8 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
     except WebSocketDisconnect:
         pass
     finally:
+        logger.info("WebSocket 연결 종료", component="ws", operation="disconnect")
+        clear_contextvars()
         # runner_task는 취소하지 않음 - Claude 프로세스와 함께 살아있어야 함
         ws_manager.unregister(session_id, ws)
         # LRU가 자동으로 크기를 관리하므로 명시적 정리 불필요
