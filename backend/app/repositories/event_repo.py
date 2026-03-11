@@ -28,7 +28,9 @@ class EventRepository(BaseRepository[Event]):
         """이벤트 배치 저장."""
         if not events:
             return
-        stmt = insert(Event).values(events)
+        # payload_json은 COPY 전용 — INSERT에서는 제거
+        clean = [{k: v for k, v in evt.items() if k != "payload_json"} for evt in events]
+        stmt = insert(Event).values(clean)
         await self._session.execute(stmt)
 
     async def get_after(self, session_id: str, after_seq: int) -> list[dict]:
@@ -86,17 +88,21 @@ class EventRepository(BaseRepository[Event]):
         Args:
             raw_conn: asyncpg connection (Database.raw_connection()으로 획득)
             events: 이벤트 dict 목록 (session_id, seq, event_type, payload, timestamp)
+                    payload_json 키가 있으면 사전 직렬화된 문자열을 재사용
         """
         if not events:
             return
         records = []
         for evt in events:
+            payload_str = evt.get("payload_json") or json.dumps(
+                evt["payload"], ensure_ascii=False
+            )
             records.append(
                 (
                     evt["session_id"],
                     evt["seq"],
                     evt["event_type"],
-                    json.dumps(evt["payload"], ensure_ascii=False),
+                    payload_str,
                     evt["timestamp"],
                 )
             )

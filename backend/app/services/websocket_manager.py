@@ -215,12 +215,16 @@ class WebSocketManager(DBService):
         """이벤트에 seq 부여 + 버퍼 저장 + DB 저장 + broadcast.
 
         broadcast는 fire-and-forget으로 실행하여 stdout 읽기를 블로킹하지 않음.
+        JSON 직렬화는 한 번만 수행하여 broadcast와 DB 저장 모두에 재사용.
         """
         seq = self._next_seq(session_id)
         event_type = message.get("type", "unknown")
         ts = utc_now()
 
         message_with_seq = {**message, "seq": seq}
+
+        # JSON 직렬화 1회 — broadcast + DB COPY 모두에 재사용
+        payload_json = json.dumps(message_with_seq, ensure_ascii=False)
 
         # 인메모리 버퍼 저장
         if session_id not in self._event_buffers:
@@ -231,18 +235,18 @@ class WebSocketManager(DBService):
             )
         )
 
-        # DB 저장: 큐에 enqueue (JSONB이므로 dict 그대로 저장)
+        # DB 저장: 큐에 enqueue (사전 직렬화된 JSON 문자열 포함)
         if self._db:
+            event_record = {
+                "session_id": session_id,
+                "seq": seq,
+                "event_type": event_type,
+                "payload": message_with_seq,
+                "payload_json": payload_json,
+                "timestamp": ts,
+            }
             try:
-                self._event_queue.put_nowait(
-                    {
-                        "session_id": session_id,
-                        "seq": seq,
-                        "event_type": event_type,
-                        "payload": message_with_seq,
-                        "timestamp": ts,
-                    }
-                )
+                self._event_queue.put_nowait(event_record)
             except asyncio.QueueFull:
                 # 긴급 flush 후 재시도
                 logger.warning(
@@ -252,15 +256,7 @@ class WebSocketManager(DBService):
                 )
                 await self._flush_events()
                 try:
-                    self._event_queue.put_nowait(
-                        {
-                            "session_id": session_id,
-                            "seq": seq,
-                            "event_type": event_type,
-                            "payload": message_with_seq,
-                            "timestamp": ts,
-                        }
-                    )
+                    self._event_queue.put_nowait(event_record)
                 except asyncio.QueueFull:
                     logger.error(
                         "이벤트 큐 긴급 flush 후에도 가득 참 — 이벤트 드롭 (세션 %s, seq %d)",
@@ -270,7 +266,7 @@ class WebSocketManager(DBService):
                     self._events_dropped += 1
 
         # fire-and-forget: 느린 WS 클라이언트가 stdout 파이프라인을 블로킹하지 않도록
-        task = asyncio.create_task(self.broadcast(session_id, message_with_seq))
+        task = asyncio.create_task(self._broadcast_text(session_id, payload_json))
         self._pending_broadcasts.add(task)
 
         def _on_broadcast_done(t: asyncio.Task) -> None:
@@ -284,19 +280,17 @@ class WebSocketManager(DBService):
         task.add_done_callback(_on_broadcast_done)
         return seq
 
-    async def broadcast(self, session_id: str, message: dict):
-        """세션에 연결된 모든 WebSocket에 메시지 병렬 전송."""
+    async def _broadcast_text(self, session_id: str, payload_json: str):
+        """사전 직렬화된 JSON 문자열을 세션의 모든 WebSocket에 병렬 전송."""
         ws_set = self._connections.get(session_id)
         if not ws_set:
             return
-
-        payload = json.dumps(message, ensure_ascii=False)
 
         async def _safe_send(ws: WebSocket) -> WebSocket | None:
             try:
                 if ws.client_state != WebSocketState.CONNECTED:
                     return ws
-                await asyncio.wait_for(ws.send_text(payload), timeout=3.0)
+                await asyncio.wait_for(ws.send_text(payload_json), timeout=3.0)
                 return None
             except Exception:
                 return ws
@@ -305,6 +299,11 @@ class WebSocketManager(DBService):
         dead = {ws for ws in results if ws is not None}
         if dead:
             ws_set -= dead
+
+    async def broadcast(self, session_id: str, message: dict):
+        """세션에 연결된 모든 WebSocket에 메시지 병렬 전송 (dict → JSON 직렬화 포함)."""
+        payload = json.dumps(message, ensure_ascii=False)
+        await self._broadcast_text(session_id, payload)
 
     async def get_buffered_events_after(
         self, session_id: str, after_seq: int

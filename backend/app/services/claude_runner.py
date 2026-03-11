@@ -73,13 +73,36 @@ class TurnState:
 
 
 class _AsyncStreamReader:
-    """Windows subprocess 파이프를 비동기로 읽기 위한 래퍼."""
+    """Windows subprocess 파이프를 비동기로 읽기 위한 래퍼.
+
+    단순 readline 대신 청크 단위로 읽어 스레드풀 호출 횟수를 줄임.
+    """
+
+    _CHUNK_SIZE = 65536  # 64KB 청크
 
     def __init__(self, stream):
         self._stream = stream
+        self._buffer = b""
 
-    async def readline(self):
-        return await asyncio.to_thread(self._stream.readline)
+    async def readline(self) -> bytes:
+        while True:
+            # 버퍼에 완전한 라인이 있으면 즉시 반환 (스레드풀 호출 없음)
+            newline_pos = self._buffer.find(b"\n")
+            if newline_pos >= 0:
+                line = self._buffer[: newline_pos + 1]
+                self._buffer = self._buffer[newline_pos + 1 :]
+                return line
+
+            # 스트림에서 청크 읽기 (한 번의 to_thread로 여러 라인 분량)
+            # read1()은 내부 버퍼 + 1회 OS read만 수행하여 블로킹 최소화
+            read_fn = getattr(self._stream, "read1", self._stream.read)
+            chunk = await asyncio.to_thread(read_fn, self._CHUNK_SIZE)
+            if not chunk:
+                # EOF: 버퍼에 남은 데이터 반환
+                remaining = self._buffer
+                self._buffer = b""
+                return remaining
+            self._buffer += chunk
 
     async def read(self):
         return await asyncio.to_thread(self._stream.read)
@@ -681,7 +704,8 @@ class ClaudeRunner:
             return
 
         ts_dt = utc_now()
-        await session_manager.add_file_change(session_id, tool_name, file_path, ts_dt)
+        if not session_manager.queue_file_change(session_id, tool_name, file_path, ts_dt):
+            await session_manager.add_file_change(session_id, tool_name, file_path, ts_dt)
         await ws_manager.broadcast_event(
             session_id,
             {
@@ -815,11 +839,6 @@ class ClaudeRunner:
         cache_read_tokens = data["cache_read_tokens"]
         model = data["model"]
 
-        if session_id_from_result:
-            await session_manager.update_claude_session_id(
-                session_id, session_id_from_result
-            )
-
         turn_state.result_received = True
         turn_state.result_text = result_text
         turn_state.is_error = is_error
@@ -862,27 +881,57 @@ class ClaudeRunner:
                 session_id, {"type": WsEventType.STATUS, "status": SessionStatus.ERROR}
             )
 
-        await session_manager.add_message(
-            session_id=session_id,
-            role="assistant",
-            content=result_text,
-            timestamp=utc_now(),
-            cost=cost_info,
-            duration_ms=duration,
-            is_error=is_error,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cache_creation_tokens=cache_creation_tokens,
-            cache_read_tokens=cache_read_tokens,
-            model=model,
+        # 독립적인 DB 호출을 병렬 실행 (순차 대비 지연 감소)
+        now = utc_now()
+        concurrent_tasks: list = [
+            session_manager.add_message(
+                session_id=session_id,
+                role="assistant",
+                content=result_text,
+                timestamp=now,
+                cost=cost_info,
+                duration_ms=duration,
+                is_error=is_error,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_creation_tokens=cache_creation_tokens,
+                cache_read_tokens=cache_read_tokens,
+                model=model,
+            ),
+        ]
+        if session_id_from_result:
+            concurrent_tasks.append(
+                session_manager.update_claude_session_id(
+                    session_id, session_id_from_result
+                )
+            )
+        concurrent_tasks.append(
+            self._safe_add_token_snapshot(
+                session_manager, session_id, turn_state, model,
+                input_tokens, output_tokens,
+                cache_creation_tokens, cache_read_tokens, now,
+            )
         )
+        await asyncio.gather(*concurrent_tasks)
 
-        # 토큰 스냅샷 기록 (세션 삭제와 무관하게 보존)
+    @staticmethod
+    async def _safe_add_token_snapshot(
+        session_manager: "SessionManager",
+        session_id: str,
+        turn_state: TurnState,
+        model: str | None,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        cache_creation_tokens: int | None,
+        cache_read_tokens: int | None,
+        timestamp: "datetime",
+    ) -> None:
+        """토큰 스냅샷 기록 (실패해도 예외를 전파하지 않음)."""
         try:
             await session_manager.add_token_snapshot(
                 session_id=session_id,
                 work_dir=turn_state.work_dir,
-                timestamp=utc_now(),
+                timestamp=timestamp,
                 workflow_phase=turn_state.workflow_phase,
                 model=model,
                 input_tokens=input_tokens or 0,

@@ -17,6 +17,14 @@ class FileChangeRepository(BaseRepository[FileChange]):
         self._session.add(fc)
         await self._session.flush()
 
+    async def add_batch(self, records: list[dict]) -> None:
+        """파일 변경 기록 배치 추가."""
+        if not records:
+            return
+        for rec in records:
+            self._session.add(FileChange(**rec))
+        await self._session.flush()
+
     async def get_by_session(self, session_id: str) -> list[dict]:
         """세션의 파일 변경 기록 조회 (시간순)."""
         stmt = (
