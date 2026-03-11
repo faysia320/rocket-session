@@ -45,6 +45,8 @@ export function handleWsMessage(
 
       if (!action.isReconnect && action.history) {
         newMessages = [];
+        // 세션 고유 ID prefix (세션 간 key 충돌 방지)
+        const sessionIdPrefix = action.session?.claude_session_id || action.session?.id || "";
         // tool_result를 tool_use_id로 인덱싱 (tool_use 메시지에 병합용)
         const toolResultMap = new Map<string, (typeof action.history)[number]>();
         for (const h of action.history) {
@@ -76,7 +78,7 @@ export function handleWsMessage(
           if (h.message_type === "tool_use") {
             const result = h.tool_use_id ? toolResultMap.get(h.tool_use_id) : undefined;
             msg = {
-              id: `hist-${histIndex}`,
+              id: `hist-${sessionIdPrefix}-${histIndex}`,
               type: "tool_use" as const,
               tool: h.tool_name || "Tool",
               input: h.tool_input || {},
@@ -96,7 +98,7 @@ export function handleWsMessage(
             }
           } else if (h.role === "user") {
             msg = {
-              id: `hist-${histIndex}`,
+              id: `hist-${sessionIdPrefix}-${histIndex}`,
               type: "user_message" as const,
               message: h as unknown as Record<string, unknown>,
               text: h.content,
@@ -105,7 +107,7 @@ export function handleWsMessage(
             } as Message;
           } else {
             msg = {
-              id: `hist-${histIndex}`,
+              id: `hist-${sessionIdPrefix}-${histIndex}`,
               type: "result" as const,
               text: h.content,
               timestamp: h.timestamp,

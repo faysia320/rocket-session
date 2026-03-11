@@ -61,20 +61,20 @@ class MessageRepository(BaseRepository[Message]):
             sub = (
                 select(Message.id)
                 .where(Message.session_id == session_id)
-                .order_by(Message.id.desc())
+                .order_by(Message.timestamp.desc(), Message.id.desc())
                 .limit(limit)
                 .subquery()
             )
             stmt = (
                 select(*self._MESSAGE_COLUMNS)
                 .where(Message.id.in_(select(sub.c.id)))
-                .order_by(Message.id)
+                .order_by(Message.timestamp, Message.id)
             )
         else:
             stmt = (
                 select(*self._MESSAGE_COLUMNS)
                 .where(Message.session_id == session_id)
-                .order_by(Message.id)
+                .order_by(Message.timestamp, Message.id)
             )
         result = await self._session.execute(stmt)
         return self._rows_to_dicts(result.all())
@@ -122,7 +122,7 @@ class MessageRepository(BaseRepository[Message]):
         source_q = (
             select(*_cols)
             .where(Message.session_id == source_session_id)
-            .order_by(Message.id)
+            .order_by(Message.timestamp, Message.id)
         )
         if up_to_message_id is not None:
             source_q = source_q.where(Message.id <= up_to_message_id)

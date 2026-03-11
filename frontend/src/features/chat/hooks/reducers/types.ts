@@ -24,6 +24,7 @@ export interface TodoItem {
 }
 
 export interface SessionState {
+  id?: string;
   claude_session_id?: string;
   work_dir?: string;
   name?: string;

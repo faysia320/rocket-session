@@ -241,7 +241,13 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: (index) => computeEstimateSize(messages[index]),
     overscan: 10,
+    getItemKey: (index) => messages[index]?.id ?? index,
   });
+
+  // 세션 전환 시 virtualizer 측정 캐시 리셋
+  useEffect(() => {
+    virtualizer.measure();
+  }, [sessionId, virtualizer]);
 
   const handleScroll = useCallback(() => {
     if (scrollRafRef.current) return;
