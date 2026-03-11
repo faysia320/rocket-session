@@ -2,7 +2,11 @@ FROM ghcr.io/oraios/serena:latest
 
 # /workspaces 볼륨 마운트와 충돌을 방지하기 위해
 # Serena 설치를 /opt/serena로 복사
-RUN cp -a /workspaces/serena /opt/serena
+RUN cp -a /workspaces/serena /opt/serena \
+    && sed -i "s|/workspaces/serena|/opt/serena|g" /opt/serena/.venv/bin/* \
+    && find /opt/serena/.venv -name "*.pth" -exec sed -i "s|/workspaces/serena|/opt/serena|g" {} + \
+    && find /opt/serena/.venv -name "*.egg-link" -exec sed -i "s|/workspaces/serena|/opt/serena|g" {} + \
+    && find /opt/serena/.venv -name "direct_url.json" -exec sed -i "s|/workspaces/serena|/opt/serena|g" {} +
 
 # 작업 디렉토리와 환경 변수를 새 위치로 업데이트
 WORKDIR /opt/serena
