@@ -148,12 +148,12 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
       </nav>
 
       {/* 중앙: 사용량 */}
-      <div className="flex justify-center shrink-0">
+      <div className="flex justify-center shrink-0 overflow-hidden">
         <UsageIndicator />
       </div>
 
       {/* 우측: 글로벌 액션 */}
-      <div className="flex items-center gap-0.5 flex-1 justify-end min-w-0">
+      <div className="flex items-center gap-0.5 flex-1 justify-end min-w-0 overflow-hidden">
 
         {/* 명령 팔레트 */}
         <Tooltip>
@@ -395,19 +395,19 @@ function UsageIndicator() {
         variant="outline"
         className={cn("px-2 py-0.5 text-2xs font-medium gap-1", utilizationBadgeClass(five_hour.utilization))}
       >
-        <span className="hidden sm:inline">5h</span>
-        <span className="sm:hidden">h</span>
+        <span className="hidden md:inline">5h</span>
+        <span className="md:hidden">h</span>
         <span>{five_hour.utilization.toFixed(0)}%</span>
-        <span className="hidden sm:inline opacity-60">({fiveHourCountdown})</span>
+        <span className="hidden md:inline opacity-60">({fiveHourCountdown})</span>
       </Badge>
       <Badge
         variant="outline"
         className={cn("px-2 py-0.5 text-2xs font-medium gap-1", utilizationBadgeClass(seven_day.utilization))}
       >
-        <span className="hidden sm:inline">7d</span>
-        <span className="sm:hidden">w</span>
+        <span className="hidden md:inline">7d</span>
+        <span className="md:hidden">w</span>
         <span>{seven_day.utilization.toFixed(0)}%</span>
-        <span className="hidden sm:inline opacity-60">({sevenDayCountdown})</span>
+        <span className="hidden md:inline opacity-60">({sevenDayCountdown})</span>
       </Badge>
     </div>
   );
