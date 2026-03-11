@@ -410,39 +410,56 @@ class WorkflowService:
 
     # ─── 주석 → 마크다운 변환 ───
 
-    async def render_annotated_content(self, artifact_id: int) -> str:
-        """아티팩트 본문에 pending 주석을 인라인 코멘트로 삽입."""
-        async with self._db.session() as db_sess:
-            art_repo = SessionArtifactRepository(db_sess)
-            ann_repo = ArtifactAnnotationRepository(db_sess)
+    async def render_annotated_content(
+        self,
+        artifact_id: int,
+        *,
+        artifact_content: str | None = None,
+        pending_annotations: list | None = None,
+    ) -> str:
+        """아티팩트 본문에 pending 주석을 인라인 코멘트로 삽입.
 
-            artifact = await art_repo.get_by_id(artifact_id)
-            if not artifact:
-                return ""
+        성능 최적화: artifact_content와 pending_annotations를 직접 전달하면
+        DB 재조회를 건너뜁니다 (N+1 쿼리 방지).
+        """
+        if artifact_content is None:
+            async with self._db.session() as db_sess:
+                art_repo = SessionArtifactRepository(db_sess)
+                artifact = await art_repo.get_by_id(artifact_id)
+                if not artifact:
+                    return ""
+                artifact_content = artifact.content
+                if pending_annotations is None:
+                    ann_repo = ArtifactAnnotationRepository(db_sess)
+                    pending_annotations = await ann_repo.list_pending(artifact_id)
 
-            pending = await ann_repo.list_pending(artifact_id)
-            if not pending:
-                return artifact.content
+        if pending_annotations is None:
+            async with self._db.session() as db_sess:
+                ann_repo = ArtifactAnnotationRepository(db_sess)
+                pending_annotations = await ann_repo.list_pending(artifact_id)
 
-            lines = artifact.content.split("\n")
+        if not pending_annotations:
+            return artifact_content
 
-            # 뒤에서부터 삽입해야 줄 번호가 밀리지 않음
-            type_labels = {
-                "comment": "COMMENT",
-                "suggestion": "SUGGESTION",
-                "rejection": "REJECTION",
-            }
-            for ann in reversed(pending):
-                label = type_labels.get(ann.annotation_type, "COMMENT")
-                line_ref = f"L{ann.line_start}"
-                if ann.line_end:
-                    line_ref = f"L{ann.line_start}-L{ann.line_end}"
-                comment = f"<!-- [{label} {line_ref}]: {ann.content} -->"
-                # 주석 줄 뒤에 삽입 (0-indexed 이므로 line_start 위치에)
-                insert_idx = min(ann.line_start, len(lines))
-                lines.insert(insert_idx, comment)
+        lines = artifact_content.split("\n")
 
-            return "\n".join(lines)
+        # 뒤에서부터 삽입해야 줄 번호가 밀리지 않음
+        type_labels = {
+            "comment": "COMMENT",
+            "suggestion": "SUGGESTION",
+            "rejection": "REJECTION",
+        }
+        for ann in reversed(pending_annotations):
+            label = type_labels.get(ann.annotation_type, "COMMENT")
+            line_ref = f"L{ann.line_start}"
+            if ann.line_end:
+                line_ref = f"L{ann.line_start}-L{ann.line_end}"
+            comment = f"<!-- [{label} {line_ref}]: {ann.content} -->"
+            # 주석 줄 뒤에 삽입 (0-indexed 이므로 line_start 위치에)
+            insert_idx = min(ann.line_start, len(lines))
+            lines.insert(insert_idx, comment)
+
+        return "\n".join(lines)
 
     # ─── Phase별 프롬프트 컨텍스트 ───
 
@@ -514,6 +531,9 @@ class WorkflowService:
             None,
         )
 
+    # 시스템 프롬프트 크기 폭발 방지: previous_artifact 최대 글자수
+    MAX_ARTIFACT_CONTEXT_CHARS = 20_000
+
     async def build_phase_context(
         self,
         session_id: str,
@@ -560,9 +580,20 @@ class WorkflowService:
                         ann_repo = ArtifactAnnotationRepository(db_sess)
                         pending = await ann_repo.list_pending(artifact.id)
                         if pending:
-                            content = await self.render_annotated_content(artifact.id)
+                            # N+1 방지: 이미 로드한 객체를 직접 전달
+                            content = await self.render_annotated_content(
+                                artifact.id,
+                                artifact_content=artifact.content,
+                                pending_annotations=pending,
+                            )
                         else:
                             content = artifact.content
+                        # 크기 제한: TTFT 개선을 위해 시스템 프롬프트 크기 제어
+                        if len(content) > self.MAX_ARTIFACT_CONTEXT_CHARS:
+                            content = (
+                                content[: self.MAX_ARTIFACT_CONTEXT_CHARS]
+                                + "\n\n... [truncated — 전체 내용은 이전 세션 컨텍스트를 참조하세요]"
+                            )
                         previous_artifact = (
                             f"## {prev_step.label} 결과 ({prev_step.name}.md)\n"
                             f"{content}"
