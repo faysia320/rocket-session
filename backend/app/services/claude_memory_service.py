@@ -58,7 +58,7 @@ class ClaudeMemoryService:
     }
 
     # In-memory cache (TTL-based)
-    CACHE_TTL_SECONDS = 60
+    CACHE_TTL_SECONDS = 300  # 5분: 메모리 파일은 자주 변경되지 않으므로 FS I/O 감소
 
     def __init__(self) -> None:
         self._cache: dict[str, tuple[float, Any]] = {}

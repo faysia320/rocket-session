@@ -1,6 +1,7 @@
 """워크플로우 정의 관리 서비스."""
 
 import logging
+import time
 import uuid
 
 from sqlalchemy import select
@@ -17,6 +18,31 @@ logger = logging.getLogger(__name__)
 
 class WorkflowDefinitionService(DBService):
     """워크플로우 정의 CRUD 및 export/import."""
+
+    # TTL 캐시: definition은 자주 변경되지 않으므로 매 프롬프트마다 DB 조회 불필요
+    _DEF_CACHE_TTL = 300  # 5분
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # {def_id_or_"default": (timestamp, WorkflowDefinitionInfo)}
+        self._def_cache: dict[str, tuple[float, WorkflowDefinitionInfo]] = {}
+
+    def _cache_get(self, key: str) -> WorkflowDefinitionInfo | None:
+        entry = self._def_cache.get(key)
+        if entry and (time.monotonic() - entry[0]) < self._DEF_CACHE_TTL:
+            return entry[1]
+        return None
+
+    def _cache_set(self, key: str, value: WorkflowDefinitionInfo) -> None:
+        self._def_cache[key] = (time.monotonic(), value)
+
+    def invalidate_cache(self, def_id: str | None = None) -> None:
+        """캐시 무효화. def_id=None이면 전체 캐시 클리어."""
+        if def_id:
+            self._def_cache.pop(def_id, None)
+            self._def_cache.pop("__default__", None)
+        else:
+            self._def_cache.clear()
 
     # ── CRUD ─────────────────────────────────────────────────
 
@@ -80,6 +106,7 @@ class WorkflowDefinitionService(DBService):
             if not entity:
                 raise NotFoundError(f"워크플로우 정의를 찾을 수 없습니다: {def_id}")
             await session.commit()
+            self.invalidate_cache(def_id)
             return WorkflowDefinitionInfo.model_validate(entity)
 
     async def delete_definition(self, def_id: str) -> bool:
@@ -97,6 +124,7 @@ class WorkflowDefinitionService(DBService):
                     remaining[0].is_default = True
                     await session.flush()
             await session.commit()
+            self.invalidate_cache()  # default 변경 가능 → 전체 캐시 클리어
             return deleted
 
     async def set_default(self, def_id: str) -> WorkflowDefinitionInfo:
@@ -109,20 +137,30 @@ class WorkflowDefinitionService(DBService):
             entity.is_default = True
             await session.flush()
             await session.commit()
+            self.invalidate_cache()  # default 변경 → 전체 캐시 클리어
             return WorkflowDefinitionInfo.model_validate(entity)
 
     async def get_or_default(self, def_id: str | None) -> WorkflowDefinitionInfo:
         """def_id로 조회하되, None이거나 못 찾으면 default 반환."""
+        cache_key = def_id or "__default__"
+        cached = self._cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         if def_id:
             try:
-                return await self.get_definition(def_id)
+                result = await self.get_definition(def_id)
+                self._cache_set(cache_key, result)
+                return result
             except NotFoundError:
                 pass
         # default 워크플로우 조회
         async with self._session_scope(WorkflowDefinitionRepository) as (session, repo):
             entity = await repo.get_default()
             if entity:
-                return WorkflowDefinitionInfo.model_validate(entity)
+                result = WorkflowDefinitionInfo.model_validate(entity)
+                self._cache_set(cache_key, result)
+                return result
         # default도 없으면 하드코딩 fallback을 DB에 저장 후 반환
         now = utc_now()
         fallback_id = f"default-{uuid.uuid4().hex[:8]}"
@@ -171,7 +209,7 @@ class WorkflowDefinitionService(DBService):
             await repo.add(entity)
             await session.commit()
             logger.info("기본 워크플로우 정의 자동 생성: %s", fallback_id)
-        return WorkflowDefinitionInfo(
+        result = WorkflowDefinitionInfo(
             id=fallback_id,
             name="Default",
             is_default=True,
@@ -179,6 +217,8 @@ class WorkflowDefinitionService(DBService):
             created_at=now,
             updated_at=now,
         )
+        self._cache_set(cache_key, result)
+        return result
 
     # ── Export / Import ──────────────────────────────────────
 
