@@ -339,9 +339,11 @@ function formatTimeRemaining(resetsAt: string | null): string {
 }
 
 function utilizationBadgeClass(util: number): string {
-  if (util >= 80) return "bg-[#FFEBEE] border-[#EF9A9A] text-[#B71C1C]";
-  if (util >= 50) return "bg-[#FFF3E0] border-[#FFCC80] text-[#E65100]";
-  return "bg-[#E8F5E9] border-[#A5D6A7] text-[#1B5E20]";
+  if (util >= 80)
+    return "bg-[#FFEBEE] border-[#EF9A9A] text-[#B71C1C] dark:bg-[#2C1414] dark:border-[#4E2323] dark:text-[#F87171]";
+  if (util >= 50)
+    return "bg-[#FFF3E0] border-[#FFCC80] text-[#E65100] dark:bg-[#322014] dark:border-[#59361C] dark:text-[#FB923C]";
+  return "bg-[#E8F5E9] border-[#A5D6A7] text-[#1B5E20] dark:bg-[#142C1B] dark:border-[#234E30] dark:text-[#4ADE80]";
 }
 
 function UsageIndicator() {
