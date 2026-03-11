@@ -466,7 +466,7 @@ async def websocket_endpoint(ws: WebSocket, session_id: str):
                 )
         else:
             # 최초 연결: 기존 로직 + latest_seq 필드 추가
-            history = await manager.get_history(session_id)
+            history = await manager.get_history(session_id, limit=200)
             file_changes = await manager.get_file_changes(session_id)
             session_info = manager.to_info_dict(session_with_counts)
             state_msg: dict = {

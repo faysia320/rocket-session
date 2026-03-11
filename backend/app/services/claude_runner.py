@@ -131,9 +131,15 @@ class _AsyncProcessWrapper:
         return self._popen.returncode
 
 
-# 검증 재시도 카운터: session_id → 재시도 횟수
+# 검증 재시도 카운터: session_id → 재시도 횟수 (최대 100개 세션까지 보관)
 _validation_retry_counts: dict[str, int] = {}
 _VALIDATION_MAX_RETRIES = 3
+_VALIDATION_MAX_ENTRIES = 100
+
+
+def cleanup_validation_retries(session_id: str) -> None:
+    """세션 삭제 시 재시도 카운터 정리."""
+    _validation_retry_counts.pop(session_id, None)
 
 
 def _auto_chain_done(
@@ -1274,6 +1280,10 @@ class ClaudeRunner:
 
         # 재시도 가능 → implement로 복귀하여 Claude가 자동 수정
         _validation_retry_counts[session_id] = retry_count + 1
+        # 사이즈 제한: 오래된 항목 정리
+        if len(_validation_retry_counts) > _VALIDATION_MAX_ENTRIES:
+            oldest = next(iter(_validation_retry_counts))
+            del _validation_retry_counts[oldest]
         logger.info(
             "세션 %s: %s 진입 검증 실패 (시도 %d/%d) → %s로 복귀하여 자동 수정",
             session_id,

@@ -55,8 +55,32 @@ class SessionRepository(BaseRepository[Session]):
         )
 
     async def list_with_counts(self, *, limit: int = 200) -> list[dict]:
-        """세션 목록 + message_count, file_changes_count."""
-        stmt = self._counts_query().order_by(Session.created_at.desc()).limit(limit)
+        """세션 목록 + message_count, file_changes_count.
+
+        LIMIT 적용 후 상관 서브쿼리로 카운트를 조회하여
+        전체 테이블 GROUP BY를 방지합니다.
+        """
+        msg_count_sub = (
+            select(func.count())
+            .where(Message.session_id == Session.id)
+            .correlate(Session)
+            .scalar_subquery()
+        )
+        fc_count_sub = (
+            select(func.count())
+            .where(FileChange.session_id == Session.id)
+            .correlate(Session)
+            .scalar_subquery()
+        )
+        stmt = (
+            select(
+                Session,
+                msg_count_sub.label("message_count"),
+                fc_count_sub.label("file_changes_count"),
+            )
+            .order_by(Session.created_at.desc())
+            .limit(limit)
+        )
         result = await self._session.execute(stmt)
         return [
             {

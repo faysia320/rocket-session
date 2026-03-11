@@ -24,38 +24,60 @@ class MessageRepository(BaseRepository[Message]):
         stmt = insert(Message).values(messages)
         await self._session.execute(stmt)
 
-    async def get_by_session(self, session_id: str) -> list[dict]:
-        """세션의 전체 메시지 조회 (시간순)."""
-        stmt = (
-            select(
-                Message.role,
-                Message.content,
-                Message.cost,
-                Message.duration_ms,
-                Message.timestamp,
-                Message.is_error,
-                Message.input_tokens,
-                Message.output_tokens,
-                Message.cache_creation_tokens,
-                Message.cache_read_tokens,
-                Message.model,
-                Message.message_type,
-                Message.tool_use_id,
-                Message.tool_name,
-                Message.tool_input,
-            )
-            .where(Message.session_id == session_id)
-            .order_by(Message.id)
-        )
-        result = await self._session.execute(stmt)
-        rows = []
-        for row in result.all():
+    _MESSAGE_COLUMNS = [
+        Message.role,
+        Message.content,
+        Message.cost,
+        Message.duration_ms,
+        Message.timestamp,
+        Message.is_error,
+        Message.input_tokens,
+        Message.output_tokens,
+        Message.cache_creation_tokens,
+        Message.cache_read_tokens,
+        Message.model,
+        Message.message_type,
+        Message.tool_use_id,
+        Message.tool_name,
+        Message.tool_input,
+    ]
+
+    @staticmethod
+    def _rows_to_dicts(rows) -> list[dict]:
+        result = []
+        for row in rows:
             d = dict(row._mapping)
-            # datetime → ISO string (WS send_json 호환)
             if hasattr(d.get("timestamp"), "isoformat"):
                 d["timestamp"] = d["timestamp"].isoformat()
-            rows.append(d)
-        return rows
+            result.append(d)
+        return result
+
+    async def get_by_session(
+        self, session_id: str, *, limit: int | None = None
+    ) -> list[dict]:
+        """세션의 메시지 조회 (시간순). limit 지정 시 최신 N개만 반환."""
+        if limit is not None:
+            # 최신 limit개를 서브쿼리로 가져온 후 시간순 정렬
+            sub = (
+                select(Message.id)
+                .where(Message.session_id == session_id)
+                .order_by(Message.id.desc())
+                .limit(limit)
+                .subquery()
+            )
+            stmt = (
+                select(*self._MESSAGE_COLUMNS)
+                .where(Message.id.in_(select(sub.c.id)))
+                .order_by(Message.id)
+            )
+        else:
+            stmt = (
+                select(*self._MESSAGE_COLUMNS)
+                .where(Message.session_id == session_id)
+                .order_by(Message.id)
+            )
+        result = await self._session.execute(stmt)
+        return self._rows_to_dicts(result.all())
 
     async def count_by_session(self, session_id: str) -> int:
         """세션의 메시지 수 조회."""

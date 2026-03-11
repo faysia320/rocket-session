@@ -325,6 +325,9 @@ class SessionManager(DBService):
             await session.commit()
         if not deleted:
             raise NotFoundError(f"세션을 찾을 수 없습니다: {session_id}")
+        # 검증 재시도 카운터 정리
+        from app.services.claude_runner import cleanup_validation_retries
+        cleanup_validation_retries(session_id)
         # 업로드 디렉토리 정리
         if self._upload_dir:
             upload_path = Path(self._upload_dir) / session_id
@@ -462,9 +465,11 @@ class SessionManager(DBService):
             )
             await repo.add(snapshot)
 
-    async def get_history(self, session_id: str) -> list[dict]:
+    async def get_history(
+        self, session_id: str, *, limit: int | None = None
+    ) -> list[dict]:
         async with self._session_scope(MessageRepository) as (session, repo):
-            return await repo.get_by_session(session_id)
+            return await repo.get_by_session(session_id, limit=limit)
 
     async def clear_history(self, session_id: str):
         """세션의 대화 기록, 파일 변경, 이벤트를 모두 삭제."""

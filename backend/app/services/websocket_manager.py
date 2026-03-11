@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -47,6 +48,8 @@ class WebSocketManager(DBService):
         self._db: Database | None = None
         self._connections: dict[str, set[WebSocket]] = {}
         self._event_buffers: dict[str, deque[BufferedEvent]] = {}
+        self._buffer_last_access: dict[str, float] = {}  # session_id → monotonic time
+        self._buffer_ttl: float = 300.0  # 5분 미사용 버퍼 정리
         self._seq_counters: dict[str, int] = {}
         self._event_queue: asyncio.Queue[dict] = asyncio.Queue(
             maxsize=event_queue_maxsize
@@ -165,10 +168,24 @@ class WebSocketManager(DBService):
         await self._flush_events()
 
     async def _heartbeat_loop(self):
-        """주기적 ping으로 dead 연결 감지."""
+        """주기적 ping으로 dead 연결 감지 + 미사용 이벤트 버퍼 정리."""
         ping_payload = json.dumps({"type": "ping"})
         while True:
             await asyncio.sleep(self._heartbeat_interval)
+            # TTL 기반 미사용 이벤트 버퍼 정리
+            now = time.monotonic()
+            expired = [
+                sid
+                for sid, last in self._buffer_last_access.items()
+                if now - last > self._buffer_ttl
+                and sid not in self._connections  # 활성 연결 없는 세션만
+            ]
+            for sid in expired:
+                self._event_buffers.pop(sid, None)
+                self._buffer_last_access.pop(sid, None)
+            if expired:
+                logger.debug("이벤트 버퍼 TTL 정리: %d개 세션", len(expired))
+
             for session_id, ws_set in list(self._connections.items()):
                 if not ws_set:
                     continue
@@ -229,6 +246,7 @@ class WebSocketManager(DBService):
         # 인메모리 버퍼 저장
         if session_id not in self._event_buffers:
             self._event_buffers[session_id] = deque(maxlen=MAX_BUFFER_SIZE)
+        self._buffer_last_access[session_id] = time.monotonic()
         self._event_buffers[session_id].append(
             BufferedEvent(
                 seq=seq, event_type=event_type, payload=message_with_seq, timestamp=ts
@@ -383,6 +401,7 @@ class WebSocketManager(DBService):
 
     def clear_buffer(self, session_id: str):
         self._event_buffers.pop(session_id, None)
+        self._buffer_last_access.pop(session_id, None)
 
     async def restore_seq_counters(self, db: "Database"):
         """서버 재시작 시 DB에서 세션별 최대 seq를 복원."""
@@ -414,4 +433,5 @@ class WebSocketManager(DBService):
 
     def reset_session(self, session_id: str):
         self._event_buffers.pop(session_id, None)
+        self._buffer_last_access.pop(session_id, None)
         self._seq_counters.pop(session_id, None)
