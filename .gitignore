@@ -33,6 +33,7 @@ nul
 
 # Claude - 로컬 전용 파일만 무시 (rules, skills는 이력 관리)
 .claude/settings.local.json
+.mcp.json
 .claude/worktrees/
 .playwright-mcp
 
