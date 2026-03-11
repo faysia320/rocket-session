@@ -1,11 +1,12 @@
 /**
  * AssistantText — Claude 어시스턴트 텍스트 메시지 (마크다운 렌더링 + 스트리밍 인디케이터)
  */
+import { memo } from "react";
 import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { cn } from "@/lib/utils";
 import type { AssistantTextMsg } from "@/types";
 
-export function AssistantText({
+export const AssistantText = memo(function AssistantText({
   message,
   isStreaming,
   animate = false,
@@ -41,4 +42,4 @@ export function AssistantText({
       </div>
     </div>
   );
-}
+});

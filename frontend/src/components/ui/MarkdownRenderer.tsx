@@ -1,4 +1,4 @@
-import { memo, useDeferredValue, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { memo, useDeferredValue, useRef, type ComponentPropsWithoutRef, type ReactNode, type ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -136,6 +136,14 @@ const remarkPluginsWithBreaks = [remarkGfm, remarkBreaks];
 // 커스텀 경량 플러그인 (17개 언어 서브셋만 번들)
 const rehypePlugins = [rehypeHighlightLite];
 
+/**
+ * 인스턴스별 렌더링 캐시: 동일 content + enableBreaks 조합에 대해
+ * ReactMarkdown의 AST 파싱 결과(ReactElement)를 재사용.
+ * 스트리밍 중에는 content가 매번 변하므로 캐시 미스 → 정상 렌더링.
+ * 완료된 메시지는 content 불변 → 캐시 히트 → AST 재파싱 건너뜀.
+ */
+const CACHE_MAX_SIZE = 128;
+
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   className,
@@ -144,10 +152,17 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   // useDeferredValue: React가 스트리밍 중 빈번한 업데이트를 자동으로 배치/지연 처리
   const deferredContent = useDeferredValue(content);
 
+  // 인스턴스별 캐시 (Map은 삽입 순서 유지 → LRU 구현 가능)
+  const cacheRef = useRef<Map<string, ReactElement>>(new Map());
+
   if (!deferredContent) return null;
 
-  return (
-    <div className={cn("prose-chat", className)}>
+  const cacheKey = enableBreaks ? `b:${deferredContent}` : deferredContent;
+  const cache = cacheRef.current;
+  let rendered = cache.get(cacheKey);
+
+  if (!rendered) {
+    rendered = (
       <ReactMarkdown
         remarkPlugins={enableBreaks ? remarkPluginsWithBreaks : remarkPlugins}
         rehypePlugins={rehypePlugins}
@@ -155,6 +170,23 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       >
         {deferredContent}
       </ReactMarkdown>
+    );
+
+    // LRU 퇴거: 캐시 크기 초과 시 가장 오래된 항목 제거
+    if (cache.size >= CACHE_MAX_SIZE) {
+      const firstKey = cache.keys().next().value;
+      if (firstKey !== undefined) cache.delete(firstKey);
+    }
+    cache.set(cacheKey, rendered);
+  } else {
+    // 캐시 히트 시 LRU 갱신: 삭제 후 재삽입으로 순서 갱신
+    cache.delete(cacheKey);
+    cache.set(cacheKey, rendered);
+  }
+
+  return (
+    <div className={cn("prose-chat", className)}>
+      {rendered}
     </div>
   );
 });
