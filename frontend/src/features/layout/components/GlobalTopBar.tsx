@@ -339,9 +339,9 @@ function formatTimeRemaining(resetsAt: string | null): string {
 }
 
 function utilizationBadgeClass(util: number): string {
-  if (util >= 80) return "bg-destructive/15 text-destructive border-destructive/30";
-  if (util >= 50) return "bg-warning/15 text-warning border-warning/30";
-  return "bg-success/15 text-success border-success/30";
+  if (util >= 80) return "bg-[#FFEBEE] border-[#EF9A9A] text-[#B71C1C]";
+  if (util >= 50) return "bg-[#FFF3E0] border-[#FFCC80] text-[#E65100]";
+  return "bg-[#E8F5E9] border-[#A5D6A7] text-[#1B5E20]";
 }
 
 function UsageIndicator() {
@@ -393,21 +393,21 @@ function UsageIndicator() {
     <div className="flex items-center gap-1.5 whitespace-nowrap">
       <Badge
         variant="outline"
-        className={cn("px-2 py-0.5 text-2xs font-medium gap-1", utilizationBadgeClass(five_hour.utilization))}
+        className={cn("px-2 py-0.5 text-2xs gap-1", utilizationBadgeClass(five_hour.utilization))}
       >
-        <span className="hidden md:inline">5h</span>
-        <span className="md:hidden">h</span>
-        <span>{five_hour.utilization.toFixed(0)}%</span>
-        <span className="hidden md:inline opacity-60">({fiveHourCountdown})</span>
+        <span className="hidden md:inline font-bold">5h</span>
+        <span className="md:hidden font-bold">h</span>
+        <span className="font-bold">{five_hour.utilization.toFixed(0)}%</span>
+        <span className="hidden md:inline font-normal">({fiveHourCountdown})</span>
       </Badge>
       <Badge
         variant="outline"
-        className={cn("px-2 py-0.5 text-2xs font-medium gap-1", utilizationBadgeClass(seven_day.utilization))}
+        className={cn("px-2 py-0.5 text-2xs gap-1", utilizationBadgeClass(seven_day.utilization))}
       >
-        <span className="hidden md:inline">7d</span>
-        <span className="md:hidden">w</span>
-        <span>{seven_day.utilization.toFixed(0)}%</span>
-        <span className="hidden md:inline opacity-60">({sevenDayCountdown})</span>
+        <span className="hidden md:inline font-bold">7d</span>
+        <span className="md:hidden font-bold">w</span>
+        <span className="font-bold">{seven_day.utilization.toFixed(0)}%</span>
+        <span className="hidden md:inline font-normal">({sevenDayCountdown})</span>
       </Badge>
     </div>
   );
