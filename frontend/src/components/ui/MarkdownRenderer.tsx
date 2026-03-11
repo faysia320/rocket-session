@@ -12,6 +12,7 @@ interface MarkdownRendererProps {
   enableBreaks?: boolean;
 }
 
+
 function extractLanguage(className?: string): string | undefined {
   if (!className) return undefined;
   const match = className.match(/language-(\w+)/);
@@ -140,7 +141,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   className,
   enableBreaks = false,
 }: MarkdownRendererProps) {
-  // 스트리밍 중 빈번한 content 업데이트 시 React가 마크다운 파싱을 지연하여 프레임 드롭 방지
+  // useDeferredValue: React가 스트리밍 중 빈번한 업데이트를 자동으로 배치/지연 처리
   const deferredContent = useDeferredValue(content);
 
   if (!deferredContent) return null;

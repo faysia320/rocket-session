@@ -44,6 +44,7 @@ export function handleWsMessage(
       const newStatus = action.isRunning ? ("running" as const) : state.status;
 
       if (!action.isReconnect && action.history) {
+        newMessages = [];
         // tool_result를 tool_use_id로 인덱싱 (tool_use 메시지에 병합용)
         const toolResultMap = new Map<string, (typeof action.history)[number]>();
         for (const h of action.history) {
@@ -52,37 +53,59 @@ export function handleWsMessage(
           }
         }
 
-        newMessages = action.history
-          .filter((h) => h.message_type !== "tool_result")
-          .map((h, index) => {
-            if (h.message_type === "tool_use") {
-              const result = h.tool_use_id ? toolResultMap.get(h.tool_use_id) : undefined;
-              return {
-                id: `hist-${index}`,
-                type: "tool_use" as const,
-                tool: h.tool_name || "Tool",
-                input: h.tool_input || {},
-                tool_use_id: h.tool_use_id || "",
-                status: "done" as const,
-                output: result?.content,
-                is_error: result ? Boolean(result.is_error) : false,
-                timestamp: h.timestamp,
-              } as Message;
-            }
+        // 단일 루프로 메시지 변환 + TodoWrite 필터 + 토큰 집계 통합 (3회 순회 → 1회)
+        let totalIn = 0,
+          totalOut = 0,
+          totalCacheCreate = 0,
+          totalCacheRead = 0;
+        let histIndex = 0;
 
-            if (h.role === "user") {
-              return {
-                id: `hist-${index}`,
-                type: "user_message" as const,
-                message: h as unknown as Record<string, unknown>,
-                text: h.content,
-                content: h.content,
-                timestamp: h.timestamp,
-              } as Message;
-            }
+        for (const h of action.history) {
+          // 토큰 집계 (assistant result 메시지만)
+          if (!h.message_type) {
+            totalIn += h.input_tokens || 0;
+            totalOut += h.output_tokens || 0;
+            totalCacheCreate += h.cache_creation_tokens || 0;
+            totalCacheRead += h.cache_read_tokens || 0;
+          }
 
-            return {
-              id: `hist-${index}`,
+          // tool_result는 toolResultMap에 이미 인덱싱됨, 스킵
+          if (h.message_type === "tool_result") continue;
+
+          let msg: Message;
+          if (h.message_type === "tool_use") {
+            const result = h.tool_use_id ? toolResultMap.get(h.tool_use_id) : undefined;
+            msg = {
+              id: `hist-${histIndex}`,
+              type: "tool_use" as const,
+              tool: h.tool_name || "Tool",
+              input: h.tool_input || {},
+              tool_use_id: h.tool_use_id || "",
+              status: "done" as const,
+              output: result?.content,
+              is_error: result ? Boolean(result.is_error) : false,
+              timestamp: h.timestamp,
+            } as Message;
+
+            // TodoWrite 필터링: 메시지 배열에 추가하지 않고 pinnedTodos만 갱신
+            if ((msg as ToolUseMsg).tool === "TodoWrite") {
+              const input = (msg as ToolUseMsg).input;
+              if (Array.isArray(input?.todos)) lastTodoWriteTodos = input.todos as TodoItem[];
+              histIndex++;
+              continue;
+            }
+          } else if (h.role === "user") {
+            msg = {
+              id: `hist-${histIndex}`,
+              type: "user_message" as const,
+              message: h as unknown as Record<string, unknown>,
+              text: h.content,
+              content: h.content,
+              timestamp: h.timestamp,
+            } as Message;
+          } else {
+            msg = {
+              id: `hist-${histIndex}`,
               type: "result" as const,
               text: h.content,
               timestamp: h.timestamp,
@@ -95,17 +118,11 @@ export function handleWsMessage(
               cache_read_tokens: h.cache_read_tokens,
               model: h.model,
             } as Message;
-          });
-
-        // TodoWrite 메시지를 필터링하고 마지막 TodoWrite의 todos를 pinnedTodos로 설정
-        newMessages = newMessages.filter((m) => {
-          if (m.type === "tool_use" && (m as ToolUseMsg).tool === "TodoWrite") {
-            const input = (m as ToolUseMsg).input;
-            if (Array.isArray(input?.todos)) lastTodoWriteTodos = input.todos as TodoItem[];
-            return false;
           }
-          return true;
-        });
+
+          newMessages.push(msg);
+          histIndex++;
+        }
 
         // 세션이 이미 완료된 상태(idle/error)라면 잔여 todo를 전체 completed 처리
         if (!action.isRunning && lastTodoWriteTodos.length > 0) {
@@ -114,19 +131,6 @@ export function handleWsMessage(
           );
         }
 
-        // 토큰 집계
-        let totalIn = 0,
-          totalOut = 0,
-          totalCacheCreate = 0,
-          totalCacheRead = 0;
-        for (const h of action.history) {
-          if (!h.message_type) {
-            totalIn += h.input_tokens || 0;
-            totalOut += h.output_tokens || 0;
-            totalCacheCreate += h.cache_creation_tokens || 0;
-            totalCacheRead += h.cache_read_tokens || 0;
-          }
-        }
         newTokenUsage = {
           inputTokens: totalIn,
           outputTokens: totalOut,
