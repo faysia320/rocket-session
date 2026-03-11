@@ -110,19 +110,23 @@ export function useClaudeSocket(sessionId: string) {
 
         // 현재 턴 이벤트가 있으면 순차 재생 (세션 전환/새로고침 후 복구)
         // latest_seq 업데이트 전에 수행하여 seq 중복 체크에 걸리지 않도록 함
+        //
+        // 화이트리스트 방식: 대화 재구성에 필요한 이벤트만 재생.
+        // 토스트/시스템 메시지/캐시 무효화 이벤트는 자동 제외되어
+        // workflow_qa_failed 등이 새로고침 시 반복 표시되는 버그를 방지.
+        // (revision 후 user_message 없이 runner.run()이 호출되어
+        //  이전 턴의 토스트 이벤트가 current_turn_events에 포함되는 문제)
         if (!data.is_reconnect && data.history && data.current_turn_events) {
+          const REPLAY_SAFE = new Set([
+            "assistant_text", "thinking",
+            "tool_use", "tool_result", "result",
+            "file_change",
+            "permission_request", "ask_user_question",
+            "stopped",
+          ]);
           const turnEvents = data.current_turn_events as Record<string, unknown>[];
           for (const event of turnEvents) {
-            // user_message: history에 이미 포함
-            // permission_response: pending_interactions가 권위적 소스이므로 재생 건너뜀
-            // status: SESSION_STATE의 is_running이 권위적 소스이므로 재생 건너뜀
-            //   (과거의 "status: running" 이벤트가 재생되어 idle 세션이 running으로 보이는 버그 방지)
-            if (
-              event.type === "user_message" ||
-              event.type === "permission_response" ||
-              event.type === "status"
-            )
-              continue;
+            if (!REPLAY_SAFE.has(event.type as string)) continue;
             // assistant_text: RAF 배치를 우회하여 직접 dispatch (재생은 동기적으로 빠르게
             // 발생하므로, RAF 경유 시 마지막 이벤트만 반영될 수 있음)
             if (event.type === "assistant_text") {
