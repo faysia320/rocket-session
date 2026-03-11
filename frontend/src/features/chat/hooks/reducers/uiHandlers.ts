@@ -87,6 +87,7 @@ export function handleUi(state: ClaudeSocketState, action: UiAction): ClaudeSock
         pinnedTodos: [],
         _pendingAssistantTextIdx: null,
         _orphanedToolResults: {},
+        _toolUseIdMap: new Map(),
         sessionInfo: state.sessionInfo
           ? {
               ...state.sessionInfo,

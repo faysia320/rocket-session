@@ -82,6 +82,8 @@ export interface ClaudeSocketState {
       timestamp: string;
     }
   >;
+  /** tool_use_id → messages 배열 인덱스 매핑 (O(1) 조회용) */
+  _toolUseIdMap: Map<string, number>;
 }
 
 // ---------------------------------------------------------------------------

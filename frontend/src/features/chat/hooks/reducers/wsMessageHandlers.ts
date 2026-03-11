@@ -266,36 +266,57 @@ export function handleWsMessage(
         ? (({ [toolUseId]: _, ...rest }) => rest)(state._orphanedToolResults)
         : state._orphanedToolResults;
 
+      const newMessages = [
+        ...state.messages,
+        {
+          ...action.data,
+          id: generateMessageId(),
+          status: orphaned ? (orphaned.isError ? ("error" as const) : ("done" as const)) : ("running" as const),
+          ...(orphaned && {
+            output: orphaned.output,
+            is_error: orphaned.isError,
+            is_truncated: orphaned.isTruncated,
+            full_length: orphaned.fullLength,
+            completed_at: orphaned.timestamp,
+          }),
+        },
+      ];
+      // toolUseIdMap에 인덱스 등록 (O(1) 조회용)
+      const newMap = new Map(state._toolUseIdMap);
+      if (toolUseId) {
+        newMap.set(toolUseId, newMessages.length - 1);
+      }
+
       return {
         ...state,
-        messages: [
-          ...state.messages,
-          {
-            ...action.data,
-            id: generateMessageId(),
-            status: orphaned ? (orphaned.isError ? ("error" as const) : ("done" as const)) : ("running" as const),
-            ...(orphaned && {
-              output: orphaned.output,
-              is_error: orphaned.isError,
-              is_truncated: orphaned.isTruncated,
-              full_length: orphaned.fullLength,
-              completed_at: orphaned.timestamp,
-            }),
-          },
-        ],
+        messages: newMessages,
         activeTools: orphaned ? state.activeTools : [...state.activeTools, action.data],
         _orphanedToolResults: newOrphans,
+        _toolUseIdMap: newMap,
       };
     }
 
     case "WS_TOOL_RESULT": {
       const msgs = state.messages;
+      // O(1) 조회: _toolUseIdMap에서 인덱스 탐색 후 검증
+      const mappedIdx = state._toolUseIdMap.get(action.toolUseId);
       let targetIdx = -1;
-      for (let i = msgs.length - 1; i >= 0; i--) {
-        const m = msgs[i];
-        if (m.type === "tool_use" && m.tool_use_id === action.toolUseId && m.status === "running") {
-          targetIdx = i;
-          break;
+      if (
+        mappedIdx !== undefined &&
+        mappedIdx < msgs.length &&
+        msgs[mappedIdx].type === "tool_use" &&
+        (msgs[mappedIdx] as ToolUseMsg).tool_use_id === action.toolUseId &&
+        msgs[mappedIdx].status === "running"
+      ) {
+        targetIdx = mappedIdx;
+      } else {
+        // fallback: 역순 선형 탐색 (map 미스 시)
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          const m = msgs[i];
+          if (m.type === "tool_use" && m.tool_use_id === action.toolUseId && m.status === "running") {
+            targetIdx = i;
+            break;
+          }
         }
       }
       if (targetIdx < 0) {

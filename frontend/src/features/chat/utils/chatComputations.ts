@@ -1,4 +1,4 @@
-import type { Message, ResultMsg } from "@/types";
+import type { Message, ResultMsg, AssistantTextMsg, AskUserQuestionMsg } from "@/types";
 import { getMessageText } from "@/types";
 
 const TIGHT_TYPES = new Set(["tool_use", "tool_result", "stderr"]);
@@ -14,10 +14,14 @@ export function computeEstimateSize(msg: Message | undefined): number {
       if ((msg as ResultMsg).workflow_phase && (msg as ResultMsg).workflow_phase !== "implement")
         return 500;
       return 200;
-    case "assistant_text":
-      return 150;
-    case "ask_user_question":
-      return 300;
+    case "assistant_text": {
+      const textLen = (msg as AssistantTextMsg).text?.length ?? 0;
+      return Math.max(80, Math.min(600, 80 + Math.ceil(textLen / 60) * 20));
+    }
+    case "ask_user_question": {
+      const qCount = (msg as AskUserQuestionMsg).questions?.length ?? 1;
+      return 120 + qCount * 60;
+    }
     case "tool_use":
       return 44;
     case "system":

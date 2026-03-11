@@ -41,6 +41,7 @@ export const initialState: ClaudeSocketState = {
   pinnedTodos: [],
   _pendingAssistantTextIdx: null,
   _orphanedToolResults: {},
+  _toolUseIdMap: new Map(),
 };
 
 // Connection action types
