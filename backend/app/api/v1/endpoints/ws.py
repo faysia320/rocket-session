@@ -194,9 +194,14 @@ async def _handle_prompt(
                         session_id, current_session, manager, ws_manager,
                     )
                 )
-                # 세션 정보 재로드 (resolve_workflow_state가 업데이트할 수 있음)
+                # resolve_workflow_state가 phase를 업데이트했을 수 있으므로 로컬 반영
+                # (DB 재조회 대신 변경된 필드만 머지하여 왕복 절약)
                 if workflow_phase:
-                    current_session = await manager.get(session_id)
+                    current_session["workflow_phase"] = workflow_phase
+                    # 자동 복구 경로에서 DB에 "in_progress"가 저장됨.
+                    # 기존값이 있으면 유지, None이면 기본값 설정.
+                    if not current_session.get("workflow_phase_status"):
+                        current_session["workflow_phase_status"] = "in_progress"
 
                 if gate_error:
                     await ws.send_json(
@@ -229,70 +234,80 @@ async def _handle_prompt(
             current_session, global_settings
         )
 
-        # Knowledge Base 컨텍스트 자동 주입
-        try:
-            work_dir = current_session.get("work_dir")
-            if work_dir:
-                memory_svc = get_claude_memory_service()
-                memory_ctx = await memory_svc.build_memory_context(work_dir)
-                if memory_ctx.context_text:
-                    existing = merged_session.get("system_prompt") or ""
-                    kb_block = (
-                        "\n\n<knowledge_base>\n"
-                        + memory_ctx.context_text
-                        + "\n</knowledge_base>"
-                    )
-                    merged_session["system_prompt"] = (
-                        existing + kb_block if existing else kb_block
-                    )
-                    logger.info(
-                        "KB 컨텍스트 주입 성공",
-                        component="context",
-                        operation="kb_inject",
-                        context_length=len(memory_ctx.context_text),
-                    )
-        except Exception:
+        # Knowledge Base + Workspace Insights 컨텍스트 병렬 로드
+        work_dir = current_session.get("work_dir") if current_session else None
+        ws_id = current_session.get("workspace_id") if current_session else None
+
+        async def _load_memory_ctx():
+            if not work_dir:
+                return None
+            svc = get_claude_memory_service()
+            return await svc.build_memory_context(work_dir)
+
+        async def _load_insight_ctx():
+            if not ws_id:
+                return ""
+            svc = get_insight_service()
+            return await svc.build_insight_context(ws_id)
+
+        memory_ctx, insight_ctx = await asyncio.gather(
+            _load_memory_ctx(), _load_insight_ctx(), return_exceptions=True,
+        )
+
+        # KB 컨텍스트 주입
+        if isinstance(memory_ctx, Exception):
             logger.warning(
                 "KB 컨텍스트 주입 실패",
                 component="context",
                 operation="kb_inject",
                 is_error=True,
-                exc_info=True,
+                error=str(memory_ctx),
+            )
+            memory_ctx = None
+        if memory_ctx and memory_ctx.context_text:
+            existing = merged_session.get("system_prompt") or ""
+            kb_block = (
+                "\n\n<knowledge_base>\n"
+                + memory_ctx.context_text
+                + "\n</knowledge_base>"
+            )
+            merged_session["system_prompt"] = (
+                existing + kb_block if existing else kb_block
+            )
+            logger.info(
+                "KB 컨텍스트 주입 성공",
+                component="context",
+                operation="kb_inject",
+                context_length=len(memory_ctx.context_text),
             )
 
-        # Workspace Insights 컨텍스트 자동 주입
-        try:
-            ws_id = (
-                current_session.get("workspace_id") if current_session else None
-            )
-            if ws_id:
-                insight_svc = get_insight_service()
-                insight_ctx = await insight_svc.build_insight_context(ws_id)
-                if insight_ctx:
-                    existing = merged_session.get("system_prompt") or ""
-                    insights_block = (
-                        "\n\n<workspace_insights>\n"
-                        + insight_ctx
-                        + "\n</workspace_insights>"
-                    )
-                    merged_session["system_prompt"] = (
-                        existing + insights_block
-                        if existing
-                        else insights_block
-                    )
-                    logger.info(
-                        "인사이트 컨텍스트 주입 성공",
-                        component="context",
-                        operation="insights_inject",
-                        context_length=len(insight_ctx),
-                    )
-        except Exception:
+        # Insights 컨텍스트 주입
+        if isinstance(insight_ctx, Exception):
             logger.warning(
                 "인사이트 컨텍스트 주입 실패",
                 component="context",
                 operation="insights_inject",
                 is_error=True,
-                exc_info=True,
+                error=str(insight_ctx),
+            )
+            insight_ctx = ""
+        if insight_ctx:
+            existing = merged_session.get("system_prompt") or ""
+            insights_block = (
+                "\n\n<workspace_insights>\n"
+                + insight_ctx
+                + "\n</workspace_insights>"
+            )
+            merged_session["system_prompt"] = (
+                existing + insights_block
+                if existing
+                else insights_block
+            )
+            logger.info(
+                "인사이트 컨텍스트 주입 성공",
+                component="context",
+                operation="insights_inject",
+                context_length=len(insight_ctx),
             )
 
         # MCP 서비스 주입
