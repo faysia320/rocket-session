@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { Upload } from "lucide-react";
 import { isMobileDevice } from "@/lib/platform";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import type { ChatMessageListHandle } from "./ChatMessageList";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClaudeSocket } from "../hooks/useClaudeSocket";
 import { useChatNotifications } from "../hooks/useChatNotifications";
@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { SessionStatsBar } from "@/features/session/components/SessionStatsBar";
 import { ContextSuggestionPanel } from "@/features/context/components/ContextSuggestionPanel";
 import { contextKeys } from "@/features/context/hooks/contextKeys";
-import { computeEstimateSize, computeMessageGaps } from "../utils/chatComputations";
+import { computeMessageGaps } from "../utils/chatComputations";
 import { filesystemApi } from "@/lib/api/filesystem.api";
 
 const noop = () => {};
@@ -70,6 +70,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
   } = useClaudeSocket(sessionId);
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<ChatMessageListHandle>(null);
   const isNearBottom = useRef(true);
   const scrollRafRef = useRef<number>(0);
   const isInitialLoad = useRef(true);
@@ -236,18 +237,14 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     skills: skillsData?.skills,
   });
 
-  const virtualizer = useVirtualizer({
-    count: messages.length,
-    getScrollElement: () => scrollContainerRef.current,
-    estimateSize: (index) => computeEstimateSize(messages[index]),
-    overscan: 10,
-    getItemKey: (index) => messages[index]?.id ?? index,
-  });
-
-  // 세션 전환 시 virtualizer 측정 캐시 리셋
+  // 세션 전환 시에만 virtualizer 측정 캐시 리셋 (마운트 시 호출 방지)
+  const prevSessionIdRef = useRef(sessionId);
   useEffect(() => {
-    virtualizer.measure();
-  }, [sessionId, virtualizer]);
+    if (prevSessionIdRef.current !== sessionId) {
+      prevSessionIdRef.current = sessionId;
+      messageListRef.current?.measure();
+    }
+  }, [sessionId]);
 
   const handleScroll = useCallback(() => {
     if (scrollRafRef.current) return;
@@ -277,16 +274,30 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
       // F#3: 초기 로드 완료 후, 이후 추가되는 메시지부터 애니메이션 활성화
       animateFromIndex.current = messagesLength;
       requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(messagesLength - 1, { align: "end" });
+        messageListRef.current?.scrollToIndex(messagesLength - 1, { align: "end" });
       });
       return;
     }
     if (isNearBottom.current) {
       requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(messagesLength - 1, { align: "end" });
+        messageListRef.current?.scrollToIndex(messagesLength - 1, { align: "end" });
       });
     }
-  }, [messagesLength, virtualizer]);
+  }, [messagesLength]);
+
+  // 스트리밍 중 totalSize 변경 감지 → 하단 고정 (콘텐츠 높이 증가 시 자동 스크롤)
+  useEffect(() => {
+    if (status !== "running" || messagesLength === 0) return;
+    let lastTotalSize = messageListRef.current?.getTotalSize() ?? 0;
+    const id = setInterval(() => {
+      const currentTotalSize = messageListRef.current?.getTotalSize() ?? 0;
+      if (isNearBottom.current && currentTotalSize !== lastTotalSize) {
+        lastTotalSize = currentTotalSize;
+        messageListRef.current?.scrollToIndex(messagesLength - 1, { align: "end" });
+      }
+    }, 120);
+    return () => clearInterval(id);
+  }, [status, messagesLength]);
 
   // 탭 백그라운드→포그라운드 전환 시: 스크롤 위치 복원 + TanStack Query 갱신
   useEffect(() => {
@@ -314,7 +325,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
         const len = messagesRef.current.length;
         if (len > 0) {
           requestAnimationFrame(() => {
-            virtualizer.scrollToIndex(len - 1, { align: "end" });
+            messageListRef.current?.scrollToIndex(len - 1, { align: "end" });
           });
         }
       }
@@ -329,7 +340,7 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
 
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [virtualizer, queryClient, isSplitView, focusedSessionId, sessionId]);
+  }, [queryClient, isSplitView, focusedSessionId, sessionId]);
 
   // 워크플로우: 첫 메시지 전송 후 워크플로우 변경 잠금
   const hasUserMessages = useMemo(
@@ -415,7 +426,17 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     setSearchQuery,
     setSearchMatchIndex,
     handleToggleSearch,
-  } = useChatSearch({ messages, virtualizer, isSplitView, focusedSessionId, sessionId });
+  } = useChatSearch({
+    messages,
+    scrollToIndex: useCallback(
+      (index: number, opts?: { align?: "start" | "center" | "end" | "auto" }) =>
+        messageListRef.current?.scrollToIndex(index, opts),
+      [],
+    ),
+    isSplitView,
+    focusedSessionId,
+    sessionId,
+  });
 
   // P2: 워크플로우 승인 대기 상태 감지 — 원시값 의존성으로 최적화
   const workflowPhaseStatus = sessionInfo?.workflow_phase_status;
@@ -427,15 +448,8 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
     return workflowPhaseStatus === "awaiting_approval" || workflowPhaseStatus === "completed";
   }, [workflowPhaseStatus]);
 
-  // 같은 턴 내 연속 메시지 간격 계산 (스트리밍 중 재계산 억제)
-  const prevGapsRef = useRef<Array<"tight" | "normal" | "turn-start">>([]);
-  const messageGaps = useMemo(() => {
-    if (status === "running") return prevGapsRef.current;
-    return computeMessageGaps(messages);
-  }, [messages, status]);
-  useEffect(() => {
-    prevGapsRef.current = messageGaps;
-  }, [messageGaps]);
+  // 같은 턴 내 연속 메시지 간격 계산 (항상 messages와 동기화)
+  const messageGaps = useMemo(() => computeMessageGaps(messages), [messages]);
 
   // 커맨드 팔레트 이벤트 리스너 — ref로 최신 값 참조하여 리스너 재등록 방지
   const cmdPaletteRef = useRef({
@@ -656,8 +670,8 @@ export const ChatPanel = memo(function ChatPanel({ sessionId }: ChatPanelProps) 
 
       {/* 메시지 영역 */}
       <ChatMessageList
+        ref={messageListRef}
         messages={messages}
-        virtualizer={virtualizer}
         searchQuery={searchQuery}
         searchMatches={searchMatches}
         messageGaps={messageGaps}

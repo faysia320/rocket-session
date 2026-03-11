@@ -1,11 +1,10 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import type { Message } from "@/types";
-import type { Virtualizer } from "@tanstack/react-virtual";
 import { computeSearchMatches } from "../utils/chatComputations";
 
 interface UseChatSearchParams {
   messages: Message[];
-  virtualizer: Virtualizer<HTMLDivElement, Element>;
+  scrollToIndex?: (index: number, opts?: { align?: "start" | "center" | "end" | "auto" }) => void;
   isSplitView: boolean;
   focusedSessionId: string | null;
   sessionId: string;
@@ -13,7 +12,7 @@ interface UseChatSearchParams {
 
 export function useChatSearch({
   messages,
-  virtualizer,
+  scrollToIndex,
   isSplitView,
   focusedSessionId,
   sessionId,
@@ -30,11 +29,11 @@ export function useChatSearch({
   // 검색 결과 이동 시 스크롤
   useEffect(() => {
     if (searchMatches.length > 0 && searchMatchIndex < searchMatches.length) {
-      virtualizer.scrollToIndex(searchMatches[searchMatchIndex], {
+      scrollToIndex?.(searchMatches[searchMatchIndex], {
         align: "center",
       });
     }
-  }, [searchMatchIndex, searchMatches, virtualizer]);
+  }, [searchMatchIndex, searchMatches, scrollToIndex]);
 
   const handleToggleSearch = useCallback(() => {
     setSearchOpen((prev) => {

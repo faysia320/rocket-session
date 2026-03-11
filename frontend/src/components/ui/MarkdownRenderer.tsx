@@ -1,4 +1,4 @@
-import { memo, useDeferredValue, useRef, type ComponentPropsWithoutRef, type ReactNode, type ReactElement } from "react";
+import { memo, useRef, type ComponentPropsWithoutRef, type ReactNode, type ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -149,15 +149,12 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   className,
   enableBreaks = false,
 }: MarkdownRendererProps) {
-  // useDeferredValue: React가 스트리밍 중 빈번한 업데이트를 자동으로 배치/지연 처리
-  const deferredContent = useDeferredValue(content);
-
   // 인스턴스별 캐시 (Map은 삽입 순서 유지 → LRU 구현 가능)
   const cacheRef = useRef<Map<string, ReactElement>>(new Map());
 
-  if (!deferredContent) return null;
+  if (!content) return null;
 
-  const cacheKey = enableBreaks ? `b:${deferredContent}` : deferredContent;
+  const cacheKey = enableBreaks ? `b:${content}` : content;
   const cache = cacheRef.current;
   let rendered = cache.get(cacheKey);
 
@@ -168,7 +165,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
         rehypePlugins={rehypePlugins}
         components={components}
       >
-        {deferredContent}
+        {content}
       </ReactMarkdown>
     );
 
