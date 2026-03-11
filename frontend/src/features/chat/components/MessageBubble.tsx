@@ -25,7 +25,6 @@ import type {
   AskUserQuestionMsg,
 } from "@/types";
 import { WorkflowPhaseCard } from "@/features/workflow/components/WorkflowPhaseCard";
-import type { ResolvedWorkflowStep } from "@/types/workflow";
 import { AskUserQuestionCard } from "./AskUserQuestionCard";
 import { EditToolMessage } from "./EditToolMessage";
 import { BashToolMessage } from "./BashToolMessage";
@@ -36,44 +35,35 @@ import { ToolMessageShell } from "./ToolMessageShell";
 import { getToolIcon, getToolColor, parseMcpToolName, getToolSummary } from "./toolMessageUtils";
 import { ResultMessage } from "./ResultMessage";
 import { AssistantText } from "./AssistantText";
+import { useChatMessageContext } from "./ChatMessageContext";
 
 const EDIT_TOOLS = new Set(["Edit", "MultiEdit", "Write"]);
 
 interface MessageBubbleProps {
   message: Message;
-  isRunning?: boolean;
-  searchQuery?: string;
   animate?: boolean;
-  onResend?: (content: string) => void;
-  onRetryError?: (messageId: string) => void;
-  onApprovePhase?: (feedback?: string) => void;
-  onRequestRevision?: (feedback?: string, validationSummary?: string, targetPhase?: string) => void;
-  onOpenArtifact?: (phase: string) => void;
-  isApprovingPhase?: boolean;
-  isRequestingRevision?: boolean;
-  onAnswerQuestion?: (messageId: string, questionIndex: number, labels: string[]) => void;
-  onConfirmAnswers?: (messageId: string) => void;
-  workflowSteps?: ResolvedWorkflowStep[];
-  onOpenPreview?: (url: string) => void;
 }
 
 export const MessageBubble = memo(function MessageBubble({
   message,
-  isRunning = false,
-  searchQuery,
   animate = false,
-  onResend,
-  onRetryError,
-  onApprovePhase,
-  onRequestRevision,
-  onOpenArtifact,
-  isApprovingPhase,
-  isRequestingRevision,
-  onAnswerQuestion,
-  onConfirmAnswers,
-  workflowSteps,
-  onOpenPreview,
 }: MessageBubbleProps) {
+  const {
+    isRunning,
+    searchQuery,
+    onResend,
+    onRetryError,
+    onApprovePhase,
+    onRequestRevision,
+    onOpenArtifact,
+    isApprovingPhase,
+    isRequestingRevision,
+    onAnswerQuestion,
+    onConfirmAnswers,
+    workflowSteps,
+    onOpenPreview,
+  } = useChatMessageContext();
+
   const { type } = message;
 
   const workflowPhase = "workflow_phase" in message ? message.workflow_phase : null;
@@ -114,7 +104,7 @@ export const MessageBubble = memo(function MessageBubble({
             stepConfig={currentStep}
             onApprove={onApprovePhase}
             onRequestRevision={onRequestRevision}
-            onOpenArtifact={onOpenArtifact ? handleOpenArtifact : undefined}
+            onOpenArtifact={handleOpenArtifact}
             isApproving={isApprovingPhase}
             isRequestingRevision={isRequestingRevision}
             disabled={isRunning}
@@ -145,7 +135,7 @@ export const MessageBubble = memo(function MessageBubble({
         <ErrorMessage
           message={message}
           searchQuery={searchQuery}
-          onRetry={onRetryError ? handleRetryError : undefined}
+          onRetry={handleRetryError}
           animate={animate}
         />
       );
@@ -158,13 +148,13 @@ export const MessageBubble = memo(function MessageBubble({
     case "permission_request":
       return <PermissionRequestMessage message={message} animate={animate} />;
     case "ask_user_question":
-      return onAnswerQuestion && onConfirmAnswers ? (
+      return (
         <AskUserQuestionCard
           message={message as AskUserQuestionMsg}
           onAnswer={onAnswerQuestion}
           onConfirm={onConfirmAnswers}
         />
-      ) : null;
+      );
     default:
       return (
         <div className="px-2 py-0.5">
