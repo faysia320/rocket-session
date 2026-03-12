@@ -26,6 +26,14 @@ class SessionRepository(BaseRepository[Session]):
         result = await self._session.execute(stmt)
         return result.scalar() is not None
 
+    async def existing_ids(self, session_ids: set[str]) -> set[str]:
+        """주어진 ID 집합 중 실제 존재하는 세션 ID만 반환."""
+        if not session_ids:
+            return set()
+        stmt = select(Session.id).where(Session.id.in_(session_ids))
+        result = await self._session.execute(stmt)
+        return {row[0] for row in result}
+
     async def get_status(self, session_id: str) -> str | None:
         """세션 status만 조회."""
         stmt = select(Session.status).where(Session.id == session_id)

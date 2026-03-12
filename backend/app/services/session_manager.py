@@ -8,6 +8,7 @@ SessionManager는 파사드로서 내부 서브 서비스에 위임합니다:
 import asyncio
 import shutil
 import uuid
+from collections import defaultdict
 
 import structlog
 from datetime import datetime
@@ -44,10 +45,8 @@ class SessionManager(DBService):
         # 메시지 배치 큐 + 배치 라이터
         self._message_queue: asyncio.Queue | None = None
         self._message_flush_task: asyncio.Task | None = None
-        # 메시지 배치 재시도
+        # 메시지 배치 재시도 (메시지별 _retry_count 키로 추적)
         self._message_retry_batch: list[dict] = []
-        self._message_retry_count: int = 0
-        self._message_max_retries: int = 3
         # 파일 변경 배치 큐
         self._file_change_queue: asyncio.Queue | None = None
         self._file_change_flush_task: asyncio.Task | None = None
@@ -90,8 +89,14 @@ class SessionManager(DBService):
             await asyncio.sleep(self._message_flush_interval)
             await self._flush_messages()
 
+    _MAX_MSG_RETRIES: int = 3
+
     async def _flush_messages(self) -> None:
-        """큐에 쌓인 메시지를 한번에 배치 저장 (재시도 포함)."""
+        """큐에 쌓인 메시지를 한번에 배치 저장.
+
+        실패 시 세션별 분할 재시도로 배치 중독을 방지하고,
+        메시지별 retry 카운터로 개별 드롭 처리.
+        """
         if not self._message_queue:
             return
         batch: list[dict] = []
@@ -101,34 +106,91 @@ class SessionManager(DBService):
             self._message_retry_batch = []
         while not self._message_queue.empty():
             try:
-                batch.append(self._message_queue.get_nowait())
+                msg = self._message_queue.get_nowait()
+                msg.setdefault("_retry_count", 0)
+                batch.append(msg)
             except asyncio.QueueEmpty:
                 break
         if not batch:
             return
+
+        # 삭제된 세션 메시지 사전 필터링 (FK 위반 방지)
+        batch = await self._filter_orphaned_messages(batch)
+        if not batch:
+            return
+
         try:
+            clean_batch = [
+                {k: v for k, v in m.items() if not k.startswith("_")} for m in batch
+            ]
             async with self._session_scope(MessageRepository) as (session, repo):
-                await repo.add_batch(batch)
+                await repo.add_batch(clean_batch)
                 await session.commit()
-            self._message_retry_count = 0
         except Exception:
-            self._message_retry_count += 1
-            if self._message_retry_count <= self._message_max_retries:
-                logger.warning(
-                    "메시지 배치 저장 실패 (%d건, 재시도 %d/%d)",
-                    len(batch),
-                    self._message_retry_count,
-                    self._message_max_retries,
-                    exc_info=True,
-                )
-                self._message_retry_batch = batch
-            else:
-                logger.error(
-                    "메시지 배치 저장 최종 실패 — %d건 드롭 (재시도 %d회 초과)",
-                    len(batch),
-                    self._message_max_retries,
-                )
-                self._message_retry_count = 0
+            # 세션별 분할 재시도 — 하나의 불량 세션이 전체를 오염시키지 않도록
+            await self._retry_by_session(batch)
+
+    async def _filter_orphaned_messages(self, batch: list[dict]) -> list[dict]:
+        """배치에서 삭제된 세션의 메시지를 필터링."""
+        batch_session_ids = {m.get("session_id") for m in batch if m.get("session_id")}
+        if not batch_session_ids:
+            return batch
+        try:
+            async with self._session_scope(SessionRepository) as (session, repo):
+                existing_ids = await repo.existing_ids(batch_session_ids)
+        except Exception:
+            return batch  # 검증 실패 시 원본 유지 (INSERT에서 처리)
+
+        orphaned_ids = batch_session_ids - existing_ids
+        if not orphaned_ids:
+            return batch
+
+        original_count = len(batch)
+        batch = [m for m in batch if m.get("session_id") in existing_ids]
+        logger.info(
+            "삭제된 세션의 메시지 %d건 스킵",
+            original_count - len(batch),
+            sessions=list(orphaned_ids),
+        )
+        return batch
+
+    async def _retry_by_session(self, batch: list[dict]) -> None:
+        """배치 실패 시 세션별로 분할하여 개별 재시도."""
+        by_session: dict[str, list[dict]] = defaultdict(list)
+        for m in batch:
+            by_session[m.get("session_id", "")].append(m)
+
+        retryable: list[dict] = []
+        for sid, msgs in by_session.items():
+            try:
+                clean = [
+                    {k: v for k, v in m.items() if not k.startswith("_")} for m in msgs
+                ]
+                async with self._session_scope(MessageRepository) as (session, repo):
+                    await repo.add_batch(clean)
+                    await session.commit()
+            except Exception:
+                for m in msgs:
+                    m["_retry_count"] = m.get("_retry_count", 0) + 1
+                    if m["_retry_count"] <= self._MAX_MSG_RETRIES:
+                        retryable.append(m)
+                    else:
+                        logger.error(
+                            "메시지 드롭 (재시도 %d회 초과)",
+                            self._MAX_MSG_RETRIES,
+                            session_id=sid,
+                            message_type=m.get("message_type"),
+                            exc_info=True,
+                        )
+
+        if retryable:
+            session_ids = list({m.get("session_id", "?") for m in retryable})
+            logger.warning(
+                "메시지 배치 저장 실패 (%d건 재시도 대기)",
+                len(retryable),
+                sessions=session_ids,
+            )
+            self._message_retry_batch = retryable
 
     def queue_message(self, **kwargs) -> bool:
         """메시지를 배치 큐에 추가. 큐가 없거나 가득 차면 False 반환."""
@@ -182,7 +244,12 @@ class SessionManager(DBService):
             return False
         try:
             self._file_change_queue.put_nowait(
-                {"session_id": session_id, "tool": tool, "file": file, "timestamp": timestamp}
+                {
+                    "session_id": session_id,
+                    "tool": tool,
+                    "file": file,
+                    "timestamp": timestamp,
+                }
             )
             return True
         except asyncio.QueueFull:
@@ -318,8 +385,53 @@ class SessionManager(DBService):
 
         return recovered
 
+    def _drain_session_from_queue(self, session_id: str) -> int:
+        """세션 삭제 전 해당 session_id의 메시지/파일변경을 큐에서 제거."""
+        drained = 0
+        # 메시지 큐 드레인
+        if self._message_queue:
+            remaining: list[dict] = []
+            while not self._message_queue.empty():
+                try:
+                    msg = self._message_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+                if msg.get("session_id") == session_id:
+                    drained += 1
+                else:
+                    remaining.append(msg)
+            for msg in remaining:
+                self._message_queue.put_nowait(msg)
+        # 메시지 재시도 배치 드레인
+        if self._message_retry_batch:
+            before = len(self._message_retry_batch)
+            self._message_retry_batch = [
+                m
+                for m in self._message_retry_batch
+                if m.get("session_id") != session_id
+            ]
+            drained += before - len(self._message_retry_batch)
+        # 파일 변경 큐 드레인
+        if self._file_change_queue:
+            remaining_fc: list[dict] = []
+            while not self._file_change_queue.empty():
+                try:
+                    fc = self._file_change_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+                if fc.get("session_id") == session_id:
+                    drained += 1
+                else:
+                    remaining_fc.append(fc)
+            for fc in remaining_fc:
+                self._file_change_queue.put_nowait(fc)
+        if drained:
+            logger.info("세션 삭제 전 큐 드레인: %d건", drained, session_id=session_id)
+        return drained
+
     async def delete(self, session_id: str) -> bool:
         await self.kill_process(session_id)
+        self._drain_session_from_queue(session_id)
         async with self._session_scope(SessionRepository) as (session, repo):
             deleted = await repo.delete_by_id(session_id)
             await session.commit()
@@ -327,6 +439,7 @@ class SessionManager(DBService):
             raise NotFoundError(f"세션을 찾을 수 없습니다: {session_id}")
         # 검증 재시도 카운터 정리
         from app.services.claude_runner import cleanup_validation_retries
+
         cleanup_validation_retries(session_id)
         # 업로드 디렉토리 정리
         if self._upload_dir:
