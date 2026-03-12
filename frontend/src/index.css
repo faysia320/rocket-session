@@ -271,6 +271,14 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* 기능적 상태 표시 애니메이션은 reduced-motion에서도 유지 */
+  .animate-spin {
+    animation: spin 1s linear infinite !important;
+  }
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+  }
 }
 
 /* Plan Review Dialog - Markdown Styles */
