@@ -19,7 +19,6 @@ import {
   MoreHorizontal,
   Workflow,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
@@ -147,13 +146,11 @@ export const GlobalTopBar = memo(function GlobalTopBar() {
         ))}
       </nav>
 
-      {/* 중앙: 사용량 */}
-      <div className="flex justify-center shrink-0 overflow-hidden">
-        <UsageIndicator />
-      </div>
-
       {/* 우측: 글로벌 액션 */}
       <div className="flex items-center gap-0.5 flex-1 justify-end min-w-0 overflow-hidden">
+
+        {/* 사용량 뱃지 */}
+        <UsageIndicator />
 
         {/* 명령 팔레트 */}
         <Tooltip>
@@ -360,7 +357,7 @@ function UsageIndicator() {
   );
 
   if (isLoading) {
-    return <div className="h-3 w-32 animate-pulse rounded bg-muted" />;
+    return <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />;
   }
 
   if (isError || !data || !data.available) {
@@ -370,11 +367,11 @@ function UsageIndicator() {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="flex items-center gap-1 text-2xs text-muted-foreground">
+          <span className="flex items-center justify-center h-8 w-8 rounded-full border border-border text-muted-foreground">
             {isRateLimited ? (
-              <Clock className="h-3 w-3" />
+              <Clock className="h-3.5 w-3.5" />
             ) : (
-              <AlertCircle className="h-3 w-3" />
+              <AlertCircle className="h-3.5 w-3.5" />
             )}
           </span>
         </TooltipTrigger>
@@ -392,25 +389,37 @@ function UsageIndicator() {
   const { five_hour, seven_day } = data;
 
   return (
-    <div className="flex items-center gap-1.5 whitespace-nowrap">
-      <Badge
-        variant="outline"
-        className={cn("px-2 py-0.5 text-2xs gap-1", utilizationBadgeClass(five_hour.utilization))}
-      >
-        <span className="hidden md:inline font-bold">5h</span>
-        <span className="md:hidden font-bold">h</span>
-        <span className="font-bold">{five_hour.utilization.toFixed(0)}%</span>
-        <span className="hidden md:inline font-normal">({fiveHourCountdown})</span>
-      </Badge>
-      <Badge
-        variant="outline"
-        className={cn("px-2 py-0.5 text-2xs gap-1", utilizationBadgeClass(seven_day.utilization))}
-      >
-        <span className="hidden md:inline font-bold">7d</span>
-        <span className="md:hidden font-bold">w</span>
-        <span className="font-bold">{seven_day.utilization.toFixed(0)}%</span>
-        <span className="hidden md:inline font-normal">({sevenDayCountdown})</span>
-      </Badge>
+    <div className="flex items-center gap-0.5">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={cn(
+              "flex items-center justify-center h-8 w-8 rounded-full border text-[10px] font-bold cursor-default",
+              utilizationBadgeClass(five_hour.utilization),
+            )}
+          >
+            {five_hour.utilization.toFixed(0)}%
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          5h 블록 · 남은 시간: {fiveHourCountdown}
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={cn(
+              "flex items-center justify-center h-8 w-8 rounded-full border text-[10px] font-bold cursor-default",
+              utilizationBadgeClass(seven_day.utilization),
+            )}
+          >
+            {seven_day.utilization.toFixed(0)}%
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          7d 주간 · 남은 시간: {sevenDayCountdown}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }
