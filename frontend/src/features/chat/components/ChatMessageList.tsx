@@ -9,6 +9,7 @@ import type { ChatMessageContextValue } from "./ChatMessageContext";
 import type { Message, ToolUseMsg } from "@/types";
 import type { ResolvedWorkflowStep } from "@/types/workflow";
 import { computeEstimateSize } from "../utils/chatComputations";
+import { computePrecedingPlanContents } from "../utils/chatComputations";
 
 /** ChatPanel이 virtualizer 메서드에 접근하기 위한 핸들 */
 export interface ChatMessageListHandle {
@@ -107,6 +108,12 @@ export const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageList
       [virtualizer],
     );
 
+    // ask_user_question 메시지에 직전 Write(Plan) 내용 매핑
+    const precedingPlanContents = useMemo(
+      () => computePrecedingPlanContents(messages),
+      [messages],
+    );
+
     // Context value
     const contextValue = useMemo<ChatMessageContextValue>(
       () => ({
@@ -123,6 +130,7 @@ export const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageList
         onConfirmAnswers,
         workflowSteps,
         onOpenPreview,
+        precedingPlanContents,
       }),
       [
         isRunning,
@@ -138,6 +146,7 @@ export const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageList
         onConfirmAnswers,
         workflowSteps,
         onOpenPreview,
+        precedingPlanContents,
       ],
     );
 

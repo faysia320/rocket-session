@@ -47,6 +47,7 @@ const defaultCtx: ChatMessageContextValue = {
   onConfirmAnswers: noop,
   workflowSteps: undefined,
   onOpenPreview: undefined,
+  precedingPlanContents: new Map(),
 };
 
 function Wrapper({ children, ctx }: { children: ReactNode; ctx?: Partial<ChatMessageContextValue> }) {

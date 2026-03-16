@@ -1,6 +1,9 @@
 import { useState, useCallback, memo } from "react";
-import { MessageCircleQuestion, Check } from "lucide-react";
+import { MessageCircleQuestion, Check, FileText, ChevronDown, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MarkdownRenderer } from "@/components/ui/MarkdownRenderer";
 import { cn } from "@/lib/utils";
 import type { AskUserQuestionMsg } from "@/types";
 
@@ -8,15 +11,19 @@ interface AskUserQuestionCardProps {
   message: AskUserQuestionMsg;
   onAnswer: (messageId: string, questionIndex: number, labels: string[]) => void;
   onConfirm: (messageId: string) => void;
+  /** 직전 Write(Plan 파일) 내용 — 있으면 질문 위에 인라인 표시 */
+  planContent?: string;
 }
 
 export const AskUserQuestionCard = memo(function AskUserQuestionCard({
   message,
   onAnswer,
   onConfirm,
+  planContent,
 }: AskUserQuestionCardProps) {
   const { questions, answers = {}, answered, sent } = message;
   const disabled = !!answered;
+  const [planExpanded, setPlanExpanded] = useState(true);
 
   const allAnswered = questions.every((_, i) => (answers[i]?.length ?? 0) > 0);
 
@@ -38,6 +45,34 @@ export const AskUserQuestionCard = memo(function AskUserQuestionCard({
             </span>
           ) : null}
         </div>
+
+        {/* Plan 내용 인라인 표시 */}
+        {planContent ? (
+          <Collapsible open={planExpanded} onOpenChange={setPlanExpanded} className="mb-3">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 w-full text-left font-mono text-2xs font-semibold text-muted-foreground hover:text-foreground transition-colors mb-1"
+                aria-label={planExpanded ? "계획 접기" : "계획 펼치기"}
+              >
+                <FileText className="h-3 w-3 text-primary/70 shrink-0" />
+                <span>Plan</span>
+                {planExpanded ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <ScrollArea className="max-h-[300px] bg-input/60 rounded-md border border-border/30">
+                <div className="p-3 text-xs">
+                  <MarkdownRenderer content={planContent} />
+                </div>
+              </ScrollArea>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : null}
 
         <div className="space-y-3">
           {questions.map((q, qIdx) => (

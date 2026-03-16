@@ -62,6 +62,7 @@ export const MessageBubble = memo(function MessageBubble({
     onConfirmAnswers,
     workflowSteps,
     onOpenPreview,
+    precedingPlanContents,
   } = useChatMessageContext();
 
   const { type } = message;
@@ -153,6 +154,7 @@ export const MessageBubble = memo(function MessageBubble({
           message={message as AskUserQuestionMsg}
           onAnswer={onAnswerQuestion}
           onConfirm={onConfirmAnswers}
+          planContent={precedingPlanContents.get(message.id)}
         />
       );
     default:

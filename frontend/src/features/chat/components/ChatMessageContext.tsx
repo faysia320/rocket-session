@@ -22,6 +22,8 @@ export interface ChatMessageContextValue {
   onConfirmAnswers: (toolUseId: string) => void;
   workflowSteps: ResolvedWorkflowStep[] | undefined;
   onOpenPreview: ((url: string) => void) | undefined;
+  /** ask_user_question 메시지 ID → 직전 Write(Plan 파일) content 매핑 */
+  precedingPlanContents: Map<string, string>;
 }
 
 export const ChatMessageContext = createContext<ChatMessageContextValue | null>(null);

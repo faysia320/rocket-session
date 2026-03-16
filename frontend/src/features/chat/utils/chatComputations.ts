@@ -46,6 +46,31 @@ export function computeMessageGaps(messages: Message[]): Array<"tight" | "normal
 }
 
 /**
+ * ask_user_question 메시지에 대해 직전 Write(Plan 파일) 내용을 매핑.
+ * Plan 모드에서 계획 파일을 Write한 후 질문할 때, 질문 카드에 인라인 표시하기 위함.
+ */
+export function computePrecedingPlanContents(messages: Message[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (msg.type !== "ask_user_question") continue;
+    for (let j = i - 1; j >= 0; j--) {
+      const prev = messages[j];
+      if (prev.type === "tool_use" && prev.tool === "Write") {
+        const input = (prev.input || {}) as Record<string, unknown>;
+        const filePath = String(input.file_path ?? "");
+        if (filePath.includes("plans/") && input.content) {
+          map.set(msg.id, String(input.content));
+        }
+        break;
+      }
+      if (prev.type === "user_message") break;
+    }
+  }
+  return map;
+}
+
+/**
  * 검색 쿼리에 매칭되는 메시지의 인덱스 목록 반환.
  */
 export function computeSearchMatches(messages: Message[], query: string): number[] {
